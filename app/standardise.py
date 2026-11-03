@@ -433,7 +433,10 @@ def host_of(raw) -> str:
         return ""
     if "@" in text and "//" not in text:
         text = text.rsplit("@", 1)[1]
-    host = urlparse(text if "//" in text else f"//{text}").netloc
+    try:
+        host = urlparse(text if "//" in text else f"//{text}").netloc
+    except ValueError:                       # e.g. a full-width ＠ or ／ that NFKC-normalises into the host part
+        return ""
     host = host.rsplit("@", 1)[-1].split(":")[0].strip(".")
     host = re.sub(r"^www\d*\.", "", host)
     if not re.fullmatch(r"[a-z0-9\-]+(\.[a-z0-9\-]+)*\.[a-z]{2,}", host):
