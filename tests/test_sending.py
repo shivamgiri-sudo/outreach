@@ -42,7 +42,8 @@ def test_enrolling_twice_is_refused_and_does_not_restart(tmp_path):
     assert run(c)["sent"] == 1
     r = c.post(f"/api/leads/{lid}/enroll")
     assert r.status_code == 400 and "already" in r.json()["detail"].lower()
-    assert c.get(f"/api/leads/{lid}").json()["sequence"]["sent_days"] == [0]
+    seq = c.get(f"/api/leads/{lid}").json()["sequence"]
+    assert seq["practice_days"] == [0] and seq["sent_days"] == []   # a practice run never uses up the real Email 1
 
 
 # ---- stop rules ----
@@ -68,7 +69,9 @@ def test_followups_keep_at_least_two_days_apart_after_downtime(tmp_path):
     assert run(c, late)["sent"] == 1        # day 0
     assert run(c, late + timedelta(minutes=15))["sent"] == 0
     assert run(c, late + timedelta(days=1))["sent"] == 0
-    assert run(c, late + timedelta(days=2))["sent"] == 1
+    assert run(c, late + timedelta(days=2))["sent"] == 0       # follow-ups are spaced from the email actually sent:
+    assert run(c, late + timedelta(days=3))["sent"] == 0       # day 3 comes 3 days after Email 1, not 2 — a Saturday,
+    assert run(c, late + timedelta(days=5))["sent"] == 1       # so it waits for Monday's sending hours
 
 
 def test_sends_are_spread_over_runs(tmp_path):

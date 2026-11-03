@@ -4,14 +4,21 @@ Safety rules, in order: one run at a time; a send is claimed before it goes out 
 cold steps stop once a lead is warm or closed; at least two days between steps; a few sends per run so the
 day's volume is spread out; one email per company domain per day; a warm-up ramp for live sending; failed
 sends back off and stop after three attempts; nothing goes out with an unfilled {{placeholder}}.
+
+Practice runs (nothing actually sent) are recorded separately (`practice_days`), so rehearsing never uses up a
+lead's real Email 1. A provider-wide problem (bad key, rate limit, outage) pauses all sending instead of
+counting as a failure against every lead; each message carries an idempotency key so a retry after a timeout
+can't deliver it twice.
 """
 import threading
+import uuid
 from datetime import date, datetime, timedelta
 from typing import Optional
 
 from . import sequences
 from .growth_core import ensure_demo, get_offer, offer_line
 from .hygiene import business_domain
+from .senders import email_ready
 from .sequences import DEFAULT_DAILY_CAP, IST, due_steps, in_business_hours, lead_variables, render
 
 DEFAULT_SENDER = "Priya"
@@ -25,6 +32,7 @@ NO_EMAIL_STAGES = ("unsubscribed", "disqualified", "not_now", "customer", "advoc
 # Leads in these stages are warm: a person talks to them now, so the cold sequence stops.
 WARM_STAGES = ("interested", "whatsapp_active", "call_done", "trial")
 EARLY_STAGES = ("new", "verified", "enriched")
+PROVIDER_PAUSE = timedelta(hours=1)
 _RUN_LOCK = threading.Lock()
 
 
@@ -55,32 +63,58 @@ def run_due(store, now: datetime, base_url: str, sender, ignore_hours: bool = Fa
         _RUN_LOCK.release()
 
 
+def sending_paused(store, now: datetime):
+    """The active provider pause, or None. A pause with `resume_at` lifts itself once that time has passed."""
+    pause = store.read("settings").get("sending_paused")
+    if not pause:
+        return None
+    resume_at = pause.get("resume_at")
+    if resume_at and now >= datetime.fromisoformat(resume_at):
+        store.update("settings", lambda s: {k: v for k, v in s.items() if k != "sending_paused"})
+        return None
+    return pause
+
+
+def _pause_sending(store, now: datetime, reason: str, auto_resume: bool) -> None:
+    pause = {"reason": reason, "at": now.isoformat(timespec="seconds"),
+             "resume_at": (now + PROVIDER_PAUSE).isoformat(timespec="seconds") if auto_resume else None}
+    store.update("settings", lambda s: {**s, "sending_paused": pause})
+
+
+def _mode_keys(live: bool) -> tuple:
+    return ("sent_days", "last_sent_at") if live else ("practice_days", "practice_last_at")
+
+
 def _run(store, now: datetime, base_url: str, sender) -> dict:
     cfg = get_settings(store)
+    live = bool(cfg["live_sending"]) and bool(email_ready(store))
+    if live and (pause := sending_paused(store, now)):
+        return {"sent": 0, "skipped": f"sending is paused: {pause['reason']}"}
+    days_key, last_key = _mode_keys(live)
+    mode_status = "sent" if live else "dry_run"
     offer = get_offer(store)
     today = now.astimezone(IST).date()
-    sent_ok = [m for m in store.read("outbox") if m.get("status") != "failed"]
-    live_dates = [date.fromisoformat(m["sent_at_ist_date"]) for m in sent_ok if m.get("status") == "sent"]
-    cap = effective_daily_cap(cfg["daily_cap"], cfg["live_sending"], min(live_dates, default=None), today)
+    sent_ok = [m for m in store.read("outbox") if m.get("status") == mode_status]
+    live_dates = [date.fromisoformat(m["sent_at_ist_date"]) for m in sent_ok if live]
+    cap = effective_daily_cap(cfg["daily_cap"], live, min(live_dates, default=None), today)
     todays = [m for m in sent_ok if m["sent_at_ist_date"] == today.isoformat()]
     domains_today = {business_domain(m["to"]) for m in todays} - {None}
-    suppressed = set(store.read("suppressed"))
-    counts = {"sent": 0, "failed": 0, "needs_check": 0, "blocked": 0}
+    counts = {"sent": 0, "failed": 0, "needs_check": 0, "blocked": 0, "mode": "live" if live else "practice"}
 
     for lead in sorted(store.read("leads"), key=lambda l: (l.get("sequence") or {}).get("enrolled_at", "")):
         seq = lead.get("sequence")
-        if not seq or seq["stopped"] or lead["stage"] in NO_EMAIL_STAGES + WARM_STAGES:
-            continue
-        if not lead.get("email") or lead["email"] in suppressed:
+        if not seq or seq["stopped"] or lead["stage"] in NO_EMAIL_STAGES + WARM_STAGES or not lead.get("email"):
             continue
         if seq.get("in_flight"):
             counts["needs_check"] += 1
             continue
         if len(todays) + counts["sent"] >= cap or counts["sent"] >= cfg["per_run_cap"]:
             break
-        if not _ready(seq, now):
+        if not _ready(seq, now, last_key):
             continue
-        steps = due_steps(datetime.fromisoformat(seq["enrolled_at"]), seq["sent_days"], now)
+        last = seq.get(last_key)
+        steps = due_steps(datetime.fromisoformat(seq["enrolled_at"]), seq.get(days_key, []), now,
+                          last_sent_at=datetime.fromisoformat(last) if last else None)
         domain = business_domain(lead["email"])
         if not steps or (domain and domain in domains_today):
             continue
@@ -90,24 +124,60 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
             _set_sequence(store, lead["id"], blocked="a detail needed by the email is missing")
             continue
         message, demo = composed
-        _set_sequence(store, lead["id"], in_flight={"day": steps[0]["day"], "at": now.isoformat(timespec="seconds")})
+        day = steps[0]["day"]
+        message.update({"idempotency_key": f"{lead['id']}:{day}:{counts['mode']}",
+                        "message_id": f"<{uuid.uuid4().hex}.{lead['id']}@{_message_domain(store)}>"})
+        if not _claim(store, lead["id"], day, now, lead["email"]):
+            continue                                   # stopped, unsubscribed or suppressed a moment ago
         message.update(sender(message))
         store.update("outbox", lambda rows: [*rows, message])
+        if message["status"] == "provider_error":
+            counts["failed"] += 1
+            _release(store, lead["id"])
+            _pause_sending(store, now, message.get("error", "the email provider is not accepting messages"),
+                           auto_resume=message.get("retryable", True))
+            counts["paused"] = message.get("error", "")
+            break
         if message["status"] == "failed":
             counts["failed"] += 1
-            store.update("leads", lambda rows: [_record_failure(r, now) if r["id"] == lead["id"] else r for r in rows])
+            store.update_lead(lead["id"], lambda r: _record_failure(r, now))
             continue
-        day = steps[0]["day"]
-        store.update("leads", lambda rows: [_record_send(r, day, message, demo, now) if r["id"] == lead["id"] else r for r in rows])
+        store.update_lead(lead["id"], lambda r: _record_send(r, day, message, demo, now, days_key, last_key))
         counts["sent"] += 1
         if domain:
             domains_today.add(domain)
     return counts
 
 
-def _ready(seq: dict, now: datetime) -> bool:
+def _message_domain(store) -> str:
+    cfg = email_ready(store) or {}
+    return (cfg.get("from_email", "").rpartition("@")[2] or cfg.get("domain") or "outreach.local").strip() or "outreach.local"
+
+
+def _claim(store, lead_id: str, day: int, now: datetime, email: str) -> bool:
+    """Mark the send as in progress on the latest saved lead, but only if it may still be emailed right now."""
+    suppressed = set(store.read("suppressed"))
+    claimed = {}
+
+    def claim(lead: dict):
+        seq = lead.get("sequence") or {}
+        if (not seq or seq.get("stopped") or seq.get("in_flight") or lead["stage"] in NO_EMAIL_STAGES + WARM_STAGES
+                or lead.get("email") != email or email in suppressed):
+            return None
+        claimed["ok"] = True
+        return {**lead, "sequence": {**seq, "in_flight": {"day": day, "at": now.isoformat(timespec="seconds")}}}
+
+    store.update_lead(lead_id, claim)
+    return bool(claimed)
+
+
+def _release(store, lead_id: str) -> None:
+    store.update_lead(lead_id, lambda r: {**r, "sequence": {k: v for k, v in r["sequence"].items() if k != "in_flight"}})
+
+
+def _ready(seq: dict, now: datetime, last_key: str = "last_sent_at") -> bool:
     """Respect the minimum gap between steps and the back-off after a failed attempt."""
-    last_sent = seq.get("last_sent_at")
+    last_sent = seq.get(last_key)
     if last_sent and now - datetime.fromisoformat(last_sent) < MIN_GAP:
         return False
     last_failed = seq.get("last_failed_at")
@@ -126,13 +196,16 @@ def _compose(lead: dict, step: dict, cfg: dict, offer: dict, base_url: str, now:
     body_text, missing_body = render(step["body"], variables)
     if missing_subject or missing_body:
         return None
-    message = {"lead_id": lead["id"], "to": lead["email"], "subject": subject, "body": body_text, "step": step["name"],
+    footer = sequences.identity_footer(cfg)
+    message = {"lead_id": lead["id"], "to": lead["email"], "subject": subject,
+               "body": body_text + (f"\n{footer}" if footer else ""), "step": step["name"],
+               "variant": step.get("variant", "default"),
                "sent_at": now.isoformat(timespec="seconds"), "sent_at_ist_date": today.isoformat()}
     return message, {k: lead[k] for k in ("demo_token", "referral_code", "activation")}
 
 
 def _set_sequence(store, lead_id: str, **changes) -> None:
-    store.update("leads", lambda rows: [{**r, "sequence": {**r["sequence"], **changes}} if r["id"] == lead_id else r for r in rows])
+    store.update_lead(lead_id, lambda r: {**r, "sequence": {**r["sequence"], **changes}})
 
 
 def _record_failure(lead: dict, now: datetime) -> dict:
@@ -144,13 +217,43 @@ def _record_failure(lead: dict, now: datetime) -> dict:
     return {**lead, "sequence": seq}
 
 
-def _record_send(lead: dict, day: int, message: dict, demo: dict, now: datetime) -> dict:
-    """Mark a sent step on the latest saved copy of the lead (a reply saved meanwhile is kept)."""
+def _record_send(lead: dict, day: int, message: dict, demo: dict, now: datetime,
+                 days_key: str = "sent_days", last_key: str = "last_sent_at") -> dict:
+    """Mark a sent (or practised) step on the latest saved copy of the lead (a reply saved meanwhile is kept)."""
+    live = days_key == "sent_days"
     seq = {k: v for k, v in lead["sequence"].items() if k not in ("in_flight", "failed_attempts", "last_failed_at", "blocked")}
-    sent_days = seq.get("sent_days", [])
-    event = {"at": now.isoformat(timespec="seconds"), "kind": "email", "text": f"{message['step']} — {message['status']}"}
+    done = seq.get(days_key, [])
+    label = message["status"] if live else "practice only, not sent"
+    event = {"at": now.isoformat(timespec="seconds"), "kind": "email" if live else "practice", "text": f"{message['step']} — {label}"}
     return {**{k: v for k, v in demo.items() if not lead.get(k)}, **lead,
-            "stage": "contacted" if lead["stage"] in EARLY_STAGES else lead["stage"],
-            "sequence": {**seq, "sent_days": sent_days if day in sent_days else [*sent_days, day],
-                         "last_sent_at": now.isoformat(timespec="seconds")},
+            "stage": "contacted" if live and lead["stage"] in EARLY_STAGES else lead["stage"],
+            "sequence": {**seq, days_key: done if day in done else [*done, day], last_key: now.isoformat(timespec="seconds")},
             "timeline": [*lead["timeline"], event]}
+
+
+def resume_lead(store, lead_id: str):
+    """Restart a sequence that stopped after repeated send failures, keeping what was already sent."""
+    def resume(lead: dict):
+        seq = lead.get("sequence") or {}
+        if seq.get("stopped") != "send_failed":
+            return None
+        cleaned = {k: v for k, v in seq.items() if k not in ("failed_attempts", "last_failed_at", "in_flight")}
+        return {**lead, "sequence": {**cleaned, "stopped": None},
+                "timeline": [*lead["timeline"], {"at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                                                 "kind": "sequence", "text": "Sequence resumed after send failures"}]}
+    return store.update_lead(lead_id, resume)
+
+
+def clear_practice(store) -> dict:
+    """Forget practice runs: remove practice outbox rows and practice progress, so live sending starts fresh."""
+    removed = {"outbox": 0}
+
+    def drop(rows):
+        kept = [m for m in rows if m.get("status") != "dry_run"]
+        removed["outbox"] = len(rows) - len(kept)
+        return kept
+    store.update("outbox", drop)
+    store.update("leads", lambda rows: [{**r, "sequence": {k: v for k, v in r["sequence"].items()
+                                                           if k not in ("practice_days", "practice_last_at")}}
+                                        if r.get("sequence") else r for r in rows])
+    return removed

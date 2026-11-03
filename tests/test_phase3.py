@@ -107,8 +107,11 @@ def test_live_sending_posts_to_provider_with_unsubscribe_headers(tmp_path):
     assert call["url"] == "https://api.resend.com/emails"
     assert call["headers"]["Authorization"] == "Bearer re_secret"
     body = call["body"]
-    assert body["from"] == "Priya <hello@mail.example.in>" and body["to"] == ["ravi@acme.com"]
+    assert body["from"] == '"Priya" <hello@mail.example.in>' and body["to"] == ["ravi@acme.com"]
     assert f"/u/{lid}" in body["headers"]["List-Unsubscribe"]
+    assert "mailto:hello@mail.example.in?subject=unsubscribe" in body["headers"]["List-Unsubscribe"]
+    assert call["headers"]["Idempotency-Key"] == f"{lid}:0:live"
+    assert body["headers"]["Message-ID"].endswith("@mail.example.in>")
     assert body["headers"]["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
     assert c.get("/api/outbox").json()[0]["status"] == "sent"
     assert c.get("/api/outbox").json()[0]["provider_id"] == "em_123"

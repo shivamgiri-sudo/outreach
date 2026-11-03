@@ -46,7 +46,7 @@ def test_public_address_is_used_in_emails_and_unsubscribe_header(tmp_path):
     c.post("/api/sequences/run", json={"now": T0.isoformat()})
     body = c.get("/api/outbox").json()[0]["body"]
     assert f"https://outreach.mycompany.in/u/{lid}" in body and "/demo/" not in body  # Email 1 has no demo link by default
-    assert t.calls[0]["body"]["headers"]["List-Unsubscribe"] == f"<https://outreach.mycompany.in/u/{lid}>"
+    assert t.calls[0]["body"]["headers"]["List-Unsubscribe"].startswith(f"<https://outreach.mycompany.in/u/{lid}>")
 
 
 def test_webhook_secret_from_settings_is_masked_and_enforced(tmp_path):

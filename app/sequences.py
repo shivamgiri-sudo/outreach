@@ -184,13 +184,28 @@ def pick_variant(step: dict, variables: dict) -> dict:
     return {**step, "subject": step["subject" + choose("subject")], "body": step["body" + body_suffix], "variant": variant}
 
 
-def due_steps(enrolled_at: datetime, sent_days: list, now: datetime, sequence=DEFAULT_SEQUENCE) -> list:
-    """The single next unsent step whose day has arrived (never catches up in a burst)."""
-    elapsed = (now - enrolled_at).days
-    for step in sequence:
-        if step["day"] not in sent_days:
-            return [step] if step["day"] <= elapsed else []
+def due_steps(enrolled_at: datetime, sent_days: list, now: datetime, sequence=DEFAULT_SEQUENCE,
+              last_sent_at: datetime = None) -> list:
+    """The single next unsent step that is due (never catches up in a burst).
+
+    The first step is due once its day since enrolment has arrived. Each later step is spaced from the email
+    actually sent before it (day 3 comes 3 days after Email 1 went out, day 7 four days after that), so a lead
+    whose first email was delayed by a backlog still gets the intended 3/4/7-day rhythm.
+    """
+    for index, step in enumerate(sequence):
+        if step["day"] in sent_days:
+            continue
+        if index == 0 or not sent_days or last_sent_at is None:
+            return [step] if step["day"] <= (now - enrolled_at).days else []
+        gap = step["day"] - sequence[index - 1]["day"]
+        return [step] if now - last_sent_at >= timedelta(days=gap) else []
     return []
+
+
+def identity_footer(settings: dict) -> str:
+    """Who is writing and from where: company name and postal address, required by anti-spam rules for live sending."""
+    parts = [str(settings.get(k, "")).strip() for k in ("sender_company", "sender_address")]
+    return " · ".join(p for p in parts if p)
 
 
 def in_business_hours(now: datetime) -> bool:

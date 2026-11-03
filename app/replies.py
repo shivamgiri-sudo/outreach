@@ -1,40 +1,79 @@
-"""Rule-based reply classifier. Swap for the AI writer later; labels stay the same.
+"""Rule-based reply classifier. The AI writer only reads replies these rules can't place; labels stay the same.
 
 Order matters: things that must never be mistaken for a "yes" (bounces, auto-replies, stop words, refusals)
-are checked first. A "yes" only counts when it is not negated ("I'm not sure" is not a yes).
+are checked first. A "yes" only counts when it is not negated ("I'm not sure", "we aren't interested").
+Quoted history (our own email below the reply) is removed first, so our footer's "unsubscribe" link or
+"interested?" line can never decide the label.
 """
 import re
 
+_QUOTE_STARTS = re.compile(
+    r"^\s*(on .{3,120} wrote:|-{2,}\s*original message\s*-{2,}|_{5,}|from:\s.+|sent from my \w+|"
+    r"get outlook for \w+|forwarded message|begin forwarded message)\s*$",
+    re.IGNORECASE)
+_NEGATION_WORDS = r"(not|no|never|nahi|nahin|dont|don't|\w+n't)"
+
 _RULES = (
     ("bounce", r"undeliverable|delivery (status notification|has failed|failure)|mail delivery (failed|subsystem)|"
-               r"user unknown|(mailbox|address) (not found|unavailable|rejected|full)|no such user|\b550 "),
-    ("auto_reply", r"out of (the )?office|automatic reply|auto[- ]?reply|autoreply|on (annual |maternity |medical )?leave|"
-                   r"away from (my )?(desk|email|office)|i am (currently )?(away|travelling|traveling)"),
-    ("unsubscribe", r"^\W*(stop|opt[- ]?out|remove|unsubscribe|cancel)\W*$|\bunsubscribe\b|opt[- ]?out|"
-                    r"remove me|please remove|take me off|"
-                    r"\bstop (sending|emailing|writing|mailing|messaging|texting|contacting|calling)\b|"
-                    r"\b(do not|don'?t|dont) (send|email|contact|call|message|text|write)\b|"
-                    r"\bmat (bhej|karo|call|message)\w*|band kar"),
-    ("not_interested", r"not interested|no,? thanks?|no thank you|not required|no need|not looking|"
-                       r"\b(don'?t|do not|dont) (need|want|require)\b|nahi chahi(ye|e)|zaroorat nahi|jarurat nahi"),
-    ("wrong_person", r"(not the right person|wrong person|don'?t handle|do not handle|contact our|reach out to|speak to our|someone else)"),
-    ("not_now", r"(not now|not at the moment|maybe later|maybe after|next (month|quarter|year)|busy|later|baad mein|abhi nahi)"),
-    ("interested", r"\b(yes|yeah|yep|yup|sure|interested|sounds (good|great|interesting)|go ahead|send (it|me the|the)|"
-                   r"tell me more|call me|haan|ha ji|bhej do|bhejiye|ok send|sample|send (a|one) sample)\b"),
+               r"user unknown|(mailbox|address) (not found|unavailable|rejected|full|does not exist)|no such user|"
+               r"recipient address rejected|\b550[ -]5\.\d{1,2}\.\d{1,2}\b|\bstatus: 5\.\d\.\d\b|returned mail"),
+    ("auto_reply", r"out of (the )?office|automatic reply|auto[- ]?reply|autoreply|on (annual |maternity |paternity |medical )?leave|"
+                   r"away from (my )?(desk|email|office)|i am (currently )?(away|travelling|traveling|out of station)"),
+    ("unsubscribe", r"^\W*(please\W+)?(stop|opt[- ]?out|remove|unsubscribe|cancel)(\W+(it|please|this|now))?\W*$|"
+                    r"\bunsubscribe\b|opt[- ]?out|remove me|please remove|take me off|remove (my|this) (email|number|id|address)|"
+                    r"\bstop (sending|emailing|writing|mailing|messaging|texting|contacting|calling|spamming)\b|"
+                    r"\bplease stop\b|\bstop (it|this)\b|"
+                    r"\b(do not|don'?t|dont) (send|email|contact|call|message|text|write|mail)\b|"
+                    r"\b(delete|erase|remove|wipe) (all )?(my|our) (data|details|information|info|number|email|contact)\b|"
+                    r"\bmat (bhej|karo|call|message)\w*|band kar\w*|remove kar\w*|hata (do|dijiye|dein)|"
+                    r"\bmujhe mat\b|message mat\b|call mat\b"),
+    ("not_interested", r"\b(not|aren'?t|isn'?t|am not|are not|is not|were not|weren'?t|wasn'?t|we'?re not|i'?m not) "
+                       r"(at all )?interested\b|"
+                       r"^\W*(no|nope|nah|nahi|nahin)\W*$|^\W*no[,.! ]+(thanks?|thank you|sorry)\b|"
+                       r"no,? thanks?|no thank you|not required|no need|not looking|not relevant|not for us|"
+                       r"\b(don'?t|do not|dont) (need|want|require)\b|"
+                       r"nahi[n]? chahi(ye|e)|zaroorat nahi[n]?|jarurat nahi[n]?|interest(ed)? nahi[n]?|"
+                       r"koi (zaroorat|jarurat|interest) nahi[n]?|nahi[n]? (chahiye|karna)"),
+    ("wrong_person", r"not the right person|wrong person|(don'?t|do not|doesn'?t) handle (this|that|hiring|recruitment)|"
+                     r"\bcontact our\b|\bspeak to our\b|\btalk to our\b|someone else (handles|looks after)|"
+                     r"\breach out to (our|my|the) \w+|\bplease (contact|email|write to) (our|my|the) \w+|"
+                     r"\b(i have|i've) (left|moved on from)\b|no longer (with|at|work)"),
+    ("interested", r"\b(yes|yeah|yep|yup|sure|interested|sounds (good|great|interesting)|go ahead|"
+                   r"send (it|me the details|me details|me more|me the sample|the sample|over)|"
+                   r"tell me more|call me|let'?s (talk|connect|discuss)|happy to (talk|connect|chat)|"
+                   r"haan|ha ji|haan ji|bhej do|bhejiye|bhej dijiye|ok send|sample|send (a|one) sample|"
+                   r"reach out to me|contact me|book (a|the) (call|demo|meeting))\b"),
+    ("not_now", r"\bnot now\b|not at the moment|not right now|maybe later|maybe after|next (week|month|quarter|year)|"
+                r"\bbusy\b|\blater\b|baad mein|abhi nahi[n]?|after (diwali|holi|the festival|new year)"),
     ("question", r"(\?|\b(how much|cost|price|pricing|what is|how does|how do|share (your|the) (price|pricing|details))\b)"),
 )
-_NEGATION_BEFORE = re.compile(r"\b(not|no|never|n't|nahi|dont|don't)\W+(\w+\W+){0,2}$")
+# "No problem, send it" is a yes: these phrases contain "no" but are not refusals.
+_NOT_A_NO = re.compile(r"\bno (problem|problems|issue|issues|worries|doubt)\b")
+_NEGATION_BEFORE = re.compile(r"\b" + _NEGATION_WORDS + r"\W+(\w+\W+){0,2}$")
 LABELS = tuple(label for label, _ in _RULES)
 
 
+def strip_quoted(text: str) -> str:
+    """Keep only what the person wrote: drop '>' quoted lines and everything from 'On … wrote:' down."""
+    kept = []
+    for line in (text or "").splitlines():
+        if _QUOTE_STARTS.match(line):
+            break
+        if line.lstrip().startswith(">"):
+            continue
+        kept.append(line)
+    return "\n".join(kept).strip()
+
+
 def _is_negated(text: str, start: int) -> bool:
-    return bool(_NEGATION_BEFORE.search(text[max(0, start - 24):start]))
+    return bool(_NEGATION_BEFORE.search(text[max(0, start - 28):start]))
 
 
 def classify_reply(text: str) -> str:
-    lowered = (text or "").lower().strip()
+    lowered = strip_quoted(text or "").lower().strip() or (text or "").lower().strip()
+    lowered = _NOT_A_NO.sub("fine", lowered)
     for label, pattern in _RULES:
-        for match in re.finditer(pattern, lowered):
+        for match in re.finditer(pattern, lowered, re.MULTILINE):
             if label == "interested" and _is_negated(lowered, match.start()):
                 continue
             return label
