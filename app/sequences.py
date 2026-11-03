@@ -114,7 +114,7 @@ def clean_first_name(contact_name) -> str:
     if not words:
         return ""
     first = words[0]
-    if len(first) < 2 or re.search(r"[@\d]", first) or first.lower() in _GENERIC_NAMES:
+    if len(first) < 2 or re.search(r"[@\d{}]", first) or first.lower() in _GENERIC_NAMES:
         return ""
     return _title_word(first)
 
@@ -153,7 +153,7 @@ def render(text: str, variables: dict) -> tuple:
 
     def sub(match):
         key = match.group(1)
-        if variables.get(key):
+        if variables.get(key) and not re.search(r"\{\{|\}\}", str(variables[key])):   # a leftover {{x}} in the data
             return str(variables[key])
         missing.append(key)
         return match.group(0)
