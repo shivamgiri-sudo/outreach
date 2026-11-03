@@ -1,0 +1,90 @@
+{
+  "_sources": [
+    "https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples",
+    "https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/button/",
+    "https://developers.facebook.com/documentation/business-messaging/whatsapp/messages/interactive-reply-buttons-messages"
+  ],
+  "_note": "Fictional numbers (90000 1xxxx), names and ids. Timestamps are unix seconds as Meta sends them.",
+  "batch_day1": {
+    "object": "whatsapp_business_account",
+    "entry": [{
+      "id": "100000000000001",
+      "changes": [{
+        "field": "messages",
+        "value": {
+          "messaging_product": "whatsapp",
+          "metadata": {"display_phone_number": "917000000001", "phone_number_id": "100000000000002"},
+          "contacts": [
+            {"profile": {"name": "Priyanka S"}, "wa_id": "919000010001"},
+            {"profile": {"name": "Sanjay"}, "wa_id": "919000010002"},
+            {"profile": {"name": "Lakshmi"}, "wa_id": "919000010003"},
+            {"profile": {"name": "Pooja R"}, "wa_id": "919000010004"},
+            {"profile": {"name": "Arvind"}, "wa_id": "919000010005"},
+            {"profile": {"name": "Neha"}, "wa_id": "919000010006"},
+            {"profile": {"name": "Imran"}, "wa_id": "919000010007"},
+            {"profile": {"name": "Stranger"}, "wa_id": "919000019999"}
+          ],
+          "messages": [
+            {"from": "919000010001", "id": "wamid.QA.D1.001", "timestamp": "1793692800", "type": "text",
+             "text": {"body": "Haan ji, sample bhej dijiye"}},
+            {"from": "919000010002", "id": "wamid.QA.D1.002", "timestamp": "1793692860", "type": "button",
+             "context": {"from": "917000000001", "id": "wamid.QA.OUT.002"},
+             "button": {"payload": "STOP_PROMOTIONS", "text": "Stop promotions"}},
+            {"from": "919000010003", "id": "wamid.QA.D1.003", "timestamp": "1793692920", "type": "interactive",
+             "interactive": {"type": "button_reply", "button_reply": {"id": "yes-call", "title": "Yes, call me"}}},
+            {"from": "919000010004", "id": "wamid.QA.D1.004", "timestamp": "1793692980", "type": "text",
+             "text": {"body": "STOP"}},
+            {"from": "919000010005", "id": "wamid.QA.D1.005", "timestamp": "1793693040", "type": "text",
+             "text": {"body": "Band karo bhai, roz roz message mat bhejo"}},
+            {"from": "919000010006", "id": "wamid.QA.D1.006", "timestamp": "1793693100", "type": "image",
+             "image": {"caption": "our JD", "mime_type": "image/jpeg", "sha256": "abc", "id": "media-1"}},
+            {"from": "919000010007", "id": "wamid.QA.D1.007", "timestamp": "1793693160", "type": "text",
+             "text": {"body": "Kaun? Aapko mera number kahan se mila?"}},
+            {"from": "919000019999", "id": "wamid.QA.D1.008", "timestamp": "1793693220", "type": "text",
+             "text": {"body": "hello"}}
+          ]
+        }
+      }]
+    }]
+  },
+  "statuses_mixed": {
+    "object": "whatsapp_business_account",
+    "entry": [{
+      "id": "100000000000001",
+      "changes": [{
+        "field": "messages",
+        "value": {
+          "messaging_product": "whatsapp",
+          "metadata": {"display_phone_number": "917000000001", "phone_number_id": "100000000000002"},
+          "statuses": [
+            {"id": "wamid.QA.OUT.010", "status": "delivered", "timestamp": "1793693300", "recipient_id": "919000010010",
+             "conversation": {"id": "conv-1", "origin": {"type": "marketing"}},
+             "pricing": {"billable": true, "pricing_model": "CBP", "category": "marketing"}},
+            {"id": "wamid.QA.OUT.011", "status": "read", "timestamp": "1793693360", "recipient_id": "919000010011"},
+            {"id": "wamid.QA.OUT.012", "status": "failed", "timestamp": "1793693420", "recipient_id": "919000010012",
+             "errors": [{"code": 131026, "title": "Message undeliverable",
+                         "error_data": {"details": "Message Undeliverable."}}]}
+          ]
+        }
+      }]
+    }]
+  },
+  "unsupported_and_system_error": {
+    "object": "whatsapp_business_account",
+    "entry": [{
+      "id": "100000000000001",
+      "changes": [{
+        "field": "messages",
+        "value": {
+          "messaging_product": "whatsapp",
+          "metadata": {"display_phone_number": "917000000001", "phone_number_id": "100000000000002"},
+          "errors": [{"code": 131000, "title": "Something went wrong"}],
+          "messages": [
+            {"from": "919000010013", "id": "wamid.QA.D1.013", "timestamp": "1793693480", "type": "unsupported",
+             "errors": [{"code": 131051, "title": "Message type unknown"}]}
+          ]
+        }
+      }]
+    }]
+  }
+}

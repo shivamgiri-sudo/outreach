@@ -75,7 +75,8 @@ def reply_effect(lead: dict, label: str, text: str, channel: str = "email") -> t
     return changes, "applied"
 
 
-def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_transport=None, source: str = "pasted") -> Optional[dict]:
+def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_transport=None, source: str = "pasted",
+                received_at: Optional[str] = None) -> Optional[dict]:
     """Read a reply and act on it, on the latest saved copy of the lead. Returns None when the lead doesn't exist."""
     clean = strip_quoted(text) or (text or "").strip()
     label, ai_label = classify_reply(clean), None
@@ -94,7 +95,7 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
             effect = "review"
         outcome.update(effect=effect, email=lead.get("email"), was_unsubscribed=lead["stage"] == "unsubscribed",
                        consent_given=bool(changes.get("consent")))
-        extra = {"whatsapp_last_inbound_at": _now()} if channel == "whatsapp" else {}
+        extra = {"whatsapp_last_inbound_at": _window_start(received_at)} if channel == "whatsapp" else {}
         return {**lead, **changes, **extra,
                 "timeline": [*lead["timeline"], _event("reply", f"[{label}] ({channel}, {source}) {clean[:TEXT_KEPT]}")]}
 
@@ -121,6 +122,16 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
             on_became_interested(store, lead_id, f"Said yes by {channel}")
         fire(store, "reply", label, lead_id)
     return {"label": label, "effect": effect, "ai_label": ai_label}
+
+
+def _window_start(received_at: Optional[str]) -> str:
+    """The 24-hour window opens when they sent the message, not when a (possibly retried) webhook arrived."""
+    now = _now()
+    try:
+        sent = datetime.fromisoformat(str(received_at))
+        return sent.isoformat(timespec="seconds") if sent.tzinfo and sent < datetime.fromisoformat(now) else now
+    except ValueError:
+        return now
 
 
 def _stop_linkedin(store, lead_id: str, why: str) -> None:
@@ -173,7 +184,8 @@ def process_inbound_message(store, msg: dict, ai_transport=None) -> dict:
            "from": msg.get("from_email") or msg.get("from_phone") or "", "subject": (msg.get("subject") or "")[:300],
            "text": strip_quoted(text)[:TEXT_KEPT], "received_at": msg.get("received_at") or _now(),
            "lead_id": lead_id, "matched_by": matched_by}
-    result = apply_reply(store, lead_id, text, channel, ai_transport, source=msg.get("provider") or "inbound") if lead_id else None
+    result = apply_reply(store, lead_id, text, channel, ai_transport, source=msg.get("provider") or "inbound",
+                         received_at=msg.get("received_at")) if lead_id else None
     row["label"] = (result or {}).get("label")
     store.update("inbox", lambda rows: [*rows, row])
     if not lead_id:

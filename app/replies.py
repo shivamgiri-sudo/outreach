@@ -29,7 +29,7 @@ _RULES = (
     ("unsubscribe", r"^\W*(please\W+)?(stop|opt[- ]?out|remove|unsubscribe|cancel)(\W+(it|please|this|now))?\W*$|"
                     r"\bunsubscribe\b|opt[- ]?out|remove me|please remove|take me off|remove (my|this) (email|number|id|address)|"
                     r"\bstop (sending|emailing|writing|mailing|messaging|texting|contacting|calling|spamming)\b|"
-                    r"\bplease stop\b|\bstop (it|this)\b|"
+                    r"\bplease stop\b|\bstop (it|this)\b|\bstop promotions?\b|^\W*(stopall|end|quit)\W*$|"
                     r"\b(do not|don'?t|dont) (send|email|contact|call|message|text|write|mail|whatsapp)\b|"
                     r"\bnever (contact|email|message|call|text|whatsapp|write to) me\b|\bremove it\b|\bna bhej\w*|"
                     r"\b(delete|erase|remove|wipe) (all )?(my|our) (data|details|information|info|number|email|contact)\b|"
