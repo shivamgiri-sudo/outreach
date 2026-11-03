@@ -59,3 +59,24 @@ def test_scraper_headers_map_to_the_right_fields():
         ("Amla Foods", "Pinky Testwala", "+919000010001"), ("Bael Retail", "Bunty Sampleji", "+919000010002")}
     _, _, trade = _import("Company Name,Product Name,Mobile\nAmla Foods,Uniforms,9000010001\n")
     assert trade["Product Name"] is None
+
+
+def test_naukri_style_city_suffixes_are_cleaned():
+    from app.places import clean_city
+    assert clean_city("Bengaluru(Whitefield)") == "Bengaluru"
+    assert clean_city("Bangalore/Bengaluru") == "Bengaluru"
+    assert clean_city("Gurgaon/Gurugram") == "Gurugram"
+    assert clean_city("Mumbai (All Areas)") == "Mumbai"
+    assert clean_city("Kalyan(West)") == "Kalyan(West)"            # unknown places are kept as written
+
+
+def test_job_age_reads_posted_prefix_datetimes_and_excel_serials():
+    """'Posted 7 days ago' (Indeed), '2026-10-20 10:20:00' (Excel/IndiaMART) and Excel serial 46316 all gave age 0."""
+    from app.places import job_age_days
+    assert job_age_days("Posted 7 days ago", TODAY) == 7
+    assert job_age_days("Active 3 days ago", TODAY) == 3
+    assert job_age_days("2026-10-20 10:20:00", TODAY) == 14
+    assert job_age_days("20-10-2026 18:05", TODAY) == 14
+    assert job_age_days("46316", TODAY) == 13
+    assert job_age_days("2026-10-20T05:00:00.000Z", TODAY) == 14
+    assert job_age_days("30", TODAY) == 0                       # a bare small number is not a date
