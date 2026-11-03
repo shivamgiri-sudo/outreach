@@ -1,0 +1,39 @@
+"""WhatsApp routes (practice mode)."""
+import os
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+from .growth_core import public_base_url
+from .whatsapp import TEMPLATES, WhatsAppError, send
+
+BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
+
+
+class WhatsAppBody(BaseModel):
+    template: str
+    text: str = ""
+
+
+def make_router(store, present) -> APIRouter:
+    router = APIRouter()
+
+    @router.post("/api/leads/{lead_id}/whatsapp")
+    def send_whatsapp(lead_id: str, body: WhatsAppBody):
+        try:
+            return present(send(store, lead_id, body.template, body.text, datetime.now(timezone.utc), public_base_url(store, BASE_URL)))
+        except LookupError:
+            raise HTTPException(404, "Lead not found")
+        except WhatsAppError as exc:
+            raise HTTPException(400, str(exc))
+
+    @router.get("/api/whatsapp/outbox")
+    def whatsapp_outbox():
+        return list(reversed(store.read("whatsapp_outbox")))
+
+    @router.get("/api/whatsapp/templates")
+    def templates():
+        return TEMPLATES
+
+    return router

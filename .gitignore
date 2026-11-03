@@ -1,0 +1,11 @@
+.venv/
+data/
+web/node_modules/
+web/dist/
+__pycache__/
+.pytest_cache/
+web/e2e-shots/
+web/tour-shots/
+*.tmp
+*.log
+.env

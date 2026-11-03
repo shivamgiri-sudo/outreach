@@ -1,0 +1,258 @@
+# Outreach OS — Product Requirements Document
+
+**Status:** working product, running locally in practice mode. Live sending is not switched on yet.
+**Product it serves:** BookMyInterview (bookmyinterview.ai), an AI hiring platform in beta.
+**Market:** Indian employers first, international later.
+**Audience for this document:** anyone who wants to understand, run, rebuild or improve Outreach OS.
+
+---
+
+## 1. Problem
+
+BookMyInterview screens job applicants once (a short voice answer plus a few multiple-choice questions). The best candidates then book their own interview slot. Any company that hires every day is a possible customer, in any industry and for any role.
+
+The team needs a steady flow of these employers:
+- Find them.
+- Get their contact details lawfully.
+- Start a human, honest conversation.
+- Let them try the product free.
+- Hand the interested ones to WhatsApp and a phone call.
+
+Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, and they make it easy to break consent rules.
+
+## 2. Strategy the product supports
+
+**"Try it free first" (the Jio approach).** Instead of selling first, let employers experience the product:
+- The first role is free, with a cap (default: 30 days, 25 candidates screened, 5 interviews booked).
+- Every lead gets a private sample-screen page drafted from their job title.
+- Activation is tracked: drafted a role, published it, first candidate screened, first interview booked, converted.
+- Growth comes from a referral loop, a free pilot on applicants they already have, and partner communities.
+
+**Tone:** short, human, honest, never salesy. The product is in beta and has no customer case studies yet, so **no message may invent a customer, statistic or story**.
+
+## 3. Users
+
+| User | Needs |
+|---|---|
+| Outreach owner | Import lists, decide who to contact, watch the funnel, change rules and copy |
+| Priya (caller) | A queue of leads who said yes, a script and honest objection answers, and outcome logging. Calls go through PD (progressive dialler) only, the same day, before 18:55 |
+| Team member doing research | Add leads found by hand (team Google Sheet), enrich them, record where each detail came from |
+| BookMyInterview product | Report activation events back (webhook) |
+
+## 4. Principles (non-negotiable)
+
+1. **Consent before WhatsApp.**
+   - A recorded "yes", with its text and time, is needed before any WhatsApp message.
+   - Free text is allowed only within 24 hours of the lead's last message.
+2. **A "no" is never a "yes".**
+   - Reply reading handles negation ("not interested", "I'm not sure"), stop words (English and Hinglish), auto-replies and bounces.
+   - An AI guess of "yes" is never treated as consent; a person confirms it.
+3. **Closed leads stay closed.**
+   - Unsubscribed, disqualified and customer leads are never moved back by an automatic reply.
+4. **Every message has an unsubscribe.**
+   - Opening the link asks for one click, so email link-scanners can't unsubscribe people.
+   - Unsubscribes and bounces go to a suppression list that is always checked.
+5. **Compliant sources only.**
+   - Public business contacts only, robots.txt respected and the source of every field stored.
+   - No automated LinkedIn scraping or messaging; LinkedIn drafts are sent by a person.
+   - No anti-bot bypassing.
+6. **Cold email from a separate domain**, never the main bookmyinterview.ai domain, with a warm-up ramp.
+7. **India's DPDP Act** guides data handling: lawful purpose, opt-out in every message, deletion on request (roadmap).
+8. **Practice mode by default.**
+   - Nothing leaves the computer until a provider is connected AND "Send for real" is switched on.
+
+## 5. Scope — features and requirements
+
+### 5.1 Leads and list building
+- **Import:**
+  - CSV paste or upload (Apollo, Sales Navigator exports, any CSV).
+  - Team Google Sheet tabs exported as CSV: **Leads**, **Demo Shared**, **Decision Makers**.
+- **Hygiene:**
+  - Normalise email and phone (+91), detect role addresses (info@, hr@).
+  - Business domain, excluding free-mail domains.
+  - Remove duplicates by email, phone or domain. Merge company-only rows (from job pages) with contact rows.
+- **Hiring signals from job pages:**
+  - Read a careers page URL, pasted HTML (JSON-LD JobPosting) or a CSV.
+  - Open roles, job age and reposts raise the score.
+- **Decision Makers import:** people found by hand are attached to the matching company (ignoring "Pvt Ltd" and text in brackets).
+  - The first person fills empty fields; others are kept as additional contacts.
+  - Nothing is overwritten, and running it again is safe.
+- **Leads screen:**
+  - Search, filter by stage or temperature, sort by company, stage or score.
+  - Select many leads to start the sequence or download a CSV.
+  - Shown as cards on phones.
+
+### 5.2 Enrichment and data sources
+- **Built-in website crawler:** reads public contact pages (home, contact, about) politely and respects robots.txt.
+- **Provider comparison ("Data sources"):** run several providers on the **same** sample of leads (Indian leads first) and compare them before committing to one.
+  - **Measures:** coverage, emails and phones found, average confidence, credits used, cost per contact, and bounces once sending starts.
+  - **Saving:** nothing is saved to leads until someone clicks "Use these results", which fills only empty fields and tags the source.
+  - **Providers today:** own crawler, Hunter, Firecrawl (cloud or self-hosted), and Apollo (needs a contact name).
+  - **Scraper import:** the JSON output of the open-source *website-email-contact-scraper* can be imported. Run it locally without bot-wall bypass or proxies.
+- **Adding a provider:** add an entry to `app/providers.py` and `app/integrations.py`.
+
+### 5.3 Scoring and suggestions
+- The score runs from 0 to 100 and is built from five buying signals: hiring volume (30), hiring pain (25), fit (15), engagement (20) and intent (10).
+- Bands: cold below 40, warm 40–69, hot 70 and above.
+- Each lead shows a suggested next step, a channel, and what to say.
+
+### 5.4 Email sequence
+- **Steps:** four, on day 0, 3, 7 and 14.
+- **Email 1:** short, with no link, ending "Want me to send it?".
+- **Later steps:** a useful tip, a "right person?" check, and a permission close that offers a sample ("reply 'sample'").
+- **Variables are cleaned:**
+  - Company names lose legal suffixes and ALL CAPS.
+  - First names lose honorifics.
+  - Roles lose codes.
+  - When a variable is missing, a no-role version of the email is used.
+- An A/B setting can put the demo link in Email 1.
+- **Sending rules:**
+  - One send run at a time.
+  - Each send is claimed before it goes out, so a crash never repeats a send.
+  - Leads are never re-enrolled, so no one gets Email 1 twice.
+  - Cold steps stop when a lead becomes warm (interested, WhatsApp active, call done, trial).
+  - At least 2 days between steps, even after downtime.
+  - A few sends per run (default 5), so the daily volume is spread out.
+  - One email per company domain per day (free-mail addresses are not grouped).
+  - Warm-up for live sending: 10 a day in week 1, 20 in week 2, 35 in week 3, then the configured cap.
+  - Mon–Fri, 09:00–18:00 IST only.
+  - Failed sends retry after 1 hour, at most 3 attempts.
+  - Nothing goes out with an unfilled placeholder.
+- **Provider:** Resend, with List-Unsubscribe and one-click headers.
+
+### 5.5 Replies
+- A pasted reply is classified as one of: interested, not_interested, unsubscribe, not_now, wrong_person, question, auto_reply, bounce or other.
+- **What each reply does:**
+  - **Interested:** records consent and moves the lead to Interested. This only happens while the lead is still being prospected; otherwise a review task is created.
+  - **Not interested:** moves the lead to Disqualified.
+  - **Unsubscribe:** unsubscribes the lead and suppresses the address.
+  - **Bounce:** suppresses the address and stops the sequence.
+  - **Auto-reply:** logged only.
+  - **Question, wrong person, other:** creates a task for a person.
+- **AI reading (optional):** used only when the rules return "other". An AI "interested" becomes a review task, never consent.
+- **AI reply drafts (optional):**
+  - Lead text is wrapped in tags and treated as untrusted data.
+  - The draft mirrors the lead's language (English, Hindi or Hinglish) and is at most 70 words.
+  - Pricing, legal or unknown topics are escalated to a person.
+  - Without AI, template drafts are used.
+
+### 5.6 Free experience (activation)
+- **Demo page:** a private page per lead showing a sample screen.
+  - Questions vary by role family (sales, support, operations, tech, other).
+  - It is labelled as a sample and as beta, and has a claim link (with referral code and UTM) and a stop link.
+- **Activation funnel and nudges:**
+  - The funnel runs invited, demo opened, role drafted, role published, first candidate, first booking, converted.
+  - Nudges fire when a lead stalls.
+  - An honest heads-up is shown as the free limit approaches.
+- **Other free-experience features:** free pilot requests, referrals (both sides get bonus screens), a partners list, and a capacity calculator.
+- **Webhook:** the BookMyInterview product reports activity to `POST /api/activation/event` with an `X-Webhook-Secret` header, compared in constant time.
+
+### 5.7 WhatsApp and calls
+- **WhatsApp templates:** first message after yes, demo-not-opened nudge, draft-not-published nudge, and pilot offer. Each has a Hinglish version and "Reply STOP to opt out".
+- **Practice mode:** WhatsApp stays in practice mode until a provider adapter is built (roadmap).
+- **Call desk:**
+  - Shows leads who said yes, with a click-to-call link built from your dialler's URL template (`{phone}`).
+  - The script has an English and a Hinglish opener and an honest "proof" line (beta, no case studies yet).
+  - There are 10 objection answers, and outcomes are logged.
+- **LinkedIn:** a connection note (300 characters or fewer), a first message and a post comment, copied and sent by a person.
+
+### 5.8 Today, workflows and insights
+- **Today:** one ranked list:
+  1. sending problems,
+  2. replies to handle,
+  3. calls to make,
+  4. free-trial nudges,
+  5. hot leads not yet contacted.
+
+  Each item opens the lead, and tasks can be marked done.
+- **Workflows:** "when X happens, do Y".
+  - Triggers: reply label, stage change, activation event, no reply for N days.
+  - Actions: WhatsApp template, task, stage change, note.
+  - Each rule runs once per lead.
+- **Insights:** totals, reply and positive rates, results by source and by sector, and top leads.
+- **Prompt generator:** builds system prompts for email, WhatsApp or voice.
+  - Guardrails always come last and override anything the user adds.
+  - No invented facts.
+
+### 5.9 Setup and go-live
+- **Setup page tabs:**
+  - **Go-live checklist** (required: leads, public address, sending domain, test email, free limits confirmed; last switch: real sending).
+  - **Connections:** each connector has setup steps, masked keys and a "Test connection" button.
+- **Login:**
+  - Login uses a single admin password (`OUTREACH_ADMIN_PASSWORD`), with signed tokens that expire after 12 hours.
+  - Login lockout is per caller.
+  - **Without a password the API only answers on this computer**, and requests through a proxy or tunnel are refused.
+- **Quick search:** Ctrl+K jumps to any page or lead. Page addresses survive refresh and the back button.
+
+## 6. Out of scope (on purpose)
+- Automated LinkedIn scraping, auto-connecting or auto-messaging, and applying to job posts to pitch employers.
+- Bypassing anti-bot protection or rotating proxies to avoid blocks.
+- Sending from the main bookmyinterview.ai domain.
+- Inventing testimonials, numbers or case studies.
+
+## 7. Architecture
+
+```
+web/  React 18 + Vite, plain CSS (styles.css), Playwright browser tests (web/e2e)
+app/  FastAPI
+  main.py                 app factory, login middleware, lead/stage/consent/notes routes, router wiring
+  store.py                JSON-file store: atomic saves (temp file + rename), locked update(), patch_leads()
+  lead_model.py hygiene.py scoring.py stages.py suggest.py
+  sequences.py            copy, variable cleaning, variants, due-step logic, business hours
+  sequence_runner.py      the sending engine (rules in 5.4)
+  senders.py              Resend sender + test email
+  replies.py ai.py        rule classifier, AI drafting/reading with untrusted-data guards
+  whatsapp.py workflows.py activation.py capacity.py demo.py growth_core.py
+  jobs.py scraper.py enrich.py providers.py sheet_import.py apollo.py
+  routes_*.py             outreach, growth, jobs, enrich, providers, whatsapp, workflows, insights, setup, today
+tests/                    pytest (fake transports for every external API)
+docs/PRD.md               this document
+```
+
+- **External calls go through injected transports** (`email_transport`, `ai_transport`, `apollo_transport`, `fetcher`, provider `get`/`post`). Tests never touch the network.
+- **Data:** one JSON file (`data/store.json`, git-ignored). Collections: leads, integrations, stories, templates, tasks, outbox, settings, suppressed, jobs, partners, whatsapp_outbox, workflows, provider_runs.
+
+### Lead record (main fields)
+`id, company, domain, website, contact_name, title, email, email_is_role, phone, phones, role, city, country, company_size, open_roles, source, stage, consent{text,at,source}, sequence{enrolled_at, sent_days, last_sent_at, stopped, in_flight, blocked, failed_attempts}, engagement{replies,…}, activation{step, usage,…}, demo_token, referral_code, linkedin_url, other_contacts[], technologies[], company_socials{}, timeline[{at, kind, text}]`
+
+## 8. Success metrics
+- Positive-reply rate per 100 sends. Judge by replies, not opens; tracking pixels are not used.
+- Bounce rate under 2%, and complaints close to zero.
+- Leads reaching "role drafted" and "first candidate" in the free experience.
+- Conversion from free to paid.
+- Data-source cost per usable contact.
+
+## 9. Known gaps and roadmap
+1. **WhatsApp provider adapter** (Gupshup, Interakt or WATI), including inbound STOP handling.
+2. **Inbound email:** an IMAP poll or provider webhook, so Gmail replies stop the sequence automatically. A Resend bounce/complaint webhook, plus a circuit breaker above 2% bounces.
+3. **Real database:** SQLite or MongoDB, with pagination and indexes. The JSON store suits one small team.
+4. **Security:**
+   - Encrypt saved provider keys.
+   - Users and roles instead of one password, a set-password flow inside the app, and token revocation.
+   - SSRF hardening on redirects in the scraper.
+5. **DPDP:** a consent ledger (channel, purpose, notice version, withdrawal), data export and deletion endpoints, and phone suppression.
+6. **Scoring v2:** separate fit and intent, time decay, negative signals, and weights editable in settings.
+7. **Duplicates:** fuzzy company matching, eTLD+1 domains, Gmail alias normalisation, and conflict logs.
+8. **Live verification:** one live test each for Resend, Anthropic, Apollo, Hunter and Firecrawl. Their request and response formats are coded from documentation and tested with fakes only.
+9. **More data providers** for India (for example Snov.io, Lusha, Prospeo, RocketReach), compared through the Data sources page.
+10. **International rollout:** time zones per lead, local holidays, and GDPR and CAN-SPAM notices.
+
+## 10. Run, test, contribute
+
+```bash
+python -m venv .venv && .venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python -m uvicorn app.main:app --port 8000
+cd web && npm install && npm run dev        # http://localhost:5173
+```
+
+Tests:
+- `pytest -q`: 276 backend tests.
+- `npm run e2e`: 71 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
+- `node e2e/tour.mjs`: every page at three screen sizes.
+- `node e2e/auth.mjs`: login checks.
+
+Contribution rules:
+- Write the test first, using fake transports.
+- Keep the principles in section 4.
+- Add a browser step for any new user-facing behaviour.
+- Never commit `data/`, keys, or real personal data. Test fixtures use made-up names and numbers.
