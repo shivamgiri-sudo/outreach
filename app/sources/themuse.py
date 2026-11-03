@@ -3,7 +3,7 @@ GET https://www.themuse.com/api/public/jobs?page=1&location=...&category=... -> 
 locations: [{name}], company: {name}, refs: {landing_page}}]}. Limit: 500 requests/hour without a key, 3,600 with one.
 COVERAGE, honestly: The Muse is US-centred and its listings are mostly US cities and 'Flexible / Remote'. India coverage is
 thin; this source mostly finds nothing for Indian cities. Included because it is free and lawful; do not rely on it."""
-from .base import SourceSpec, field
+from .base import SourceSpec, city_match, field
 from .job_apis import group_postings, queries
 
 
@@ -20,6 +20,8 @@ def discover(ctx, target, limit):
              "location": ", ".join(l.get("name", "") for l in r.get("locations") or [] if isinstance(l, dict)),
              "posted": r.get("publication_date", ""), "url": (r.get("refs") or {}).get("landing_page", "")}
             for r in ctx.get("https://www.themuse.com/api/public/jobs", params=p).get("results") or [] if isinstance(r, dict)])
+    cities = list(target.get("cities") or [])
+    postings = [p for p in postings if city_match(p.get("location"), cities)]       # drop US-only and 'Flexible / Remote' listings
     return {"rows": group_postings("themuse", postings, target.get("roles_hiring") or [], ctx.now, limit), "requests": ctx.requests}
 
 

@@ -17,6 +17,7 @@ import urllib.parse
 from datetime import datetime, timezone
 
 from ..channels import http as channel_http
+from ..channels.netguard import BLOCKED_HOSTS, BLOCKED_SUFFIXES
 from ..hygiene import business_domain, normalise_email, normalise_phone, safe_http_url
 
 CAPS = ("discover_companies", "discover_people", "find_email", "verify_email", "hiring_signal")
@@ -185,7 +186,7 @@ def slugs(raw) -> list:
     for item in items:
         slug, _, domain = str(item).strip().partition("|")
         slug, domain = slug.strip(), domain.strip().lower()
-        if SLUG_RE.match(slug) and ".." not in slug and (not domain or DOMAIN_RE.match(domain)):
+        if SLUG_RE.match(slug) and ".." not in slug and (not domain or valid_host(domain) == domain):
             out.append((slug, domain))
     return list(dict.fromkeys(out))
 
@@ -195,6 +196,8 @@ def valid_host(value) -> str:
     text = str(value or "").strip().lower()
     text = re.sub(r"^https?://", "", text).split("/")[0]
     text = text[4:] if text.startswith("www.") else text
+    if text in BLOCKED_HOSTS or text.endswith(BLOCKED_SUFFIXES):       # the fetcher refuses these too; refuse early
+        return ""
     return text if DOMAIN_RE.match(text) else ""
 
 
