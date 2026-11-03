@@ -10,6 +10,8 @@ from . import integrations
 from .ai import ANTHROPIC_URL, MODEL, _llm_config
 from .apollo import check_usage
 from .campaign_sources import check_places
+from .channels.netguard import guarded_post_json
+from .apollo import match_person
 from .growth_core import public_base_url, webhook_secret
 from .http_util import post_json
 from .providers import check_firecrawl, check_hunter, get_json
@@ -36,7 +38,7 @@ def _public_url_ok(url: str) -> bool:
 
 def make_router(store, email_transport=post_json, ai_transport=post_json, apollo_transport=post_json,
                 default_base_url: str = "", default_webhook_secret: str = "", auth_required=lambda: False,
-                get_transport=get_json, firecrawl_transport=post_json) -> APIRouter:
+                get_transport=get_json, firecrawl_transport=guarded_post_json) -> APIRouter:
     router = APIRouter()
 
     def saved(integration_id: str) -> dict:
@@ -117,6 +119,9 @@ def make_router(store, email_transport=post_json, ai_transport=post_json, apollo
             {"id": "live_sending", "title": "Switch on real sending", "status": "done" if settings.get("live_sending") else "todo",
              "detail": "A deliberate last step: tick 'Send for real' on the Outbox page.", "page": "outbox", "required": False},
             row("login", "Turn on login", bool(auth_required()), "Set OUTREACH_ADMIN_PASSWORD before sharing the app.", "setup"),
+            row("secret_key", "Encrypt saved keys", bool(getattr(store, "secrets_encrypted", False)) and not getattr(store, "secret_errors", 0),
+                "Saved keys are encrypted but OUTREACH_SECRET_KEY is missing or wrong, so they can't be used. Set the right key "
+                "and restart." if getattr(store, "secret_errors", 0) else "Set OUTREACH_SECRET_KEY to encrypt saved keys.", "setup"),
             row("webhook", "Let the product report activity", bool(webhook_secret(store, default_webhook_secret)),
                 "A secret the BookMyInterview product sends with each event.", "setup"),
             row("ai_writer", "Connect the AI writer", bool(_llm_config(store)), "Gives tailored reply drafts.", "setup"),

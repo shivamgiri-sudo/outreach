@@ -7,21 +7,25 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from urllib.parse import urlparse
+from html import escape
+from urllib.parse import quote, urlparse
 
+from .auth import PRIVATE_SETTINGS
 from .growth_core import public_base_url
 from .inbound import _rates, apply_reply, suppress as _suppress_email
 from .scraper import extract_contacts, fetch_page
+from .privacy import record_consent
 from .senders import email_ready
+from .unsubscribe import legacy_allowed, log_legacy_use, parse as parse_unsub
 from .sequence_runner import NO_EMAIL_STAGES, clear_practice, get_settings, resume_lead, run_due, sending_paused
 
 BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
 IGNORE_BUSINESS_HOURS = os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"  # local testing only
 # Only tests may set the clock; otherwise a caller could skip business hours or the daily cap.
 ALLOW_NOW_OVERRIDE = os.environ.get("OUTREACH_TEST_MODE") == "1"
-HIDDEN_SETTINGS = ("server_secret",)
+HIDDEN_SETTINGS = PRIVATE_SETTINGS          # the server secret and password hashes never leave the server
 NOT_PUBLIC_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0", "::1")
-CAP_LIMITS = {"daily_cap": (1, 500), "per_run_cap": (1, 50)}
+CAP_LIMITS = {"daily_cap": (1, 500), "per_run_cap": (1, 50), "retention_days_cold": (30, 3650)}
 
 
 class RunBody(BaseModel):
@@ -45,6 +49,8 @@ class SettingsBody(BaseModel):
     sender_address: Optional[str] = None
     sender_website: Optional[str] = None
     sender_contact_email: Optional[str] = None
+    retention_days_cold: Optional[int] = None
+    privacy_url: Optional[str] = None
 
 
 class ScrapeBody(BaseModel):
@@ -166,6 +172,11 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
             del changes["webhook_secret"]
         if "public_base_url" in changes:
             changes["public_base_url"] = changes["public_base_url"].strip().rstrip("/")
+        if "privacy_url" in changes:
+            changes["privacy_url"] = changes["privacy_url"].strip()
+            parsed = urlparse(changes["privacy_url"])
+            if changes["privacy_url"] and (parsed.scheme != "https" or not parsed.hostname or len(changes["privacy_url"]) > 500):
+                raise HTTPException(400, "The privacy notice link must be a full https:// address.")
         for key, (low, high) in CAP_LIMITS.items():
             if key in changes and not low <= changes[key] <= high:
                 raise HTTPException(400, f"{key.replace('_', ' ').capitalize()} must be between {low} and {high}.")
@@ -246,28 +257,44 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         refreshed, j = find(lead_id)
         return {**result, "lead": present(refreshed[j])}
 
-    @router.get("/u/{lead_id}", response_class=HTMLResponse)
-    def unsubscribe_page(lead_id: str):
-        find(lead_id)
+    def unsubscribe_target(token: str) -> tuple:
+        """(lead_id, legacy) for a valid link; 404 for a wrong signature, an unknown lead or an expired unsigned link."""
+        lead_id, signed = parse_unsub(store, token)
+        if signed is False or not any(l["id"] == lead_id for l in store.read("leads")):
+            raise HTTPException(404, "This link is not valid")
+        if signed is None:
+            if not legacy_allowed(store, lead_id):
+                raise HTTPException(404, "This link is not valid")
+            log_legacy_use(lead_id)
+        return lead_id, signed is None
+
+    @router.get("/u/{token}", response_class=HTMLResponse)
+    def unsubscribe_page(token: str):
+        unsubscribe_target(token)
+        action = escape(f"/u/{quote(token, safe='.')}", quote=True)
         return ("<!doctype html><meta name='viewport' content='width=device-width,initial-scale=1'>"
                 "<div style='font-family:sans-serif;max-width:420px;margin:15vh auto;text-align:center'>"
                 "<p>Stop all emails from BookMyInterview outreach?</p>"
-                f"<form method='post' action='/u/{lead_id}'><button style='padding:10px 18px;font-size:16px'>Yes, unsubscribe me</button></form>"
+                f"<form method='post' action='{action}'><button style='padding:10px 18px;font-size:16px'>Yes, unsubscribe me</button></form>"
                 "</div>")
 
-    @router.post("/u/{lead_id}", response_class=HTMLResponse)
-    def unsubscribe(lead_id: str):
-        find(lead_id)
+    @router.post("/u/{token}", response_class=HTMLResponse)
+    def unsubscribe(token: str):
+        lead_id, legacy = unsubscribe_target(token)
+        how = "Clicked unsubscribe link" + (" (older unsigned link)" if legacy else "")
 
         def unsubscribe_lead(lead: dict):
             if lead["stage"] == "unsubscribed":
                 return None
             seq = lead.get("sequence")
             return {**lead, "stage": "unsubscribed", "consent": None, "consent_withdrawn_at": _now_iso(),
-                    "timeline": with_event(lead, "unsubscribe", "Clicked unsubscribe link"),
+                    "timeline": with_event(lead, "unsubscribe", how),
                     **({"sequence": {**seq, "stopped": "unsubscribed"}} if seq else {})}
+        was = next((l["stage"] for l in store.read("leads") if l["id"] == lead_id), None)
         lead = store.update_lead(lead_id, unsubscribe_lead)
         _suppress(store, lead.get("email"))
+        if was != "unsubscribed":
+            record_consent(store, lead_id, "withdrawn", "email", "", how.lower())
         return "<p style='font-family:sans-serif'>You are unsubscribed and will not hear from us again.</p>"
 
     @router.post("/api/scrape/extract")

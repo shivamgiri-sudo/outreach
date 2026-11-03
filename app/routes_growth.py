@@ -1,6 +1,8 @@
 """Free-experience routes: demo links, activation events, referrals, pilots, partners, growth summary."""
 import hmac
+import json
 import os
+import secrets
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -10,12 +12,15 @@ from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
+from .auth import PRIVATE_SETTINGS
 from .activation import STEPS, apply_event, conversion_due, next_nudge
 from .capacity import capacity_plan
 from .demo import draft_kit, render_demo_html
 from .growth_core import ensure_demo, get_offer, public_base_url, webhook_secret
 from .hygiene import normalise_email
 from .sequences import DEFAULT_SEQUENCE
+from .unsubscribe import unsub_path
+from .web_security import page_csp
 from .workflows import fire
 
 BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
@@ -101,7 +106,7 @@ def make_router(store, build_lead, present) -> APIRouter:
 
     # ---- offer / sequence ----
     def shown_offer() -> dict:
-        return {k: v for k, v in get_offer(store).items() if k not in ("webhook_secret", "server_secret")}
+        return {k: v for k, v in get_offer(store).items() if k not in ("webhook_secret", *PRIVATE_SETTINGS)}
 
     @router.get("/api/offer")
     def read_offer():
@@ -136,9 +141,12 @@ def make_router(store, build_lead, present) -> APIRouter:
         scripts) can't fake a "demo opened"."""
         lead = lead_by_token(token)
         offer = get_offer(store)
-        html = render_demo_html(lead, draft_kit(lead.get("role", "")), offer, claim_url(ensure_demo(lead, _now()), offer))
-        beacon = (f"<script>fetch('/demo/{token}/opened',{{method:'POST'}}).catch(function(){{}});</script>")
-        return html.replace("</body>", beacon + "</body>")
+        html = render_demo_html(lead, draft_kit(lead.get("role", "")), offer, claim_url(ensure_demo(lead, _now()), offer),
+                                unsub_path(store, lead["id"]))
+        nonce = secrets.token_urlsafe(16)                  # only this one script may run (Content-Security-Policy)
+        target = json.dumps(f"/demo/{token}/opened").replace("<", "\\u003c")
+        beacon = f"<script nonce=\"{nonce}\">fetch({target},{{method:'POST'}}).catch(function(){{}});</script>"
+        return HTMLResponse(html.replace("</body>", beacon + "</body>"), headers={"Content-Security-Policy": page_csp(nonce)})
 
     @router.post("/demo/{token}/opened")
     def demo_opened(token: str):

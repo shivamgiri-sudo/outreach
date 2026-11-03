@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+from app.unsubscribe import unsub_path
 
 T0 = datetime(2026, 11, 3, 5, 0, tzinfo=timezone.utc)   # Tuesday 10:30 IST
 CSV = ("company,contact_name,email,phone,website,open_roles,company_size,country\n"
@@ -82,9 +83,10 @@ def test_login_locks_out_after_repeated_failures(tmp_path):
 
 
 def test_expired_token_rejected(tmp_path):
-    from app.auth import make_token
+    from app.auth import ADMIN_SUBJECT, issue_token, subject_principal
     c = TestClient(create_app(data_file=tmp_path / "a.json", admin_password="s3cret-pass"))
-    old = make_token("s3cret-pass", now=T0 - timedelta(days=2))
+    store = c.app.state.store
+    old = issue_token(store, subject_principal(store, "s3cret-pass", ADMIN_SUBJECT), now=T0.timestamp() - 2 * 86400)
     assert c.get("/api/leads", headers={"Authorization": f"Bearer {old}"}).status_code == 401
 
 
@@ -151,14 +153,14 @@ def test_suppressed_email_is_never_sent(tmp_path):
     go_live(c)
     lid = lead(c)["id"]
     c.post(f"/api/leads/{lid}/enroll")
-    c.post(f"/u/{lid}")                                      # unsubscribe link (a person clicks the button)
+    c.post(unsub_path(c.app.state.store, lid))                    # unsubscribe link (a person clicks the button)
     assert c.post("/api/sequences/run", json={"now": T0.isoformat()}).json()["sent"] == 0 and t.calls == []
 
 
 def test_one_click_unsubscribe_post(tmp_path):
     c = make_client(tmp_path)
     lid = lead(c)["id"]
-    assert c.post(f"/u/{lid}").status_code == 200
+    assert c.post(unsub_path(c.app.state.store, lid)).status_code == 200
     assert c.get(f"/api/leads/{lid}").json()["stage"] == "unsubscribed"
 
 

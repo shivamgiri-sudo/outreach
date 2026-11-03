@@ -18,6 +18,7 @@ class MeetingBody(BaseModel):
     title: str = ""
     attendee_email: str = ""
     notes: str = ""
+    send_invite: bool = False             # also email our own .ics invite (Google / Microsoft send theirs anyway)
 
 
 def _time(text: str, label: str):
@@ -29,14 +30,15 @@ def _time(text: str, label: str):
         raise HTTPException(400, f"'{label}' must be a date-time like 2026-11-05T10:00:00+05:30") from None
 
 
-def make_router(store, transport, resolver=None, present=None) -> APIRouter:
+def make_router(store, transport, resolver=None, present=None, sender=None) -> APIRouter:
+    """`sender` is the transactional email sender used for .ics invites (practice rows while real sending is off)."""
     router = APIRouter()
     show = present or (lambda lead: lead)
 
     @router.post("/api/leads/{lead_id}/meetings")
     def book(lead_id: str, body: MeetingBody):
         try:
-            result = meetings.book(store, lead_id, body.model_dump(), transport, resolver)
+            result = meetings.book(store, lead_id, body.model_dump(), transport, resolver, sender=sender)
         except LookupError:
             raise HTTPException(404, "Lead not found")
         except meetings.NoCalendar as exc:
@@ -61,13 +63,22 @@ def make_router(store, transport, resolver=None, present=None) -> APIRouter:
     @router.post("/api/meetings/{meeting_id}/cancel")
     def cancel(meeting_id: str):
         try:
-            return meetings.cancel(store, meeting_id, transport, resolver)
+            return meetings.cancel(store, meeting_id, transport, resolver, sender=sender)
         except LookupError:
             raise HTTPException(404, "Meeting not found")
         except PermissionError:
             raise HTTPException(400, "The calendar refused access. Reconnect it on the Integrations page.")
         except (OSError, ValueError) as exc:
             raise HTTPException(502, f"Could not cancel it in the calendar: {str(exc)[:200]}")
+
+    @router.post("/api/meetings/{meeting_id}/done")
+    def done(meeting_id: str):
+        try:
+            return meetings.mark_done(store, meeting_id)
+        except LookupError:
+            raise HTTPException(404, "Meeting not found")
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
 
     @router.get("/api/meetings")
     def upcoming(from_: str = Query(default="", alias="from"), to: str = ""):

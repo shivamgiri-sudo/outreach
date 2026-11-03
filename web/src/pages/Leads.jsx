@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../api.js";
+import { api, isOwner } from "../api.js";
 import { BAND_LABELS, STAGE_LABELS, STAGE_ORDER, sourceLabel, stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import ImportWizard from "./ImportWizard.jsx";
@@ -187,7 +187,7 @@ export default function Leads({ focusLead, go }) {
               {enriching ? "Checking websites…" : `Fill gaps from company websites (${quality.enrichable_now})`}
             </button>
             {apolloReady && <button className="btn ghost" title="Uses up to 10 Apollo credits" onClick={runApollo}>Look up emails in Apollo (10)</button>}
-            <button className="btn ghost" onClick={downloadApolloList}>Download list for Apollo</button>
+            {isOwner() && <button className="btn ghost" onClick={downloadApolloList}>Download list for Apollo</button>}
             {go && <button className="btn ghost" onClick={() => go("hygiene")}>Duplicates and clean-up</button>}
           </span>
         </div>
@@ -256,7 +256,7 @@ export default function Leads({ focusLead, go }) {
         <div className="bulkbar" role="region" aria-label="Actions for selected leads">
           <b>{picked.length} selected</b>
           <button className="btn" disabled={busy === "enroll"} onClick={bulkEnroll}>{busy === "enroll" ? "Starting…" : "Start email sequence"}</button>
-          <button className="btn ghost" onClick={bulkExport}>Download CSV</button>
+          {isOwner() && <button className="btn ghost" onClick={bulkExport}>Download CSV</button>}
           <button className="btn ghost" onClick={() => setPicked([])}>Clear</button>
         </div>
       )}

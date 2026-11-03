@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -21,13 +21,15 @@ from .routes_enrich import make_router as make_enrich_router
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-from .auth import LoginLimiter, make_token, password_matches, verify_token
+from . import auth
+from .routes_auth import LOCAL_OWNER, make_router as make_auth_router, role_guard
+from .web_security import make_limiters, rate_limit_middleware, security_headers_middleware
 from .autorun import start_background
 from .http_util import post_json
 from . import routes_growth
 from .growth_core import webhook_secret
 from .routes_setup import make_router as make_setup_router
-from .senders import make_email_sender
+from .senders import make_email_sender, make_transactional_sender
 from .routes_workflows import make_router as make_workflows_router
 from .workflows import fire
 from .routes_insights import make_router as make_insights_router
@@ -35,6 +37,8 @@ from .routes_today import make_router as make_today_router
 from .routes_providers import make_router as make_providers_router
 from .routes_activities import make_router as make_activities_router
 from .routes_linkedin import make_router as make_linkedin_router
+from .routes_compliance import make_router as make_compliance_router
+from .privacy import lead_hashes, record_consent as ledger_consent
 from .activities import close_call_tasks, on_became_interested
 from .routes_whatsapp import make_router as make_whatsapp_router
 from .routes_growth import make_router as make_growth_router
@@ -52,6 +56,7 @@ from .lead_import import quick_rows
 from .routes_outreach import make_router
 from .store import Store
 from .suggest import suggest_next
+from .unsubscribe import ensure_cutover
 
 BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
 PUBLIC_API_PATHS = ("/api/login", "/api/auth/status")
@@ -61,10 +66,6 @@ DEFAULT_DATA_FILE = Path(os.environ.get("OUTREACH_DATA_FILE") or Path(__file__).
 class ImportBody(BaseModel):
     csv: str
     source: str = "manual"
-
-
-class LoginBody(BaseModel):
-    password: str = ""
 
 
 class StageBody(BaseModel):
@@ -139,12 +140,15 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                channel_transport=None, smtp_factory=None, imap_factory=None, resolver=None,
                inbound_processor=None, delivery_processor=None, campaign_transports=None) -> FastAPI:
     password = admin_password if admin_password is not None else os.environ.get("OUTREACH_ADMIN_PASSWORD", "")
-    limiter = LoginLimiter()
-    app = FastAPI(title="Outreach OS")
+    limiter = auth.LoginLimiter()
+    docs = os.environ.get("OUTREACH_ENABLE_DOCS") == "1"
+    app = FastAPI(title="Outreach OS", dependencies=[Depends(role_guard)], docs_url="/docs" if docs else None,
+                  redoc_url="/redoc" if docs else None, openapi_url="/openapi.json" if docs else None)
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-                       allow_methods=["*"], allow_headers=["*"])
+                       allow_methods=["*"], allow_headers=["*"], expose_headers=["X-Renewed-Token"])
     store = Store(data_file)
     app.state.store = store
+    ensure_cutover(store)                     # signed unsubscribe links start now; older unsigned ones get 60 days
 
     @app.middleware("http")
     async def require_login(request: Request, call_next):
@@ -157,34 +161,30 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                      or (path.startswith(("/api/webhooks/", "/api/oauth/")) and await gate_allows(store, request)))
         if open_path:
             return await call_next(request)
-        if not password:
+        if not auth.auth_on(store, password):
             if not _is_local(request):
                 return JSONResponse({"detail": "This app has no password yet, so it only answers on this computer. "
                                                "Set OUTREACH_ADMIN_PASSWORD before opening it to anyone else."}, status_code=403)
+            request.state.user = LOCAL_OWNER
             return await call_next(request)
         token = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
-        if not verify_token(password, token):
+        user = auth.authenticate(store, password, token)
+        if user is None:
             return JSONResponse({"detail": "Login required"}, status_code=401)
-        return await call_next(request)
+        request.state.user = user
+        response = await call_next(request)
+        renewed = auth.renewal(store, user) if path != "/api/logout" else None
+        if renewed:
+            response.headers["X-Renewed-Token"] = renewed
+        return response
 
-    @app.get("/api/auth/status")
-    def auth_status():
-        return {"auth_required": bool(password)}
-
-    @app.post("/api/login")
-    def login(body: LoginBody, request: Request):
-        if not password:
-            return {"token": ""}
-        caller = _caller(request)
-        if limiter.locked(caller):
-            raise HTTPException(429, "Too many wrong passwords. Wait a minute and try again.")
-        if not password_matches(password, body.password):
-            limiter.record_failure(caller)
-            raise HTTPException(401, "Wrong password")
-        limiter.reset(caller)
-        return {"token": make_token(password)}
+    # Outer layers (added last, run first): rate limits, then security headers on every response, even a 429 or 401.
+    app.middleware("http")(rate_limit_middleware(make_limiters()))
+    app.middleware("http")(security_headers_middleware(docs))
+    app.include_router(make_auth_router(store, password, limiter))
 
     email_sender = make_email_sender(store, email_transport, BASE_URL, channel_transport, smtp_factory)
+    transactional_sender = make_transactional_sender(store, email_transport, channel_transport, smtp_factory)
 
     def find(lead_id: str) -> tuple:
         leads = store.read("leads")
@@ -237,14 +237,17 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
         stats = {}
+        erased = set(store.read("suppressed_hashes"))
 
         def merge_in(leads: list) -> list:
             seen = {lead["dedupe_key"] for lead in leads}
-            created = duplicates = rejected = merged = 0
+            created = duplicates = rejected = merged = suppressed = 0
             for row in rows:
                 lead = _build_lead(row, body.source)
                 if lead is None:
                     rejected += 1
+                elif lead_hashes(lead) & erased:
+                    suppressed += 1                  # this person asked for their data to be erased
                 elif lead["dedupe_key"] in seen:
                     duplicates += 1
                 elif (target := _contactless_match(leads, lead)) is not None:
@@ -255,7 +258,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                     seen.add(lead["dedupe_key"])
                     leads.append(lead)
                     created += 1
-            stats.update(created=created, duplicates=duplicates, rejected=rejected, merged=merged)
+            stats.update(created=created, duplicates=duplicates, rejected=rejected, merged=merged, **({"suppressed": suppressed} if suppressed else {}))
             return leads
         store.update("leads", merge_in)
         return stats
@@ -275,6 +278,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             raise HTTPException(400, f"Cannot move from {refused['from']} to {body.stage}")
         if body.stage == "interested":
             on_became_interested(store, lead_id, "Moved to Interested")
+        if body.stage == "unsubscribed":
+            ledger_consent(store, lead_id, "withdrawn", "any", "", "moved to Unsubscribed by a person")
         fire(store, "stage_change", body.stage, lead_id)
         return _present(next(l for l in store.read("leads") if l["id"] == lead_id))
 
@@ -283,11 +288,13 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         text = body.text.strip()
         if len(text) < 3:
             raise HTTPException(400, "Write what they said and how (for example: 'Yes on a call with Priya, 3 Nov').")
-        return change_lead(lead_id, lambda lead: {
+        saved = change_lead(lead_id, lambda lead: {
             **lead, "consent": {"text": text[:500], "at": _now(), "source": body.source or "recorded by a person",
                                 "channel": body.channel or "any"},
             "consent_withdrawn_at": None,
             "timeline": [*lead["timeline"], _event("consent", f"Said yes: {text[:500]}")]})
+        ledger_consent(store, lead_id, "given", body.channel or "any", text, body.source or "recorded by a person")
+        return saved
 
     @app.post("/api/leads/{lead_id}/note")
     def add_note(lead_id: str, body: NoteBody):
@@ -336,15 +343,15 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_insights_router(store, _present))
     app.include_router(make_today_router(store, _present))
     app.include_router(make_providers_router(store, fetcher))
-    app.include_router(make_activities_router(store))
+    app.include_router(make_activities_router(store, transactional_sender))
     app.include_router(make_linkedin_router(store))
+    app.include_router(make_compliance_router(store))
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,
-                                            BASE_URL, _present, inbound_processor, delivery_processor))
+                                            BASE_URL, _present, inbound_processor, delivery_processor, transactional_sender))
     app.include_router(make_import_router(store))
     # Campaigns: Apollo / Google Places / Firecrawl POSTs, Hunter / verifier GETs, careers pages and the crawler.
     campaign_io = {"post": apollo_transport, "get": get_json, "fetch": fetcher, **(campaign_transports or {})}
-    campaign_notify = make_transactional_sender(store, email_transport)
-    app.include_router(make_campaigns_router(store, campaign_io, _present, campaign_notify))
+    app.include_router(make_campaigns_router(store, campaign_io, _present, transactional_sender))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender, campaign_runner=lambda now: run_due_campaigns(
             store, now, campaign_io, campaign_notify, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"))

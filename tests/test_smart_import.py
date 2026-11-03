@@ -3,6 +3,7 @@ All companies, people, numbers and domains are made up."""
 import pytest
 from fastapi.testclient import TestClient
 
+from app.unsubscribe import unsub_path
 from app.main import create_app
 
 APOLLO = ("First Name,Last Name,Title,Company,Email,Mobile Phone,Corporate Phone,Website,# Employees,City,Country\n"
@@ -187,7 +188,7 @@ def test_unsubscribed_and_disqualified_stages_are_never_resurrected(app, client)
         "company,contact_name,email,phone\nAcme,Ravi Kumar,ravi@acme.example,9000010001\n"
         "Beta,Sam Shah,sam@beta.example,9000020002\n")})
     ids = {l["company"]: l["id"] for l in client.get("/api/leads").json()}
-    client.post(f"/u/{ids['Acme']}")
+    client.post(unsub_path(client.app.state.store, ids['Acme']))
     app.state.store.update_lead(ids["Beta"], lambda l: {**l, "stage": "disqualified"})
     csv = ("Company Name,Contact Person,Contact Number,Email ID,Lead Status\n"
            "Acme,Ravi Kumar,9000010001,ravi.new@acme.example,Interested\n"

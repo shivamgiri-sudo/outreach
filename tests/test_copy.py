@@ -277,8 +277,9 @@ def test_demo_families_ask_different_questions():
 
 
 def test_demo_page_is_honest_and_has_stop_link():
-    html = render_demo_html({"id": "L<1>", "company": "Acme", "role": "Telecaller"}, draft_kit("Telecaller"), OFFER, "https://x.in/r")
+    html = render_demo_html({"id": "L1", "company": "Acme", "role": "Telecaller"}, draft_kit("Telecaller"), OFFER, "https://x.in/r",
+                            '/u/L1.sig"<x')
     assert "Sample drafted from your job title, not based on your candidates." in html
     assert "beta" in html.lower() and "default weights, you can change them" in html
-    assert 'href="/u/L%3C1%3E"' in html and "stop emails" in html
+    assert 'href="/u/L1.sig%22%3Cx"' in html and "stop emails" in html
     assert "/u/" not in render_demo_html({"company": "Acme", "role": ""}, draft_kit(""), OFFER, "https://x.in/r")
