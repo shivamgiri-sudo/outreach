@@ -118,8 +118,9 @@ def is_success(reply: dict, config: dict) -> bool:
 
 def response_preview(reply: dict) -> str:
     shown = {k: v for k, v in (reply or {}).items() if k not in ("_headers",)}
-    text = json.dumps(shown, ensure_ascii=False, default=str)
-    return text[:RESPONSE_PREVIEW_BYTES] + ("… (cut)" if len(text) > RESPONSE_PREVIEW_BYTES else "")
+    raw = json.dumps(shown, ensure_ascii=False, default=str).encode("utf-8")
+    cut = raw[:RESPONSE_PREVIEW_BYTES].decode("utf-8", "ignore")
+    return cut + ("… (cut)" if len(raw) > RESPONSE_PREVIEW_BYTES else "")
 
 
 def call_custom(config: dict, variables: dict, transport=request, resolver=None, allowed=PLACEHOLDERS) -> dict:
