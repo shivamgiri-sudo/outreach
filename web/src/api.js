@@ -20,7 +20,15 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+async function download(path) {
+  const token = getToken();
+  const res = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+  return res.blob();
+}
+
 export const api = {
+  download,
   dashboard: () => request("/api/dashboard"),
   today: () => request("/api/today"),
   taskDone: (taskIndex) => request("/api/tasks/done", { method: "POST", body: { task_index: taskIndex } }),
@@ -28,12 +36,19 @@ export const api = {
   lead: (id) => request(`/api/leads/${id}`),
   importCsv: (csv, source) => request("/api/leads/import", { method: "POST", body: { csv, source } }),
   moveStage: (id, stage) => request(`/api/leads/${id}/stage`, { method: "POST", body: { stage } }),
-  consent: (id, text) => request(`/api/leads/${id}/consent`, { method: "POST", body: { text } }),
+  consent: (id, text, channel = "any") => request(`/api/leads/${id}/consent`, { method: "POST", body: { text, channel, source: "recorded by a person" } }),
   note: (id, text, kind = "note") => request(`/api/leads/${id}/note`, { method: "POST", body: { text, kind } }),
   enroll: (id) => request(`/api/leads/${id}/enroll`, { method: "POST" }),
   reply: (id, text) => request(`/api/leads/${id}/reply`, { method: "POST", body: { text } }),
   runSequences: () => request("/api/sequences/run", { method: "POST", body: {} }),
   outbox: () => request("/api/outbox"),
+  sendingStatus: () => request("/api/sending/status"),
+  resumeSending: () => request("/api/sending/resume", { method: "POST" }),
+  resumeFailed: () => request("/api/sequences/resume-failed", { method: "POST" }),
+  resumeLead: (id) => request(`/api/leads/${id}/sequence/resume`, { method: "POST" }),
+  clearStuck: (id) => request(`/api/leads/${id}/sequence/clear-stuck`, { method: "POST" }),
+  clearPractice: () => request("/api/practice/clear", { method: "POST" }),
+  inbox: () => request("/api/inbox"),
   settings: () => request("/api/settings"),
   saveSettings: (s) => request("/api/settings", { method: "PUT", body: s }),
   scrape: (body) => request("/api/scrape/extract", { method: "POST", body }),

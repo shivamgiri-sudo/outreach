@@ -21,8 +21,17 @@ function matches(lead, query, stage, band) {
 
 function toCsv(rows) {
   const cols = ["company", "contact_name", "title", "email", "phone", "website", "stage", "score", "source"];
-  const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  // A leading = + - @ would run as a formula in Excel/Sheets; prefix it with ' so it stays plain text.
+  const cell = (v) => { const t = String(v ?? ""); return `"${(/^[=+\-@\t\r]/.test(t) ? "'" + t : t).replace(/"/g, '""')}"`; };
   return [cols.join(","), ...rows.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\n");
+}
+
+// A plain link can't send the login token, so fetch the file with it and save it.
+async function downloadApolloList() {
+  const blob = await api.download("/api/enrich/apollo-export");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "apollo-enrich-list.csv"; a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 export default function Leads({ focusLead }) {
@@ -174,7 +183,7 @@ export default function Leads({ focusLead }) {
               {enriching ? "Checking websites…" : `Fill gaps from company websites (${quality.enrichable_now})`}
             </button>
             {apolloReady && <button className="btn ghost" title="Uses up to 10 Apollo credits" onClick={runApollo}>Look up emails in Apollo (10)</button>}
-            <a className="btn ghost" href="/api/enrich/apollo-export" download="apollo-enrich-list.csv">Download list for Apollo</a>
+            <button className="btn ghost" onClick={downloadApolloList}>Download list for Apollo</button>
           </span>
         </div>
       )}

@@ -163,6 +163,7 @@ await step("Drawer: cannot jump to Interested without consent (error shown)", as
 });
 await step("Drawer: record consent then move to Interested", async () => {
   await page.getByRole("button", { name: "Record “yes” consent" }).click();
+  await page.getByLabel("Their exact words, and where (saved as proof of consent)").fill("Yes, send it on WhatsApp — call with Priya");
   await page.getByRole("button", { name: "Save consent" }).click();
   await expectText("Consent saved");
   await page.getByRole("button", { name: "Move to interested" }).click();
@@ -196,11 +197,12 @@ await step("Drawer: WhatsApp first message goes out in practice mode and moves t
   await expectText("Stage: WhatsApp active");
   await expectText("first_after_yes — dry_run");
 });
-await step("Drawer: free-text WhatsApp allowed inside the 24h window", async () => {
+await step("Drawer: free-text WhatsApp refused until they message on WhatsApp (Meta's 24h rule)", async () => {
   await page.locator("select").filter({ hasText: "Write my own" }).selectOption("custom");
   await page.locator("textarea[placeholder='Your message']").fill("Thanks Ravi, sending the details now.");
   await page.getByRole("button", { name: "Send", exact: true }).click();
-  await expectText("custom — dry_run");
+  await expectText("within 24 hours of their last WhatsApp message");
+  await page.locator("select").filter({ hasText: "Write my own" }).selectOption("first_after_yes");
 });
 await step("Drawer: WhatsApp refused for a lead without consent", async () => {
   await page.getByRole("button", { name: "Close" }).click();
@@ -245,18 +247,18 @@ await step("Outbox: run sequences sends a dry-run email with demo link and unsub
   await page.getByRole("button", { name: "Close" }).click();
   await nav("Outbox");
   await page.getByRole("button", { name: "Run sequences now" }).click();
-  await expectText("email(s) queued");
+  await expectText("email(s) practised (not sent)");
   await page.locator("td", { hasText: "Hiring at Beta Logistics" }).waitFor();
-  await text("dry_run").waitFor();
+  await page.locator("tbody .pill", { hasText: "practice" }).first().waitFor();
   await shot("05-outbox");
 });
 await step("Outbox: running again sends nothing new", async () => {
   await page.getByRole("button", { name: "Run sequences now" }).click();
-  await expectText("0 email(s) queued");
+  await expectText("0 email(s) practised");
 });
 
 await step("Outbox: WhatsApp table lists the practice messages", async () => {
-  await expectText("WhatsApp messages (practice mode)");
+  await expectText("WhatsApp messages");
   await page.locator("td", { hasText: "first_after_yes" }).first().waitFor();
 });
 
@@ -415,27 +417,23 @@ await step("Safety: an out-of-office reply is logged only", async () => {
 await step("Leads: Apollo button appears once Apollo is connected in API mode", async () => {
   await page.getByRole("button", { name: "Look up emails in Apollo (10)" }).waitFor();
 });
-await step("Outbox: 'Send for real' stays off-by-default, can be switched, and nothing leaves without a connected domain", async () => {
+await step("Outbox: 'Send for real' is off by default and refused until the go-live requirements are met", async () => {
   await nav("Outbox");
+  await expectText("Practice mode: nothing leaves the app");
+  await expectText("Before you can switch on real sending");
   const box = page.getByRole("checkbox", { name: "Send for real" });
   if (await box.isChecked()) throw new Error("live sending should default to off");
   await box.check();
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expectText("Settings saved");
+  await expectText("Real sending stays off until");
   await nav("Dashboard");
   await nav("Outbox");
-  let saved = false;
-  for (let i = 0; i < 20 && !saved; i++) {
-    saved = await page.getByRole("checkbox", { name: "Send for real" }).isChecked();
-    if (!saved) await page.waitForTimeout(150);
-  }
-  if (!saved) throw new Error("setting not saved");
+  await page.waitForTimeout(400);
+  if (await page.getByRole("checkbox", { name: "Send for real" }).isChecked()) throw new Error("live sending was switched on without the requirements");
   await page.getByRole("button", { name: "Run sequences now" }).click();
-  await expectText("email(s) queued");
+  await expectText("practised");
   const statuses = await page.locator("tbody .pill").allInnerTexts();
   if (statuses.some((t) => t === "sent")) throw new Error("something was really sent without a connected domain");
-  await page.getByRole("checkbox", { name: "Send for real" }).uncheck();
-  await page.getByRole("button", { name: "Save", exact: true }).click();
 });
 
 // ---------- Go live and in-app integration ----------

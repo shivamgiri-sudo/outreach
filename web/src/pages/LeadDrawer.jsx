@@ -62,8 +62,14 @@ function InlineForm({ fields, submitLabel, onSubmit, onCancel }) {
       {fields.map((f, i) => (
         <label key={f.key}>
           {f.label}
-          <input ref={i === 0 ? first : undefined} type={f.type || "text"} value={values[f.key]} required={f.required}
-            onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
+          {f.options ? (
+            <select ref={i === 0 ? first : undefined} value={values[f.key]} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}>
+              {f.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          ) : (
+            <input ref={i === 0 ? first : undefined} type={f.type || "text"} value={values[f.key]} required={f.required}
+              placeholder={f.placeholder || ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
+          )}
         </label>
       ))}
       <div className="row">
@@ -158,8 +164,13 @@ export default function LeadDrawer({ id, onClose }) {
       </div>
       {form === "consent" && (
         <InlineForm submitLabel="Save consent" onCancel={() => setForm("")}
-          fields={[{ key: "text", label: "What did they say? (saved as proof of consent)", initial: "Yes, please send it", required: true }]}
-          onSubmit={(v) => act(() => api.consent(id, v.text))} />
+          fields={[
+            { key: "text", label: "Their exact words, and where (saved as proof of consent)", required: true,
+              placeholder: "e.g. “Yes, send it on WhatsApp” — call with Priya, 3 Nov" },
+            { key: "channel", label: "They agreed to be contacted on", initial: "whatsapp",
+              options: [["whatsapp", "WhatsApp"], ["call", "Phone call"], ["email", "Email"], ["any", "Any channel"]] },
+          ]}
+          onSubmit={(v) => act(() => api.consent(id, v.text, v.channel))} />
       )}
       {form === "unsubscribe" && (
         <div className="tip error" role="alert">
@@ -224,7 +235,7 @@ export default function LeadDrawer({ id, onClose }) {
 
       <h3>LinkedIn (you send these by hand)</h3>
       <p className="sub">Nothing is automated on LinkedIn. Copy a draft, open their profile, and send it yourself.
-        {lead.linkedin_url && <> <a href={lead.linkedin_url} target="_blank" rel="noreferrer">Open profile</a></>}</p>
+        {/^https?:\/\//i.test(lead.linkedin_url || "") && <> <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer">Open profile</a></>}</p>
       {linkedinDrafts(lead).map(([title, text]) => (
         <div className="tip" key={title} style={{ marginBottom: 8 }}>
           <b>{title}</b> <small>({text.length} characters)</small>

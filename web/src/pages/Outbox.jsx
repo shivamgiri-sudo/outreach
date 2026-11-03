@@ -2,9 +2,47 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 
+const STATUS_PILL = { sent: "ok", delivered: "ok", dry_run: "", failed: "warn", provider_error: "warn" };
+const STATUS_LABEL = { dry_run: "practice", provider_error: "provider problem" };
+
+function SendingBanner({ status, onResume, onClearPractice }) {
+  if (!status) return null;
+  const pct = (x) => `${(x * 100).toFixed(1)}%`;
+  return (
+    <div className="card" style={{ marginBottom: 14 }}>
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <b>{status.mode === "live" ? "Real sending is ON" : "Practice mode: nothing leaves the app"}</b>
+        <span className={`pill ${status.mode === "live" ? "ok" : ""}`}>{status.mode === "live" ? "Live" : "Practice"}</span>
+      </div>
+      {status.paused && (
+        <div className="tip" role="alert" style={{ marginTop: 8 }}>
+          <b>Sending is paused.</b> {status.paused.reason}{" "}
+          {status.paused.resume_at ? `It restarts by itself at ${status.paused.resume_at.slice(11, 16)} UTC.` : "A person must resume it."}
+          <div className="row" style={{ marginTop: 6 }}><button className="btn" onClick={onResume}>Resume sending now</button></div>
+        </div>
+      )}
+      {status.mode !== "live" && status.live_blockers?.length > 0 && (
+        <>
+          <p className="sub" style={{ margin: "8px 0 4px" }}>Before you can switch on real sending:</p>
+          <ol className="steps">{status.live_blockers.map((b) => <li key={b}>{b}</li>)}</ol>
+        </>
+      )}
+      <p className="sub" style={{ margin: "6px 0 0" }}>
+        Last 7 days: {status.rates.sent} sent · {status.rates.bounces} bounced ({pct(status.rates.bounce_rate)}) · {status.rates.complaints} spam
+        complaints. Sending pauses by itself above 2% bounces or 0.3% complaints.
+      </p>
+      {status.mode !== "live" && (
+        <button className="btn ghost" style={{ marginTop: 8 }} onClick={onClearPractice}>Clear practice runs</button>
+      )}
+    </div>
+  );
+}
+
 export default function Outbox() {
   const [box, setBox] = useState([]);
   const [cfg, setCfg] = useState({ daily_cap: 20, sender_name: "Priya" });
+  const [status, setStatus] = useState(null);
+  const [inbox, setInbox] = useState([]);
   const [message, setMessage] = useState("");
   const [wa, setWa] = useState([]);
   const [loadError, setLoadError] = useState("");
@@ -12,61 +50,107 @@ export default function Outbox() {
     setLoadError("");
     const fail = (e) => setLoadError(e.message);
     api.outbox().then(setBox).catch(fail); api.settings().then(setCfg).catch(fail); api.whatsappOutbox().then(setWa).catch(fail);
+    api.sendingStatus().then(setStatus).catch(fail); api.inbox().then(setInbox).catch(fail);
   };
   useEffect(() => { load(); }, []);
 
-  const run = async () => {
-    try {
-      const r = await api.runSequences();
-      const extras = [
-        r.failed && `${r.failed} failed (retried in an hour, at most 3 tries)`,
-        r.blocked && `${r.blocked} waiting for a missing detail`,
-        r.needs_check && `${r.needs_check} need a check (the app stopped mid-send)`,
-      ].filter(Boolean).join(", ");
-      setMessage(r.skipped ? `Nothing sent: ${r.skipped}.` : `${r.sent} email(s) queued${extras ? `, ${extras}` : ""}. Sends are spread out: a few per run, one per company a day, at least 2 days between steps.`);
-    } catch (e) {
-      setMessage(e.message);
-    }
+  const act = async (fn, done) => {
+    try { const r = await fn(); setMessage(typeof done === "function" ? done(r) : done); }
+    catch (e) { setMessage(e.message); }
     load();
   };
-  const save = async () => { setCfg(await api.saveSettings({ daily_cap: Number(cfg.daily_cap), sender_name: cfg.sender_name, live_sending: !!cfg.live_sending })); setMessage("Settings saved."); };
+
+  const run = () => act(api.runSequences, (r) => {
+    const extras = [
+      r.failed && `${r.failed} failed`,
+      r.paused && `sending paused: ${r.paused}`,
+      r.blocked && `${r.blocked} waiting for a missing detail`,
+      r.needs_check && `${r.needs_check} need a check (the app stopped mid-send)`,
+    ].filter(Boolean).join(", ");
+    const what = r.mode === "practice" ? "practised (not sent)" : "sent";
+    return r.skipped ? `Nothing sent: ${r.skipped}.` : `${r.sent} email(s) ${what}${extras ? `, ${extras}` : ""}. Sends are spread out: a few per run, one per company a day, follow-ups 3, 4 and 7 days apart.`;
+  });
+  const save = () => act(async () => setCfg(await api.saveSettings({
+    daily_cap: Number(cfg.daily_cap), sender_name: cfg.sender_name, live_sending: !!cfg.live_sending,
+    sender_company: cfg.sender_company || "", sender_address: cfg.sender_address || "",
+  })), "Settings saved.");
 
   return (
     <>
       <h2>Outbox & sending</h2>
-      <p className="sub">Emails stay in practice mode (dry run) unless a sending domain is connected in Setup AND "Send for real" is ticked. Until both, nothing leaves this computer.</p>
+      <p className="sub">Emails stay in practice mode until a sending domain is connected AND "Send for real" is ticked. Practice runs never use up a lead's real first email.</p>
       {loadError && <ErrorState message="The outbox could not load." detail={loadError} onRetry={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
-      <div className="card row" style={{ marginBottom: 14 }}>
-        <div><label>Sender name</label><input value={cfg.sender_name} onChange={(e) => setCfg({ ...cfg, sender_name: e.target.value })} /></div>
-        <div><label>Max emails per day</label><input type="number" min="1" value={cfg.daily_cap} onChange={(e) => setCfg({ ...cfg, daily_cap: e.target.value })} /></div>
-        <label className="row" style={{ fontWeight: 400, margin: 0 }}>
-          <input type="checkbox" style={{ width: "auto" }} checked={!!cfg.live_sending} onChange={(e) => setCfg({ ...cfg, live_sending: e.target.checked })} />
-          Send for real
-        </label>
-        <button className="btn ghost" onClick={save}>Save</button>
-        <button className="btn" onClick={run}>Run sequences now</button>
+      <SendingBanner status={status} onResume={() => act(api.resumeSending, "Sending resumed.")}
+        onClearPractice={() => act(api.clearPractice, (r) => `Removed ${r.outbox} practice row(s). Live sending will start each lead from Email 1.`)} />
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="row">
+          <div><label>Sender name</label><input value={cfg.sender_name || ""} onChange={(e) => setCfg({ ...cfg, sender_name: e.target.value })} /></div>
+          <div><label>Max emails per day</label><input type="number" min="1" max="500" value={cfg.daily_cap} onChange={(e) => setCfg({ ...cfg, daily_cap: e.target.value })} /></div>
+        </div>
+        <label>Company name (shown in every email footer)</label>
+        <input value={cfg.sender_company || ""} placeholder="BookMyInterview.ai" onChange={(e) => setCfg({ ...cfg, sender_company: e.target.value })} />
+        <label>Postal address (anti-spam law requires it in cold emails)</label>
+        <input value={cfg.sender_address || ""} placeholder="Office address, city, PIN" onChange={(e) => setCfg({ ...cfg, sender_address: e.target.value })} />
+        <div className="row" style={{ marginTop: 10 }}>
+          <label className="row" style={{ fontWeight: 400, margin: 0 }}>
+            <input type="checkbox" style={{ width: "auto" }} checked={!!cfg.live_sending} onChange={(e) => setCfg({ ...cfg, live_sending: e.target.checked })} />
+            Send for real
+          </label>
+          <button className="btn ghost" onClick={save}>Save</button>
+          <button className="btn" onClick={run}>Run sequences now</button>
+        </div>
       </div>
-      <p className="sub">Sends only Mon–Fri, 9am–6pm IST, one step per lead, and stops when a lead replies or unsubscribes.</p>
+      {status && (status.send_failed.length > 0 || status.stuck.length > 0) && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          {status.send_failed.length > 0 && (
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <span>{status.send_failed.length} lead(s) stopped after 3 failed sends.</span>
+              <button className="btn ghost" onClick={() => act(api.resumeFailed, (r) => `Resumed ${r.resumed} sequence(s).`)}>Resume them</button>
+            </div>
+          )}
+          {status.stuck.length > 0 && (
+            <p className="sub" style={{ margin: "8px 0 0" }}>
+              {status.stuck.length} send(s) were interrupted. Check your email provider's log, then open the lead and clear it; the retry can't
+              send the same email twice.
+            </p>
+          )}
+        </div>
+      )}
+      <p className="sub">Sends only Mon–Fri, 9am–6pm IST, one step per lead. Any reply stops the sequence for that lead.</p>
       <div className="card" style={{ padding: 0, overflowX: "auto" }}>
         {box.length === 0 ? <p className="empty">Nothing queued yet. Start a sequence from a lead, then click Run.</p> : (
           <table>
             <thead><tr><th>When</th><th>To</th><th>Step</th><th>Subject</th><th>Status</th></tr></thead>
             <tbody>{box.map((m, i) => (
               <tr key={i}><td>{m.sent_at.slice(0, 16).replace("T", " ")}</td><td>{m.to}</td><td>{m.step}</td>
-                <td title={m.body}>{m.subject}</td><td><span className={`pill ${m.status === "sent" ? "ok" : "warn"}`} title={m.error || ""}>{m.status}</span></td></tr>
+                <td title={m.body}>{m.subject}</td>
+                <td><span className={`pill ${STATUS_PILL[m.delivered_at ? "delivered" : m.status] ?? "warn"}`} title={m.error || ""}>
+                  {m.delivered_at ? "delivered" : STATUS_LABEL[m.status] || m.status}</span></td></tr>
             ))}</tbody>
           </table>
         )}
       </div>
-    <h3>WhatsApp messages (practice mode)</h3>
+      <h3>Replies received</h3>
+      <div className="card" style={{ padding: 0, overflowX: "auto" }}>
+        {inbox.length === 0 ? <p className="empty">No replies captured yet. Connect reply capture (IMAP or a webhook) under Integrations, or paste replies on a lead.</p> : (
+          <table>
+            <thead><tr><th>When</th><th>From</th><th>Channel</th><th>Reply</th><th>Read as</th></tr></thead>
+            <tbody>{inbox.map((m) => (
+              <tr key={m.id}><td>{(m.received_at || "").slice(0, 16).replace("T", " ")}</td><td>{m.from}</td><td>{m.channel}</td>
+                <td>{m.text.slice(0, 160)}</td><td><span className={`pill ${m.lead_id ? "ok" : "warn"}`}>{m.lead_id ? (m.label || "logged") : "no matching lead"}</span></td></tr>
+            ))}</tbody>
+          </table>
+        )}
+      </div>
+      <h3>WhatsApp messages</h3>
       <div className="card" style={{ padding: 0, overflowX: "auto" }}>
         {wa.length === 0 ? <p className="empty">No WhatsApp messages yet. Record a lead's yes, then send from the lead.</p> : (
           <table>
             <thead><tr><th>When</th><th>To</th><th>Template</th><th>Message</th><th>Status</th></tr></thead>
             <tbody>{wa.map((m, i) => (
               <tr key={i}><td>{m.sent_at.slice(0, 16).replace("T", " ")}</td><td>{m.to}</td><td>{m.template}</td><td>{m.body}</td>
-                <td><span className="pill warn">{m.status}</span></td></tr>
+                <td><span className={`pill ${m.status === "sent" ? "ok" : ""}`}>{STATUS_LABEL[m.status] || m.status}</span></td></tr>
             ))}</tbody>
           </table>
         )}
