@@ -141,7 +141,7 @@ def test_readiness_turns_ready_after_required_steps(tmp_path):
     assert r["ready_for_live_test"] is True
     assert item(c, "live_sending")["status"] == "todo"                      # switching it on stays a deliberate, separate step
     refused = c.put("/api/settings", json={"live_sending": True})
-    assert refused.status_code == 400 and "postal address" in refused.json()["detail"]   # sender identity is required first
+    assert refused.status_code == 400 and "company name" in refused.json()["detail"]   # sender identity is required first
     c.put("/api/settings", json=IDENTITY)
     assert c.put("/api/settings", json={"live_sending": True}).status_code == 200
     assert item(c, "live_sending")["status"] == "done"

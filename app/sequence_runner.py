@@ -112,6 +112,9 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
             break
         if not _ready(seq, now, last_key):
             continue
+        if live and sequences.needs_postal_address(lead) and not cfg.get("sender_address"):
+            counts["blocked"] += 1          # US/Canada law requires a postal address in the footer; none is set
+            continue
         last = seq.get(last_key)
         steps = due_steps(datetime.fromisoformat(seq["enrolled_at"]), seq.get(days_key, []), now,
                           last_sent_at=datetime.fromisoformat(last) if last else None)

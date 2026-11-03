@@ -203,9 +203,22 @@ def due_steps(enrolled_at: datetime, sent_days: list, now: datetime, sequence=DE
 
 
 def identity_footer(settings: dict) -> str:
-    """Who is writing and from where: company name and postal address, required by anti-spam rules for live sending."""
-    parts = [str(settings.get(k, "")).strip() for k in ("sender_company", "sender_address")]
+    """Who is writing: company name plus a postal address if set, else the website and contact email.
+
+    Indian rules don't require a postal address in a business email; US (CAN-SPAM) and Canadian (CASL) rules do, so
+    the sequence engine skips leads in those countries while no address is set (see NEEDS_POSTAL_ADDRESS)."""
+    contact = settings.get("sender_address") or " · ".join(
+        str(settings.get(k, "")).strip() for k in ("sender_website", "sender_contact_email") if str(settings.get(k, "")).strip())
+    parts = [str(settings.get("sender_company", "")).strip(), str(contact).strip()]
     return " · ".join(p for p in parts if p)
+
+
+# Countries whose anti-spam laws require a physical postal address in commercial email.
+NEEDS_POSTAL_ADDRESS = {"us", "usa", "united states", "united states of america", "ca", "can", "canada"}
+
+
+def needs_postal_address(lead: dict) -> bool:
+    return str(lead.get("country") or "").strip().lower() in NEEDS_POSTAL_ADDRESS
 
 
 def in_business_hours(now: datetime) -> bool:

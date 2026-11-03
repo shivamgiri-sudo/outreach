@@ -250,7 +250,7 @@ def test_live_sending_needs_https_address_sender_and_identity(tmp_path):
     refused = c.put("/api/settings", json={"live_sending": True})
     assert refused.status_code == 400
     detail = refused.json()["detail"]
-    assert "https" in detail and "sending domain" in detail and "postal address" in detail
+    assert "https" in detail and "sending domain" in detail and "company name" in detail
     assert c.get("/api/settings").json()["live_sending"] is False
     blockers = c.get("/api/sending/status").json()["live_blockers"]
     assert len(blockers) == 3
@@ -272,3 +272,24 @@ def test_caps_are_validated_and_server_secret_is_never_shown(tmp_path):
     Store(tmp_path / "d.json").update("settings", lambda s: {**s, "server_secret": "abc"})
     c2 = TestClient(create_app(data_file=tmp_path / "d.json"))
     assert "server_secret" not in c2.get("/api/settings").json()
+
+
+def test_without_a_postal_address_the_footer_uses_website_and_email_and_us_leads_wait(tmp_path):
+    t = FakeTransport()
+    c = TestClient(create_app(data_file=tmp_path / "d.json", email_transport=t))
+    c.post("/api/leads/import", json={"csv": "company,contact_name,email,website,country\n"
+                                              "Acme,Ravi Kumar,ravi@acme.com,https://acme.com,IN\n"
+                                              "Yankee,Joe Doe,joe@yankee-co.com,https://yankee-co.com,US\n", "source": "apollo"})
+    c.put("/api/integrations/sending_domain", json={"mode": "api", "values": {
+        "domain": "mail.example.in", "from_name": "Priya", "from_email": "hello@mail.example.in", "api_key": "re_secret"}})
+    c.put("/api/settings", json={"public_base_url": "https://outreach.example.in", "sender_company": "BookMyInterview.ai"})
+    refused = c.put("/api/settings", json={"live_sending": True})
+    assert refused.status_code == 400 and "website and a contact email" in refused.json()["detail"]
+    c.put("/api/settings", json={"sender_website": "bookmyinterview.ai", "sender_contact_email": "support@bookmyinterview.ai"})
+    assert c.put("/api/settings", json={"live_sending": True}).status_code == 200
+    for lead in c.get("/api/leads").json():
+        c.post(f"/api/leads/{lead['id']}/enroll")
+    result = c.post("/api/sequences/run", json={"now": T0.isoformat()}).json()
+    assert result["sent"] == 1 and result["blocked"] == 1                    # the US lead waits for a postal address
+    assert [call["body"]["to"] for call in t.calls] == [["ravi@acme.com"]]
+    assert "BookMyInterview.ai · bookmyinterview.ai · support@bookmyinterview.ai" in t.calls[0]["body"]["text"]

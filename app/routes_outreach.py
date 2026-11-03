@@ -43,6 +43,8 @@ class SettingsBody(BaseModel):
     per_run_cap: Optional[int] = None
     sender_company: Optional[str] = None
     sender_address: Optional[str] = None
+    sender_website: Optional[str] = None
+    sender_contact_email: Optional[str] = None
 
 
 class ScrapeBody(BaseModel):
@@ -73,8 +75,10 @@ def live_blockers(store, base_url: str) -> list:
         blockers.append("Set a public https web address under Setup (unsubscribe links must open for recipients).")
     if not email_ready(store):
         blockers.append("Connect the cold-email sending domain under Integrations.")
-    if not (settings.get("sender_company") or "").strip() or not (settings.get("sender_address") or "").strip():
-        blockers.append("Add your company name and postal address (they go in every email footer, as anti-spam law requires).")
+    if not (settings.get("sender_company") or "").strip():
+        blockers.append("Add your company name (it goes in every email footer, as anti-spam rules require).")
+    elif not (settings.get("sender_address") or settings.get("sender_website") or settings.get("sender_contact_email") or "").strip():
+        blockers.append("Add a postal address, or your website and a contact email, for the email footer.")
     return blockers
 
 

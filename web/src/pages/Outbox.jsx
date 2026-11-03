@@ -73,6 +73,7 @@ export default function Outbox() {
   const save = () => act(async () => setCfg(await api.saveSettings({
     daily_cap: Number(cfg.daily_cap), sender_name: cfg.sender_name, live_sending: !!cfg.live_sending,
     sender_company: cfg.sender_company || "", sender_address: cfg.sender_address || "",
+    sender_website: cfg.sender_website || "", sender_contact_email: cfg.sender_contact_email || "",
   })), "Settings saved.");
 
   return (
@@ -90,7 +91,13 @@ export default function Outbox() {
         </div>
         <label>Company name (shown in every email footer)</label>
         <input value={cfg.sender_company || ""} placeholder="BookMyInterview.ai" onChange={(e) => setCfg({ ...cfg, sender_company: e.target.value })} />
-        <label>Postal address (anti-spam law requires it in cold emails)</label>
+        <div className="row">
+          <div><label>Website (shown in the footer)</label>
+            <input value={cfg.sender_website || ""} placeholder="bookmyinterview.ai" onChange={(e) => setCfg({ ...cfg, sender_website: e.target.value })} /></div>
+          <div><label>Contact email (shown in the footer)</label>
+            <input value={cfg.sender_contact_email || ""} placeholder="support@bookmyinterview.ai" onChange={(e) => setCfg({ ...cfg, sender_contact_email: e.target.value })} /></div>
+        </div>
+        <label>Postal address (optional; needed only to email leads in the US or Canada)</label>
         <input value={cfg.sender_address || ""} placeholder="Office address, city, PIN" onChange={(e) => setCfg({ ...cfg, sender_address: e.target.value })} />
         <div className="row" style={{ marginTop: 10 }}>
           <label className="row" style={{ fontWeight: 400, margin: 0 }}>
