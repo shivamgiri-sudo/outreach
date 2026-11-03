@@ -227,3 +227,17 @@ def test_the_page_reader_never_fetches_linkedin(monkeypatch, tmp_path, url):
 def test_kaspr_and_dux_soup_files_are_named_for_what_they_are(header, key):
     """Kaspr files were labelled 'Lusha export' (source 'lusha' on every lead) and Dux-Soup files were unrecognised."""
     assert detect_format(header.split(","))["key"] == key
+
+
+def test_person_location_india_falls_back_to_the_company_location():
+    """Evaboot / PhantomBuster give the person's location ('India') and the company's ('Pune, Maharashtra, India');
+    only the first was read, so the lead had no city. A city is never mixed with another column's state."""
+    csv = ("First Name,Last Name,Company Name,Location,Company Location\n"
+           'Chintu,Yadav,Sahyadri Hospitals,India,"Pune, Maharashtra, India"\n'
+           'Meenakshi,Iyer,Malabar Spices,Mumbai,"Kochi, Kerala, India"\n'
+           'Imran,Khan,Indus Fintech,"Gurugram, Haryana, India",\n')
+    leads, _, _, _ = run(csv)
+    got = {l["company"]: (l["city"], l["state"], l["country"]) for l in leads}
+    assert got["Sahyadri Hospitals"] == ("Pune", "Maharashtra", "IN")
+    assert got["Malabar Spices"] == ("Mumbai", "Maharashtra", "IN")
+    assert got["Indus Fintech"] == ("Gurugram", "Haryana", "IN")
