@@ -7,6 +7,7 @@ const NAMES = {
   whatsapp_outbox: "WhatsApp messages", transactional_outbox: "Reminders & invites", campaigns: "Campaigns", suppressed: "Do-not-contact list",
   integrations: "Connections", settings: "Settings", templates: "Templates", stories: "Success stories", workflows: "Workflow rules",
   notifications: "Notifications", imports: "Import history", jobs: "Job posts", partners: "Partners", delivery_events: "Delivery events",
+  provider_runs: "Data source comparisons",
 };
 
 function Summary({ plan }) {
@@ -59,7 +60,7 @@ export default function BackupRestore() {
         <b>Download a backup</b>
         <p className="sub" style={{ margin: "2px 0 8px" }}>
           One file with everything: leads, messages, replies, tasks, campaigns, settings. Keep it to move to your own server
-          or to go back to today's state. Times inside are in UTC; downloads on each page show IST.
+          or to go back to today's state. For spreadsheets, use the download buttons on each page instead.
         </p>
         <DownloadButton path="/api/backup?include_secrets=0" filename="outreach-backup.json.gz" label="Download backup" className="btn" testId="download-backup" />
         <p className="sub" style={{ margin: "6px 0 0" }}>Without connection keys: after a restore you enter them again on the Integrations page.</p>
