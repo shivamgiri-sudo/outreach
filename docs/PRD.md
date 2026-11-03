@@ -345,6 +345,23 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
   `GET /api/flows/{id}/runs`, `GET /api/leads/{id}/flows`, `POST /api/flow-runs/{id}/stop`, `POST /api/flows/tick`
   (`now` honoured only with `OUTREACH_TEST_MODE=1`).
 
+### 5.14 Lead sources, enrichment waterfall and verifiers (app/sources)
+- **What it is:** one registry of lawful sources (docs/SOURCES.md has the table with docs links, keys, free-tier notes, terms and status):
+  company job-board feeds (Greenhouse, Lever, Workable, Ashby, SmartRecruiters, Recruitee, Zoho Recruit), job APIs (Adzuna, Jooble, The Muse),
+  official search APIs (Brave, Google CSE for existing users), open data (OpenStreetMap Overpass and Nominatim, OpenCorporates, data.gov.in,
+  Wikidata), Google Places, a free company-website deep read (sitemap, JSON-LD, mailto/tel, LinkedIn page link as text), people/email finders
+  (Apollo, Hunter, Snov.io, Prospeo, Dropcontact, Lusha, RocketReach, People Data Labs) and verifiers (built-in MX check, ZeroBounce,
+  NeverBounce, Kickbox, MillionVerifier, Bouncer, Hunter).
+- **Campaign use:** step 2 lists the extra sources (free first) and the extra email finders/verifiers; old checkboxes keep working. A per-run credit
+  cap (default 100) limits paid lookups.
+- **Waterfall:** free sources first, then the owner's keys by cost; every candidate email is verified (built-in first, then paid); it stops at the
+  first verified email, keeps the best unverified one marked unverified, never an invalid, suppressed or already-owned address.
+- **Safety:** one failing source never aborts a run (a rejected key or 429 switches only that source off); responses cached 7 days in `source_cache`;
+  typed company identifiers cannot change a request's host or path; all traffic uses the guarded HTTP helper; honest User-Agent on OpenStreetMap
+  and Wikidata; every value keeps its source and link.
+- **API:** `GET /api/sources`, `POST /api/sources/{id}/test` (free check where the provider offers one). Integrations > Lead data shows a card per source.
+- **Not built, on purpose:** LinkedIn/job-board scraping, Clearbit/Breeze, Kaspr, Startup India list (reasons in docs/SOURCES.md).
+
 ## 6. Out of scope (on purpose)
 - Automated LinkedIn scraping, auto-connecting or auto-messaging, and applying to job posts to pitch employers.
 - Bypassing anti-bot protection or rotating proxies to avoid blocks.

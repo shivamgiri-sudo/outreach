@@ -39,6 +39,10 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
   - The campaign never sends: the sequence engine does, with practice mode, caps, warm-up and business hours.
   - Priya (or the campaign's caller) gets an update after every run, and a morning summary at 09:30 IST on weekdays.
   - "Run every weekday automatically" runs it once a day with `OUTREACH_AUTORUN=1`.
+- **Lead sources** (docs/SOURCES.md): about 30 lawful sources behind one registry: company job-board feeds (Greenhouse, Lever, Workable,
+  Ashby, SmartRecruiters, Recruitee, Zoho Recruit), Adzuna, Jooble, Brave search, OpenStreetMap, data.gov.in, Wikidata, a free website read,
+  Apollo/Hunter/Snov/Prospeo/Dropcontact/Lusha/RocketReach/PDL finders and six email verifiers. A cheapest-first waterfall stops at the first
+  verified email; a failing source never stops a run; answers are cached 7 days; a per-run credit cap applies. `GET /api/sources`.
 - **Flow builder** (Outreach → Flow builder): draw a flow like a mind map: a trigger (added by hand, new lead, reply,
   stage change, meeting booked, product activity, no reply for N days), then If / A-B split / Wait / Wait for a reply, then
   email, WhatsApp, SMS, LinkedIn task, call task, meeting link, stage, tag, notify, webhook or stop.
@@ -161,7 +165,9 @@ Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a thro
 
 ## Not verified against live services
 Resend (email), Anthropic (reply drafts and reading), Apollo (match, People API Search, Organization Search, job
-postings, usage stats), Hunter, Firecrawl, Google Places, ZeroBounce, NeverBounce and every Integrations hub provider
+postings, usage stats), Hunter, Firecrawl, Google Places, ZeroBounce, NeverBounce, every source in docs/SOURCES.md (job-board feeds,
+Adzuna, Jooble, Brave, OpenStreetMap, data.gov.in, Wikidata, Snov.io, Prospeo, Dropcontact, Lusha, RocketReach, People Data Labs, Kickbox,
+MillionVerifier, Bouncer) and every Integrations hub provider
 (email, inbound, WhatsApp, SMS, calling, calendars) are coded from public documentation and tested with fake transports
 only. Try each once with a test address or a small sample before relying on it.
 
