@@ -39,6 +39,12 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
   - The campaign never sends: the sequence engine does, with practice mode, caps, warm-up and business hours.
   - Priya (or the campaign's caller) gets an update after every run, and a morning summary at 09:30 IST on weekdays.
   - "Run every weekday automatically" runs it once a day with `OUTREACH_AUTORUN=1`.
+- **Find & enrich leads** (card on the Dashboard and Leads): one click to search for HR, talent and founder contacts at new
+  companies and to fill in the emails, phones and decision makers of leads you already have, using only the providers you
+  connected, company websites (robots.txt respected) and careers pages. Preview first, an estimate of provider credits and a
+  credit limit, a live progress bar, a plain-English report, "Open these leads" and "Start the email sequence" for the qualified
+  ones. LinkedIn (**LinkedIn outreach** page): "Export list for a LinkedIn tool" (CSV for Waalaxy, Dux-Soup, PhantomBuster) and
+  "Import its results" to mark accepted and replied. Automating LinkedIn is at your own risk; use a separate account.
 - **Flow builder** (Outreach → Flow builder): draw a flow like a mind map: a trigger (added by hand, new lead, reply,
   stage change, meeting booked, product activity, no reply for N days), then If / A-B split / Wait / Wait for a reply, then
   email, WhatsApp, SMS, LinkedIn task, call task, meeting link, stage, tag, notify, webhook or stop.
@@ -147,6 +153,7 @@ Caddy's `reverse_proxy` sends `X-Forwarded-For` and `X-Forwarded-Proto`; the app
     .venv\Scripts\python -m pytest -q          # 467 backend tests
     .venv\Scripts\python -m pytest -q          # 539 backend tests
     .venv\Scripts\python -m pytest -q          # 847 backend tests (99 flow builder)
+    .venv\Scripts\python -m pytest -q          # 878 backend tests (find & enrich, LinkedIn tool bridge)
 
 Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a throwaway file and
 `OUTREACH_IGNORE_BUSINESS_HOURS=1`, then the UI):
@@ -155,6 +162,7 @@ Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a thro
     cd web && npm run e2e                      # 74 steps; HEADED=1 shows the browser; E2E_UI / E2E_API change the addresses
     cd web && npm run e2e                      # 82 steps; HEADED=1 shows the browser
     cd web && npm run e2e                      # 99 steps (6 flow builder)
+    cd web && npm run e2e                      # 102 steps (3 find & enrich / LinkedIn tool)
     node e2e/tour.mjs                          # every page at desktop, tablet and phone width
     # with the API started using OUTREACH_ADMIN_PASSWORD=e2e-password:
     node e2e/auth.mjs                          # 9 login steps

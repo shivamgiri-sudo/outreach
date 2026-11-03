@@ -283,6 +283,7 @@ def enrich_lead(lead: dict, ctx: Context) -> Outcome:
                     out.prov[field] = "apollo:organization search"
             out.notes.append(f"website {org['domain']}")
     if not domain:
+        ctx.error("website", "Some leads have no website, and Apollo could not supply one (not connected, or no match), so there was nothing to look up for them.")
         return out
     _crawl(work, out, domain, ctx)
     if ctx.usable("apollo") and (not work.get("email") or not work.get("contact_name")):

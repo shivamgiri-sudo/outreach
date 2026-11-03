@@ -421,3 +421,13 @@ details.section summary { cursor: pointer; font-weight: 700; }
   .fb-bar .btn { padding: 8px 12px; }
   .fb-palette { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---------- find & enrich leads ---------- */
+.find-card { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 16px 0; border-left: 4px solid var(--cta); }
+.find-card-text { flex: 1 1 260px; min-width: 0; }
+.find-conn { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+.find-limits { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 10px; }
+.find-track { height: 12px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 8px; }
+.find-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--brand), var(--brand-2)); transition: width .4s ease; }
+.find-modes legend { margin-bottom: 4px; }
+@media (max-width: 640px) { .find-card .btn { width: 100%; } }

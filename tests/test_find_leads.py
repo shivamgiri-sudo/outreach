@@ -153,6 +153,14 @@ def test_unreachable_site_is_reported_in_plain_english_and_not_retried_at_once(t
     assert by_company(c, "Ghost Works")["find_checked_at"]
 
 
+def test_name_only_lead_without_apollo_is_reported_and_stamped(tmp_path):
+    c = client(tmp_path, FakeIO())
+    add_leads(c, "company,phone\nName Only Co,9811100033\n")
+    run = go(c, mode="enrich_existing")
+    assert run["report"]["checked"] == 1 and run["enriched"] == 0 and by_company(c, "Name Only Co")["find_checked_at"]
+    assert any("no website" in e["message"] for e in run["errors"])
+
+
 def test_crawled_emails_that_are_suppressed_or_belong_to_another_lead_are_not_used(tmp_path):
     page = '<a href="mailto:hr@shared-co.in">x</a> <a href="mailto:jobs@shared-co.in">y</a> <a href="mailto:talent@shared-co.in">z</a>'
     io = FakeIO(pages={"https://shared-co.in/contact": page})
