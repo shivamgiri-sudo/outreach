@@ -247,7 +247,10 @@ def google_places(target: dict, key: str, post, max_results: int) -> dict:
         except OSError as exc:
             if _places_key_problem(exc):
                 raise KeyRejected("Google says the Places API key is not valid.") from exc
-            raise
+            if not requests:
+                raise
+            return {"rows": [r for r in rows if r["company"]][:max_results], "requests": requests,      # keep paid results
+                    "error": f"Stopped after {requests} search(es): {str(exc)[:200]}"}
         requests += 1
         for place in reply.get("places") or []:
             if isinstance(place, dict) and place.get("businessStatus") != "CLOSED_PERMANENTLY":

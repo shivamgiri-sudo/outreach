@@ -7,9 +7,10 @@ import pytest
 
 from app import campaign_pipeline as pipe
 from app import campaign_sources as src
-from tests.campaign_fakes import FakeIO
+from app.http_util import HttpStatusError
 from app.jobs import job_domain, parse_job_postings
 from app.store import Store
+from tests.campaign_fakes import FakeIO, client, connect, create, run
 
 NOW = datetime(2026, 11, 3, 5, 0, tzinfo=timezone.utc)
 
@@ -66,3 +67,21 @@ def test_job_postings_refused_keeps_the_companies_already_found():
     out = src.apollo_hiring({"roles_hiring": ["telecaller"]}, "k", io.post, io.get, 25, NOW)
     assert [r["company"] for r in out["rows"]] == [o["name"] for o in orgs]
     assert out["failed_lookups"] == 5 and len(io.urls("/job_postings")) == 1      # stops asking after the refusal
+
+
+# ---------- Google Places quota hit part-way ----------
+def test_places_quota_midway_keeps_the_searches_already_paid_for(tmp_path):
+    """A 429 on the 3rd search discarded the first two searches' results (already billed by Google)."""
+    def reply(body):
+        if "Gurugram" in body["textQuery"]:
+            raise HttpStatusError(429, "RESOURCE_EXHAUSTED")
+        city = body["textQuery"].split(" in ")[1]
+        return {"places": [{"id": f"{city}{i}", "displayName": {"text": f"{city} Call Centre {i}"},
+                            "websiteUri": f"https://{city.lower()}-cc-{i}.example", "businessStatus": "OPERATIONAL"} for i in range(3)]}
+    io = FakeIO(post={"places:searchText": reply})
+    c = client(tmp_path, io)
+    connect(c, "google_places", {"api_key": "gk"})
+    camp = create(c, target={"industries": ["BPO"], "cities": ["Pune", "Nagpur", "Gurugram"]}, sources={"google_places": True})
+    report = run(c, camp["id"])
+    assert report["sources"]["google_places"] == {"found": 6, "requests": 2} and report["new"] == 6
+    assert any(e["source"] == "Google Places" and "429" in e["message"] for e in report["errors"])

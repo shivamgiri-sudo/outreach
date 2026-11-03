@@ -149,6 +149,8 @@ def discover(store, campaign: dict, transports: dict, report: dict, now: datetim
         try:
             out = call()
             record(source, out["rows"], out["requests"])
+            if out.get("error"):
+                pipe.add_error(report, source, out["error"])
             if out.get("failed_lookups"):
                 pipe.add_error(report, source, f"Job postings could not be read for {out['failed_lookups']} company(ies).")
         except src.KeyRejected as exc:
