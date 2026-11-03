@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { istLabel } from "../time.js";
+import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 
 const TYPES = [["call", "Call"], ["meeting", "Meeting"], ["note", "Note"], ["email", "Email (sent outside the app)"],
   ["whatsapp", "WhatsApp (sent outside the app)"], ["linkedin", "LinkedIn message"], ["other", "Other"]];
@@ -130,7 +131,11 @@ export default function LeadActivity({ lead, onChanged }) {
       )}
       {message && <p className="sub" role="status">{message}</p>}
 
-      <h3>Full activity</h3>
+      <div className="row dl-head">
+        <h3>Full activity</h3>
+        <DownloadButton path={exportPath("activity", { lead_id: lead.id })} label="Download activity" testId="download-activity"
+          title="Every email, reply, call, meeting, task and note for this lead, with full text" />
+      </div>
       <div className="chips" role="tablist" aria-label="Filter activity">
         {FILTERS.map(([v, l]) => (
           <button key={v} role="tab" aria-selected={filter === v} className={`chip ${filter === v ? "on" : ""}`} onClick={() => setFilter(v)}>{l}</button>
