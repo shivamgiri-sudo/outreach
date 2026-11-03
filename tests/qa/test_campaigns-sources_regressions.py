@@ -3,7 +3,10 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from app import campaign_pipeline as pipe
+from app import campaign_sources as src
 from app.jobs import job_domain, parse_job_postings
 from app.store import Store
 
@@ -39,3 +42,16 @@ def test_sameas_list_and_raw_line_breaks_in_json_ld():
     raw = ('<script type="application/ld+json">{"@type": "JobPosting", "title": "Warehouse Supervisor",\n'
            '"description": "Line one.\nLine two\twith a tab", "hiringOrganization": {"name": "Banyan Logistics"}}</script>')
     assert [p["title"] for p in parse_job_postings(raw, "https://banyan.example/careers")] == ["Warehouse Supervisor"]
+
+
+# ---------- email verifier outage ----------
+def test_verifier_outage_is_not_a_risky_verdict():
+    """NeverBounce returns HTTP 200 + status temp_unavail in an outage; it was stored as 'risky' and blocked the lead for good."""
+    nb = {"provider": "neverbounce", "api_key": "nk", "supported": True}
+    zb = {"provider": "zerobounce", "api_key": "zk", "supported": True}
+    temp = {"status": "temp_unavail", "message": "A temporary service interruption occurred", "execution_time": 12}
+    with pytest.raises(OSError):
+        src.verify_email("meera@gamma-care.example", nb, lambda url, headers: temp)
+    with pytest.raises(OSError):
+        src.verify_email("meera@gamma-care.example", zb, lambda url, headers: {})
+    assert src.verify_email("meera@gamma-care.example", nb, lambda url, headers: {"status": "success", "result": "catchall"}) == "risky"

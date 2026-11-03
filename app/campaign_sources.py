@@ -299,6 +299,8 @@ def verify_email(email: str, config: dict, get) -> str:
         if reply.get("status") in ("auth_failure", "general_failure", "throttle_triggered"):
             raise KeyRejected(f"NeverBounce: {str(reply.get('message') or reply['status'])[:120]}")
         status = str(reply.get("result") or "").lower()
+    if not status:                      # outage (NeverBounce temp_unavail) or empty reply: no verdict on the address
+        raise OSError(f"{config['provider']}: no result ({str(reply.get('message') or reply.get('status') or 'empty reply')[:120]})")
     if status == "valid":
         return "valid"
     return "invalid" if status in VERIFIER_BAD else "risky"
