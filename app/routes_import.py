@@ -12,6 +12,7 @@ from .lead_import import fingerprint, read_table, run_import, trim_lists
 from .hygiene import is_role_address
 from .lead_merge import merge_leads
 from .lead_model import event, now_iso
+from .privacy import hashes_for
 from .standardise import email_alias_key
 
 MAX_CSV_CHARS = 15_000_000
@@ -20,6 +21,15 @@ REPOINTED = ("outbox", "inbox", "tasks", "whatsapp_outbox", "activities", "trans
              "consent_ledger")          # so the kept lead's DPDP export and erasure cover the merged lead's rows too
 UNDO_NOTE = ("Undo removes only the leads this import created. Details it added to leads you already had were left in "
              "place, because other changes may depend on them.")
+
+
+def _not_again(store, table: list) -> set:
+    """Suppressed emails plus any email in this file whose person was erased, so the dry run shows the row as left out
+    (the store's guard drops it on save anyway)."""
+    erased = set(store.read("suppressed_hashes"))
+    cells = (c for _, r in table for c in (r.values() if isinstance(r, dict) else r) if isinstance(c, str) and "@" in c)
+    found = {e for c in cells for e in re.split(r"[\s,;/]+", c.strip().lower()) if erased and hashes_for(e) & erased}
+    return set(store.read("suppressed")) | found
 
 
 class ImportOptions(BaseModel):
@@ -101,14 +111,14 @@ def make_router(store) -> APIRouter:
         """Dry run: what would happen, with nothing saved."""
         ctx = prepare(body)
         result = run_import(store.read("leads"), ctx["table"], ctx["columns"], ctx["source"],
-                            set(store.read("suppressed")), ctx["options"])
+                            _not_again(store, ctx["table"]), ctx["options"])
         return {**answer(ctx, result), "dry_run": True}
 
     @router.post("/api/import/commit")
     def commit(body: ImportBody):
         ctx = prepare(body)
         import_id = uuid.uuid4().hex[:10]
-        suppressed = set(store.read("suppressed"))
+        suppressed = _not_again(store, ctx["table"])
         holder = {}
 
         def apply(leads: list) -> list:

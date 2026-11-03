@@ -10,3 +10,4 @@ web/design-shots/
 *.tmp
 *.log
 .env
+web/journey-shots/
