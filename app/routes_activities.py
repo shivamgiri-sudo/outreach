@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from .activities import (ACTIVITY_TYPES, CALL_OUTCOMES, PRIORITIES, add_task, complete_task, ensure_task_ids,
@@ -161,8 +161,13 @@ def make_router(store, transactional_sender=None) -> APIRouter:
         return list(reversed(rows))[:200]
 
     @router.post("/api/notifications/read")
-    def mark_read():
-        store.update("notifications", lambda rows: [{**n, "read": True} for n in rows])
+    def mark_read(request: Request, owner: Optional[str] = None):
+        """Mark the caller's notifications read (those addressed to them, plus ones for everybody). `owner` picks a team
+        member; a signed-in person without it gets their own. Only the no-password local owner marks everything."""
+        user = getattr(request.state, "user", None) or {}
+        names = {owner} if owner else ({user.get("name"), user.get("email")} - {None, ""} if user.get("sub") != "local" else set())
+        mine = lambda n: not names or n.get("to") is None or n.get("to") in names
+        store.update("notifications", lambda rows: [{**n, "read": True} if mine(n) else n for n in rows])
         return {"ok": True}
 
     @router.post("/api/reminders/run")

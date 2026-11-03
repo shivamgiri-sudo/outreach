@@ -100,3 +100,14 @@ def test_bounce_notice_from_the_reply_poller_counts_toward_the_bounce_pause(tmp_
     assert len(events) >= 1, "IMAP/inbound bounce wrote no delivery_events"
     assert {e["email"] for e in events} == set(emails[:3])
     assert store.read("settings").get("sending_paused"), "3 bounces from ~100+ sends should pause live sending"
+
+
+def test_marking_notifications_read_for_one_owner_leaves_the_others_unread(tmp_path):
+    c, store = app_with_leads(tmp_path)
+    store.update("notifications", lambda r: [{"id": "a", "to": "Priya", "read": False}, {"id": "b", "to": "Rahul", "read": False},
+                                              {"id": "c", "to": None, "read": False}])
+    assert c.post("/api/notifications/read?owner=Priya").status_code == 200
+    state = {n["id"]: n["read"] for n in store.read("notifications")}
+    assert state == {"a": True, "b": False, "c": True}          # Rahul's stays unread; the broadcast one is read
+    c.post("/api/notifications/read")                            # no owner on the no-password local app: everything, as before
+    assert all(n["read"] for n in store.read("notifications"))
