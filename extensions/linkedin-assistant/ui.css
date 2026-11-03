@@ -1,0 +1,30 @@
+:root { --blue: #1b5fd6; --ink: #1c2330; --muted: #5b6577; --line: #d9deea; --bg: #fff; --good: #137a43; --bad: #b3261e; --soft: #f3f6fc; }
+@media (prefers-color-scheme: dark) { :root { --ink: #e8ecf5; --muted: #a2adc2; --line: #2f3a50; --bg: #141a26; --soft: #1b2333; --blue: #6a9bff; } }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 14px; font: 14px/1.45 system-ui, sans-serif; color: var(--ink); background: var(--bg); }
+body.popup { width: 340px; }
+h1 { font-size: 16px; margin: 0 0 6px; }
+h2 { font-size: 13px; margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.status { margin: 0 0 8px; color: var(--muted); }
+.status.good { color: var(--good); } .status.bad { color: var(--bad); }
+.hint, .sub { color: var(--muted); font-size: 12px; }
+.list { list-style: none; margin: 0; padding: 0; }
+.list li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.list .name { font-weight: 600; }
+label { display: block; margin: 8px 0; font-size: 12px; color: var(--muted); }
+input, textarea { display: block; width: 100%; margin-top: 4px; padding: 7px 8px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+textarea { min-height: 90px; resize: vertical; }
+button { font: inherit; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--blue); background: var(--bg); color: var(--blue); cursor: pointer; }
+button.primary { background: var(--blue); color: #fff; }
+button.ghost { border-color: var(--line); color: var(--muted); }
+button:disabled { opacity: .5; cursor: default; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+a { color: var(--blue); }
+details { margin-top: 12px; }
+summary { cursor: pointer; font-weight: 600; }
+.card { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
+.msg { white-space: pre-wrap; margin: 6px 0; }
+.banner { border-left: 4px solid var(--blue); background: var(--soft); padding: 8px 10px; margin: 10px 0; border-radius: 4px; }
+.banner.warn { border-color: var(--bad); }
+.banner.ok { border-color: var(--good); }
+[hidden] { display: none !important; }
