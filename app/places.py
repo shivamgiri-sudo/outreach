@@ -1,7 +1,7 @@
 """Where and how big: Indian city/state/country clean-up, 'City, State, Country' and postal addresses, company-size
 buckets, opening counts and job ages. Pure functions."""
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from .standardise import clean_text, smart_title
 
@@ -217,9 +217,12 @@ def job_age_days(raw, today: date) -> int:
     rel = re.match(r"^(\d+)\+?\s*(day|week|month)s?\s*(?:ago)?", text)
     if rel:
         return int(rel.group(1)) * {"day": 1, "week": 7, "month": 30}[rel.group(2)]
+    if re.fullmatch(r"[3-6]\d{4}(\.\d+)?", text):          # Excel serial date (day 1 = 1900-01-01), e.g. 46318
+        return max(0, (today - (date(1899, 12, 30) + timedelta(days=int(float(text))))).days)
     for fmt in _DATE_FORMATS:
-        try:
-            return max(0, (today - datetime.strptime(clean_text(raw)[:30].split("T")[0], fmt).date()).days)
-        except ValueError:
-            continue
+        for part in (clean_text(raw)[:30].split("T")[0], clean_text(raw).split(" ")[0]):   # also '28-10-2026 10:30'
+            try:
+                return max(0, (today - datetime.strptime(part, fmt).date()).days)
+            except ValueError:
+                continue
     return 0
