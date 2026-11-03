@@ -137,6 +137,9 @@ class LeadIndex:
         for phone in rec.get("phones") or []:
             if phone in self.phone:
                 i, who = self.phone[phone]
+                key, other = company_key(rec.get("company")), self.ckey[i]
+                if key and other and key_similarity(key, other) < 0.5 and lead_domain(rec) != self.ldomain[i]:
+                    continue                     # a shared board line at two unrelated companies
                 return self._check_person(i, who, rec, "same phone", strong=False)
         domain, name = rec.get("domain") or "", person_key(rec.get("contact_name"))
         if domain and name and (domain, name) in self.domain_name:

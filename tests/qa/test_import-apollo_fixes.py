@@ -137,3 +137,26 @@ def test_quick_paste_skips_do_not_contact_addresses(tmp_path):
     r = c.post("/api/leads/import", json={"csv": csv, "source": "apollo"}).json()
     assert r["created"] == 1 and r["suppressed"] == 1
     assert [lead["company"] for lead in c.get("/api/leads").json()] == ["Deccan Motors"]
+
+
+# ---- 6. a board line shared by two unrelated companies merged an Apollo contact into the wrong company
+def test_shared_phone_never_merges_two_unrelated_companies(client):
+    accounts = "Company Name,Company City,Company Phone\nJai Mata Di Caterers,New Delhi,'+91 11 4000 4202\n"
+    people = ("First Name,Last Name,Title,Company Name,Email,Work Direct Phone,Website,City\n"
+              "Aditya,Bose,CHRO,Vayu Airlines Ground Services,abose@vayuground.example,'+91 11 4000 4202,"
+              "http://www.vayuground.example,New Delhi\n")
+    client.post("/api/import/commit", json={"csv": accounts, "source": "apollo"})
+    r = client.post("/api/import/commit", json={"csv": people, "source": "apollo"}).json()
+    assert r["summary"]["create"] == 1 and r["summary"]["merge"] == 0
+    leads = {lead["company"]: lead for lead in client.get("/api/leads").json()}
+    assert not leads["Jai Mata Di Caterers"].get("email") and not leads["Jai Mata Di Caterers"].get("domain")
+    assert leads["Vayu Airlines Ground Services"]["email"] == "abose@vayuground.example"
+
+
+def test_shared_phone_still_merges_the_same_company_written_differently(client):
+    client.post("/api/import/commit", json={"csv": "Company Name,Company Phone\nACME RETAIL PVT. LTD.,'+91 80 4000 1000\n",
+                                            "source": "apollo"})
+    r = client.post("/api/import/commit", json={
+        "csv": "First Name,Last Name,Company Name,Email,Corporate Phone\nRavi,Kumar,Acme Retail,ravi@acmeretail.example,"
+               "'+91 80 4000 1000\n", "source": "apollo"}).json()
+    assert r["summary"]["create"] == 0 and r["summary"]["merge"] == 1
