@@ -65,7 +65,8 @@ def make_router(store, present) -> APIRouter:
                               "title": "Call them", "action": "Open call desk",
                               "detail": "Said yes. Dial through PD only, before 18:55."})
         for index, task in enumerate(store.read("tasks")):
-            if task.get("done") or task.get("status", "open") != "open" or (leads.get(task.get("lead_id")) or {}).get("stage") in ("unsubscribed",):
+            if task.get("done") or task.get("status", "open") != "open" or (
+                    (leads.get(task.get("lead_id")) or {}).get("stage") in ("unsubscribed",) and task.get("kind") != "erasure_request"):
                 continue
             due = task.get("due_at")
             overdue = bool(due) and datetime.fromisoformat(due) < now
