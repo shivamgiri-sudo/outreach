@@ -112,11 +112,17 @@ pre { white-space: pre-wrap; background: var(--bg); padding: 14px; border-radius
 /* ---------- tablet and phone ---------- */
 @media (max-width: 1000px) { .layout { grid-template-columns: 76px minmax(0, 1fr); } .nav-title, .brand h1, .side button { font-size: 0; gap: 0; } .side button { justify-content: center; } .side button svg { width: 20px; height: 20px; } .badge-dot { font-size: 11px; position: absolute; margin: -22px 0 0 18px; } .side button { position: relative; } main { padding: 22px 20px 40px; } }
 @media (max-width: 760px) {
-  .layout { grid-template-columns: minmax(0, 1fr); }
-  .side { position: static; height: auto; display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 8px; gap: 4px; border-right: 0; border-bottom: 1px solid var(--line); }
-  .brand, .nav-title { display: none; } .nav-group { display: flex; gap: 4px; margin: 0; }
-  .side button { width: auto; flex: none; font-size: 13px; gap: 8px; padding: 10px 12px; white-space: nowrap; }
-  .side button.signout { margin: 0; border: 0; }
+  /* Phone: a compact top bar. The rows are "bar, then page", so a short page no longer stretches the bar. */
+  .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; align-content: start; }
+  .side { position: sticky; top: 0; z-index: 3; height: auto; min-height: 0; display: flex; align-items: center; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+          padding: 6px 8px; gap: 4px; border-right: 0; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+  .side::-webkit-scrollbar { display: none; }
+  .brand { flex: none; margin: 0 4px 0 2px; gap: 4px; } .brand h1, .brand-mark, .nav-title { display: none; }
+  .bell-wrap { margin-left: 0; position: static; }
+  .bell-panel { position: fixed; top: 54px; left: 8px; right: 8px; width: auto; }
+  .nav-group { display: flex; gap: 4px; margin: 0; flex: none; }
+  .side button { width: auto; flex: none; font-size: 13px; gap: 6px; padding: 8px 10px; min-height: 38px; white-space: nowrap; }
+  .side button.signout { margin: 0; border: 0; border-radius: 12px; }
   main { padding: 16px; }
   .hero { padding: 24px 20px; border-radius: 20px; } .hero h2 { font-size: 28px; }
 }
