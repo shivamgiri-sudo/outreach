@@ -271,6 +271,8 @@ def attach_booking(store, pid: str, booking: dict) -> dict:
         if index is None:
             meetings.append({"id": uuid.uuid4().hex[:12], "created_at": now_utc().isoformat(timespec="seconds"), **record})
         else:
+            if meetings[index].get("status") == "cancelled":   # a retried/late delivery never reopens it
+                return l
             meetings[index] = {**meetings[index], **record}
         return {**l, "meetings": meetings, "timeline": [*l["timeline"], _event("meeting", f"Meeting booked: {record['title']}, {label}")]}
     _update_lead(store, lead["id"], change)
