@@ -52,6 +52,7 @@ class SettingsBody(BaseModel):
     sender_contact_email: Optional[str] = None
     retention_days_cold: Optional[int] = None
     privacy_url: Optional[str] = None
+    whatsapp_template_params: Optional[dict] = None       # {template: how many values it takes, or their names in order}
 
 
 class ScrapeBody(BaseModel):
@@ -178,6 +179,12 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
             del changes["webhook_secret"]
         if "public_base_url" in changes:
             changes["public_base_url"] = changes["public_base_url"].strip().rstrip("/")
+        if "whatsapp_template_params" in changes:
+            from .whatsapp import PARAM_ORDER
+            ok = lambda v: (isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= len(PARAM_ORDER)) or (
+                isinstance(v, list) and all(n in PARAM_ORDER for n in v))
+            if not all(isinstance(k, str) and ok(v) for k, v in (changes["whatsapp_template_params"] or {}).items()):
+                raise HTTPException(400, "WhatsApp template values must be a count (0-4) or a list of: " + ", ".join(PARAM_ORDER))
         if "privacy_url" in changes:
             changes["privacy_url"] = changes["privacy_url"].strip()
             parsed = urlparse(changes["privacy_url"])

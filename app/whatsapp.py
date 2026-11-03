@@ -1,4 +1,5 @@
 """WhatsApp: templates and the consent-gated send. Practice mode until a provider is connected."""
+import re
 from datetime import datetime, timedelta
 
 from .channels.http import request
@@ -44,6 +45,34 @@ TEMPLATES = {
 
 class WhatsAppError(Exception):
     """A message that must not be sent, with a reason a person can read."""
+
+
+# Positional order of the values a provider-approved template can take: {{1}} first name, {{2}} sender, {{3}} company,
+# {{4}} demo link. A template that doesn't use a value leaves it out and the rest move up, as the provider requires.
+PARAM_ORDER = ("first_name", "sender", "company", "demo_link")
+
+
+def template_param_names(template: str, configured=None) -> list:
+    """Which values to pass for `template`. `configured` is the optional settings map {template: count | [names]}:
+    a count keeps that many of PARAM_ORDER, a list names them in order. Without it a template whose own text numbers
+    its values ({{1}}..{{n}}) gets exactly n; the built-in templates name theirs ({{greeting}}) and the approved
+    versions follow the four-value convention above, so they and unknown templates keep all four, as before."""
+    setting = (configured or {}).get(template) if isinstance(configured, dict) else None
+    if isinstance(setting, bool):
+        setting = None
+    if isinstance(setting, int):
+        return list(PARAM_ORDER[:max(0, min(setting, len(PARAM_ORDER)))])
+    if isinstance(setting, list) and all(isinstance(n, str) and n in PARAM_ORDER for n in setting):
+        return list(setting)
+    declared = [int(n) for n in re.findall(r"\{\{(\d+)\}\}", TEMPLATES.get(template, ""))]
+    if declared:
+        return list(PARAM_ORDER[:min(max(declared), len(PARAM_ORDER))])
+    return list(PARAM_ORDER)
+
+
+def template_params(template: str, variables: dict, configured=None) -> list:
+    defaults = {"first_name": "there"}
+    return [variables.get(n) or defaults.get(n, "") for n in template_param_names(template, configured)]
 
 
 def last_inbound_at(lead: dict):
@@ -95,7 +124,7 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
     # Real delivery through the WhatsApp provider chosen on the Integrations page (dry_run until connected and
     # "WhatsApp for real" is on). Approved templates receive their variables in this order:
     # {{1}} first name, {{2}} sender, {{3}} company, {{4}} demo link.
-    params = [variables.get("first_name") or "there", variables.get("sender") or "", variables.get("company") or "", variables.get("demo_link") or ""]
+    params = template_params(template, variables, get_settings(store).get("whatsapp_template_params"))
     result = send_whatsapp(store, lead["phone"], None if template == "custom" else template,
                            "en", params, text=body if template == "custom" else None, transport=transport or request)
     message = {"lead_id": lead_id, "to": lead["phone"], "template": template, "body": body,

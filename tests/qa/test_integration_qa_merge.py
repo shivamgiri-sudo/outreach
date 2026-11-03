@@ -201,3 +201,39 @@ def test_fetch_page_refuses_a_redirect_that_lands_on_linkedin(monkeypatch):
         fetch_page("https://short.example/acme", resolver=lambda h: ["93.184.216.34"])
     assert not any("linkedin.com" in u for u in seen)            # never even requested
     assert "ok" in fetch_page("https://plain.example/", resolver=lambda h: ["93.184.216.34"])
+
+
+def test_whatsapp_template_parameters_follow_what_the_template_defines():
+    from app.whatsapp import template_params
+    v = {"first_name": "Asha", "sender": "Priya", "company": "Acme", "demo_link": "https://x.example/demo/t"}
+    full = ["Asha", "Priya", "Acme", "https://x.example/demo/t"]
+    assert template_params("first_after_yes", v) == full                      # unconfigured: the four-value convention, as before
+    assert template_params("something_unknown", v) == full
+    assert template_params("nudge_not_published", v, {"nudge_not_published": 2}) == ["Asha", "Priya"]     # settings: a count
+    assert template_params("first_after_yes", v, {"first_after_yes": 3}) == full[:3]
+    assert template_params("first_after_yes", v, {"first_after_yes": ["first_name", "demo_link"]}) == ["Asha", "https://x.example/demo/t"]
+    assert template_params("first_after_yes", v, {"first_after_yes": ["bogus"]}) == full                  # junk is ignored
+    assert template_params("nudge_not_published", {}, {"nudge_not_published": 2}) == ["there", ""]
+    import app.whatsapp as wa
+    wa.TEMPLATES["numbered_test"] = "Hi {{1}}, from {{2}}. Reply STOP to opt out."        # a template that numbers its values
+    try:
+        assert template_params("numbered_test", v) == ["Asha", "Priya"]
+    finally:
+        del wa.TEMPLATES["numbered_test"]
+
+
+def test_whatsapp_send_passes_only_the_declared_parameters(tmp_path):
+    from app.whatsapp import send
+    _, store = app_with_leads(tmp_path)
+    lead = store.read("leads")[0]
+    store.update_lead(lead["id"], lambda l: {**l, "consent": {"given": True, "at": "2026-11-01T00:00:00+00:00"}} if False else {**l, "consent": True})
+    store.update("settings", lambda s: {**s, "whatsapp_template_params": {"nudge_not_published": 2}})
+    seen = {}
+    import app.whatsapp as wa
+    real = wa.send_whatsapp
+    wa.send_whatsapp = lambda store_, phone, name, lang, params, text=None, transport=None: seen.update(params=params, name=name) or {"status": "dry_run"}
+    try:
+        send(store, lead["id"], "nudge_not_published", "", datetime.now(timezone.utc), "https://app.example")
+    finally:
+        wa.send_whatsapp = real
+    assert len(seen["params"]) == 2 and seen["name"] == "nudge_not_published"
