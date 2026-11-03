@@ -19,6 +19,7 @@ from .demo import draft_kit, render_demo_html
 from .growth_core import ensure_demo, get_offer, public_base_url, webhook_secret
 from .hygiene import normalise_email
 from .sequences import DEFAULT_SEQUENCE
+from .unsubscribe import unsub_path
 from .web_security import page_csp
 from .workflows import fire
 
@@ -140,7 +141,8 @@ def make_router(store, build_lead, present) -> APIRouter:
         scripts) can't fake a "demo opened"."""
         lead = lead_by_token(token)
         offer = get_offer(store)
-        html = render_demo_html(lead, draft_kit(lead.get("role", "")), offer, claim_url(ensure_demo(lead, _now()), offer))
+        html = render_demo_html(lead, draft_kit(lead.get("role", "")), offer, claim_url(ensure_demo(lead, _now()), offer),
+                                unsub_path(store, lead["id"]))
         nonce = secrets.token_urlsafe(16)                  # only this one script may run (Content-Security-Policy)
         target = json.dumps(f"/demo/{token}/opened").replace("<", "\\u003c")
         beacon = f"<script nonce=\"{nonce}\">fetch({target},{{method:'POST'}}).catch(function(){{}});</script>"

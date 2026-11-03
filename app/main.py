@@ -49,6 +49,7 @@ from .channels.webhooks import gate_allows
 from .routes_outreach import make_router
 from .store import Store
 from .suggest import suggest_next
+from .unsubscribe import ensure_cutover
 
 BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
 PUBLIC_API_PATHS = ("/api/login", "/api/auth/status")
@@ -140,6 +141,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                        allow_methods=["*"], allow_headers=["*"], expose_headers=["X-Renewed-Token"])
     store = Store(data_file)
     app.state.store = store
+    ensure_cutover(store)                     # signed unsubscribe links start now; older unsigned ones get 60 days
 
     @app.middleware("http")
     async def require_login(request: Request, call_next):

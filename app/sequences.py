@@ -213,14 +213,17 @@ def in_business_hours(now: datetime) -> bool:
     return local.weekday() < 5 and BUSINESS_START_HOUR <= local.hour < BUSINESS_END_HOUR
 
 
-def lead_variables(lead: dict, sender: str, base_url: str, extra: dict = None) -> dict:
-    """Cleaned per-lead values for templates. `first_name` keeps 'there' as a fallback for old custom templates."""
+def lead_variables(lead: dict, sender: str, base_url: str, extra: dict = None, secret: str = "") -> dict:
+    """Cleaned per-lead values for templates. `first_name` keeps 'there' as a fallback for old custom templates.
+
+    With the server secret, unsub_link is the signed form (/u/<id>.<signature>) that every real message uses."""
+    from .unsubscribe import signature
     first = clean_first_name(lead.get("contact_name"))
     role = clean_role(lead.get("role"))
     return {
         "first_name": first or "there", "greeting": greeting_for(first),
         "company": clean_company(lead.get("company")) or lead.get("domain") or "your company",
         "role": role or ROLE_FALLBACK, "has_role": bool(role), "sender": sender,
-        "unsub_link": f"{base_url}/u/{lead['id']}",
+        "unsub_link": f"{base_url}/u/{lead['id']}" + (f".{signature(secret, str(lead['id']))}" if secret else ""),
         **(extra or {}),
     }

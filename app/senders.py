@@ -1,9 +1,9 @@
 """Real email delivery through Resend, only when connected AND explicitly switched on."""
 from datetime import datetime, timezone
 
-from .growth_core import public_base_url
 from .hygiene import normalise_email
 from .http_util import HttpStatusError, post_json
+from .unsubscribe import unsub_url
 
 RESEND_URL = "https://api.resend.com/emails"
 
@@ -65,7 +65,7 @@ def make_email_sender(store, transport=post_json, base_url: str = "", channel_tr
         cfg = _email_config(store)
         if not (store.read("settings").get("live_sending") and cfg):
             return {"status": "dry_run"}
-        unsub = f"{public_base_url(store, base_url)}/u/{message['lead_id']}"
+        unsub = unsub_url(store, base_url, message["lead_id"])
         headers = {"List-Unsubscribe": f"<{unsub}>, <mailto:{cfg['from_email']}?subject=unsubscribe>",
                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
         if message.get("message_id"):

@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 
-from ..growth_core import public_base_url
+from ..unsubscribe import unsub_url
 from ..hygiene import normalise_email
 from ..senders import classify_send_error
 from .config import config_for
@@ -149,7 +149,7 @@ def deliver(cfg: dict, to: str, subject: str, text: str, headers: dict, transpor
 
 
 def unsubscribe_headers(store, lead_id: str, base_url: str, from_email: str = "") -> dict:
-    unsub = f"{public_base_url(store, base_url)}/u/{lead_id}"
+    unsub = unsub_url(store, base_url, lead_id)
     mailto = f", <mailto:{from_email}?subject=unsubscribe>" if from_email else ""
     return {"List-Unsubscribe": f"<{unsub}>{mailto}", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
 

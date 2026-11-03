@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+from app.unsubscribe import unsub_path
 
 T0 = datetime(2026, 11, 3, 5, 0, tzinfo=timezone.utc)   # Tuesday 10:30 IST
 CSV = ("company,contact_name,email,phone,website,open_roles,company_size,country\n"
@@ -152,14 +153,14 @@ def test_suppressed_email_is_never_sent(tmp_path):
     go_live(c)
     lid = lead(c)["id"]
     c.post(f"/api/leads/{lid}/enroll")
-    c.post(f"/u/{lid}")                                      # unsubscribe link (a person clicks the button)
+    c.post(unsub_path(c.app.state.store, lid))                    # unsubscribe link (a person clicks the button)
     assert c.post("/api/sequences/run", json={"now": T0.isoformat()}).json()["sent"] == 0 and t.calls == []
 
 
 def test_one_click_unsubscribe_post(tmp_path):
     c = make_client(tmp_path)
     lid = lead(c)["id"]
-    assert c.post(f"/u/{lid}").status_code == 200
+    assert c.post(unsub_path(c.app.state.store, lid)).status_code == 200
     assert c.get(f"/api/leads/{lid}").json()["stage"] == "unsubscribed"
 
 

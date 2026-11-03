@@ -10,6 +10,7 @@ from app.channels.sms_send import send_sms
 from app.channels.whatsapp_send import send_whatsapp
 from app.senders import make_email_sender
 from app.store import Store
+from app.unsubscribe import unsub_path
 from tests.channel_fakes import FakeHTTP, SMTPFactory, make_client
 
 SENDER = {"from_name": "Priya", "from_email": "priya@mail.example.in"}
@@ -32,7 +33,7 @@ def test_resend_request_and_id(tmp_path):
     call = http.last()
     assert out == {"status": "sent", "provider_id": "em_1"}
     assert call["headers"]["Authorization"] == "Bearer re_k" and call["body"]["to"] == ["asha@acme-retail.in"]
-    assert call["body"]["headers"]["List-Unsubscribe"].startswith("<https://outreach.example.in/u/L1>")
+    assert call["body"]["headers"]["List-Unsubscribe"].startswith(f"<https://outreach.example.in{unsub_path(store, 'L1')}>")
 
 
 def test_sendgrid_request_and_message_id_header(tmp_path):
@@ -74,7 +75,7 @@ def test_smtp_starttls_and_ssl(tmp_path, port, security, ssl_expected):
     assert (client.host, client.port, client.use_ssl) == ("smtp.example.in", int(port), ssl_expected)
     assert ("starttls" in client.log) is (not ssl_expected) and ("login", "priya") in client.log and "quit" in client.log
     sent = client.sent[0]
-    assert sent["To"] == "asha@acme-retail.in" and sent["List-Unsubscribe"].startswith("<https://o.example.in/u/L1>")
+    assert sent["To"] == "asha@acme-retail.in" and sent["List-Unsubscribe"].startswith(f"<https://o.example.in{unsub_path(store, 'L1')}>")
     assert sent["From"] == "Priya <priya@mail.example.in>"
 
 

@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 
 from .channels.http import request
+from .channels.security import server_secret
 from .channels.whatsapp_send import send_whatsapp
 from .growth_core import ensure_demo
 from .sequence_runner import NO_EMAIL_STAGES, get_settings
@@ -82,7 +83,7 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
     else:
         raise WhatsAppError("Unknown template")
     variables = lead_variables(lead, get_settings(store)["sender_name"], base_url,
-                               {"demo_link": f"{base_url}/demo/{lead['demo_token']}"})
+                               {"demo_link": f"{base_url}/demo/{lead['demo_token']}"}, secret=server_secret(store))
     body, missing = render(raw, variables)
     if missing:
         raise WhatsAppError(f"This message needs details the lead doesn't have yet: {', '.join(missing)}")
