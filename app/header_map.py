@@ -63,7 +63,7 @@ _A = {
                "segment"],
     "company_size": ["company size", "size", "employees", "number of employees", "employee count", "no of employees",
                      "# employees", "headcount", "staff size", "employee range", "company employees",
-                     "company size employees", "team size", "employee strength", "company headcount", "employees range",
+                     "company size employees", "team size", "employee strength", "company headcount", "employees range", "emp size",
                      "size range", "estimated num employees", "head count"],
     "open_roles": ["open roles", "openings", "no of openings", "number of openings", "vacancies", "vacancy",
                    "no of positions", "job openings count", "hiring count", "total openings", "openings count"],
@@ -113,6 +113,7 @@ KNOWN_EXTRA = (
     "company url2", "job title2", "job location2", "middle name", "sales profile", "recruiter profile", "school url",
     "profile image url", "search account profile name", "search account profile id", "last state",
     "salutation", "ZoomInfo Contact ID", "ZoomInfo Company ID", "ZoomInfo Contact Profile URL",
+    "logo url", "subsidiary of", "subsidiary of organization id",
 )
 
 

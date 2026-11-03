@@ -290,7 +290,7 @@ def clean_email(raw) -> tuple:
     if domain in EMAIL_TYPOS:
         text = f"{local}@{EMAIL_TYPOS[domain]}"
     ok = (EMAIL_RE.match(text) and ".." not in text and not local.startswith(".") and not local.endswith(".")
-          and re.search(r"\.[a-z]{2,}$", text))
+          and re.search(r"\.[a-z]{2,}$", text) and local != "email_not_unlocked")   # Apollo's locked-email placeholder
     if not ok:
         return None, "invalid_email"
     return text, ("typo_fixed" if domain in EMAIL_TYPOS else None)
@@ -339,7 +339,7 @@ def _national(national: str) -> Optional[tuple]:
 
 def parse_phone(part: str) -> tuple:
     """One number -> ((e164, type) or None, problem or None). Types: mobile, landline, intl."""
-    text = _EXTENSION.sub("", clean_text(part))
+    text = _EXTENSION.sub("", clean_text(part)).lstrip("'")    # Excel/Apollo text prefix: '+91 80 4000 1500
     digits = re.sub(r"\D", "", text)
     if not digits:
         return None, ("invalid_phone" if text else None)
