@@ -281,7 +281,7 @@ cd web && npm install && npm run dev        # http://localhost:5173
 
 Tests:
 - `pytest -q`: 436 backend tests.
-- `npm run e2e`: 71 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
+- `npm run e2e`: 74 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
 - `node e2e/tour.mjs`: every page at three screen sizes.
 - `node e2e/auth.mjs`: login checks.
 
