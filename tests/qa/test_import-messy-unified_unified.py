@@ -116,7 +116,7 @@ def test_no_field_is_lost_across_sources(world):
     assert sharma["linkedin_url"] == "https://www.linkedin.com/in/rohit-sharma-example"
     assert sharma["company_linkedin_url"] == "https://www.linkedin.com/company/sharma-logistics-example"
     assert set(sharma["job_links"]) == {"https://www.naukri.example/job/sharma-1", "https://www.naukri.example/job/sharma-2"}
-    assert (sharma["open_roles"], sharma["role"], sharma["max_job_age_days"]) == (12, "Warehouse Supervisor", 11)
+    assert (sharma["open_roles"], sharma["role"], sharma["max_job_age_days"]) == (40, "Warehouse Supervisor", 11)   # hiring signals keep the larger value (qa/import-india-sources), 12 and 40 openings on two postings
     nirmal = one(store, "Nirmal Textiles")
     assert "imran.shaikh.example@gmail.com" in nirmal["emails"] and "+919000010013" in nirmal["phones"]
     assert nirmal["pincode"] == "395002" and nirmal["address"].startswith("Plot 12, Ring Road")
