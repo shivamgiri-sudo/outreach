@@ -300,8 +300,10 @@ def map_columns(headers: list, sample_rows: list, fmt: dict, saved: dict = None,
         else:
             field, conf = _fuzzy_field(loose)
             how = "similar name" if field else ""
-        if how not in ("you chose", "saved mapping"):
+        if how not in ("you chose", "saved mapping", "extra column, not lead data"):
             sniffed = sniff_values(samples)
+            if sniffed == "phone" and not field and "id" in loose.split():
+                sniffed = None
             if sniffed == "words" and field in ("phone", "email"):
                 person = {"contact", "person", "name"} & set(loose.split())
                 field, conf = ("contact_name", 0.6) if person else (None, 0.0)
