@@ -4,6 +4,7 @@ import threading
 from datetime import datetime, timezone
 from typing import Optional
 
+from .digest import run_digest
 from .growth_core import public_base_url
 from .reminders import run_reminders
 from .senders import make_email_sender, make_transactional_sender
@@ -28,7 +29,8 @@ def tick(store, now: Optional[datetime] = None, sender=None, campaign_runner=Non
 
 def reminder_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
     now = now or datetime.now(timezone.utc)
-    return run_reminders(store, now, sender or make_transactional_sender(store), BASE_URL)
+    sender = sender or make_transactional_sender(store)
+    return {**run_reminders(store, now, sender, BASE_URL), "digest": bool(run_digest(store, now, sender))}
 
 
 def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVAL_SECONDS, campaign_runner=None) -> threading.Event:
