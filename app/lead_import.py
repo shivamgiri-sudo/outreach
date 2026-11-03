@@ -12,7 +12,7 @@ from collections import Counter
 from datetime import date
 from typing import Optional
 
-from .header_map import detect_format, map_columns
+from .header_map import detect_format, loose_header, map_columns
 from .hygiene import dedupe_key as basic_dedupe_key, is_role_address, normalise_phone
 from .lead_merge import CLOSED_STAGES, LeadIndex, merge_record
 from .lead_model import event, now_iso, to_int
@@ -44,7 +44,34 @@ PROBLEM_TEXT = {
     "suppressed": "{v} is on the do-not-contact list, so this row is skipped.",
     "suppressed_extra": "{v} is on the do-not-contact list and was left out.",
     "closed_lead": "Matches a lead marked {v}; new details are added but it stays {v}.",
+    "source_opt_out": "The source file says this person opted out of email ({v}), so this row is skipped.",
+    "do_not_call": "The source file says do not call ({v}), so the phone numbers were left out.",
+    "email_flagged": "The source marked the email {v}; check it before emailing.",
 }
+# CRM / vendor columns that carry a person's "no" or a vendor's verdict on the email. A "no" is never a "yes".
+_OPT_OUT_COLUMNS = {loose_header(h) for h in ("Email Opt Out", "Unsubscribed from all email", "Do Not Email",
+                                              "Has Opted Out Of Email", "Opted Out Of Email", "Email Opt-Out")}
+_NO_CALL_COLUMNS = {loose_header(h) for h in ("Do Not Call", "DoNotCall", "DNC")}
+_EMAIL_STATUS_COLUMNS = {loose_header(h) for h in ("Email Status", "Verification status", "Email Verification Status",
+                                                   "Email 1 Validation", "Email Validation", "Email Grade")}
+_YES = {"true", "yes", "y", "1", "x", "checked", "opted out", "unsubscribed"}
+_BAD_STATUS = ("invalid", "undeliverable", "bounce", "not valid", "risky", "unverifiable", "do not mail", "spamtrap",
+               "disposable")
+
+
+def _source_flags(row: dict) -> tuple:
+    """(email opt-out cell, do-not-call cell, bad email-status cell) read straight from the row, '' when absent."""
+    found = {"opt": "", "call": "", "status": ""}
+    for header, value in row.items():
+        loose, text = loose_header(header), clean_text(value)
+        low = text.lower()
+        if loose in _OPT_OUT_COLUMNS and low in _YES:
+            found["opt"] = found["opt"] or f"{header}: {text}"
+        elif loose in _NO_CALL_COLUMNS and low in _YES:
+            found["call"] = found["call"] or f"{header}: {text}"
+        elif loose in _EMAIL_STATUS_COLUMNS and (low in ("d", "f") or any(w in low for w in _BAD_STATUS)):
+            found["status"] = found["status"] or f"{header}: {text}"
+    return found["opt"], found["call"], found["status"]
 
 
 def read_table(csv_text: Optional[str] = None, rows: Optional[list] = None) -> tuple:
@@ -204,7 +231,7 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
     created, touched = {}, {}
     blocked_aliases = {email_alias_key(e) for e in suppressed}
     out = {k: [] for k in ("created_ids", "merged_ids", "merges", "duplicates", "unchanged", "rejected", "skipped",
-                           "warnings", "sample")}
+                           "warnings", "sample", "source_opt_outs")}
     counts = Counter()
 
     for n, row in table:
@@ -214,8 +241,20 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
         for kind, value in problems:
             warn(kind, value)
         action = None
+        opted_out, no_call, flagged = _source_flags(row)
+        if no_call and rec["phones"]:
+            warn("do_not_call", no_call)
+            rec.update(phone=None, phone_type="", phones=[])
+        if flagged and rec["emails"]:
+            warn("email_flagged", f"{rec['emails'][0]} ({flagged})")
+            rec["notes"].append(f"{rec['emails'][0]} flagged by source - {flagged}")
         blocked = [e for e in rec["emails"] if e in suppressed or email_alias_key(e) in blocked_aliases]
-        if blocked and blocked[0] == rec["emails"][0]:
+        if opted_out:
+            warn("source_opt_out", opted_out)
+            out["source_opt_outs"] += [e for e in rec["emails"] if e not in out["source_opt_outs"]]
+            out["skipped"].append({"row": n, "reason": PROBLEM_TEXT["source_opt_out"].format(v=opted_out), "values": row})
+            action = "skipped"
+        elif blocked and blocked[0] == rec["emails"][0]:
             warn("suppressed", blocked[0])
             out["skipped"].append({"row": n, "reason": PROBLEM_TEXT["suppressed"].format(v=blocked[0]), "values": row})
             action = "skipped"

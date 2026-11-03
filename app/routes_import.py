@@ -118,6 +118,8 @@ def make_router(store) -> APIRouter:
             return leads
         store.update("leads", apply)
         result = holder["result"]
+        if result["source_opt_outs"]:          # a "no" recorded in the source CRM goes on the do-not-contact list
+            store.update("suppressed", lambda rows: [*rows, *(e for e in result["source_opt_outs"] if e not in rows)])
         entry = {"id": import_id, "at": now_iso(), "source": ctx["source"], "format": ctx["format"]["name"],
                  "summary": result["summary"], "created": holder["fingerprints"], "merged_ids": result["merged_ids"]}
         _collection(store, "imports")
