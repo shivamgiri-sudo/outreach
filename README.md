@@ -70,8 +70,30 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
   - Webhook addresses to paste into provider dashboards are listed with copy buttons. They carry a secret, and calls without it (or without the provider's signature) are refused.
 - **Meetings:**
   - "Book a meeting" in the lead panel creates the invite with a video link, or gives a prefilled booking link.
+  - Zoom, custom calendar APIs and a booking link with a fixed time get an `.ics` calendar invite emailed by the app (Google and Microsoft send their own; tick "Send our own invite" to add ours). Cancelling sends the cancellation.
+  - Reminders carry the join link; 30 minutes after a meeting ends without "Mark done", the owner gets a follow-up task.
   - Cal.com and Calendly bookings land on the matching lead.
   - A Meetings page lists upcoming meetings in IST.
+- **Compliance (India's DPDP Act):**
+  - Consent is recorded before WhatsApp, and every consent given or withdrawn goes into an append-only consent ledger.
+  - Every message has a signed unsubscribe link; opening it asks for a click, so email link-scanners can't unsubscribe people.
+  - Owners can download everything held on a person or erase it (lead panel, or the API below). After erasure only a hash of the email and phone is kept, so the person is never imported or contacted again.
+  - A reply asking to delete their data creates an "Erasure request" task. Cold leads past the review period (default 365 days) are listed for review, never deleted automatically.
+  - An optional privacy notice link goes in every email footer. Suppression list, robots.txt respected, no LinkedIn scraping or automation.
+- **Logins and roles:**
+  - The admin password signs in as owner. Owners add team logins on the Setup page: **owner** (everything), **caller** (leads, calls, meetings, tasks; no settings, integrations, workflows, live switches or CSV exports) or **viewer** (read only).
+  - Sessions last 12 hours and renew themselves while in use; "Sign out" ends them on the server; changing a password signs out old sessions.
+- **Security:**
+  - Rate limits on login, unsubscribe, demo and webhook addresses; security headers on every response; API docs off by default.
+  - Every address the server fetches is checked against private and internal networks, and the connection is pinned to the checked IP.
+  - Saved keys are encrypted at rest when `OUTREACH_SECRET_KEY` is set.
+- **Downloads and backup:**
+  - Every list has a download button (CSV that opens in Excel with Indian names and ₹ intact, or JSON): leads, emails,
+    replies, WhatsApp, reminders, tasks, a lead's full activity, campaign leads and runs, meetings, duplicates, insights,
+    the LinkedIn queue. Times come in IST plus the raw value; cells can't run as spreadsheet formulas; no keys ever.
+  - **Setup → Backup & restore:** one `.json.gz` with everything (keys left out unless you ask), and a restore that
+    shows what would change first, keeps the old file and leaves sending off. `scripts/backup.py` does the same on a
+    server. Moving to your own server or a laptop: [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 - **Compliance:**
   - Consent is recorded before WhatsApp. Every message has an unsubscribe.
   - Opening the unsubscribe link asks for a click, so email link-scanners can't unsubscribe people.
@@ -86,16 +108,36 @@ Optional environment variables:
 - `OUTREACH_AUTORUN=1`: sends due emails and runs time-based rules every 15 minutes (Mon–Fri 9–18 IST), runs campaigns set to
   run daily (once a day), checks the reply mailbox (IMAP) every 5 minutes, and sends reminders and the 09:30 IST summary.
 - `OUTREACH_DATA_FILE`: where data is stored. Default `data/store.json` (git-ignored). Saves are atomic, and saved keys are in plain text.
+- `OUTREACH_ADMIN_PASSWORD`: turns on the login screen (this login is an owner). **Without it (and without team logins) the API only answers on this computer.**
+- `OUTREACH_SECRET_KEY`: encrypts saved API keys, passwords and tokens in the data file. Use a long random value, e.g. `python -c "import secrets; print(secrets.token_urlsafe(32))"`, and keep it safe: without it the saved keys can't be read. Plain keys are converted on the next start.
+- `OUTREACH_ENABLE_DOCS=1`: turns on `/docs` and `/openapi.json` (off by default).
+- `OUTREACH_ALLOW_PRIVATE_HOSTS`: comma-separated `host:port` the server may fetch even though it is private, e.g. `localhost:3002` for a self-hosted Firecrawl.
+- `OUTREACH_AUTORUN=1`: sends due emails and runs time-based rules every 15 minutes (Mon–Fri 9–18 IST), and checks the reply mailbox (IMAP) every 5 minutes.
+- `OUTREACH_DATA_FILE`: where data is stored. Default `data/store.json` (git-ignored). Saves are atomic; saved keys are encrypted only when `OUTREACH_SECRET_KEY` is set.
 - `OUTREACH_WEBHOOK_SECRET`: header `X-Webhook-Secret` that lets the BookMyInterview product call `POST /api/activation/event`. It can also be set in Setup.
 - `OUTREACH_BASE_URL`: public address for demo and unsubscribe links. It can also be set in Setup.
 - `OUTREACH_LLM_MODEL`: model used for AI reply drafts and reply reading. Default `claude-sonnet-5-5`.
 - `OUTREACH_UI_ORIGINS`: extra web addresses (comma-separated) the calendar sign-in may return to, if the UI is not served from the public address.
 - `OUTREACH_IGNORE_BUSINESS_HOURS=1` and `OUTREACH_TEST_MODE=1`: local testing only.
 
+### Deploying (one server behind Caddy)
+Run one worker on the local address and let Caddy add HTTPS:
+
+    uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+
+Caddy's `reverse_proxy` sends `X-Forwarded-For` and `X-Forwarded-Proto`; the app trusts them only from 127.0.0.1 (rate limits, HSTS). Rate limits and sign-outs are kept per process, so use one worker. Serve `web/dist` from Caddy and proxy `/api/*`, `/u/*` and `/demo/*` to the app; set headers for the web UI itself in Caddy.
+
+### DPDP endpoints (owner only)
+- `GET /api/leads/{id}/export`: everything held on the person, as JSON.
+- `POST /api/leads/{id}/erase` with `{"confirm": true}`: deletes it, keeps only hashes so they are never re-imported or contacted.
+- `GET /api/compliance/retention`: cold leads past `retention_days_cold` (Setup), for review.
+- `GET /api/compliance/consent-ledger?lead_id=…`: consent given and withdrawn.
+
 ## Test
     .venv\Scripts\python -m pytest -q          # 378 backend tests
     .venv\Scripts\python -m pytest -q          # 436 backend tests
     .venv\Scripts\python -m pytest -q          # 467 backend tests
+    .venv\Scripts\python -m pytest -q          # 539 backend tests
 
 Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a throwaway file and
 `OUTREACH_IGNORE_BUSINESS_HOURS=1`, then the UI):
@@ -105,7 +147,7 @@ Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a thro
     cd web && npm run e2e                      # 82 steps; HEADED=1 shows the browser
     node e2e/tour.mjs                          # every page at desktop, tablet and phone width
     # with the API started using OUTREACH_ADMIN_PASSWORD=e2e-password:
-    node e2e/auth.mjs                          # 6 login steps
+    node e2e/auth.mjs                          # 9 login steps
 
 ## Not verified against live services
 Resend (email), Anthropic (reply drafts and reading), Apollo (match, People API Search, Organization Search, job

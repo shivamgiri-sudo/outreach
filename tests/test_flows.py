@@ -5,7 +5,7 @@ import pytest
 
 from app.flow_templates import TEMPLATES
 from app.flows import validate_graph
-from tests.flow_helpers import (T0, chain, edge, email_node, enroll, flow_outbox, lead, make_client, make_flow, node,
+from tests.flow_helpers import (unsubscribe, T0, chain, edge, email_node, enroll, flow_outbox, lead, make_client, make_flow, node,
                                 runs, store_of, tick, timeline_texts)
 
 TRIGGER = node("t", "trigger.manual")
@@ -204,7 +204,7 @@ def test_simulate_reports_refusals_for_closed_leads_and_missing_consent(c):
     acme = lead(c)["id"]
     path = c.post(f"/api/flows/{flow['id']}/simulate", json={"lead_id": acme}).json()["path"]
     assert path[-1]["ok"] is False and "no recorded consent" in path[-1]["result"]
-    c.post(f"/u/{acme}")
+    unsubscribe(c, acme)
     result = c.post(f"/api/flows/{flow['id']}/simulate", json={"lead_id": acme}).json()
     assert "Would not start" in result["ended"]
 
@@ -237,3 +237,23 @@ def test_list_catalog_and_delete(c):
     assert gone["runs_stopped"] == 1
     assert c.get(f"/api/flows/{flow['id']}").status_code == 404
     assert all(r["status"] == "stopped" for r in store_of(c).read("flow_runs"))
+
+
+def test_only_owners_change_flows_callers_can_read(tmp_path):
+    from fastapi.testclient import TestClient
+    from app.main import create_app
+    c = TestClient(create_app(data_file=tmp_path / "auth.json", admin_password="admin-pass-123"), client=("203.0.113.9", 50000))
+    owner = c.post("/api/login", json={"password": "admin-pass-123"}).json()["token"]
+    auth = lambda token: {"Authorization": f"Bearer {token}"}
+    c.post("/api/users", json={"email": "priya@example.com", "name": "Priya", "role": "caller", "password": "long-password-1"},
+           headers=auth(owner))
+    caller = c.post("/api/login", json={"email": "priya@example.com", "password": "long-password-1"}).json()["token"]
+    flow = c.post("/api/flows/templates/cold_email", headers=auth(owner))
+    assert flow.status_code == 200
+    fid = flow.json()["id"]
+    assert c.get("/api/flows", headers=auth(caller)).status_code == 200
+    assert c.get(f"/api/flows/{fid}", headers=auth(caller)).status_code == 200
+    for method, path in (("post", "/api/flows"), ("put", f"/api/flows/{fid}"), ("post", f"/api/flows/{fid}/activate"),
+                         ("post", "/api/flows/templates/cold_email"), ("delete", f"/api/flows/{fid}"), ("post", "/api/flows/tick")):
+        r = getattr(c, method)(path, headers=auth(caller), **({} if method == "delete" else {"json": {}}))
+        assert r.status_code == 403, (method, path, r.status_code)

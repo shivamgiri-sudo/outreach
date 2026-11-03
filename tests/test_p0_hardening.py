@@ -8,6 +8,7 @@ from app.main import create_app
 from app.sheet_import import sheet_leads
 from app.store import Store
 from app.workflows import run_time_rules
+from app.unsubscribe import unsub_path
 
 T0 = datetime(2026, 11, 3, 5, 0, tzinfo=timezone.utc)
 CSV = ("company,contact_name,email,phone,website,open_roles,company_size,country\n"
@@ -61,7 +62,7 @@ def test_no_reply_rule_never_demotes_a_warm_lead(tmp_path):
 def test_converted_event_keeps_an_unsubscribed_stage(tmp_path):
     c = make(tmp_path)
     lid = lead(c)["id"]
-    c.post(f"/u/{lid}")
+    c.post(unsub_path(c.app.state.store, lid))
     c.post("/api/activation/event", json={"lead_id": lid, "event": "converted"})
     saved = lead(c)
     assert saved["stage"] == "unsubscribed" and saved["activation"]["step"] == "converted"

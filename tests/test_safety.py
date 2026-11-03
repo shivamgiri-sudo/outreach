@@ -11,6 +11,7 @@ from app import routes_outreach
 from app.main import create_app
 from app.replies import classify_reply
 from app.store import Store
+from app.unsubscribe import unsub_path
 
 CSV = "company,contact_name,email,phone,website,open_roles,company_size,country\nAcme,Ravi Kumar,ravi@acme.com,9876543210,https://acme.com,12,200,IN\n"
 
@@ -244,8 +245,9 @@ def test_sample_reply_to_email_four_is_a_yes():
 # ---- unsubscribe link: link scanners (GET) can't unsubscribe anyone; the button (POST) does ----
 def test_unsubscribe_link_asks_before_acting(client):
     lid = lead(client)["id"]
-    page = client.get(f"/u/{lid}")
+    link = unsub_path(client.app.state.store, lid)
+    page = client.get(link)
     assert page.status_code == 200 and "Yes, unsubscribe me" in page.text
     assert lead(client)["stage"] != "unsubscribed"
-    client.post(f"/u/{lid}")
+    client.post(link)
     assert lead(client)["stage"] == "unsubscribed"

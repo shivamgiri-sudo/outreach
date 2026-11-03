@@ -1,6 +1,22 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
+import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+
+function Downloads() {
+  return (
+    <div className="card dl-card" style={{ marginBottom: 14 }}>
+      <b>Download</b>
+      <span className="dl-group">
+        <DownloadButton path={exportPath("outbox")} label="Emails" title="Every email: when, to whom, step, subject, status, delivered" testId="download-outbox" />
+        <DownloadButton path={exportPath("outbox", { include_body: 1 })} label="Emails with full text" testId="download-outbox-body" />
+        <DownloadButton path={exportPath("inbox")} label="Replies" title="Replies received, how each was read and which lead it matched" testId="download-inbox" />
+        <DownloadButton path={exportPath("whatsapp")} label="WhatsApp" testId="download-whatsapp" />
+        <DownloadButton path={exportPath("transactional")} label="Reminders & invites" title="Reminder and invite emails sent to the team and leads" testId="download-transactional" />
+      </span>
+    </div>
+  );
+}
 
 const STATUS_PILL = { sent: "ok", delivered: "ok", dry_run: "", failed: "warn", provider_error: "warn" };
 const STATUS_LABEL = { dry_run: "practice", provider_error: "provider problem" };
@@ -84,6 +100,7 @@ export default function Outbox() {
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
       <SendingBanner status={status} onResume={() => act(api.resumeSending, "Sending resumed.")}
         onClearPractice={() => act(api.clearPractice, (r) => `Removed ${r.outbox} practice row(s). Live sending will start each lead from Email 1.`)} />
+      <Downloads />
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="row">
           <div><label>Sender name</label><input value={cfg.sender_name || ""} onChange={(e) => setCfg({ ...cfg, sender_name: e.target.value })} /></div>

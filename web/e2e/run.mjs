@@ -471,6 +471,15 @@ await step("Setup basics: values survive a reload and the secret is masked", asy
   if (!secret.startsWith("••••")) throw new Error(`secret not masked: ${secret}`);
   if (!(await page.getByRole("checkbox", { name: /free limits/ }).isChecked())) throw new Error("limits box not saved");
 });
+await step("Setup: privacy notice link is saved and the owner sees the Team logins card", async () => {
+  await page.getByLabel("Privacy notice link (optional)").fill("https://bookmyinterview.test.invalid/privacy");
+  await page.getByRole("button", { name: "Save basics" }).click();
+  await expectText("Saved.");
+  await page.getByTestId("users-card").getByText("Team logins").waitFor();
+  await page.getByTestId("users-card").getByRole("button", { name: "Add login" }).waitFor();
+  const settings = await (await fetch(`${API}/api/settings`)).json();
+  if (settings.privacy_url !== "https://bookmyinterview.test.invalid/privacy") throw new Error(`privacy_url ${settings.privacy_url}`);
+});
 await step("Setup: test buttons answer honestly (WhatsApp, AI writer, sending domain)", async () => {
   const wa = page.locator(".card", { hasText: "WhatsApp Business" });
   await wa.getByRole("button", { name: "Test connection" }).click();
@@ -628,11 +637,16 @@ await step("Public: demo page renders, escapes content, offers claim button; ope
   await dp.screenshot({ path: `${SHOTS}/09-demo-page.png`, fullPage: true });
   await dp.close();
 });
-await step("Public: unsubscribe link suppresses the lead", async () => {
+await step("Public: the signed unsubscribe link from the email suppresses the lead; the unsigned form does not work", async () => {
   const leads = await (await fetch(`${API}/api/leads`)).json();
   const beta = leads.find((l) => l.company === "Beta Logistics");
+  const mail = (await (await fetch(`${API}/api/outbox`)).json()).find((m) => m.lead_id === beta.id);
+  const link = ((mail && mail.body.match(/\/u\/[\w.-]+/)) || [])[0];
+  if (!link || !link.startsWith(`/u/${beta.id}.`)) throw new Error(`no signed unsubscribe link in the email: ${link}`);
+  if ((await fetch(`${API}/u/${beta.id}`)).status !== 404) throw new Error("the unsigned link still works");
+  if ((await fetch(`${API}${link.slice(0, -2)}xx`)).status !== 404) throw new Error("a tampered link works");
   const up = await ctx.newPage();
-  await up.goto(`${API}/u/${beta.id}`);
+  await up.goto(`${API}${link}`);
   const before = await (await fetch(`${API}/api/leads/${beta.id}`)).json();
   if (before.stage === "unsubscribed") throw new Error("opening the link alone unsubscribed the lead");
   await up.getByRole("button", { name: "Yes, unsubscribe me" }).click();
@@ -710,6 +724,19 @@ await step("Meetings: lead panel gives a prefilled booking link; Meetings page o
   await page.keyboard.press("Escape");
   await nav("Meetings");
   await expectText("Upcoming demos and calls");
+});
+await step("Meetings: a booking link with a fixed time books a meeting and keeps the .ics invite as practice", async () => {
+  await nav("Leads");
+  await page.locator("tr.click", { hasText: "Acme Retail" }).click();
+  const box = page.getByTestId("lead-meetings");
+  await box.getByRole("button", { name: /Book a meeting/ }).click();
+  await box.getByRole("checkbox", { name: /fixed time/ }).check();
+  await box.getByText("We email the lead a calendar invite").waitFor();
+  await box.getByRole("button", { name: "Book meeting" }).click();
+  await box.getByText("invite kept as practice").waitFor();
+  const rows = await (await fetch(`${API}/api/meetings`)).json();
+  if (!rows.some((m) => m.provider === "booking_link" && m.invite === "dry_run")) throw new Error("no practice invite recorded");
+  await page.keyboard.press("Escape");
 });
 
 await step("Activity: log a call with a follow-up; it shows in the full activity with its time", async () => {
@@ -854,6 +881,67 @@ await step("Campaigns: open the campaign's leads, the lead panel shows where it 
   if (overflow) throw new Error("campaign page scrolls sideways on a phone");
 });
 
+await step("Privacy: the owner downloads a lead's data and erases it; it cannot be imported again", async () => {
+  await fetch(`${API}/api/leads/import`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ csv: "company,contact_name,email\nOmega Erase Co,Om Prakash,om@omega-erase.invalid\n", source: "e2e" }) });
+  await nav("Leads");
+  await page.getByLabel("Search leads").fill("Omega Erase");
+  await page.locator("tr.click", { hasText: "Omega Erase Co" }).click();
+  const privacy = page.getByTestId("privacy-actions");
+  const [download] = await Promise.all([page.waitForEvent("download"), privacy.getByRole("button", { name: "Download their data" }).click()]);
+  if (!download.suggestedFilename().endsWith(".json")) throw new Error(download.suggestedFilename());
+  await privacy.getByRole("button", { name: "Erase their data…" }).click();
+  await privacy.getByRole("button", { name: "Yes, erase everything" }).click();
+  await page.locator(".drawer").waitFor({ state: "detached" });
+  const again = await (await fetch(`${API}/api/leads/import`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ csv: "company,email\nOmega Again,om@omega-erase.invalid\n", source: "e2e" }) })).json();
+  if (again.created !== 0 || again.suppressed !== 1) throw new Error(JSON.stringify(again));
+  await page.getByLabel("Search leads").fill("");
+});
+
+// ---------- Downloads and backup ----------
+const downloadFrom = async (locator) => {
+  const [download] = await Promise.all([page.waitForEvent("download", { timeout: 15000 }), locator.click()]);
+  return { name: download.suggestedFilename(), path: await download.path(), text: fs.readFileSync(await download.path(), "utf-8") };
+};
+await step("Downloads: Leads 'Download all' saves a CSV with the header row", async () => {
+  await nav("Leads");
+  const file = await downloadFrom(page.getByTestId("download-leads-all"));
+  if (!/^outreach-leads-\d{4}-\d{2}-\d{2}\.csv$/.test(file.name)) throw new Error(`file name ${file.name}`);
+  if (!file.text.startsWith("﻿id,company,contact_name,title,")) throw new Error(`header: ${file.text.slice(0, 80)}`);
+  for (const column of ["score", "band", "consent", "consent_at_ist", "sequence_status", "owner", "linkedin_status"]) {
+    if (!file.text.split("\r\n")[0].split(",").includes(column)) throw new Error(`no ${column} column`);
+  }
+  if (!file.text.includes("Acme Retail")) throw new Error("Acme Retail is not in the file");
+});
+await step("Downloads: Outbox 'Replies' saves the replies received", async () => {
+  await nav("Outbox");
+  const file = await downloadFrom(page.getByTestId("download-inbox"));
+  if (!/^outreach-inbox-\d{4}-\d{2}-\d{2}\.csv$/.test(file.name)) throw new Error(`file name ${file.name}`);
+  if (!file.text.startsWith("﻿received_at_ist,received_at,channel,from,subject,text,label,matched,lead_id")) throw new Error(`header: ${file.text.slice(0, 80)}`);
+  const inbox = await (await fetch(`${API}/api/inbox`)).json();
+  if (inbox.length === 0 && file.text.trim().split("\r\n").length !== 1) throw new Error("rows in the file but no replies captured");
+  for (const m of inbox) if (m.from && !file.text.includes(m.from)) throw new Error(`reply from ${m.from} missing`);
+});
+await step("Backup: Setup downloads a backup and the restore dry run shows the counts", async () => {
+  await nav("Setup");
+  await page.getByRole("tab", { name: "Backup & restore" }).click();
+  const file = await downloadFrom(page.getByTestId("download-backup"));
+  if (!/^outreach-backup-\d{4}-\d{2}-\d{2}-\d{4}-IST\.json\.gz$/.test(file.name)) throw new Error(`file name ${file.name}`);
+  await page.locator("#restore-file").setInputFiles(file.path);
+  await page.getByRole("button", { name: "Check this file" }).click();
+  const plan = page.getByTestId("restore-plan");
+  await plan.getByText("Nothing has been changed yet").waitFor();
+  await plan.getByText("Real sending (email, WhatsApp and SMS) is OFF after a restore").waitFor();
+  const leads = await (await fetch(`${API}/api/leads`)).json();
+  const cells = await page.getByTestId("restore-summary").locator("tr", { hasText: "Leads" }).first().locator("td").allInnerTexts();
+  if (cells[1] !== String(leads.length) || cells[2] !== String(leads.length)) throw new Error(`leads row ${cells.join(" | ")}, expected ${leads.length}`);
+  await shot("14-backup-dry-run");
+  await plan.getByRole("button", { name: "Cancel" }).click();
+  const after = await (await fetch(`${API}/api/leads`)).json();
+  if (after.length !== leads.length) throw new Error("the dry run changed the data");
+});
+
 // ---------- Mobile layout ----------
 await step("Mobile width: no horizontal page scroll on Leads", async () => {
   await page.setViewportSize({ width: 390, height: 800 });
@@ -875,6 +963,14 @@ await step("Mobile width: no horizontal page scroll on Data hygiene and the impo
   overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   await shot("13-mobile-import-columns");
   if (overflow) throw new Error("import wizard scrolls sideways");
+});
+await step("Mobile width: the menu is a compact top bar, even on a short page", async () => {
+  await nav("Success stories");
+  await page.setViewportSize({ width: 390, height: 1400 });
+  const bar = await page.locator("nav.side").boundingBox();
+  if (!bar || bar.height > 70 || bar.y > 1) throw new Error(`nav bar is ${bar && bar.height}px tall at y=${bar && bar.y}`);
+  await shot("10b-mobile-short-page");
+  await page.setViewportSize({ width: 390, height: 800 });
 });
 
 await browser.close();

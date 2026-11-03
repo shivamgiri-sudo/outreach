@@ -16,8 +16,10 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 
 from . import sequences
+from .channels.security import server_secret
 from .growth_core import ensure_demo, get_offer, offer_line
 from .hygiene import business_domain
+from .privacy import is_blocked
 from .senders import email_ready
 from .sequences import DEFAULT_DAILY_CAP, IST, due_steps, in_business_hours, lead_variables, render
 
@@ -86,6 +88,7 @@ def _mode_keys(live: bool) -> tuple:
 
 
 def _run(store, now: datetime, base_url: str, sender) -> dict:
+    server_secret(store)                      # unsubscribe links are signed with it; make sure it exists
     cfg = get_settings(store)
     live = bool(cfg["live_sending"]) and bool(email_ready(store))
     if live and (pause := sending_paused(store, now)):
@@ -159,6 +162,8 @@ def _message_domain(store) -> str:
 
 def _claim(store, lead_id: str, day: int, now: datetime, email: str) -> bool:
     """Mark the send as in progress on the latest saved lead, but only if it may still be emailed right now."""
+    if is_blocked(store, email):                 # unsubscribed, bounced, or erased on request (hashed list)
+        return False
     suppressed = set(store.read("suppressed"))
     claimed = {}
 
@@ -192,7 +197,7 @@ def _compose(lead: dict, step: dict, cfg: dict, offer: dict, base_url: str, now:
     lead = ensure_demo(lead, now)
     extra = {"offer_line": offer_line(offer), "demo_link": f"{base_url}/demo/{lead['demo_token']}",
              "include_link": bool(cfg.get(getattr(sequences, "INCLUDE_LINK_SETTING", "email1_include_link")))}
-    variables = lead_variables(lead, cfg["sender_name"], base_url, extra)
+    variables = lead_variables(lead, cfg["sender_name"], base_url, extra, secret=cfg.get("server_secret", ""))
     pick = getattr(sequences, "pick_variant", None)
     step = pick(step, variables) if pick else step
     subject, missing_subject = render(step["subject"], variables)

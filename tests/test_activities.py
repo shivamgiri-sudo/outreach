@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.activities import next_call_slot, task_buckets
 from app.main import create_app
 from app.reminders import run_reminders
+from app.unsubscribe import unsub_path
 from app.sequences import IST
 
 T0 = datetime(2026, 11, 3, 5, 0, tzinfo=timezone.utc)   # Tuesday 10:30 IST
@@ -170,7 +171,7 @@ def test_no_meeting_reminder_email_to_an_unsubscribed_lead(tmp_path):
     lid = lead(c)["id"]
     start = T0 + timedelta(minutes=50)
     store.update_lead(lid, lambda l: {**l, "meetings": [{"id": "m1", "title": "Demo", "start": start.isoformat(), "status": "scheduled"}]})
-    c.post(f"/u/{lid}")
+    c.post(unsub_path(store, lid))
     store.update("settings", lambda s: {**s, "live_sending": True})
     sender = Sender()
     run_reminders(store, T0, sender)

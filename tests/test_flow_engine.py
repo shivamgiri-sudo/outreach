@@ -6,7 +6,7 @@ import pytest
 
 from app import autorun
 from app.flow_actions import next_business_time, split_variant
-from tests.flow_helpers import (T0, chain, edge, email_node, enroll, flow_outbox, lead, make_client, make_flow, node,
+from tests.flow_helpers import (unsubscribe, T0, chain, edge, email_node, enroll, flow_outbox, lead, make_client, make_flow, node,
                                 patch_lead, runs, store_of, tick, timeline_texts)
 
 TRIGGER = node("t", "trigger.manual")
@@ -238,7 +238,7 @@ def test_unsubscribe_and_bounce_stop_runs_before_any_message(c):
     acme, beta = lead(c)["id"], lead(c, "Beta")["id"]
     enroll(c, flow, acme, beta)
     tick(c, T0)
-    c.post(f"/u/{acme}")
+    unsubscribe(c, acme)
     store_of(c).update("suppressed", lambda rows: [*rows, "sam@beta.in"])        # a bounce suppresses the address
     tick(c, T0 + timedelta(days=1, hours=1))
     assert flow_outbox(c) == []

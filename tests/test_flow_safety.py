@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from tests.flow_helpers import (T0, FakeTransport, chain, connect_email, edge, email_node, enroll, flow_outbox, go_live, lead,
+from tests.flow_helpers import (unsubscribe, T0, FakeTransport, chain, connect_email, edge, email_node, enroll, flow_outbox, go_live, lead,
                                 make_client, make_flow, node, patch_lead, runs, store_of, tick, timeline_texts)
 
 TRIGGER = node("t", "trigger.manual")
@@ -39,7 +39,7 @@ def test_unsubscribed_or_suppressed_leads_never_get_a_flow_message(c, channel):
     consent(c, beta)
     enroll(c, flow, acme, beta)
     tick(c, T0)
-    c.post(f"/u/{acme}")                                                # unsubscribes mid-flow
+    unsubscribe(c, acme)                                                # unsubscribes mid-flow
     store_of(c).update("suppressed", lambda rows: [*rows, "sam@beta.in"])
     tick(c, T0 + timedelta(days=1, hours=1))
     assert sent_anything(c, acme) == [] and sent_anything(c, beta) == []

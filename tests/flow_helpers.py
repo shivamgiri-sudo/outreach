@@ -107,3 +107,11 @@ def go_live(c):
     c.put("/api/settings", json={"public_base_url": "https://outreach.example.in", **IDENTITY})
     r = c.put("/api/settings", json={"live_sending": True})
     assert r.status_code == 200, r.text
+
+
+def unsubscribe(c, lead_id):
+    """Click the signed unsubscribe link the lead received."""
+    from app.unsubscribe import unsub_path
+    r = c.post(unsub_path(store_of(c), lead_id))
+    assert r.status_code == 200, r.text
+    return r

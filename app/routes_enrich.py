@@ -12,6 +12,7 @@ from .http_util import post_json
 from .enrich import find_public_contacts, needs, pick_best_email
 from .hygiene import business_domain, csv_safe, is_role_address, normalise_email, safe_http_url
 from .lead_model import contactless_match, event, merge_contact, now_iso
+from .privacy import lead_hashes
 from .sheet_import import company_match_key, decision_makers, demo_leads, read_rows, sheet_leads
 
 APOLLO_COLUMNS = ["company", "contact_name", "title", "domain", "city", "lead_id"]
@@ -39,11 +40,14 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
             return attach_people(decision_makers(rows))
         incoming = demo_leads(rows) if body.tab == "demo" else sheet_leads(rows)
         stats = {"created": 0, "duplicates": 0, "merged": 0}
+        erased = set(store.read("suppressed_hashes"))
 
         def merge_in(leads: list) -> list:
             seen = {lead["dedupe_key"] for lead in leads}
             for lead in incoming:
-                if lead["dedupe_key"] in seen:
+                if lead_hashes(lead) & erased:
+                    stats["suppressed"] = stats.get("suppressed", 0) + 1     # erased on request: never imported again
+                elif lead["dedupe_key"] in seen:
                     stats["duplicates"] += 1
                 elif (target := contactless_match(leads, lead)) is not None:
                     leads[target] = merge_contact(leads[target], lead)
@@ -56,7 +60,8 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
             return leads
         store.update("leads", merge_in)
         created, duplicates, merged = stats["created"], stats["duplicates"], stats["merged"]
-        return {"created": created, "duplicates": duplicates, "merged": merged, "rows": len(rows)}
+        extra = {"suppressed": stats["suppressed"]} if stats.get("suppressed") else {}
+        return {"created": created, "duplicates": duplicates, "merged": merged, "rows": len(rows), **extra}
 
     def attach_people(people: list) -> dict:
         """Give each hand-found person to the matching company: first one fills empty fields, the rest are kept as other contacts."""

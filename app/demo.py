@@ -69,14 +69,15 @@ def draft_kit(role: str) -> dict:
     }
 
 
-def _stop_link(lead: dict) -> str:
-    if not lead.get("id"):
+def _stop_link(unsub_path: str) -> str:
+    """The lead's signed unsubscribe link (app/unsubscribe.py builds it); nothing when there is none."""
+    if not unsub_path:
         return ""
-    href = escape(f"/u/{quote(str(lead['id']), safe='')}", quote=True)
+    href = escape(quote(unsub_path, safe="/."), quote=True)
     return f'<p><small><a href="{href}">Not for me — stop emails</a></small></p>'
 
 
-def render_demo_html(lead: dict, kit: dict, offer: dict, claim_url: str) -> str:
+def render_demo_html(lead: dict, kit: dict, offer: dict, claim_url: str, unsub_path: str = "") -> str:
     company, role = escape(lead.get("company") or "your team"), escape(kit["role"])
     heading = f"A sample screen for {company}'s {role} opening" if kit["role"] != GENERIC_ROLE else f"A sample screen for {company}"
     questions = "".join(f"<li>{escape(q)}</li>" for q in kit["questions"])
@@ -94,5 +95,5 @@ small{{color:#6b7686}}</style></head><body>
 <div class="card"><h3>Try it free</h3>
 <p>Your first role is free for {offer['trial_days']} days, up to {offer['candidate_cap']} candidates screened and {offer['booking_cap']} interviews booked. You decide afterwards whether to continue.</p>
 <p><a class="btn" href="{escape(claim_url, quote=True)}">Use this draft for my role</a></p></div>
-{_stop_link(lead)}
+{_stop_link(unsub_path)}
 </body></html>"""

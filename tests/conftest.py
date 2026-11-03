@@ -11,3 +11,5 @@ def fixed_enrolment_clock(monkeypatch):
     monkeypatch.setattr(store, "FSYNC", False)
     monkeypatch.setattr(routes_outreach, "_now_iso", lambda: ENROL_TIME)
     monkeypatch.setattr(routes_outreach, "ALLOW_NOW_OVERRIDE", True)
+    for name in ("OUTREACH_SECRET_KEY", "OUTREACH_ALLOW_PRIVATE_HOSTS", "OUTREACH_ENABLE_DOCS"):
+        monkeypatch.delenv(name, raising=False)      # tests set these themselves when they need them

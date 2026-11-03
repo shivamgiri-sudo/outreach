@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 
 from app import linkedin_seq as li
+from app.unsubscribe import unsub_path
 from app.main import create_app
 
 T0 = datetime(2026, 11, 3, 5, 0, tzinfo=timezone.utc)
@@ -104,5 +105,5 @@ def test_queue_shows_due_messages_and_suggestions_within_the_daily_limit(tmp_pat
 
 def test_unsubscribed_leads_are_never_put_on_linkedin(tmp_path):
     c, lid = make(tmp_path)
-    c.post(f"/u/{lid}")
+    c.post(unsub_path(c.app.state.store, lid))
     assert c.post(f"/api/leads/{lid}/linkedin/start").status_code == 400

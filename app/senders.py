@@ -1,9 +1,10 @@
 """Real email delivery through Resend, only when connected AND explicitly switched on."""
+import base64
 from datetime import datetime, timezone
 
-from .growth_core import public_base_url
 from .hygiene import normalise_email
 from .http_util import HttpStatusError, post_json
+from .unsubscribe import unsub_url
 
 RESEND_URL = "https://api.resend.com/emails"
 
@@ -65,7 +66,7 @@ def make_email_sender(store, transport=post_json, base_url: str = "", channel_tr
         cfg = _email_config(store)
         if not (store.read("settings").get("live_sending") and cfg):
             return {"status": "dry_run"}
-        unsub = f"{public_base_url(store, base_url)}/u/{message['lead_id']}"
+        unsub = unsub_url(store, base_url, message["lead_id"])
         headers = {"List-Unsubscribe": f"<{unsub}>, <mailto:{cfg['from_email']}?subject=unsubscribe>",
                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
         if message.get("message_id"):
@@ -110,16 +111,18 @@ def send_test(store, transport, to: str) -> dict:
     return {"ok": True, "message": f"Test email sent to {address}. Check the inbox and spam folder."}
 
 
-def make_transactional_sender(store, transport=post_json):
-    """One-to-one emails that aren't cold outreach: meeting reminders to a lead, reminders to your own team.
+def make_transactional_sender(store, transport=post_json, channel_transport=None, smtp_factory=None):
+    """One-to-one emails that aren't cold outreach: meeting invites and reminders to a lead, reminders to your team.
 
-    Returns send({to, subject, body, kind}) -> {"status": "sent" | "failed" | "dry_run" | "provider_error", ...}.
+    Returns send({to, subject, body, kind, ics?, ics_method?}) -> {"status": "sent" | "failed" | "dry_run" |
+    "provider_error", ...}. A message with `ics` carries it as a calendar invite attachment.
     Needs the sending domain connected; the caller decides whether real sending is allowed for that kind.
     """
     def send(message: dict) -> dict:
+        from .channels.email_send import invite_attachments, send_transactional
         if _hub_email_provider(store):
-            from .channels.email_send import send_transactional
-            return send_transactional(store, message)
+            from .channels.http import request
+            return send_transactional(store, message, channel_transport or request, smtp_factory)
         cfg = _email_config(store)
         to = normalise_email(message.get("to"))
         if not cfg or not to:
@@ -128,6 +131,10 @@ def make_transactional_sender(store, transport=post_json):
                 "subject": message["subject"][:300], "text": message["body"]}
         if cfg.get("reply_to"):
             body["reply_to"] = cfg["reply_to"]
+        files = invite_attachments(message)
+        if files:
+            body["attachments"] = [{"filename": f["filename"], "content": base64.b64encode(f["content"]).decode("ascii"),
+                                    "content_type": f["content_type"]} for f in files]
         try:
             reply = transport(RESEND_URL, {"Authorization": f"Bearer {cfg['api_key']}"}, body)
         except (OSError, ValueError, PermissionError) as exc:

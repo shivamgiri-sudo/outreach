@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import { Empty, ErrorState } from "../states.jsx";
 import { istDayLabel, istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
+import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 
 const STATUS_TONE = { scheduled: "ok", cancelled: "", done: "warm" };
 
@@ -36,9 +37,13 @@ export default function Meetings({ go }) {
           <div className="row" style={{ marginTop: 8 }}><button className="btn" onClick={() => go?.("integrations")}>Open Integrations</button></div>
         </div>
       )}
-      <label className="row" style={{ fontWeight: 400 }}>
-        <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} /> Show cancelled
-      </label>
+      <div className="row dl-head">
+        <label className="row" style={{ fontWeight: 400 }}>
+          <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} /> Show cancelled
+        </label>
+        <DownloadButton path={exportPath("meetings")} label="Download all meetings" testId="download-meetings"
+          title="Past, upcoming and cancelled meetings with times in IST" />
+      </div>
       {shown.length === 0 && <Empty>No upcoming meetings.</Empty>}
       {days.map((day) => (
         <div key={day} className="card" style={{ marginBottom: 12 }}>

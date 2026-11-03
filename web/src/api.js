@@ -2,6 +2,15 @@ const TOKEN_KEY = "outreach-token";
 export const getToken = () => { try { return sessionStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; } };
 export const setToken = (t) => { try { t ? sessionStorage.setItem(TOKEN_KEY, t) : sessionStorage.removeItem(TOKEN_KEY); } catch { /* storage blocked */ } };
 
+// The signed-in person's role (owner / caller / viewer), set by App from /api/me; pages hide what the role can't do.
+let role = "owner";
+export const getRole = () => role;
+export const setRole = (r) => { role = r || "owner"; };
+export const isOwner = () => role === "owner";
+
+// The server re-issues the token once half its 12 hours have passed; keep the newest one.
+const keepRenewed = (res) => { const t = res.headers.get("X-Renewed-Token"); if (t && getToken()) setToken(t); };
+
 async function request(path, options = {}) {
   const token = getToken();
   const res = await fetch(path, {
@@ -9,6 +18,7 @@ async function request(path, options = {}) {
     ...options,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
+  keepRenewed(res);
   if (res.status === 401 && !path.startsWith("/api/login")) {
     setToken("");
     window.dispatchEvent(new Event("auth-expired"));
@@ -20,15 +30,52 @@ async function request(path, options = {}) {
   return res.json();
 }
 
-async function download(path) {
+// The file name the server chose (Content-Disposition), or "".
+function servedName(res) {
+  const header = res.headers.get("content-disposition") || "";
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(header);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+async function fileRequest(path, options = {}) {
   const token = getToken();
-  const res = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  if (!res.ok) throw new Error(`Download failed (${res.status})`);
-  return res.blob();
+  const res = await fetch(path, {
+    method: options.method || (options.body !== undefined ? "POST" : "GET"),
+    headers: { ...(options.contentType ? { "Content-Type": options.contentType } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: options.body,
+  });
+  keepRenewed(res);
+  if (res.status === 401) {
+    setToken("");
+    window.dispatchEvent(new Event("auth-expired"));
+  }
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.detail || `${options.what || "Download"} failed (${res.status})`);
+  }
+  return res;
+}
+
+// A plain link can't send the login token, so files are fetched with it. `body` (an object) sends a POST with JSON;
+// `withName` also returns the file name the server chose.
+async function download(path, options = {}) {
+  const json = options.body !== undefined;
+  const res = await fileRequest(path, { body: json ? JSON.stringify(options.body) : undefined, contentType: json ? "application/json" : undefined });
+  const blob = await res.blob();
+  return options.withName ? { blob, filename: servedName(res) } : blob;
+}
+
+// Sends a file as the raw request body (used for restoring a backup) and returns the JSON answer.
+async function upload(path, file) {
+  const res = await fileRequest(path, { method: "POST", body: file, contentType: "application/octet-stream", what: "Upload" });
+  return res.json();
 }
 
 export const api = {
   download,
+  upload,
+  restoreBackup: (file, { confirm = false, keepSecrets = false } = {}) =>
+    upload(`/api/backup/restore?${confirm ? "confirm=1&dry_run=0" : "dry_run=1"}${keepSecrets ? "&keep_secrets=1" : ""}`, file),
   dashboard: () => request("/api/dashboard"),
   today: () => request("/api/today"),
   taskDone: (taskIndex) => request("/api/tasks/done", { method: "POST", body: { task_index: taskIndex } }),
@@ -99,7 +146,15 @@ export const api = {
   readiness: () => request("/api/readiness"),
   testIntegration: (id, to = "") => request(`/api/integrations/${id}/test`, { method: "POST", body: { to } }),
   authStatus: () => request("/api/auth/status"),
-  login: (password) => request("/api/login", { method: "POST", body: { password } }),
+  login: (password, email = "") => request("/api/login", { method: "POST", body: { password, email } }),
+  logout: () => request("/api/logout", { method: "POST" }),
+  me: () => request("/api/me"),
+  users: () => request("/api/users"),
+  addUser: (body) => request("/api/users", { method: "POST", body }),
+  changeUser: (email, body) => request(`/api/users/${encodeURIComponent(email)}`, { method: "PUT", body }),
+  removeUser: (email) => request(`/api/users/${encodeURIComponent(email)}`, { method: "DELETE" }),
+  eraseLead: (id) => request(`/api/leads/${id}/erase`, { method: "POST", body: { confirm: true } }),
+  retention: () => request("/api/compliance/retention"),
   workflows: () => request("/api/workflows"),
   addWorkflow: (rule) => request("/api/workflows", { method: "POST", body: rule }),
   toggleWorkflow: (id, enabled) => request(`/api/workflows/${id}`, { method: "PUT", body: { enabled } }),
@@ -161,4 +216,5 @@ export const api = {
   leadMeetings: (id) => request(`/api/leads/${id}/meetings`),
   bookMeeting: (id, body) => request(`/api/leads/${id}/meetings`, { method: "POST", body }),
   cancelMeeting: (meetingId) => request(`/api/meetings/${meetingId}/cancel`, { method: "POST" }),
+  meetingDone: (meetingId) => request(`/api/meetings/${meetingId}/done`, { method: "POST" }),
 };

@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+from app.unsubscribe import unsub_path
 
 T0 = datetime(2026, 11, 3, 5, 0, tzinfo=timezone.utc)
 CSV = ("company,contact_name,email,phone,website,open_roles,company_size,country\n"
@@ -57,8 +58,9 @@ def test_public_address_is_used_in_emails_and_unsubscribe_header(tmp_path):
     c.post(f"/api/leads/{lid}/enroll")
     c.post("/api/sequences/run", json={"now": T0.isoformat()})
     body = c.get("/api/outbox").json()[0]["body"]
-    assert f"https://outreach.mycompany.in/u/{lid}" in body and "/demo/" not in body  # Email 1 has no demo link by default
-    assert t.calls[0]["body"]["headers"]["List-Unsubscribe"].startswith(f"<https://outreach.mycompany.in/u/{lid}>")
+    signed = "https://outreach.mycompany.in" + unsub_path(c.app.state.store, lid)
+    assert signed in body and "/demo/" not in body  # Email 1 has no demo link by default
+    assert t.calls[0]["body"]["headers"]["List-Unsubscribe"].startswith(f"<{signed}>")
 
 
 def test_webhook_secret_from_settings_is_masked_and_enforced(tmp_path):

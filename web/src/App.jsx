@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, getToken, setToken } from "./api.js";
+import { api, getToken, setRole, setToken } from "./api.js";
 import Icon from "./icons.jsx";
 import { stageLabel } from "./labels.js";
 import Login from "./pages/Login.jsx";
@@ -141,6 +141,7 @@ export default function App() {
   const [searching, setSearching] = useState(false);
   const [pending, setPending] = useState(0);
   const [auth, setAuth] = useState({ checked: false, required: false, signedIn: false });
+  const [me, setMe] = useState(null);
 
   const go = (id) => {
     const target = ALIASES[id] || id;
@@ -170,9 +171,17 @@ export default function App() {
   const refreshPending = () => api.readiness()
     .then((r) => setPending(r.items.filter((i) => i.required && i.status !== "done").length)).catch(() => {});
   useEffect(() => { if (auth.signedIn) refreshPending(); }, [page, auth.signedIn]);
+  useEffect(() => {
+    if (!auth.signedIn) { setMe(null); return; }
+    api.me().then((m) => { setRole(m.role); setMe(m); }).catch(() => setMe({ role: "owner" }));
+  }, [auth.signedIn]);
+  const signOut = () => api.logout().catch(() => {}).finally(() => {
+    setToken(""); setRole("owner"); setAuth((a) => ({ ...a, signedIn: false }));
+  });
 
   if (!auth.checked) return <p className="empty">Loading…</p>;
-  if (!auth.signedIn) return <Login onSignedIn={() => setAuth((a) => ({ ...a, signedIn: true }))} />;
+  if (!auth.signedIn) return <Login onSignedIn={() => setAuth((a) => ({ ...a, required: true, signedIn: true }))} />;
+  if (!me) return <p className="empty">Loading…</p>;
   const Current = BY_ID[page][2];
   return (
     <div className="layout">
@@ -196,13 +205,13 @@ export default function App() {
           </div>
         ))}
         {auth.required && (
-          <button className="signout" onClick={() => { setToken(""); setAuth((a) => ({ ...a, signedIn: false })); }}>
+          <button className="signout" onClick={signOut} title={me.email ? `${me.name} (${me.role})` : `Signed in as ${me.role}`}>
             <Icon name="logout" />Sign out
           </button>
         )}
       </nav>
       <main>
-        <Current key={page} go={go} onSetupChanged={refreshPending} focusLead={page === "leads" ? focusLead : undefined} />
+        <Current key={page} go={go} onSetupChanged={refreshPending} focusLead={page === "leads" ? focusLead : undefined} role={me.role} />
       </main>
       {searching && (
         <QuickSearch onClose={() => setSearching(false)}
