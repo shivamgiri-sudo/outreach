@@ -207,10 +207,12 @@ def whatsapp_webhook(pid: str, payload) -> list:
         return [message("whatsapp", pid, from_phone=e164(phone), text=msg.get("message", ""), message_id=msg.get("id", ""),
                         received_at=_iso(msg.get("received_at_utc")), raw_id=msg.get("id", ""))]
     if pid == "wati":
-        if payload.get("owner") is True or payload.get("eventType") not in (None, "message") or not payload.get("text"):
+        reply = payload.get("buttonReply") or payload.get("listReply") or {}
+        text = payload.get("text") or (reply.get("text") or reply.get("title") if isinstance(reply, dict) else "")
+        if payload.get("owner") is True or payload.get("eventType") not in (None, "message") or not text:
             return []
         mid = payload.get("whatsappMessageId") or payload.get("id", "")
-        return [message("whatsapp", pid, from_phone=e164("+" + str(payload.get("waId", ""))), text=payload.get("text", ""),
+        return [message("whatsapp", pid, from_phone=e164("+" + str(payload.get("waId", ""))), text=text,
                         message_id=mid, received_at=_iso(payload.get("timestamp") or payload.get("created")), raw_id=str(mid))]
     if pid == "aisensy":
         data = payload.get("data") or payload
