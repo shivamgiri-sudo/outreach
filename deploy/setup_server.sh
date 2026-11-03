@@ -58,8 +58,13 @@ install -m 755 deploy/backup.sh /usr/local/bin/outreach-backup
 echo "15 21 * * * outreach /usr/local/bin/outreach-backup" > /etc/cron.d/outreach-backup   # 02:45 IST
 
 # Firewall: Oracle Ubuntu images block 80/443 in iptables by default
+# Insert the ACCEPT rules just above Ubuntu's catch-all REJECT rule (rules after it never match).
+REJECT_LINE=$(iptables -L INPUT --line-numbers -n | awk '/REJECT/{print $1; exit}')
 for port in 80 443; do
-  iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null || iptables -I INPUT 6 -m state --state NEW -p tcp --dport $port -j ACCEPT
+  if ! iptables -C INPUT -m state --state NEW -p tcp --dport $port -j ACCEPT 2>/dev/null; then
+    if [ -n "$REJECT_LINE" ]; then iptables -I INPUT "$REJECT_LINE" -m state --state NEW -p tcp --dport $port -j ACCEPT
+    else iptables -A INPUT -m state --state NEW -p tcp --dport $port -j ACCEPT; fi
+  fi
 done
 netfilter-persistent save 2>/dev/null || (apt-get install -y iptables-persistent && netfilter-persistent save)
 
