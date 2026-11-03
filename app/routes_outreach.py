@@ -86,6 +86,46 @@ def _event(kind: str, text: str) -> dict:
     return {"at": _now_iso(), "kind": kind, "text": text}
 
 
+ALREADY_ENROLLED = "This lead is already in the email sequence; it is never restarted, so no one gets Email 1 twice"
+
+
+class EnrollRefused(ValueError):
+    """The lead may not be put into the email sequence; the message says why in plain words."""
+
+
+def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence") -> dict:
+    """Start one lead's email sequence. The only way in: the Enrol button, bulk enrol and campaigns all use it.
+
+    Refuses leads without an email, leads that may not be emailed (unsubscribed, disqualified, not now, customers),
+    suppressed addresses, and leads already in the sequence (it is never restarted). The checks run again on the
+    latest saved copy, so a reply or unsubscribe saved a moment ago still wins. Sending itself stays with the
+    sequence engine and its caps, warm-up, business hours and practice mode. Raises LookupError or EnrollRefused.
+    """
+    lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+    if lead is None:
+        raise LookupError("Lead not found")
+    if not lead.get("email"):
+        raise EnrollRefused("This lead has no valid email")
+    if lead["stage"] in NO_EMAIL_STAGES:
+        raise EnrollRefused(f"Lead is {lead['stage']} and cannot be emailed")
+    if lead.get("sequence"):
+        raise EnrollRefused(ALREADY_ENROLLED)
+    if lead["email"] in set(store.read("suppressed")):
+        raise EnrollRefused("This address is on the suppression list (unsubscribed or bounced)")
+    sequence = {"enrolled_at": _now_iso(), "sent_days": [], "stopped": None}
+    applied = {}
+
+    def start(l: dict):
+        if l.get("sequence") or l["stage"] in NO_EMAIL_STAGES or not l.get("email"):
+            return None
+        applied["ok"] = True
+        return {**l, "sequence": sequence, "timeline": [*l["timeline"], _event("sequence", note)]}
+    saved = store.update_lead(lead_id, start)
+    if not applied:
+        raise EnrollRefused(ALREADY_ENROLLED)
+    return saved
+
+
 def make_router(store, build_lead, present, email_sender, ai_transport=None) -> APIRouter:
     router = APIRouter()
 
@@ -179,20 +219,12 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
 
     @router.post("/api/leads/{lead_id}/enroll")
     def enroll(lead_id: str):
-        leads, i = find(lead_id)
-        lead = leads[i]
-        if not lead.get("email"):
-            raise HTTPException(400, "This lead has no valid email")
-        if lead["stage"] in NO_EMAIL_STAGES:
-            raise HTTPException(400, f"Lead is {lead['stage']} and cannot be emailed")
-        if lead.get("sequence"):
-            raise HTTPException(400, "This lead is already in the email sequence; it is never restarted, so no one gets Email 1 twice")
-        sequence = {"enrolled_at": _now_iso(), "sent_days": [], "stopped": None}
-        saved = store.update_lead(lead_id, lambda l: None if l.get("sequence") or l["stage"] in NO_EMAIL_STAGES else
-                                  {**l, "sequence": sequence, "timeline": with_event(l, "sequence", "Enrolled in email sequence")})
-        if not saved.get("sequence") or saved["sequence"]["enrolled_at"] != sequence["enrolled_at"]:
-            raise HTTPException(400, "This lead is already in the email sequence; it is never restarted, so no one gets Email 1 twice")
-        return present(saved)
+        try:
+            return present(enroll_lead(store, lead_id))
+        except LookupError:
+            raise HTTPException(404, "Lead not found")
+        except EnrollRefused as exc:
+            raise HTTPException(400, str(exc))
 
     @router.post("/api/sequences/run")
     def run_sequences(body: RunBody):

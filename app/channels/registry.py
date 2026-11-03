@@ -30,7 +30,7 @@ CHANNELS = [
     {"id": "calendar", "title": "Calendar & meetings", "integration_id": "calendar", "kind": "exclusive",
      "about": "Book demos from a lead's page, with a video link, and see bookings land on the lead."},
     {"id": "lead_data", "title": "Lead data", "kind": "legacy",
-     "legacy_ids": ["apollo", "hunter", "firecrawl", "contact_scraper", "sales_navigator", "email_verifier"],
+     "legacy_ids": ["apollo", "hunter", "firecrawl", "google_places", "contact_scraper", "sales_navigator", "email_verifier"],
      "about": "Where contact details come from. Compare them on the Data sources page."},
     {"id": "ai", "title": "AI", "kind": "legacy", "legacy_ids": ["llm"],
      "about": "Writes reply drafts and reads replies the rules cannot place."},
@@ -40,6 +40,7 @@ HUB_PROVIDERS = {"email_send": SENDING, "inbound_email": INBOUND, "email_events"
 LEGACY_DOCS = {
     "apollo": "https://docs.apollo.io/", "hunter": "https://hunter.io/api-documentation",
     "firecrawl": "https://docs.firecrawl.dev/", "contact_scraper": "https://github.com/omkarcloud",
+    "google_places": "https://developers.google.com/maps/documentation/places/web-service/text-search",
     "sales_navigator": "https://business.linkedin.com/sales-solutions", "email_verifier": "https://www.zerobounce.net/docs/",
     "llm": "https://docs.anthropic.com/en/api/getting-started",
 }

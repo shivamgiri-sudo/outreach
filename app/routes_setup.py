@@ -8,7 +8,8 @@ from pydantic import BaseModel
 
 from . import integrations
 from .ai import ANTHROPIC_URL, MODEL, _llm_config
-from .apollo import match_person
+from .apollo import check_usage
+from .campaign_sources import check_places
 from .growth_core import public_base_url, webhook_secret
 from .http_util import post_json
 from .providers import check_firecrawl, check_hunter, get_json
@@ -65,12 +66,12 @@ def make_router(store, email_transport=post_json, ai_transport=post_json, apollo
             if saved("apollo").get("mode") != "api" or not key:
                 return {"ok": False, "message": "Connect Apollo first (direct API mode and a key)."}
             try:
-                match_person(key, "Test", "Person", "example.com", "Example", apollo_transport)
+                check_usage(key, apollo_transport)          # usage stats: no credit is spent
             except PermissionError:
                 return {"ok": False, "message": "Apollo rejected the API key."}
             except (OSError, ValueError) as exc:
                 return {"ok": False, "message": f"Could not reach Apollo: {exc}"}
-            return {"ok": True, "message": "Apollo accepted the key. The test lookup may use one credit."}
+            return {"ok": True, "message": "Apollo accepted the key (usage check, no credit used)."}
         if integration_id == "whatsapp":
             return {"ok": False, "message": "WhatsApp stays in practice mode: messages are queued and shown, not delivered. "
                                             "Tell us your provider and its sending can be added."}
@@ -83,6 +84,8 @@ def make_router(store, email_transport=post_json, ai_transport=post_json, apollo
             return check_hunter(saved("hunter"), get_transport)
         if integration_id == "firecrawl":
             return check_firecrawl(saved("firecrawl"), firecrawl_transport)
+        if integration_id == "google_places":
+            return check_places(saved("google_places"), apollo_transport)   # the shared JSON POST transport
         if integration_id == "contact_scraper":
             return {"ok": True, "message": "Manual: run the scraper on your computer, then upload its JSON on the Data sources page."}
         if integration_id == "sales_navigator":

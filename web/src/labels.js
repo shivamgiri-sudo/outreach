@@ -11,6 +11,7 @@ const SOURCE_LABELS = {
   apollo: "Apollo", sales_navigator: "Sales Navigator", job_board: "Job board", web_scraper: "Website",
   manual: "Added by hand", bmi_sheet: "Team sheet", bmi_demo_sheet: "Team sheet (demos)", job_page: "Job page",
   referral: "Referral", enrichment: "Website lookup", contact_scraper: "Contact scraper",
+  apollo_search: "Apollo search", apollo_hiring: "Apollo (hiring)", careers_page: "Careers page", google_places: "Google Places",
 };
 export const sourceLabel = (s = "") => SOURCE_LABELS[s.split(":")[0]] || s.split(":")[0].replace(/_/g, " ");
 

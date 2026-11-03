@@ -71,7 +71,7 @@ await step("Setup: opens on the go-live checklist; badge counts the required ste
   await expectText("0 of 5 required steps done");
   await page.locator(".badge-dot").filter({ hasText: "5" }).waitFor();
   await page.getByRole("tab", { name: "Connections" }).click();
-  await expectText("0 of 10 connected");
+  await expectText("0 of 11 connected");
 });
 await step("Setup: incomplete API connector shows 'Missing details'", async () => {
   const card = page.locator(".card", { hasText: "WhatsApp Business" });
@@ -95,7 +95,7 @@ await step("Setup: manual-only connector can be switched on", async () => {
   await card.getByText("Connected").waitFor();
 });
 await step("Setup: counter and badge update", async () => {
-  await expectText("2 of 10 connected");
+  await expectText("2 of 11 connected");
   await page.locator(".badge-dot").filter({ hasText: "5" }).waitFor();
   await shot("02-setup");
 });
@@ -789,6 +789,69 @@ await step("Data hygiene: duplicate leads are shown side by side and merged", as
   await shot("12-hygiene");
   await page.locator(".section-block", { hasText: "same phone" }).getByRole("button", { name: /Keep this one/ }).first().click();
   await expectText("Merged 1 lead(s) into");
+});
+
+// ---------- Campaigns (no live sources: an unreachable careers page plus pasted careers-page HTML) ----------
+const CAMPAIGN_JOB = (title, posted) => ({ "@context": "https://schema.org", "@type": "JobPosting", title, datePosted: posted,
+  hiringOrganization: { "@type": "Organization", name: "Zeta Support Services", sameAs: "https://zeta-support.invalid" },
+  jobLocation: { address: { addressLocality: "Pune" } } });
+const CAMPAIGN_HTML = `<script type="application/ld+json">${JSON.stringify([CAMPAIGN_JOB("Customer Support Executive", "2026-09-01"), CAMPAIGN_JOB("Telecaller", "2026-09-10")])}</script>`;
+
+await step("Campaigns: create a campaign with the 4-step wizard", async () => {
+  await nav("Campaigns");
+  await expectText("No campaigns yet");
+  await page.getByRole("button", { name: "New campaign" }).click();
+  await page.getByLabel("Campaign name").fill("Pune support hiring");
+  await page.getByRole("button", { name: "+ BPO" }).click();
+  await page.getByRole("button", { name: "+ Pune" }).click();
+  await page.getByRole("button", { name: "+ customer support" }).click();
+  await page.getByRole("button", { name: "51-200" }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByLabel("Careers page links (one per line)").fill("https://careers.unreachable.invalid/jobs");
+  await page.getByText("Site blocks automatic reading?").click();
+  await page.getByLabel("Page link (optional)").fill("https://zeta-support.invalid/careers");
+  await page.getByLabel("Page HTML").fill(CAMPAIGN_HTML);
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expectText("Start the email sequence automatically for qualifying leads");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expectText("2 careers page(s)");
+});
+await step("Campaigns: preview lists what would be added, shows the careers-page error and saves nothing", async () => {
+  await page.getByRole("button", { name: "Run now (preview)" }).click();
+  const report = page.getByTestId("run-report").filter({ hasText: "Preview: nothing was saved" });
+  await report.waitFor({ timeout: 30000 });
+  await report.getByText("careers.unreachable.invalid").waitFor();
+  await page.getByTestId("preview-table").getByText("Zeta Support Services").waitFor();
+  await page.getByTestId("preview-table").getByText("Would add").waitFor();
+  const leads = await (await fetch(`${API}/api/leads`)).json();
+  if (leads.some((l) => l.company === "Zeta Support Services")) throw new Error("the preview saved a lead");
+  await shot("12-campaign-preview");
+});
+await step("Campaigns: real run gives a report with numbers and a per-source error; the caller is told", async () => {
+  await page.getByRole("button", { name: "Run for real" }).click();
+  const report = page.getByTestId("run-report").filter({ hasText: "Run report" });
+  await report.waitFor({ timeout: 90000 });
+  await report.getByText("New leads").waitFor();
+  await report.getByText("Careers page:").waitFor();
+  const leads = await (await fetch(`${API}/api/leads`)).json();
+  const zeta = leads.find((l) => l.company === "Zeta Support Services");
+  if (!zeta || !zeta.campaign_id || zeta.open_roles !== 2) throw new Error("campaign lead missing, untagged or without job signals");
+  if (zeta.sequence) throw new Error("a lead was enrolled although automatic enrolment was off");
+  const notes = await (await fetch(`${API}/api/notifications`)).json();
+  if (!notes.some((n) => n.title.startsWith("Campaign Pune support hiring: 1 new leads"))) throw new Error("caller not notified");
+});
+await step("Campaigns: open the campaign's leads, the lead panel shows where it came from; fits a phone screen", async () => {
+  await page.getByRole("button", { name: "Open these leads" }).click();
+  await page.getByTestId("campaign-leads").getByText("Zeta Support Services").click();
+  await page.locator(".drawer").getByText("Added by campaign Pune support hiring").first().waitFor();
+  await page.keyboard.press("Escape");
+  await page.locator(".drawer").waitFor({ state: "detached" });
+  await page.getByText("Runs", { exact: true }).waitFor();
+  await shot("13-campaign-detail");
+  await page.setViewportSize({ width: 390, height: 800 });
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  if (overflow) throw new Error("campaign page scrolls sideways on a phone");
 });
 
 // ---------- Mobile layout ----------

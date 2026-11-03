@@ -242,6 +242,42 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
   - **Without a password the API only answers on this computer**, and requests through a proxy or tunnel are refused.
 - **Quick search:** Ctrl+K jumps to any page or lead. Page addresses survive refresh and the back button.
 
+### 5.10 Campaigns (one click: find, enrich, check, start)
+- **A campaign** is saved targeting + sources + rules (`campaigns` collection): industries, cities, roles they hire for,
+  company size, keywords; sources; enrichment choices; rules (lowest score, default 40; business email only; skip shared
+  mailboxes; most new leads per run, default 50; start the sequence automatically, off by default; who gets the update).
+- **Sources (compliant only):**
+  - Company careers pages (link, or pasted page HTML when a site blocks bots; only its JSON-LD is kept): schema.org JobPosting through the same
+    parser and job store as "Read job pages". Job-board links (Naukri, LinkedIn, Indeed…) are refused, never fetched.
+  - Apollo People API Search (`mixed_people/api_search`): HR heads, talent leads and founders at matching companies,
+    capped by "most results per paid search".
+  - Apollo hiring companies: Organization Search with the job-title filter, then each company's job postings
+    (open roles, matching titles, oldest posting).
+  - Google Places Text Search (New), with the owner's key (Integrations → Lead data → Google Places): "<industry> in
+    <city>" → name, website, office phone (marked `phone_type: business`). Social pages are never used as the company site.
+  - Leads already imported, picked by id (early stage, not yet emailed).
+- **A run** (`POST /api/campaigns/{id}/run`): discover → merge rows for the same company (extra people become other
+  contacts) → dedupe against existing leads and the suppression list → add new leads tagged `campaign_id`, with a
+  "Added by campaign … from …" timeline event and `provenance` per field → enrich (website crawler, Hunter, Firecrawl,
+  Apollo match by person id; empty fields only) → verify (format, business domain, shared mailbox; ZeroBounce or
+  NeverBounce when connected, else "unverified") → score → qualify → start the sequence for qualifying leads only when
+  allowed, through the same `enroll_lead` as the Enrol button.
+  - Never re-added: suppressed addresses, and any company with an unsubscribed or disqualified lead. Leads past the
+    early stages are never touched; an early-stage company lead without an email gets only its empty fields filled.
+  - The campaign never sends. The sequence engine sends with all of 5.4's rules (practice mode, caps, warm-up,
+    business hours, one email per domain per day, suppression).
+  - A **preview** (`dry_run`) searches and scores but saves nothing and does not look up missing emails.
+  - Each run keeps a report: found, new, already known, skipped, emails / phones found, verified, qualified, started,
+    errors per source in plain words, and estimated credits. Running again the same day adds no duplicates.
+- **Updates for the caller:** after every run, "Campaign <name>: N new leads, M enrolled" (in-app, and email when email
+  reminders are on). A yes-reply call task names the campaign. A **morning summary** goes to the caller at or after
+  09:30 IST on weekdays, once a day: calls due today, overdue tasks, new yes replies, meetings today, campaign runs.
+- **Daily runs:** "Run every weekday automatically" sets the campaign to running; the background timer
+  (`OUTREACH_AUTORUN=1`) runs it at most once per IST day, Mon–Fri 09:00–18:00 IST (a manual run counts).
+- **API:** `GET/POST /api/campaigns`, `GET/PUT/DELETE /api/campaigns/{id}` (PUT changes only what it is given),
+  `POST /api/campaigns/{id}/run` `{dry_run}`, `POST …/pause`, `POST …/resume`, `GET …/runs`, `GET …/leads`,
+  `GET /api/campaign-sources`.
+
 ## 6. Out of scope (on purpose)
 - Automated LinkedIn scraping, auto-connecting or auto-messaging, and applying to job posts to pitch employers.
 - Bypassing anti-bot protection or rotating proxies to avoid blocks.
@@ -262,7 +298,9 @@ app/  FastAPI
   replies.py ai.py        rule classifier, AI drafting/reading with untrusted-data guards
   whatsapp.py workflows.py activation.py capacity.py demo.py growth_core.py
   jobs.py scraper.py enrich.py providers.py sheet_import.py apollo.py
-  routes_*.py             outreach, growth, jobs, enrich, providers, whatsapp, workflows, insights, setup, today, channels
+  campaigns.py campaign_pipeline.py campaign_sources.py   campaigns (5.10): run, pipeline steps, discovery adapters
+  digest.py               the caller's 09:30 IST weekday summary
+  routes_*.py             outreach, growth, jobs, enrich, providers, whatsapp, workflows, insights, setup, today, channels, campaigns
   inbound.py              STUB in this branch: process_inbound_message / process_delivery_event (core branch implements)
   channels/               Integrations hub
     registry.py catalog_*.py   channels and providers: fields, steps, docs links, webhook needs
@@ -278,8 +316,8 @@ tests/                    pytest (fake transports for every external API)
 docs/PRD.md               this document
 ```
 
-- **External calls go through injected transports** (`email_transport`, `ai_transport`, `apollo_transport`, `fetcher`, provider `get`/`post`). Tests never touch the network.
-- **Data:** one JSON file (`data/store.json`, git-ignored). Collections: leads, integrations, stories, templates, tasks, outbox, settings, suppressed, jobs, partners, whatsapp_outbox, workflows, provider_runs.
+- **External calls go through injected transports** (`email_transport`, `ai_transport`, `apollo_transport`, `fetcher`, provider `get`/`post`, `campaign_transports`). Tests never touch the network.
+- **Data:** one JSON file (`data/store.json`, git-ignored). Collections: leads, integrations, stories, templates, tasks, outbox, settings, suppressed, jobs, partners, whatsapp_outbox, workflows, provider_runs, campaigns.
 - **Hub settings** live in `integrations`, one entry per channel (`sending_domain`, `inbound_email`, `email_events`, `whatsapp`, `sms`, `telephony`, `calendar`):
   `{mode, values: {provider, ...active provider's fields}, providers: {<id>: {values, last_test{ok,message,at}, tokens, state}}, webhook_tokens: {<id>: secret}}`.
   - `values` mirrors the active provider, so older code keeps reading it.
@@ -288,6 +326,7 @@ docs/PRD.md               this document
 
 ### Lead record (main fields)
 `id, company, domain, website, contact_name, title, email, email_is_role, phone, phones, role, city, country, company_size, open_roles, source, stage, consent{text,at,source}, sequence{enrolled_at, sent_days, last_sent_at, stopped, in_flight, blocked, failed_attempts}, engagement{replies,…}, activation{step, usage,…}, demo_token, referral_code, linkedin_url, other_contacts[], technologies[], company_socials{}, meetings[{id, provider, title, start, end, join_url, status, created_at, external_id, attendee_email}], timeline[{at, kind, text}]`
+Campaign leads also carry `campaign_id, provenance{field: "source:url"}, email_check{status, provider}, campaign_check{score, qualified, reasons}`, and where found `company_phone, phone_type, apollo_person_id, google_place_id`.
 
 ## 8. Success metrics
 - Positive-reply rate per 100 sends. Judge by replies, not opens; tracking pixels are not used.
@@ -316,6 +355,7 @@ docs/PRD.md               this document
 6. **Scoring v2:** separate fit and intent, time decay, negative signals, and weights editable in settings.
 7. **Duplicates:** fuzzy company matching, eTLD+1 domains, Gmail alias normalisation, and conflict logs.
 8. **Live verification:** one live test each for Resend, Anthropic, Apollo, Hunter and Firecrawl, and for every Integrations hub provider. All request and response formats are coded from public documentation and tested with fakes only.
+   - Campaigns: Apollo People API Search, Organization Search (`q_organization_job_titles`) and job postings, People Match by id, usage stats, Google Places Text Search, ZeroBounce and NeverBounce. Credits are an estimate (one per request or lookup).
    - Least certain: Resend inbound (the webhook may carry only metadata, so a body fetch may be needed), the AiSensy and MSG91 inbound payloads, Knowlarity's endpoint, the Google free/busy scope, and Cal.com API versions.
    - The custom webhook mapping is the fallback when a payload differs.
 7. **Duplicates:** done for imports and the hygiene page (5.1). Still open: a full public-suffix list (only a short list of
@@ -337,6 +377,8 @@ Tests:
 - `npm run e2e`: 75 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
 - `pytest -q`: 436 backend tests.
 - `npm run e2e`: 74 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
+- `pytest -q`: 467 backend tests.
+- `npm run e2e`: 82 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
 - `node e2e/tour.mjs`: every page at three screen sizes.
 - `node e2e/auth.mjs`: login checks.
 

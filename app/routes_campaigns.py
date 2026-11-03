@@ -1,0 +1,200 @@
+"""Campaign routes: save targeting and rules, preview a run, run it for real, pause / resume, runs and leads."""
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field, field_validator
+
+from . import campaigns
+from .campaign_sources import SIZE_BUCKETS
+from .hygiene import safe_http_url
+from .jobs import JSONLD_RE
+from .routes_outreach import resolve_now
+
+MAX_ITEMS = 20
+MAX_ITEM_CHARS = 80
+MAX_PAGES = 20
+MAX_HTML_CHARS = 2_000_000
+MAX_LEAD_IDS = 500
+
+
+def _clean(values: list) -> list:
+    out = list(dict.fromkeys(str(v).strip()[:MAX_ITEM_CHARS] for v in values if str(v).strip()))
+    if len(out) > MAX_ITEMS:
+        raise ValueError(f"At most {MAX_ITEMS} entries.")
+    return out
+
+
+class Target(BaseModel):
+    industries: list[str] = []
+    cities: list[str] = []
+    roles_hiring: list[str] = []
+    company_size_buckets: list[str] = []
+    keywords: list[str] = []
+    person_titles: list[str] = []
+
+    @field_validator("industries", "cities", "roles_hiring", "keywords", "person_titles")
+    @classmethod
+    def tidy(cls, values):
+        return _clean(values)
+
+    @field_validator("company_size_buckets")
+    @classmethod
+    def sizes(cls, values):
+        unknown = [v for v in values if v not in SIZE_BUCKETS]
+        if unknown:
+            raise ValueError(f"Unknown company size: {', '.join(unknown)}. Use {', '.join(SIZE_BUCKETS)}.")
+        return list(dict.fromkeys(values))
+
+
+class PastedPage(BaseModel):
+    url: str = Field(default="", max_length=2000)
+    html: str = Field(default="", max_length=MAX_HTML_CHARS)
+
+    @field_validator("html")
+    @classmethod
+    def keep_job_data(cls, value):
+        """Only the page's JSON-LD blocks are read, so only they are stored (keeps the data file small)."""
+        return "\n".join(f'<script type="application/ld+json">{block}</script>' for block in JSONLD_RE.findall(value))
+
+
+class Sources(BaseModel):
+    careers_pages: list[str] = []
+    careers_html: list[PastedPage] = Field(default=[], max_length=10)
+    apollo_search: bool = False
+    apollo_hiring: bool = False
+    google_places: bool = False
+    csv_import_ids: list[str] = Field(default=[], max_length=MAX_LEAD_IDS)
+    max_results: int = Field(default=25, ge=1, le=100)
+
+    @field_validator("careers_pages")
+    @classmethod
+    def pages(cls, values):
+        cleaned = [str(v).strip() for v in values if str(v).strip()]
+        bad = [v for v in cleaned if not safe_http_url(v)]
+        if bad:
+            raise ValueError(f"Careers pages must be http(s) links: {bad[0][:80]}")
+        if len(cleaned) > MAX_PAGES:
+            raise ValueError(f"At most {MAX_PAGES} careers pages per campaign.")
+        return list(dict.fromkeys(cleaned))
+
+    @field_validator("csv_import_ids")
+    @classmethod
+    def ids(cls, values):
+        return list(dict.fromkeys(str(v).strip()[:40] for v in values if str(v).strip()))
+
+
+class Enrich(BaseModel):
+    crawler: bool = True
+    hunter: bool = False
+    firecrawl: bool = False
+    apollo_match: bool = False
+
+
+class Rules(BaseModel):
+    min_score: int = Field(default=40, ge=0, le=100)
+    require_business_email: bool = True
+    skip_role_addresses: bool = False
+    max_new_leads_per_run: int = Field(default=50, ge=1, le=200)
+    auto_enrol: bool = False
+    caller: str = Field(default="", max_length=60)
+
+
+class CampaignBody(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    target: Target = Target()
+    sources: Sources = Sources()
+    enrich: Enrich = Enrich()
+    rules: Rules = Rules()
+    status: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def named(cls, value):
+        if value is None:
+            return None
+        if not value.strip():
+            raise ValueError("Give the campaign a name.")
+        return value.strip()
+
+
+class CampaignChanges(CampaignBody):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+
+
+class RunBody(BaseModel):
+    dry_run: bool = False
+    now: Optional[str] = None
+
+
+def _spec(body: CampaignBody) -> dict:
+    return body.model_dump(exclude={"status"})
+
+
+def make_router(store, transports: dict, present, notify_sender=None) -> APIRouter:
+    router = APIRouter()
+
+    def found(campaign_id: str) -> dict:
+        campaign = campaigns.get_campaign(store, campaign_id)
+        if campaign is None:
+            raise HTTPException(404, "Campaign not found")
+        return campaign
+
+    @router.get("/api/campaign-sources")
+    def source_status():
+        return campaigns.sources_status(store)
+
+    @router.get("/api/campaigns")
+    def list_all():
+        return campaigns.list_campaigns(store)
+
+    @router.post("/api/campaigns")
+    def create(body: CampaignBody):
+        return campaigns.create_campaign(store, _spec(body))
+
+    @router.get("/api/campaigns/{campaign_id}")
+    def get_one(campaign_id: str):
+        return found(campaign_id)
+
+    @router.put("/api/campaigns/{campaign_id}")
+    def save(campaign_id: str, body: CampaignChanges):
+        """Change the name, status or any part; parts left out (and keys left out of a part) keep their saved values."""
+        found(campaign_id)
+        if body.status is not None and body.status not in campaigns.STATUSES:
+            raise HTTPException(400, f"Status must be one of {', '.join(campaigns.STATUSES)}")
+        return campaigns.update_campaign(store, campaign_id, body.model_dump(exclude_unset=True))
+
+    @router.delete("/api/campaigns/{campaign_id}")
+    def delete(campaign_id: str):
+        found(campaign_id)
+        campaigns.delete_campaign(store, campaign_id)
+        return {"deleted": True, "note": "The campaign's leads are kept."}
+
+    @router.post("/api/campaigns/{campaign_id}/run")
+    def run(campaign_id: str, body: RunBody):
+        found(campaign_id)
+        try:
+            return campaigns.run_campaign(store, campaign_id, transports, dry_run=body.dry_run, now=resolve_now(body.now),
+                                          notify_sender=notify_sender)
+        except campaigns.CampaignBusy as exc:
+            raise HTTPException(409, str(exc))
+
+    @router.post("/api/campaigns/{campaign_id}/pause")
+    def pause(campaign_id: str):
+        found(campaign_id)
+        return campaigns.set_status(store, campaign_id, "paused")
+
+    @router.post("/api/campaigns/{campaign_id}/resume")
+    def resume(campaign_id: str):
+        found(campaign_id)
+        return campaigns.set_status(store, campaign_id, "running")
+
+    @router.get("/api/campaigns/{campaign_id}/runs")
+    def runs(campaign_id: str):
+        return list(reversed(found(campaign_id).get("runs") or []))
+
+    @router.get("/api/campaigns/{campaign_id}/leads")
+    def leads(campaign_id: str):
+        found(campaign_id)
+        return sorted((present(l) for l in campaigns.campaign_leads(store, campaign_id)), key=lambda l: -l["score"])
+
+    return router
