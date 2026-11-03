@@ -18,6 +18,7 @@ from .sequences import clean_first_name
 
 DEFAULT_DAILY_CONNECTIONS = 12
 NOTE_LIMIT = 300                    # LinkedIn connection notes are limited to 300 characters
+CLOSED = ("unsubscribed", "disqualified")
 
 STEPS = [
     {"n": 1, "kind": "connect", "after": "start", "days": 0, "purpose": "Connection request (no pitch)",
@@ -122,7 +123,7 @@ def _active_steps(settings: dict) -> list:
 def _next_step(state: dict, settings: dict) -> Optional[dict]:
     done = set(state.get("done", []))
     for step in _active_steps(settings):
-        if step["n"] not in done:
+        if step["n"] not in done and step["n"] > max(done, default=0):     # a skipped step never comes back later
             return step
     return None
 
@@ -167,7 +168,7 @@ def mark_sent(store, lead_id: str, step_n: int, now: Optional[datetime] = None) 
     if lead is None or not lead.get("linkedin_seq"):
         raise LookupError("Lead is not on the LinkedIn sequence")
     state = lead["linkedin_seq"]
-    if state.get("status") in ("stopped", "finished"):
+    if state.get("status") in ("stopped", "finished") or lead.get("stage") in CLOSED:
         raise ValueError("The LinkedIn sequence for this lead has ended.")
     _close_linkedin_tasks(store, lead_id, f"Step {step_n} sent")
     done = sorted(set(state.get("done", [])) | {step_n})
@@ -192,6 +193,8 @@ def mark_accepted(store, lead_id: str, now: Optional[datetime] = None) -> dict:
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None or not lead.get("linkedin_seq"):
         raise LookupError("Lead is not on the LinkedIn sequence")
+    if lead["linkedin_seq"].get("status") in ("stopped", "finished") or lead.get("stage") in CLOSED:
+        raise ValueError("The LinkedIn sequence for this lead has ended.")
     state = {**lead["linkedin_seq"], "accepted_at": iso(now), "status": "messaging", "done": sorted(set(lead["linkedin_seq"].get("done", [])) | {1})}
     saved = store.update_lead(lead_id, lambda l: {**l, "linkedin_seq": state,
                                                   "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin", "text": "Connection accepted"}]})
@@ -240,6 +243,8 @@ def queue(store, now: Optional[datetime] = None) -> dict:
         if t.get("kind") != "linkedin" or t.get("status", "open") != "open":
             continue
         lead = leads.get(t.get("lead_id")) or {}
+        if lead.get("stage") in CLOSED:
+            continue                       # unsubscribed (e.g. by the email link) or disqualified: never contacted
         if t.get("due_at") and datetime.fromisoformat(t["due_at"]) > now + timedelta(hours=12):
             continue
         step_n = int(re.search(r"step (\d+)", t.get("title", "")).group(1)) if re.search(r"step (\d+)", t.get("title", "")) else None

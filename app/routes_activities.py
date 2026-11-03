@@ -101,7 +101,7 @@ def make_router(store, transactional_sender=None) -> APIRouter:
                 continue
             lead = leads.get(t.get("lead_id")) or {}
             # Automatic tasks for a lead who unsubscribed are dropped; anything a person added stays, labelled.
-            if lead.get("stage") == "unsubscribed" and t.get("source") not in ("person", "activity") and t.get("kind") != "review":
+            if lead.get("stage") == "unsubscribed" and t.get("source") not in ("person", "activity") and t.get("kind") not in ("review", "erasure_request"):
                 continue
             rows.append({**t, "company": lead.get("company") or lead.get("domain") or "", "lead_stage": lead.get("stage")})
         buckets = task_buckets(rows, now_utc())

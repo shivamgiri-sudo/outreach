@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .activities import ensure_task_ids
+from .activities import ensure_task_ids, iso, now_utc
 from .sequences import IST
 
 TASK_TITLES = {
@@ -65,7 +65,8 @@ def make_router(store, present) -> APIRouter:
                               "title": "Call them", "action": "Open call desk",
                               "detail": "Said yes. Dial through PD only, before 18:55."})
         for index, task in enumerate(store.read("tasks")):
-            if task.get("done") or task.get("status", "open") != "open" or (leads.get(task.get("lead_id")) or {}).get("stage") in ("unsubscribed",):
+            if task.get("done") or task.get("status", "open") != "open" or (
+                    (leads.get(task.get("lead_id")) or {}).get("stage") in ("unsubscribed",) and task.get("kind") != "erasure_request"):
                 continue
             due = task.get("due_at")
             overdue = bool(due) and datetime.fromisoformat(due) < now
@@ -107,7 +108,8 @@ def make_router(store, present) -> APIRouter:
         rows = store.read("tasks")
         if not 0 <= body.task_index < len(rows):
             raise HTTPException(404, "Task not found")
-        store.update("tasks", lambda current: [{**t, "done": True} if i == body.task_index else t for i, t in enumerate(current)])
+        stamp = iso(now_utc())
+        store.update("tasks", lambda current: [{**t, "done": True, "status": "done", "done_at": stamp} if i == body.task_index else t for i, t in enumerate(current)])
         return {"ok": True}
 
     return router
