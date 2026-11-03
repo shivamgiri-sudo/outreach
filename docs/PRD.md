@@ -424,6 +424,23 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
 - **API:** `GET /api/sources`, `POST /api/sources/{id}/test` (free check where the provider offers one). Integrations > Lead data shows a card per source.
 - **Not built, on purpose:** LinkedIn/job-board scraping, Clearbit/Breeze, Kaspr, Startup India list (reasons in docs/SOURCES.md).
 
+### 5.15 Inbound lead capture and lead sources (app/inbound_*.py, app/source_names.py; docs/LEAD_CAPTURE.md)
+- **Goal:** leads from ads and other generators arrive on their own, join the same lead list and show where each came from.
+- **Canonical sources:** `app/source_names.py` holds every source once (id, label, kind inbound / outbound / import / referral / manual) and maps every older
+  spelling (apollo_search, google_places, bmi_sheet:demo, web_scraper:URL ...) to an id. Leads keep their original `source` and gain `source_id`
+  (backfilled at start-up, repeatable). `GET /api/lead-sources` feeds every web dropdown and label. `sources[]` records each time a lead is seen again
+  (inbound, import merge, lead merge); the primary `source` never changes.
+- **Connectors:** Webhook (Zapier / Make / n8n), website form (embed script, form key, honeypot, minimum fill time, origin list), Meta Lead Ads (handshake,
+  signature, Graph fetch), Google Ads lead forms, WhatsApp click-to-chat, Google Sheet / CSV sync, and presets for LinkedIn Lead Gen, IndiaMART, JustDial,
+  TradeIndia and TikTok. Tokens are per connector, rotatable, encrypted at rest, masked in every read.
+- **Engine rules:** normalise, refuse suppressed or erased people (200, logged), ignore replays, merge into an existing lead rather than drop a duplicate,
+  record only the consent actually given (email and call for a submitted form; WhatsApp only with an explicit yes or a first WhatsApp message),
+  raise a high-priority "Call now" task and a notification, never send anything by itself, keep a 500-row capture log of ids only.
+- **Screens:** Dashboard "Where leads come from" (per source: leads, new in 7 days, hot, customers, inbound badge) and inbound counts for today and 7 days;
+  Leads source filter, "Inbound only", attribution tooltip, "Where this lead came from" in the lead panel; Insights stage by source and cost per lead and per
+  customer from monthly spend the owner types; Integrations, Lead capture to add, test, rotate and remove connectors.
+- **Test leads:** "ZZ Test capture", flagged `is_test`, never counted, removable.
+
 ## 6. Out of scope (on purpose)
 - Automated LinkedIn scraping, auto-connecting or auto-messaging, and applying to job posts to pitch employers.
 - Bypassing anti-bot protection or rotating proxies to avoid blocks.

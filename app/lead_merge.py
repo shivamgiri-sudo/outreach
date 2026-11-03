@@ -283,10 +283,14 @@ def merge_record(lead: dict, rec: dict, who, source: str, import_id: str, at: st
         taken_keys.discard(lead.get("dedupe_key"))
         lead["dedupe_key"] = new_key
         taken_keys.add(new_key)
+    if _without_timeline(lead) == _without_timeline(original):
+        if touch and add_touch(lead, source, at=at):      # nothing new but the source: remember it, still "unchanged"
+            info["touched"] = True
+            lead["timeline"].append(event("merged", f"Also found through {label_of(source)}"))
+            return lead, info
+        return original, info
     if touch and add_touch(lead, source, at=at):
         info["touched"] = True
-    if _without_timeline(lead) == _without_timeline(original):
-        return original, info
     info["changed"] = True
     n = len(info["filled"])
     if not n and not info["added_contact"] and not info["conflicts"]:

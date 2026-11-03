@@ -344,7 +344,7 @@ def _place(leads, index, rec, n, source, import_id, at, created, touched, out, w
              "added_contact": info["added_contact"]}
     if before.get("stage") in CLOSED_STAGES:
         warn("closed_lead", before["stage"])
-    if info["changed"]:
+    if info["changed"] or info.get("touched"):
         leads[i] = merged
         index.add(i)
     if first_row:

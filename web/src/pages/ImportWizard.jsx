@@ -1,14 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
+import { sourceOptions, useSourceRegistry } from "../labels.js";
 
 // Four steps: add the list, check the columns, dry run (nothing saved), import (with undo).
 const STEPS = ["Add your list", "Check the columns", "Dry run", "Done"];
-const SOURCES = [
-  ["", "Work it out from the columns"], ["apollo", "Apollo"], ["sales_navigator", "LinkedIn Sales Navigator"],
-  ["lusha", "Lusha"], ["zoominfo", "ZoomInfo"], ["hunter", "Hunter"], ["snov", "Snov.io"],
-  ["job_board", "Job board (Naukri, Indeed, Shine, Apna)"], ["directory", "IndiaMART / JustDial"],
-  ["google_maps", "Google Maps"], ["bmi_sheet", "Team Google Sheet"], ["referral", "Referral"], ["manual", "Added by hand"],
-];
 const WARNING_LABELS = {
   invalid_email: "Emails that are not valid (left out)", typo_fixed: "Email typos fixed", invalid_phone: "Phones that could not be read",
   junk_phone: "Placeholder phone numbers", landline_without_std: "Landlines without an STD code", invalid_website: "Websites that are not valid",
@@ -178,6 +173,7 @@ export default function ImportWizard({ onClose, onDone }) {
   const [step, setStep] = useState(0);
   const [csv, setCsv] = useState("");
   const [fileName, setFileName] = useState("");
+  useSourceRegistry();
   const [source, setSource] = useState("");
   const [preview, setPreview] = useState(null);
   const [mapping, setMapping] = useState({});
@@ -224,7 +220,8 @@ export default function ImportWizard({ onClose, onDone }) {
           <textarea id="import-paste" rows={6} value={csv} onChange={(e) => { setCsv(e.target.value); setFileName(""); }} />
           <label htmlFor="import-source">Where did this list come from?</label>
           <select id="import-source" value={source} onChange={(e) => setSource(e.target.value)}>
-            {SOURCES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            <option value="">Work it out from the columns</option>
+            {sourceOptions(["outbound", "import", "referral", "manual"]).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
           </select>
           <div className="row" style={{ marginTop: 12 }}>
             <button className="btn" disabled={busy || !csv.trim()} onClick={() => { setMapping({}); check(1, { mapping: {} }); }}>

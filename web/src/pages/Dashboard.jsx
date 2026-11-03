@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import Icon from "../icons.jsx";
 import { ErrorState } from "../states.jsx";
-import { STAGE_LABELS } from "../labels.js";
+import { STAGE_LABELS, sourceLabel, useSourceRegistry } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import FindLeadsDrawer, { FindLeadsCard, setPendingLeadIds } from "./FindLeads.jsx";
 
@@ -40,7 +40,51 @@ function TodayList({ today, onOpen, onDone, go }) {
   );
 }
 
+// "Where leads come from": every source with how many leads, how many are hot and how many became customers.
+function SourceCard({ data }) {
+  const rows = data.by_source || [];
+  const max = Math.max(1, ...rows.map((r) => r.leads));
+  return (
+    <div className="card" style={{ marginTop: 16 }} data-testid="where-leads-come-from">
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <h3 style={{ margin: 0 }}>Where leads come from</h3>
+        <span className="sub" style={{ margin: 0 }}>
+          <b data-testid="inbound-today">{data.inbound_today ?? 0}</b> captured today · <b>{data.inbound_7d ?? 0}</b> in the last 7 days
+        </span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="empty">No leads yet. Connect an ad platform or form to see where they come from.{" "}
+          <button className="btn ghost" onClick={() => { window.location.hash = "integrations?tab=capture"; }}>Connect lead capture</button></p>
+      ) : (
+        <div className="table-scroll">
+          <table className="source-table">
+            <thead><tr><th>Source</th><th>Leads</th><th>New (7 days)</th><th>Hot</th><th>Customers</th></tr></thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.source}>
+                  <td data-label="Source"><b>{sourceLabel(r.source)}</b> {r.kind === "inbound" && <span className="pill ok">Inbound</span>}
+                    {r.kind !== "inbound" && r.inbound > 0 && <span className="pill">{r.inbound} inbound</span>}</td>
+                  <td data-label="Leads">
+                    <div className="row" style={{ gap: 8 }}>
+                      <div className="bar" role="img" aria-label={`${r.leads} leads`} style={{ width: `${Math.max(4, (r.leads / max) * 100)}px`, maxWidth: 140, flex: "none" }} />
+                      <b>{r.leads}</b>
+                    </div>
+                  </td>
+                  <td data-label="New (7 days)">{r.new_7d}</td>
+                  <td data-label="Hot">{r.hot}</td>
+                  <td data-label="Customers">{r.customers}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard({ go }) {
+  useSourceRegistry();
   const [data, setData] = useState(null);
   const [today, setToday] = useState(null);
   const [error, setError] = useState("");
@@ -115,6 +159,7 @@ export default function Dashboard({ go }) {
           ))}
         </div>
       </div>
+      <SourceCard data={data} />
       {finding && <FindLeadsDrawer go={go} onClose={() => { setFinding(false); load(); }}
         onOpenLeads={(ids) => { setPendingLeadIds(ids); go("leads"); }} />}
       {open && <LeadDrawer id={open} onClose={() => { setOpen(null); load(); }} />}

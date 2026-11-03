@@ -16,7 +16,7 @@ const HOOK_LABELS = {
   svix: ["Endpoint URL", null], token: ["Webhook address", null],
 };
 
-function useDialog(panel, onClose) {
+export function useDialog(panel, onClose) {
   useEffect(() => {
     const previous = document.activeElement;
     const onKey = (e) => {

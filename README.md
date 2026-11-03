@@ -46,6 +46,11 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
   ones. LinkedIn (**LinkedIn outreach** page): "Export list for a LinkedIn tool" (CSV for Waalaxy, Dux-Soup, PhantomBuster) and
   "Import its results" to mark accepted and replied. Automating LinkedIn is at your own risk; use a separate account.
 
+- **Lead capture** (docs/LEAD_CAPTURE.md): Integrations, Lead capture connects Facebook / Instagram Lead Ads, Google Ads lead forms, website forms,
+  WhatsApp click-to-chat, a published Google Sheet, and any tool that can send a webhook (Zapier, Make, n8n, LinkedIn Lead Gen via Zapier, IndiaMART,
+  JustDial, TradeIndia, TikTok). Leads join the same list with their campaign, ad and form; the Dashboard shows "Where leads come from" and the Leads page
+  filters by source. Duplicates are merged, never dropped; opted-out and erased people are refused; consent is recorded only for what they gave; the caller gets a
+  "Call now" task and nothing is sent automatically.
 - **Lead sources** (docs/SOURCES.md): about 30 lawful sources behind one registry: company job-board feeds (Greenhouse, Lever, Workable,
   Ashby, SmartRecruiters, Recruitee, Zoho Recruit), Adzuna, Jooble, Brave search, OpenStreetMap, data.gov.in, Wikidata, a free website read,
   Apollo/Hunter/Snov/Prospeo/Dropcontact/Lusha/RocketReach/PDL finders and six email verifiers. A cheapest-first waterfall stops at the first
@@ -160,12 +165,12 @@ Caddy's `reverse_proxy` sends `X-Forwarded-For` and `X-Forwarded-Proto`; the app
 - `GET /api/compliance/consent-ledger?lead_id=…`: consent given and withdrawn.
 
 ## Test
-    .venv\Scripts\python -m pytest -q          # 2474 backend tests (+ 6 skipped)
+    .venv\Scripts\python -m pytest -q          # 2752 backend tests (6 skipped); tests/qa/test_import-messy-unified_unified.py already fails on a day-count that depends on today's date
 
 Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a throwaway file and
 `OUTREACH_IGNORE_BUSINESS_HOURS=1`, then the UI):
 
-    cd web && npm run e2e                      # 99 steps; HEADED=1 shows the browser; E2E_UI / E2E_API change the addresses
+    cd web && npm run e2e                      # 113 steps; HEADED=1 shows the browser; E2E_UI / E2E_API change the addresses
     node e2e/tour.mjs                          # every page at desktop, tablet and phone width
     # with the API started using OUTREACH_ADMIN_PASSWORD=e2e-password:
     node e2e/auth.mjs                          # 9 login steps

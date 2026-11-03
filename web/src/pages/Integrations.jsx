@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, isOwner } from "../api.js";
 import { EmptyArt, ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import { CopyRow, StatusPill } from "./integrations/Fields.jsx";
 import Wizard from "./integrations/Wizard.jsx";
+import LeadCapture from "./integrations/LeadCapture.jsx";
 
-const EXTRA_TABS = [["custom", "Custom"], ["webhooks", "Webhook addresses"]];
+const EXTRA_TABS = [["capture", "Lead capture"], ["custom", "Custom"], ["webhooks", "Webhook addresses"]];
 const OAUTH_ERRORS = {
   access_denied: "You did not allow access, so nothing was connected.",
   token_exchange_failed: "The provider did not accept the sign-in. Check the client ID, secret and redirect URI, then try again.",
@@ -139,6 +140,8 @@ export default function Integrations({ go }) {
           <div className="prov-grid">{current.providers.map((p) => card(current, p))}</div>
         </>
       )}
+
+      {tab === "capture" && (isOwner() ? <LeadCapture go={go} /> : <p className="sub">Only the owner can connect lead sources.</p>)}
 
       {tab === "custom" && (
         <>

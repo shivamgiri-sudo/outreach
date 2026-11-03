@@ -1142,6 +1142,85 @@ await step("Sources: a free source saves and its Test connection shows a result"
   await page.keyboard.press("Escape");
 });
 
+// ---------- Lead capture (inbound) ----------
+let captureUrl = "", captureToken = "";
+await step("Lead capture: add a webhook connector and see its address and token", async () => {
+  await nav("Integrations");
+  await page.getByTestId("tab-capture").click();
+  await page.getByTestId("add-capture").click();
+  await page.getByLabel("Connector name").fill("E2E webhook");
+  await page.getByRole("button", { name: "Create connector" }).click();
+  await page.getByTestId("capture-url").waitFor();
+  captureUrl = (await page.getByTestId("capture-url").innerText()).trim();
+  captureToken = (await page.getByTestId("capture-token").innerText()).trim();
+  if (!/\/api\/inbound\/cap[0-9a-f]{8}$/.test(captureUrl)) throw new Error(`odd address ${captureUrl}`);
+  if (captureToken.length < 20) throw new Error("no token shown");
+  await expectText("Example (curl)");
+  await shot("11-lead-capture-connector");
+});
+await step("Lead capture: Send a test lead reports that it arrived", async () => {
+  await page.getByTestId("send-test").click();
+  await page.getByTestId("test-result").getByText("Test lead arrived").waitFor();
+});
+await step("Lead capture: a lead posted to the address arrives with its campaign, and a repeat is ignored", async () => {
+  const path = new URL(captureUrl).pathname;
+  const post = () => page.request.post(`${API}${path}`, {
+    headers: { "X-Capture-Token": captureToken },
+    data: { full_name: "Inbound Ira", email: "ira@inbound-e2e.invalid", mobile: "98100 77001", company: "Inbound E2E Traders", lead_id: "E2E-1", utm_campaign: "diwali-e2e", utm_source: "facebook" },
+  });
+  const first = await (await post()).json();
+  if (first.status !== "new") throw new Error(`expected new, got ${JSON.stringify(first)}`);
+  const again = await (await post()).json();
+  if (again.status !== "replay") throw new Error(`expected replay, got ${JSON.stringify(again)}`);
+  const bad = await page.request.post(`${API}${path}`, { headers: { "X-Capture-Token": "nope" }, data: { email: "x@y.in" } });
+  if (bad.status() !== 401) throw new Error(`a wrong token must be refused, got ${bad.status()}`);
+  await page.getByRole("button", { name: "Close" }).click();
+  await page.getByTestId("capture-log").getByText("New lead").first().waitFor();
+});
+await step("Lead capture: the lead is on Leads with its source label, campaign and Inbound badge; the source filter works", async () => {
+  await nav("Leads");
+  const row = page.locator("tr.click", { hasText: "Inbound E2E Traders" });
+  await row.waitFor();
+  await row.getByText("Webhook (Zapier / Make / n8n)").waitFor();
+  await row.getByText("Inbound", { exact: true }).waitFor();
+  await row.getByText("diwali-e2e").waitFor();
+  await page.locator("details.multi-filter summary").click();
+  await page.getByRole("group", { name: "Sources" }).getByLabel(/Webhook \(Zapier/).check();
+  await page.locator("tr.click").first().waitFor();
+  const filtered = await page.locator("tr.click").count();
+  if (filtered !== 2) throw new Error(`expected the test lead and the real one, saw ${filtered} rows`);
+  await page.getByLabel("Inbound only").check();
+  if (await page.locator("tr.click").count() !== 2) throw new Error("inbound only should still show both");
+  await page.getByLabel("Inbound only").uncheck();
+  await page.getByRole("button", { name: "Clear sources" }).click();
+  await page.locator("details.multi-filter summary").click();
+  await shot("12-leads-source-filter");
+});
+await step("Lead capture: the lead drawer shows where it came from", async () => {
+  await page.locator("tr.click", { hasText: "Inbound E2E Traders" }).click();
+  const origin = page.getByTestId("lead-origin");
+  await origin.getByText("Where this lead came from").waitFor();
+  await origin.getByText("diwali-e2e").first().waitFor();
+  await closeDrawer();
+});
+await step("Lead capture: Dashboard shows 'Where leads come from' with the inbound lead, not the test lead", async () => {
+  await nav("Dashboard");
+  const card = page.getByTestId("where-leads-come-from");
+  await card.getByText("Where leads come from").waitFor();
+  const row = card.locator("tr", { hasText: "Webhook (Zapier / Make / n8n)" });
+  await row.waitFor();
+  await row.getByText("Inbound", { exact: true }).waitFor();
+  const leadsCell = (await row.locator("td").nth(1).innerText()).trim();
+  if (leadsCell !== "1") throw new Error(`the test lead must not be counted, saw ${leadsCell}`);
+  await shot("13-dashboard-sources");
+});
+await step("Lead capture: Insights labels the sources and offers cost per lead", async () => {
+  await nav("Insights");
+  await expectText("Stage by source");
+  await expectText("Webhook (Zapier / Make / n8n)");
+  await expectText("Cost per lead");
+});
+
 // ---------- Mobile layout ----------
 await step("Mobile width: no horizontal page scroll on Leads", async () => {
   await page.setViewportSize({ width: 390, height: 800 });
@@ -1171,6 +1250,20 @@ await step("Mobile width: the menu is a compact top bar, even on a short page", 
   if (!bar || bar.height > 70 || bar.y > 1) throw new Error(`nav bar is ${bar && bar.height}px tall at y=${bar && bar.y}`);
   await shot("10b-mobile-short-page");
   await page.setViewportSize({ width: 390, height: 800 });
+});
+
+await step("Mobile width: Lead capture and its panel do not scroll sideways", async () => {
+  await nav("Integrations");
+  await page.getByTestId("tab-capture").click();
+  await page.getByTestId("add-capture").waitFor();
+  let overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  if (overflow) throw new Error("Lead capture scrolls sideways");
+  await page.getByRole("button", { name: "Open" }).first().click();
+  await page.getByTestId("capture-panel").waitFor();
+  overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  await shot("14-mobile-lead-capture");
+  await page.getByRole("button", { name: "Close" }).click();
+  if (overflow) throw new Error("the connector panel scrolls sideways");
 });
 
 await browser.close();

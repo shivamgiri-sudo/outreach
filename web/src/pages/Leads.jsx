@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, isOwner } from "../api.js";
 import { EmptyArt } from "../states.jsx";
-import { BAND_LABELS, STAGE_LABELS, STAGE_ORDER, sourceLabel, stageLabel } from "../labels.js";
+import { BAND_LABELS, STAGE_LABELS, STAGE_ORDER, sourceId, sourceLabel, sourceOptions, stageLabel, useSourceRegistry } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import ImportWizard from "./ImportWizard.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import FindLeadsDrawer, { FindLeadsCard, takePendingLeadIds } from "./FindLeads.jsx";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
-const SOURCES = ["apollo", "sales_navigator", "job_board", "web_scraper", "manual"];
 const SHEET_SOURCES = { "team sheet — Leads tab": "leads", "team sheet — Demo Shared tab": "demo", "team sheet — Decision Makers tab": "decision_makers" };
 
 const SORTS = {
@@ -17,10 +16,38 @@ const SORTS = {
   stage: (a, b) => STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage),
 };
 
-function matches(lead, query, stage, band, onlyIds) {
+function matches(lead, query, stage, band, onlyIds, sources = [], inboundOnly = false) {
   const q = query.trim().toLowerCase();
   const text = [lead.company, lead.domain, lead.contact_name, lead.email, lead.phone, lead.role].join(" ").toLowerCase();
-  return (!q || text.includes(q)) && (!stage || lead.stage === stage) && (!band || lead.band === band) && (!onlyIds || onlyIds.includes(lead.id));
+  return (!q || text.includes(q)) && (!stage || lead.stage === stage) && (!band || lead.band === band) && (!onlyIds || onlyIds.includes(lead.id))
+    && (!sources.length || sources.includes(sourceId(lead))) && (!inboundOnly || Boolean(lead.inbound));
+}
+
+// A short plain-English line about the campaign, ad or form behind a lead (shown as a tooltip and in the drawer).
+export function attributionText(a = {}) {
+  const parts = [a.campaign_name || a.utm_campaign, a.adset_name, a.ad_name, a.form_name || (a.form_id && `form ${a.form_id}`), a.utm_source && `source ${a.utm_source}`]
+    .filter(Boolean);
+  return [...new Set(parts)].join(" · ");
+}
+
+function SourceFilter({ leads, value, onChange }) {
+  const counts = {};
+  leads.forEach((l) => { const id = sourceId(l); counts[id] = (counts[id] || 0) + 1; });
+  const ids = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  const toggle = (id) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+  return (
+    <details className="multi-filter">
+      <summary aria-label="Filter by source">{value.length ? `${value.length} source${value.length > 1 ? "s" : ""}` : "All sources"}</summary>
+      <div className="multi-pop" role="group" aria-label="Sources">
+        {ids.map((id) => (
+          <label key={id} className="row" style={{ margin: 0 }}>
+            <input type="checkbox" checked={value.includes(id)} onChange={() => toggle(id)} /> {sourceLabel(id)} <small>({counts[id]})</small>
+          </label>
+        ))}
+        {value.length > 0 && <button type="button" className="linkish" onClick={() => onChange([])}>Clear sources</button>}
+      </div>
+    </details>
+  );
 }
 
 // A plain link can't send the login token, so fetch the file with it and save it.
@@ -37,6 +64,9 @@ export default function Leads({ focusLead, go }) {
   const [query, setQuery] = useState("");
   const [stage, setStage] = useState("");
   const [band, setBand] = useState("");
+  const [srcFilter, setSrcFilter] = useState([]);
+  const [inboundOnly, setInboundOnly] = useState(false);
+  useSourceRegistry();
   const [sort, setSort] = useState("score");
   const [picked, setPicked] = useState([]);
   const [busy, setBusy] = useState("");
@@ -47,6 +77,7 @@ export default function Leads({ focusLead, go }) {
   const [showWizard, setShowWizard] = useState(false);
   const [csv, setCsv] = useState(SAMPLE);
   const [source, setSource] = useState("apollo");
+  const importSources = sourceOptions(["outbound", "import", "referral", "manual"]).map((x) => x.id);
   const [message, setMessage] = useState("");
   const [showScrape, setShowScrape] = useState(false);
   const [showJobs, setShowJobs] = useState(false);
@@ -134,7 +165,8 @@ export default function Leads({ focusLead, go }) {
 
   const readFile = (file) => file && file.text().then(setCsv);
 
-  const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds)).sort(SORTS[sort]), [leads, query, stage, band, sort, onlyIds]);
+  const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly)).sort(SORTS[sort]),
+    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly]);
   const togglePick = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const allPicked = shown.length > 0 && shown.every((l) => picked.includes(l.id));
 
@@ -147,7 +179,7 @@ export default function Leads({ focusLead, go }) {
     setPicked([]); setBusy(""); load();
   };
 
-  const filtered = Boolean(query.trim() || stage || band || onlyIds);
+  const filtered = Boolean(query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly);
 
   const header = (key, label) => (
     <th aria-sort={sort === key ? (key === "score" ? "descending" : "ascending") : "none"}>
@@ -220,7 +252,7 @@ export default function Leads({ focusLead, go }) {
             <div style={{ flex: 1 }}>
               <label>Where did this list come from?</label>
               <select value={source} onChange={(e) => setSource(e.target.value)}>
-                {[...SOURCES, ...Object.keys(SHEET_SOURCES)].map((s) => <option key={s}>{s}</option>)}
+                {[...importSources, ...Object.keys(SHEET_SOURCES)].map((s) => <option key={s} value={s}>{SHEET_SOURCES[s] ? s : sourceLabel(s)}</option>)}
               </select>
             </div>
             <div style={{ flex: 1 }}>
@@ -249,10 +281,12 @@ export default function Leads({ focusLead, go }) {
             <option value="">Hot, warm and cold</option>
             {Object.entries(BAND_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
+          <SourceFilter leads={leads} value={srcFilter} onChange={setSrcFilter} />
+          <label className="row" style={{ margin: 0 }}><input type="checkbox" checked={inboundOnly} onChange={(e) => setInboundOnly(e.target.checked)} /> Inbound only</label>
           <span className="sub" style={{ margin: 0 }}>Showing {shown.length} of {leads.length}</span>
           <span className="dl-group">
             <DownloadButton path={exportPath("leads")} label="Download all" title="Every lead as a CSV that opens in Excel" testId="download-leads-all" />
-            {filtered && <DownloadButton path={exportPath("leads", { q: query.trim(), stage, band })} body={onlyIds ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
+            {filtered && <DownloadButton path={exportPath("leads", { q: query.trim(), stage, band, source: srcFilter.join(","), inbound: inboundOnly ? "1" : "" })} body={onlyIds ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
               title="Only the leads that match the search and filters" testId="download-leads-shown" />}
           </span>
         </div>
@@ -270,7 +304,7 @@ export default function Leads({ focusLead, go }) {
         {leads.length === 0 ? (
           <div className="empty"><EmptyArt name="leads" /><p>No leads yet. Click “Import leads” to add your first list.</p></div>
         ) : shown.length === 0 ? (
-          <p className="empty">No leads match. <button className="linkish" onClick={() => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); }}>Clear the filters</button></p>
+          <p className="empty">No leads match. <button className="linkish" onClick={() => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); }}>Clear the filters</button></p>
         ) : (
           <table className="leads-table">
             <thead><tr>
@@ -282,13 +316,16 @@ export default function Leads({ focusLead, go }) {
               {shown.map((l) => (
                 <tr key={l.id} className="click" onClick={() => setOpen(l.id)}>
                   <td className="pick" onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" aria-label={`Select ${l.company || l.domain}`} checked={picked.includes(l.id)} onChange={() => togglePick(l.id)} />
+                    <input type="checkbox" aria-label={`Select ${l.company || l.domain || l.contact_name}`} checked={picked.includes(l.id)} onChange={() => togglePick(l.id)} />
                   </td>
-                  <td data-label="Company"><button className="linkish" onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{l.company || l.domain}</b></button></td>
+                  <td data-label="Company"><button className="linkish" onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{l.company || l.domain || l.contact_name}</b></button>{l.is_test && <span className="pill warn" style={{ marginLeft: 6 }}>Test</span>}</td>
                   <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small></td>
                   <td data-label="Stage">{stageLabel(l.stage)}</td>
                   <td data-label="Score"><span className={`pill ${l.band}`}>{l.score} · {l.band}</span></td>
-                  <td data-label="Source">{sourceLabel(l.source)}</td>
+                  <td data-label="Source" title={attributionText(l.attribution) || undefined}>
+                    {sourceLabel(l)}{l.inbound && <span className="pill ok" style={{ marginLeft: 6 }}>Inbound</span>}
+                    {attributionText(l.attribution) && <><br /><small>{attributionText(l.attribution)}</small></>}
+                  </td>
                   <td data-label="Next step">{l.suggestion.action}</td>
                 </tr>
               ))}

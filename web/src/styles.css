@@ -431,3 +431,28 @@ details.section summary { cursor: pointer; font-weight: 700; }
 .find-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--brand), var(--brand-2)); transition: width .4s ease; }
 .find-modes legend { margin-bottom: 4px; }
 @media (max-width: 640px) { .find-card .btn { width: 100%; } }
+
+/* Lead sources and lead capture */
+.multi-filter { position: relative; flex: 1 1 150px; }
+.multi-filter summary { list-style: none; cursor: pointer; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.multi-filter summary::-webkit-details-marker { display: none; }
+.multi-pop { position: absolute; z-index: 5; margin-top: 4px; min-width: 240px; max-width: min(90vw, 340px); max-height: 320px; overflow: auto; display: grid; gap: 8px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+.origin-list { margin: 0; padding-left: 20px; display: grid; gap: 10px; }
+.origin-attrs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 4px 12px; margin: 4px 0 0; font-size: 12px; }
+.origin-attrs dt { color: var(--muted); } .origin-attrs dd { margin: 0; overflow-wrap: anywhere; }
+.type-pick { border: 0; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
+.type-pick legend { font-weight: 600; margin-bottom: 6px; }
+.type-option { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; font-weight: 400; }
+.type-option:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
+.type-option small { display: block; color: var(--muted); }
+.curl { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-size: 12px; }
+.table-scroll { overflow-x: auto; }
+.source-table { width: 100%; }
+@media (max-width: 760px) {
+  .source-table thead { display: none; }
+  .source-table, .source-table tbody, .source-table tr, .source-table td { display: block; width: 100%; }
+  .source-table tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .source-table td { border: 0; padding: 2px 0; }
+  .source-table td[data-label]:not([data-label="Source"])::before { content: attr(data-label) ": "; color: var(--muted); font-size: 12px; }
+  .multi-pop { position: static; box-shadow: none; }
+}

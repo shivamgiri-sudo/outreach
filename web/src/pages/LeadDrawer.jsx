@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { api, isOwner } from "../api.js";
 import { copyText } from "../clipboard.js";
-import { SEQUENCE_STOPPED, sourceLabel, stageLabel } from "../labels.js";
+import { SEQUENCE_STOPPED, sourceLabel, stageLabel, useSourceRegistry } from "../labels.js";
+import { istLabel } from "../time.js";
 import LeadMeetings from "./LeadMeetings.jsx";
 import LeadActivity from "./LeadActivity.jsx";
 import LeadFlows from "./flows/LeadFlows.jsx";
@@ -119,7 +120,39 @@ function PrivacyActions({ lead, onErased }) {
   );
 }
 
+// "Where this lead came from": every time they were seen, with the campaign, ad or form behind it.
+const ATTRIBUTION_LABELS = [["campaign_name", "Campaign"], ["campaign_id", "Campaign id"], ["adset_name", "Ad set"], ["adset_id", "Ad set id"],
+  ["ad_name", "Ad"], ["ad_id", "Ad id"], ["form_name", "Form"], ["form_id", "Form id"], ["utm_source", "UTM source"], ["utm_medium", "UTM medium"],
+  ["utm_campaign", "UTM campaign"], ["utm_content", "UTM content"], ["utm_term", "UTM term"], ["platform", "Platform"], ["click_id", "Click id"],
+  ["landing_url", "Landing page"], ["referrer", "Came from"]];
+
+function LeadOrigin({ lead }) {
+  useSourceRegistry();
+  const touches = (lead.sources || []).filter((t) => t && t.id);
+  if (!touches.length && !lead.inbound) return null;
+  return (
+    <section aria-labelledby="origin-title" data-testid="lead-origin">
+      <h3 id="origin-title">Where this lead came from</h3>
+      <ol className="origin-list">
+        {touches.map((t, i) => (
+          <li key={i}>
+            <b>{sourceLabel(t.id)}</b>{t.detail ? ` · ${t.detail}` : ""} <small className="sub-inline">{t.at ? istLabel(t.at) : ""}{i === 0 ? " · first seen" : ""}</small>
+            {t.attribution && (
+              <dl className="origin-attrs">
+                {ATTRIBUTION_LABELS.filter(([k]) => t.attribution[k]).map(([k, label]) => (
+                  <div key={k}><dt>{label}</dt><dd>{t.attribution[k]}</dd></div>
+                ))}
+              </dl>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 export default function LeadDrawer({ id, onClose }) {
+  useSourceRegistry();
   const [lead, setLead] = useState(null);
   const [note, setNote] = useState("");
   const [reply, setReply] = useState("");
@@ -171,14 +204,16 @@ export default function LeadDrawer({ id, onClose }) {
     <>
       <div className="drawer-head">
         <div>
-          <h2 id="drawer-title" tabIndex={-1}>{lead.company || lead.domain}</h2>
+          <h2 id="drawer-title" tabIndex={-1}>{lead.company || lead.domain || lead.contact_name}</h2>
           <span className={`pill ${lead.band}`}>{lead.score} · {lead.band}</span> <span className="pill">{stageLabel(lead.stage)}</span>
         </div>
         <button className="btn ghost" onClick={onClose}>Close</button>
       </div>
       <p className="sub">{lead.contact_name} {lead.title && `· ${lead.title}`}<br />{lead.email} {lead.phone && `· ${lead.phone}`}
-        <br /><small>Source: {sourceLabel(lead.source)}</small></p>
+        <br /><small>Source: {sourceLabel(lead)}</small></p>
       {error && <div className="tip error" role="alert">{error}</div>}
+
+      <LeadOrigin lead={lead} />
 
       <div className="tip">
         <b>Suggested next step ({s.priority} priority, via {s.channel}):</b> {s.action}
