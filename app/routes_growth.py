@@ -100,7 +100,7 @@ def make_router(store, build_lead, present) -> APIRouter:
 
     # ---- offer / sequence ----
     def shown_offer() -> dict:
-        return {k: v for k, v in get_offer(store).items() if k != "webhook_secret"}
+        return {k: v for k, v in get_offer(store).items() if k not in ("webhook_secret", "server_secret")}
 
     @router.get("/api/offer")
     def read_offer():

@@ -74,7 +74,7 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
     router = APIRouter()
 
     def settings() -> dict:
-        shown = dict(get_settings(store))
+        shown = {k: v for k, v in get_settings(store).items() if k != "server_secret"}   # never leaves the server
         secret = shown.get("webhook_secret")
         if secret:
             shown["webhook_secret"] = "••••" + secret[-4:]
