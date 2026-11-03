@@ -63,7 +63,7 @@ _A = {
                "segment"],
     "company_size": ["company size", "size", "employees", "number of employees", "employee count", "no of employees",
                      "# employees", "headcount", "staff size", "employee range", "company employees",
-                     "company size employees", "team size", "employee strength", "company headcount", "employees range",
+                     "company size employees", "team size", "employee strength", "company headcount", "employees range", "emp size",
                      "size range", "estimated num employees", "head count"],
     "open_roles": ["open roles", "openings", "no of openings", "number of openings", "vacancies", "vacancy",
                    "no of positions", "job openings count", "hiring count", "total openings", "openings count"],

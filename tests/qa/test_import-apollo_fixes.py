@@ -118,3 +118,10 @@ def test_an_apollo_row_prefers_the_real_mobile_over_an_apostrophe_landline(clien
     rows = preview(client, csv, source="apollo")["rows"]
     assert (rows[0]["phone"], rows[0]["phone_type"]) == ("+918040001500", "landline")
     assert (rows[1]["phone"], rows[1]["phone_type"]) == ("+919000020002", "mobile")
+
+
+# ---- 4. an edited re-export's "Emp Size" column was dropped
+def test_emp_size_maps_to_company_size(client):
+    csv = "Name,Organisation,Official Email,Emp Size\nLakshmi Singh,Acme Retail,lakshmi@acmeretail.example,350\n"
+    r = preview(client, csv, source="apollo")
+    assert r["mapping"]["Emp Size"] == "company_size" and r["rows"][0]["company_size_bucket"] == "201-500"
