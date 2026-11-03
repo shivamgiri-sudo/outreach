@@ -153,7 +153,11 @@ def free_busy(store, start: datetime, end: datetime, transport=request) -> list:
     cal = cfg["values"].get("calendar_id") or "primary"
     body = {"timeMin": _utc(start).isoformat(), "timeMax": _utc(end).isoformat(), "timeZone": IST, "items": [{"id": cal}]}
     reply = transport(f"{GCAL}/freeBusy", _bearer(access_token(store, "google", transport)), body)
-    return list(((reply.get("calendars") or {}).get(cal) or {}).get("busy") or [])
+    found = (reply.get("calendars") or {}).get(cal) or {}
+    if found.get("errors"):                  # e.g. notFound for a wrong calendar id: not the same as "free all day"
+        reasons = ", ".join(str(e.get("reason", "")) for e in found["errors"] if isinstance(e, dict))
+        raise ValueError(f"Google could not read calendar '{cal}': {reasons or 'error'}.")
+    return list(found.get("busy") or [])
 
 
 def test_calendar(store, pid: str, transport=request, resolver=None, webhook_url: str = "", webhook_secret: str = "") -> dict:
