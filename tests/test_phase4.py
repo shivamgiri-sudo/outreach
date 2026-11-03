@@ -33,6 +33,18 @@ def connect_email(c):
     c.put("/api/integrations/sending_domain", json={"mode": "api", "values": {
         "domain": "mail.example.in", "from_name": "Priya", "from_email": "hello@mail.example.in", "api_key": "re_secret"}})
 
+IDENTITY = {"sender_company": "BookMyInterview.ai", "sender_address": "Sector 62, Noida, Uttar Pradesh 201309, India"}
+
+
+def go_live(c, **extra):
+    """Switch real sending on the way an owner must: public https address and sender identity first."""
+    settings = {"public_base_url": "https://outreach.example.in", **IDENTITY, **extra}
+    c.put("/api/settings", json=settings)
+    r = c.put("/api/settings", json={"live_sending": True})
+    assert r.status_code == 200, r.text
+    return r
+
+
 
 # ---- public address and webhook secret are set in the app, not in environment variables ----
 def test_public_address_is_used_in_emails_and_unsubscribe_header(tmp_path):
@@ -40,7 +52,7 @@ def test_public_address_is_used_in_emails_and_unsubscribe_header(tmp_path):
     c = make(tmp_path, email_transport=t)
     c.post("/api/leads/import", json={"csv": CSV, "source": "apollo"})
     connect_email(c)
-    c.put("/api/settings", json={"live_sending": True, "public_base_url": "https://outreach.mycompany.in/"})
+    go_live(c, public_base_url="https://outreach.mycompany.in/")
     lid = c.get("/api/leads").json()[0]["id"]
     c.post(f"/api/leads/{lid}/enroll")
     c.post("/api/sequences/run", json={"now": T0.isoformat()})
@@ -128,7 +140,10 @@ def test_readiness_turns_ready_after_required_steps(tmp_path):
     r = c.get("/api/readiness").json()
     assert r["ready_for_live_test"] is True
     assert item(c, "live_sending")["status"] == "todo"                      # switching it on stays a deliberate, separate step
-    c.put("/api/settings", json={"live_sending": True})
+    refused = c.put("/api/settings", json={"live_sending": True})
+    assert refused.status_code == 400 and "postal address" in refused.json()["detail"]   # sender identity is required first
+    c.put("/api/settings", json=IDENTITY)
+    assert c.put("/api/settings", json={"live_sending": True}).status_code == 200
     assert item(c, "live_sending")["status"] == "done"
 
 

@@ -38,6 +38,18 @@ def connect_email(c):
     c.put("/api/integrations/sending_domain", json={"mode": "api", "values": {
         "domain": "mail.example.in", "from_name": "Priya", "from_email": "hello@mail.example.in", "api_key": "re_secret"}})
 
+IDENTITY = {"sender_company": "BookMyInterview.ai", "sender_address": "Sector 62, Noida, Uttar Pradesh 201309, India"}
+
+
+def go_live(c, **extra):
+    """Switch real sending on the way an owner must: public https address and sender identity first."""
+    settings = {"public_base_url": "https://outreach.example.in", **IDENTITY, **extra}
+    c.put("/api/settings", json=settings)
+    r = c.put("/api/settings", json={"live_sending": True})
+    assert r.status_code == 200, r.text
+    return r
+
+
 
 # ================= AUTH =================
 def test_auth_off_by_default(tmp_path):
@@ -99,7 +111,7 @@ def test_live_sending_posts_to_provider_with_unsubscribe_headers(tmp_path):
     t = FakeTransport({"id": "em_123"})
     c = make_client(tmp_path, email_transport=t)
     connect_email(c)
-    c.put("/api/settings", json={"live_sending": True})
+    go_live(c)
     lid = lead(c)["id"]
     c.post(f"/api/leads/{lid}/enroll")
     assert c.post("/api/sequences/run", json={"now": T0.isoformat()}).json()["sent"] == 1
@@ -121,7 +133,7 @@ def test_failed_send_is_not_marked_sent_and_is_retried(tmp_path):
     t = FakeTransport(error=OSError("provider down"))
     c = make_client(tmp_path, email_transport=t)
     connect_email(c)
-    c.put("/api/settings", json={"live_sending": True})
+    go_live(c)
     lid = lead(c)["id"]
     c.post(f"/api/leads/{lid}/enroll")
     r = c.post("/api/sequences/run", json={"now": T0.isoformat()}).json()
@@ -136,7 +148,7 @@ def test_suppressed_email_is_never_sent(tmp_path):
     t = FakeTransport({"id": "x"})
     c = make_client(tmp_path, email_transport=t)
     connect_email(c)
-    c.put("/api/settings", json={"live_sending": True})
+    go_live(c)
     lid = lead(c)["id"]
     c.post(f"/api/leads/{lid}/enroll")
     c.post(f"/u/{lid}")                                      # unsubscribe link (a person clicks the button)
