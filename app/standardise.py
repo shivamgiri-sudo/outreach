@@ -211,7 +211,8 @@ def _title_tokens(text: str) -> list:
 def clean_title(raw) -> str:
     """'head - human resources' -> 'HR Head', 'FOUNDER/CEO' -> 'Founder & CEO', 'Sr. HR Exec' -> 'Senior HR Executive'."""
     text = clean_text(raw)
-    if not text:
+    text = re.split(r"\s+(?:at|@)\s+|\s*@\s*(?=[A-Z])|\s+[|•]\s+", text, maxsplit=1, flags=re.IGNORECASE)[0].strip(" |•-")
+    if not text:  # a LinkedIn headline 'HR Head at Acme | Hiring' keeps only the job title
         return ""
     canon = TITLE_CANON.get(frozenset(_title_tokens(text)))
     if canon:
@@ -463,5 +464,5 @@ def website_domain(raw) -> tuple:
 def linkedin_url(raw, kind: str = "in") -> str:
     """A tidy https LinkedIn profile (kind 'in') or company (kind 'company') link, or ''."""
     text = clean_text(raw)
-    match = re.search(rf"(?:https?://)?(?:[a-z]{{2,3}}\.)?linkedin\.com/{kind}/([A-Za-z0-9\-_%.]+)", text, re.IGNORECASE)
+    match = re.match(rf"(?:https?://)?(?:[a-z]{{1,3}}\.)?linkedin\.com/{kind}/([A-Za-z0-9\-_%.]+)", text, re.IGNORECASE)
     return f"https://www.linkedin.com/{kind}/{match.group(1).rstrip('/')}" if match else ""

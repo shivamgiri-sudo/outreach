@@ -1,0 +1,250 @@
+"""Regression tests for bugs found while QA-ing LinkedIn Sales Navigator / scraper-tool imports.
+All people, companies, numbers and domains are made up (*.example, 90000 1xxxx)."""
+from datetime import date
+
+import pytest
+
+from app.header_map import detect_format, map_columns
+from app.lead_import import read_table, run_import
+
+TODAY = date(2026, 11, 3)
+
+
+def run(csv_text, leads=None, suppressed=()):
+    headers, table = read_table(csv_text)
+    fmt = detect_format(headers)
+    columns = map_columns(headers, [r for _, r in table[:25]], fmt)
+    leads = [] if leads is None else leads
+    result = run_import(leads, table, columns, fmt["source"] or "qa", set(suppressed), {}, today=TODAY,
+                        at="2026-11-03T05:00:00+00:00")
+    return leads, result, {c["column"]: c["field"] for c in columns}, fmt
+
+
+def test_email_filled_on_another_contact_does_not_crash_the_import():
+    """A row that adds an email to an existing 'other contact' of a lead whose main contact has no email used to raise
+    AttributeError (is_role_address(None)) and fail the whole import with a 500."""
+    leads, _, _, _ = run("Company,Full name,Phone\nKaveri Textiles,Imran Kaur,+91 90000 10001\n"
+                         "Kaveri Textiles,Divya Das,+91 90000 10002\n")
+    assert len(leads) == 1 and leads[0]["other_contacts"][0]["contact_name"] == "Divya Das"
+    leads, result, _, _ = run("Company,Full name,Phone,Email\nKaveri Textiles,Divya Das,+91 90000 10002,"
+                              "divya.das@kaveritextiles.example\n", leads)
+    assert result["summary"]["merge"] == 1
+    assert leads[0]["other_contacts"][0]["email"] == "divya.das@kaveritextiles.example"
+    assert leads[0]["email"] is None and leads[0]["email_is_role"] is False
+
+
+PB_SALESNAV_HEAD = ("profileUrl,fullName,firstName,lastName,companyName,title,companyUrl,regularCompanyUrl,location,"
+                    "pastExperienceCompanyName,pastExperienceCompanyUrl,pastExperienceCompanyTitle,profileImageUrl,vmid,"
+                    "linkedInProfileUrl,defaultProfileUrl,searchAccountProfileName\n")
+
+
+def test_previous_employer_columns_never_become_the_current_company():
+    """PhantomBuster's pastExperienceCompanyName matched the 'company name' keyword rule, so a lead with no current
+    position was filed under the employer they left; the scraper's profile image URL became the company website and
+    the seller's own name (searchAccountProfileName) was a fallback contact name."""
+    csv = PB_SALESNAV_HEAD + (
+        '"https://www.linkedin.com/sales/lead/ACwAAQA00001xQa,NAME_SEARCH,q1",,Priya,Sharma,,,,,"Greater Delhi Area",'
+        "Old Employer Pvt Ltd,https://www.linkedin.com/sales/company/9,HR Executive,https://media.example/img/1.jpg,"
+        "ACwAAQA00001xQa,https://www.linkedin.com/in/ACwAAQA00001xQa,https://www.linkedin.com/in/priya-sharma-qa001,"
+        "QA Seller\n")
+    leads, _, mapping, fmt = run(csv)
+    assert fmt["key"] == "sales_navigator"
+    for column in ("pastExperienceCompanyName", "pastExperienceCompanyUrl", "pastExperienceCompanyTitle",
+                   "profileImageUrl", "searchAccountProfileName"):
+        assert mapping[column] is None, column
+    lead = leads[0]
+    assert lead["company"] == "" and lead["contact_name"] == "Priya Sharma"
+    assert not lead.get("website") and not lead.get("domain")
+
+
+def test_profile_scraper_second_job_is_not_the_current_job():
+    csv = ("linkedinProfileUrl,fullName,company,companyUrl,jobTitle,company2,companyUrl2,jobTitle2,schoolUrl\n"
+           "https://www.linkedin.com/in/rahul-mehta-qa002,Rahul Mehta,Deccan Pharma,,CHRO,Old Pharma,"
+           "https://www.linkedin.com/company/old-pharma-qa/,HR Trainee,https://www.linkedin.com/school/fictional-qa/\n"
+           "https://www.linkedin.com/in/kavya-r-qa003,Kavya R,,,,Earlier Corp,https://www.linkedin.com/company/earlier-qa,"
+           "HR,https://www.linkedin.com/school/fictional-qa/\n")
+    leads, _, mapping, _ = run(csv)
+    assert mapping["company2"] is None and mapping["companyUrl2"] is None and mapping["jobTitle2"] is None
+    by_name = {l["contact_name"]: l for l in leads}
+    assert by_name["Rahul Mehta"]["company"] == "Deccan Pharma" and by_name["Rahul Mehta"]["title"] == "CHRO"
+    assert not by_name["Rahul Mehta"].get("company_linkedin_url")          # old-pharma is where he used to work
+    assert by_name["Kavya R"]["company"] == "" and by_name["Kavya R"]["title"] == ""
+
+
+def test_dux_soup_middle_name_does_not_replace_the_full_name():
+    csv = ("VisitTime,Profile,SalesProfile,First Name,Middle Name,Last Name,Company\n"
+           "2026-10-28 14:03:11,https://www.linkedin.com/in/sunita-devi-qa004,"
+           "https://www.linkedin.com/sales/people/ACwAAQA00004xQa,SUNITA,KUMARI,DEVI,Bharat Logistics Pvt Ltd\n"
+           "2026-10-28 14:05:00,https://www.linkedin.com/in/amit-verma-qa005,,Amit,,Verma,Verma Foods\n")
+    leads, _, mapping, _ = run(csv)
+    assert mapping["Middle Name"] is None and mapping["SalesProfile"] is None
+    assert sorted(l["contact_name"] for l in leads) == ["Amit Verma", "Sunita Devi"]
+
+
+def test_extra_columns_are_not_remapped_by_their_values():
+    """A known non-lead column (Sales Navigator URL, Twitter URL) was re-mapped to 'website' because its values look
+    like web addresses; lemlist's lastState ('emailsSent') was read as the state."""
+    csv = ("Sales Navigator Profile URL,LinkedIn Profile URL,First Name,Last Name,Company Name,Twitter URL,lastState\n"
+           "https://www.linkedin.com/sales/lead/ACwAAQA00006xQa,https://www.linkedin.com/in/neha-gupta-qa006,Neha,Gupta,"
+           "Zenith Infotech,https://twitter.com/neha_qa,emailsSent\n"
+           "https://www.linkedin.com/sales/lead/ACwAAQA00007xQa,https://www.linkedin.com/in/raju-bhai-qa007,Raju,Bhai,"
+           "Thar Solar,https://twitter.com/raju_qa,emailsOpened\n")
+    leads, result, mapping, _ = run(csv)
+    assert mapping["Sales Navigator Profile URL"] is None and mapping["Twitter URL"] is None
+    assert mapping["lastState"] is None
+    assert all(not l.get("state") for l in leads) and result["summary"]["warnings"] == {}
+
+
+def test_sales_navigator_link_does_not_hide_the_real_profile_link():
+    """profileUrl (a Sales Navigator /sales/lead/ link) maps to LinkedIn first; only the first non-empty value was
+    tried, it did not parse, and the lead ended up with no LinkedIn at all. The public /in/slug is preferred over
+    the internal ACw… member id, so the same person matches the slug other tools export."""
+    csv = PB_SALESNAV_HEAD + (
+        '"https://www.linkedin.com/sales/lead/ACwAAQA00008xQa,NAME_SEARCH,q8",RAVI KUMAR,RAVI,KUMAR,'
+        "ACME RETAIL PVT. LTD.,head - human resources,https://www.linkedin.com/sales/company/70000,"
+        'https://www.linkedin.com/company/70000,"Bengaluru, Karnataka, India",,,,,ACwAAQA00008xQa,'
+        "https://www.linkedin.com/in/ACwAAQA00008xQa,https://www.linkedin.com/in/ravi-kumar-qa008,QA Seller\n")
+    leads, _, _, _ = run(csv)
+    lead = leads[0]
+    assert lead["linkedin_url"] == "https://www.linkedin.com/in/ravi-kumar-qa008"
+    assert lead["company_linkedin_url"] == "https://www.linkedin.com/company/70000"
+    assert lead["company"] == "Acme Retail" and lead["contact_name"] == "Ravi Kumar"
+
+
+@pytest.mark.parametrize("raw, expected", [
+    ("https://www.linkedin.com/in/neha-gupta-qa009/", "https://www.linkedin.com/in/neha-gupta-qa009"),
+    ("in.linkedin.com/in/neha-gupta-qa009", "https://www.linkedin.com/in/neha-gupta-qa009"),
+    ("http://m.linkedin.com/in/neha-gupta-qa009?trk=x", "https://www.linkedin.com/in/neha-gupta-qa009"),
+    ("  LINKEDIN.COM/in/Neha-Gupta-qa009  ", "https://www.linkedin.com/in/Neha-Gupta-qa009"),
+    ("javascript:alert(document.cookie)//www.linkedin.com/in/neha-gupta-qa009", ""),
+    ("JAVASCRIPT:alert(1)//linkedin.com/in/x", ""),
+    ("https://evil.invalid/?next=linkedin.com/in/neha-gupta-qa009", ""),
+    ("https://notlinkedin.com/in/neha-gupta-qa009", ""),
+    ("data:text/html,linkedin.com/in/x", ""),
+    ("https://www.linkedin.com/sales/lead/ACwAAQA00009xQa,NAME_SEARCH,q", ""),
+])
+def test_person_linkedin_links_must_really_be_linkedin(raw, expected):
+    from app.standardise import linkedin_url
+    assert linkedin_url(raw, "in") == expected
+
+
+def test_unsafe_links_from_a_scraper_file_are_dropped_not_rewritten():
+    csv = ("First Name;Last Name;Occupation;Company;Company URL;LinkedIn URL\n"
+           "Xss;Probe;HR;Probe Labs;javascript:alert(1);javascript:alert(document.cookie)//www.linkedin.com/in/xss-qa\n"
+           "Js;Link;HR;Script Labs;JAVASCRIPT:alert(2)//linkedin.com/company/x;vbscript:msgbox(1)\n")
+    leads, _, _, _ = run(csv)
+    assert len(leads) == 2
+    for lead in leads:
+        assert not lead.get("linkedin_url") and not lead.get("company_linkedin_url") and not lead.get("website")
+        assert "script" not in str(lead).lower().replace("script labs", "")
+
+
+def test_same_linkedin_profile_from_two_tools_is_one_person():
+    """Leads were never matched on LinkedIn profile. A Sales Navigator lead (no email) and the Kaspr row for the same
+    profile under a differently written company became two leads, or a company match that dropped the email."""
+    leads, _, _, _ = run("Full Name,Company Name,Title,Profile Url\n"
+                         "PINKY KUMARI,ACME RETAIL PVT. LTD.,HR Manager,https://www.linkedin.com/in/pinky-kumari-qa010\n")
+    leads, result, _, _ = run("First name,Last name,Title,Company,LinkedIn,Work email,Direct email,Phone 1\n"
+                                "Pinky,Kumari,HR Manager,Acme Retail India Stores,linkedin.com/in/pinky-kumari-qa010/,"
+                                "pinky.kumari@acmeretail.example,,+91 90000 10010\n", leads)
+    assert len(leads) == 1 and result["merges"][0]["matched_by"] == "same LinkedIn profile"
+    assert leads[0]["email"] == "pinky.kumari@acmeretail.example" and leads[0]["phone"] == "+919000010010"
+
+
+def test_linkedin_only_rows_are_not_duplicated_on_reimport():
+    csv = ("linkedinProfileUrl,fullName,company,jobTitle\n"
+           "https://www.linkedin.com/in/bablu-yadav-qa011,Bablu Yadav,,\n"
+           "https://www.linkedin.com/in/sonu-kumar-qa012,sonu kumar,,\n")
+    leads, first, _, _ = run(csv)
+    leads, again, _, _ = run(csv, leads)
+    assert first["summary"]["create"] == 2 and again["summary"]["create"] == 0 and len(leads) == 2
+    assert again["summary"]["unchanged"] == 2
+
+
+def test_other_contact_is_matched_by_linkedin_too():
+    leads, _, _, _ = run("Company,Full name,LinkedIn URL\n"
+                         "Thar Solar,Ganesh Rao,https://www.linkedin.com/in/ganesh-rao-qa013\n"
+                         "Thar Solar,Simran Kaur,https://www.linkedin.com/in/simran-kaur-qa014\n")
+    leads, result, _, _ = run("email,firstName,lastName,companyName,linkedinUrl\n"
+                              "simran.kaur@tharsolar.example,Simran,Kaur,Thar Solar Pvt Ltd,"
+                              "http://linkedin.com/in/simran-kaur-qa014\n", leads)
+    assert result["merges"][0]["matched_by"] == "same LinkedIn profile"
+    assert leads[0]["other_contacts"][0]["email"] == "simran.kaur@tharsolar.example"
+
+
+@pytest.mark.parametrize("raw, title", [
+    ("Head HR at Punjab Agro Pvt Ltd | Ex-TCS | Hiring 100+", "HR Head"),
+    ("Talent Acquisition @ Zenith Infotech", "Talent Acquisition"),
+    ("TALENT ACQUISITION LEAD AT KOSI EDTECH", "TA Lead"),
+    ("CHRO | People leader | Speaker", "CHRO"),
+    ("Founder & CEO • Verma Foods", "Founder & CEO"),
+    ("HR Manager", "HR Manager"), ("R&D Head", "R&D Head"), ("FOUNDER/CEO", "Founder & CEO"),
+])
+def test_linkedin_headline_keeps_only_the_job_title(raw, title):
+    from app.standardise import clean_title
+    assert clean_title(raw) == title
+
+
+def test_headline_is_a_fallback_title_never_over_the_real_one():
+    csv = ("linkedinProfileUrl,fullName,headline,company,jobTitle\n"
+           "https://www.linkedin.com/in/anjali-iyer-qa015,Anjali Iyer,VP - Human Resources @ Kosi Edtech | Mentor,"
+           "Kosi Edtech,\n"
+           "https://www.linkedin.com/in/rohit-das-qa016,Rohit Das,Building teams | Speaker,Pench Hotels,HR Generalist\n")
+    leads, _, mapping, _ = run(csv)
+    assert mapping["headline"] == "title"
+    by_name = {l["contact_name"]: l for l in leads}
+    assert by_name["Anjali Iyer"]["title"] == "VP HR" and by_name["Anjali Iyer"]["seniority"] == "vp"
+    assert by_name["Rohit Das"]["title"] == "HR Generalist"
+
+
+@pytest.mark.parametrize("url", ["https://www.linkedin.com/in/ravi-kumar-qa008", "http://in.linkedin.com/company/x",
+                                 "https://LINKEDIN.COM./sales/lead/ACwAAQA00008xQa", "https://linkedin.com/jobs/view/1"])
+def test_the_page_reader_never_fetches_linkedin(monkeypatch, tmp_path, url):
+    """PRD §4 / non-goals: no automated LinkedIn scraping. /api/scrape/extract used to request linkedin.com/robots.txt
+    and the page itself; it now refuses before any network call."""
+    from fastapi.testclient import TestClient
+    from app import scraper
+    from app.main import create_app
+
+    def no_network(*args, **kwargs):
+        raise AssertionError(f"network call attempted: {args[:1]}")
+    monkeypatch.setattr(scraper, "guarded_request", no_network)
+    with pytest.raises(PermissionError, match="LinkedIn pages are never fetched"):
+        scraper.fetch_page(url)
+    client = TestClient(create_app(data_file=tmp_path / "d.json"))
+    r = client.post("/api/scrape/extract", json={"url": url, "company": "Acme Retail", "add_leads": True})
+    assert r.status_code == 400 and "LinkedIn" in r.json()["detail"]
+    assert client.get("/api/leads").json() == []
+
+
+@pytest.mark.parametrize("header, key", [
+    ("First name,Last name,Title,Company,LinkedIn,Work email,Direct email,Phone 1,Phone 2,Location,Company website",
+     "kaspr"),
+    ("VisitTime,Profile,SalesProfile,Picture,Degree,First Name,Middle Name,Last Name,Title,Company,CompanyProfile,"
+     "CompanyWebsite,Location,Industry,Email,Phone", "dux_soup"),
+    ("Phone 1,Phone 2,Email 1,Email 2,First Name,Last Name,Job Title,Company Name,Company Domain", "lusha"),
+])
+def test_kaspr_and_dux_soup_files_are_named_for_what_they_are(header, key):
+    """Kaspr files were labelled 'Lusha export' (source 'lusha' on every lead) and Dux-Soup files were unrecognised."""
+    assert detect_format(header.split(","))["key"] == key
+
+
+def test_person_location_india_falls_back_to_the_company_location():
+    """Evaboot / PhantomBuster give the person's location ('India') and the company's ('Pune, Maharashtra, India');
+    only the first was read, so the lead had no city. A city is never mixed with another column's state."""
+    csv = ("First Name,Last Name,Company Name,Location,Company Location\n"
+           'Chintu,Yadav,Sahyadri Hospitals,India,"Pune, Maharashtra, India"\n'
+           'Meenakshi,Iyer,Malabar Spices,Mumbai,"Kochi, Kerala, India"\n'
+           'Imran,Khan,Indus Fintech,"Gurugram, Haryana, India",\n')
+    leads, _, _, _ = run(csv)
+    got = {l["company"]: (l["city"], l["state"], l["country"]) for l in leads}
+    assert got["Sahyadri Hospitals"] == ("Pune", "Maharashtra", "IN")
+    assert got["Malabar Spices"] == ("Mumbai", "Maharashtra", "IN")
+    assert got["Indus Fintech"] == ("Gurugram", "Haryana", "IN")
+
+
+def test_same_city_in_both_location_columns_completes_state_and_country():
+    csv = ("First Name,Last Name,Company Name,Location,Company Location\n"
+           'Gurpreet,Iyer,Chambal Fertilisers QA,Kota,"Kota, Rajasthan, India"\n')
+    leads, _, _, _ = run(csv)
+    assert (leads[0]["city"], leads[0]["state"], leads[0]["country"]) == ("Kota", "Rajasthan", "IN")

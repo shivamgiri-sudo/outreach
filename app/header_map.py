@@ -90,6 +90,7 @@ _SECONDARY = {
     "secondary email": ("email", 0.9), "other email": ("email", 0.85), "personal email": ("email", 0.85),
     "alternate email": ("email", 0.85), "alt email": ("email", 0.85), "additional email": ("email", 0.85),
     "company address": ("address", 0.9), "hr contact": ("contact_name", 0.9),
+    "headline": ("title", 0.7),
 }
 _FILLERS = frozenset({"no", "of", "number", "num", "nos", "the", "a", "s"})
 # Columns every export carries that are not lead data; named here so fuzzy matching never grabs them.
@@ -103,6 +104,10 @@ KNOWN_EXTRA = (
     "management level", "keywords", "technologies", "annual revenue", "total funding", "latest funding",
     "position level", "next follow up date", "demo date and time", "contact confidence", "sales navigator url",
     "sales navigator profile url", "job title hierarchy level", "job function", "fits 50 400", "opening hours",
+    # LinkedIn tools: previous jobs, middle names and Sales Navigator-only links are not the current lead
+    "past experience company name", "past experience company url", "past experience company title", "company2",
+    "company url2", "job title2", "job location2", "middle name", "sales profile", "recruiter profile", "school url",
+    "profile image url", "search account profile name", "search account profile id", "last state",
 )
 
 
@@ -180,6 +185,12 @@ FORMATS = (
          ["Phone 1", "Phone 2", "Email 1", "Email 2", "Company Domain", "Direct Phone", "Lusha"],
          ["First Name", "Last Name", "Job Title", "Company Name", "LinkedIn URL", "Country", "City", "Company Size",
           "Company Industry", "Mobile Phone"]),
+    _fmt("kaspr", "Kaspr export", "kaspr", ["Work email", "Direct email", "Kaspr"],
+         ["First name", "Last name", "Title", "Company", "LinkedIn", "Phone 1", "Phone 2", "Location"]),
+    _fmt("dux_soup", "Dux-Soup export", "dux_soup",
+         ["VisitTime", "SalesProfile", "CompanyProfile", "CompanyWebsite", "Middle Name", "Degree", "Picture"],
+         ["Profile", "First Name", "Last Name", "Title", "Company", "Location", "Industry", "Email", "Phone"],
+         {"Profile": "linkedin_url", "CompanyProfile": "company_linkedin_url"}),
     _fmt("zoominfo", "ZoomInfo export", "zoominfo",
          ["ZoomInfo Contact ID", "ZoomInfo Company ID", "Direct Phone Number", "Management Level",
           "Job Title Hierarchy Level", "Company HQ Phone", "Primary Industry", "Employee Range",
@@ -300,7 +311,7 @@ def map_columns(headers: list, sample_rows: list, fmt: dict, saved: dict = None,
         else:
             field, conf = _fuzzy_field(loose)
             how = "similar name" if field else ""
-        if how not in ("you chose", "saved mapping"):
+        if how not in ("you chose", "saved mapping", "extra column, not lead data"):
             sniffed = sniff_values(samples)
             if sniffed == "words" and field in ("phone", "email"):
                 person = {"contact", "person", "name"} & set(loose.split())

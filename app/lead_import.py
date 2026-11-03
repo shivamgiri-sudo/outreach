@@ -88,6 +88,13 @@ def _first(row: dict, columns: list, field: str) -> str:
     return found[0] if found else ""
 
 
+def _linkedin(row: dict, columns: list, field: str, kind: str) -> str:
+    """First column value that is a real LinkedIn link (a Sales Navigator link is skipped), preferring a public
+    /in/name slug over an internal ACw… member id so the same person matches across tools."""
+    found = [u for u in (linkedin_url(v, kind) for v in _values(row, columns, field)) if u]
+    return sorted(found, key=lambda u: u.rsplit("/", 1)[-1].startswith("ACw"))[0] if found else ""
+
+
 def extract_record(row: dict, columns: list, today: date) -> tuple:
     """One row -> (standardised record, [(problem kind, value)])."""
     get = lambda f: _first(row, columns, f)
@@ -110,15 +117,19 @@ def extract_record(row: dict, columns: list, today: date) -> tuple:
     phone, phone_kind = best_phone(numbers)
     raw_site = get("website")
     domain, website, site_problem = website_domain(raw_site)
-    company_li = linkedin_url(get("company_linkedin_url"), "company") or linkedin_url(raw_site, "company")
+    company_li = _linkedin(row, columns, "company_linkedin_url", "company") or linkedin_url(raw_site, "company")
     if site_problem and not (site_problem == "not_company_site" and company_li):
         problems.append((site_problem, raw_site))
     guessed = bool(not domain and emails and not is_free_mail(emails[0]))
     if guessed:
         domain = registrable_domain(email_domain(emails[0]))
         website = f"https://{domain}" if domain else ""
-    person_li = linkedin_url(get("linkedin_url"), "in")
-    loc, addr = parse_location(get("location")), parse_address(get("address"))
+    person_li = _linkedin(row, columns, "linkedin_url", "in")
+    locs = [parse_location(v) for v in _values(row, columns, "location")]  # person "India", then company "Pune, …"
+    loc = dict(next((p for p in locs if p["city"]), locs[0] if locs else parse_location("")))
+    for other in (p for p in locs if loc["city"] and city_key(p["city"]) == city_key(loc["city"])):
+        loc = {k: loc[k] or other[k] for k in loc}  # "Kota" + "Kota, Rajasthan, India"
+    addr = parse_address(get("address"))
     city = clean_city(get("city")) or loc["city"] or addr["city"]
     country = clean_country(get("country")) or loc["country"] or addr["country"]
     state = clean_state(get("state"), country) or loc["state"] or addr["state"] or state_for_city(city)

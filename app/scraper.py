@@ -41,6 +41,9 @@ def fetch_page(url: str, resolver=None) -> str:
     if parts.scheme not in ("http", "https"):
         raise ValueError("Only http/https URLs are allowed")
     _refuse_typed_private(parts.hostname or "")
+    host = (parts.hostname or "").rstrip(".").lower()
+    if host == "linkedin.com" or host.endswith(".linkedin.com"):
+        raise PermissionError("LinkedIn pages are never fetched: import a Sales Navigator export instead")
     robots_url = f"{parts.scheme}://{parts.netloc}/robots.txt"
     try:
         robots = _get(robots_url, resolver)
