@@ -32,8 +32,9 @@ def _hub_ready(store, channel_id: str) -> bool:
 
 
 def _public_url_ok(url: str) -> bool:
-    host = urlparse(url).hostname or ""
-    return bool(host) and host not in LOCAL_HOSTS and not host.startswith("192.168.") and not host.startswith("10.")
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    return parsed.scheme == "https" and bool(host) and host not in LOCAL_HOSTS and not host.startswith("192.168.") and not host.startswith("10.")
 
 
 def make_router(store, email_transport=post_json, ai_transport=post_json, apollo_transport=post_json,
@@ -74,6 +75,11 @@ def make_router(store, email_transport=post_json, ai_transport=post_json, apollo
             except (OSError, ValueError) as exc:
                 return {"ok": False, "message": f"Could not reach Apollo: {exc}"}
             return {"ok": True, "message": "Apollo accepted the key (usage check, no credit used)."}
+        hub_pid = (saved(integration_id).get("values") or {}).get("provider", "")
+        if integration_id in ("whatsapp", "telephony") and hub_pid not in ("", "click_to_call") \
+                and _hub_ready(store, "calls" if integration_id == "telephony" else "whatsapp"):
+            return {"ok": True, "message": f"Connected through {hub_pid} on the Integrations page. Use the Test button "
+                                           "there to send a real test."}
         if integration_id == "whatsapp":
             return {"ok": False, "message": "WhatsApp stays in practice mode: messages are queued and shown, not delivered. "
                                             "Tell us your provider and its sending can be added."}

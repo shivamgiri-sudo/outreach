@@ -1,0 +1,92 @@
+{
+  "_about": "JSON webhook payloads shaped like the providers' documented examples, with fictional people, example domains and 90000 1xxxx numbers. Sources are listed in docs/qa/integrations-hub.md.",
+  "dialog360_whatsapp_inbound": {
+    "object": "whatsapp_business_account",
+    "entry": [{
+      "id": "100000000000001",
+      "changes": [{
+        "field": "messages",
+        "value": {
+          "messaging_product": "whatsapp",
+          "metadata": {"display_phone_number": "919000010001", "phone_number_id": "109876543210987"},
+          "contacts": [{"profile": {"name": "Gurpreet Kaur"}, "wa_id": "919000012350"}],
+          "messages": [{
+            "from": "919000012350",
+            "id": "wamid.HBgMOTE5MDAwMDEyMzUwFQIAEhgUM0FBQUZBS0UwMDAwMDAwMDAwMDEA",
+            "timestamp": "1793779200",
+            "type": "text",
+            "text": {"body": "Namaste! Hum har mahine 40 log hire karte hain. Demo dikhaiye na — कल शाम 5 बजे?"}
+          }]
+        }
+      }]
+    }]
+  },
+  "brevo_inbound": {
+    "items": [
+      {
+        "Uuid": ["11111111-qafa-ke00-0000-000000000001"],
+        "MessageId": "<CAqafake-brevo-001@mail.zenith-staffing.example>",
+        "InReplyTo": "<bmi-step2-qa@mail.hirewise-outreach.example>",
+        "From": {"Name": "Venkatesh Subramanian", "Address": "Venkatesh.S@Zenith-Staffing.example"},
+        "To": [{"Name": null, "Address": "replies@reply.hirewise-outreach.example"}],
+        "Subject": "RE: Quick question about hiring at Zenith Staffing",
+        "RawTextBody": "Not right now, maybe in January.\r\n\r\nRegards,\r\nVenkatesh",
+        "ExtractedMarkdownMessage": "Not right now, maybe in January.",
+        "SentAtDate": "Wed, 4 Nov 2026 11:02:14 +0530"
+      },
+      {
+        "Uuid": ["11111111-qafa-ke00-0000-000000000002"],
+        "MessageId": "<CAqafake-brevo-002@mail.kaveri-retail.example>",
+        "InReplyTo": "<bmi-step1-qa@mail.hirewise-outreach.example>",
+        "From": {"Name": "NEHA AGARWAL", "Address": "neha@kaveri-retail.example"},
+        "To": [{"Name": null, "Address": "replies@reply.hirewise-outreach.example"}],
+        "Subject": "Re: Hiring at Kaveri Retail",
+        "RawTextBody": "Haan, sample bhej dijiye.",
+        "ExtractedMarkdownMessage": "Haan, sample bhej dijiye.",
+        "SentAtDate": "Wed, 4 Nov 2026 11:05:40 +0530"
+      }
+    ]
+  },
+  "mailgun_failed_permanent": {
+    "event": "failed",
+    "id": "qafakeEvt-perm-0001",
+    "timestamp": 1793779500.5923693,
+    "message": {"headers": {"message-id": "bmi-step1-qa-0001@mail.hirewise-outreach.example",
+                            "to": "nobody@trident-security.example", "subject": "Hiring at Trident Security"}},
+    "log-level": "error",
+    "recipient": "nobody@trident-security.example",
+    "reason": "bounce",
+    "severity": "permanent",
+    "delivery-status": {"code": 550, "message": "5.1.1 The email account that you tried to reach does not exist."}
+  },
+  "mailgun_failed_temporary": {
+    "event": "failed",
+    "id": "qafakeEvt-temp-0002",
+    "timestamp": 1793779800.4288595,
+    "message": {"headers": {"message-id": "bmi-step1-qa-0002@mail.hirewise-outreach.example",
+                            "to": "hr@ganga-hospitality.example", "subject": "Hiring at Ganga Hospitality"}},
+    "log-level": "warn",
+    "recipient": "hr@ganga-hospitality.example",
+    "reason": "generic",
+    "severity": "temporary",
+    "delivery-status": {"code": 452, "message": "4.2.2 Mailbox full, try again later."}
+  },
+  "mailgun_complained": {
+    "event": "complained",
+    "id": "qafakeEvt-cmpl-0003",
+    "timestamp": 1793780100.0,
+    "message": {"headers": {"message-id": "bmi-step2-qa-0003@mail.hirewise-outreach.example"}},
+    "recipient": "Ops.Head@Vistara-Fintech.example"
+  },
+  "ses_sns_bounce": {
+    "Type": "Notification",
+    "MessageId": "22b80b92-qafa-ke00-0000-000000000001",
+    "TopicArn": "arn:aws:sns:ap-south-1:000000000000:ses-bounces-qa",
+    "Message": "{\"notificationType\":\"Bounce\",\"bounce\":{\"bounceType\":\"Permanent\",\"bounceSubType\":\"General\",\"bouncedRecipients\":[{\"emailAddress\":\"jane.doe@apex-logistics.example\",\"status\":\"5.1.1\",\"action\":\"failed\"}],\"timestamp\":\"2026-11-04T05:30:00.000Z\",\"feedbackId\":\"qafake-feedback-1\"},\"mail\":{\"timestamp\":\"2026-11-04T05:29:58.000Z\",\"source\":\"priya@mail.hirewise-outreach.example\",\"messageId\":\"qafake-ses-message-1\",\"destination\":[\"jane.doe@apex-logistics.example\"]}}",
+    "Timestamp": "2026-11-04T05:30:01.655Z",
+    "SignatureVersion": "1",
+    "Signature": "QAFAKEsignature==",
+    "SigningCertURL": "https://sns.ap-south-1.amazonaws.com/SimpleNotificationService-qafake.pem",
+    "UnsubscribeURL": "https://sns.ap-south-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=qafake"
+  }
+}
