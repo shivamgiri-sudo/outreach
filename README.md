@@ -1,4 +1,4 @@
-# Outreach OS
+# MCN Outreach (formerly Outreach OS)
 
 Lead management and outreach for BookMyInterview. Indian employers first, international later.
 
