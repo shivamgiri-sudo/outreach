@@ -19,6 +19,7 @@ from .activities import add_task, caller_name, iso, team, update_task
 from .growth_core import public_base_url
 from .privacy import is_blocked
 from .sequences import IST, identity_footer
+from .unsubscribe import unsub_url
 
 TASK_LEAD = timedelta(minutes=15)
 OVERDUE_AFTER = timedelta(hours=1)
@@ -78,7 +79,7 @@ def _task_reminders(store, now: datetime, sender) -> int:
     return sent
 
 
-def _meeting_email(store, lead: dict, meeting: dict, which: str) -> dict:
+def _meeting_email(store, lead: dict, meeting: dict, which: str, base_url: str = "") -> dict:
     when = ist_text(meeting["start"])
     company = lead.get("company") or "your team"
     lines = [f"Hi {lead.get('contact_name', '').split(' ')[0] or 'there'},", "",
@@ -91,6 +92,7 @@ def _meeting_email(store, lead: dict, meeting: dict, which: str) -> dict:
     footer = identity_footer(store.read("settings"))
     if footer:
         lines.append(footer)
+    lines.append(f"Unsubscribe: {unsub_url(store, base_url, lead['id'])}")
     return {"to": lead.get("email"), "subject": f"Reminder: {meeting.get('title') or 'our call'} — {when}", "body": "\n".join(lines), "kind": "meeting_reminder"}
 
 
@@ -118,7 +120,7 @@ def _meeting_reminders(store, now: datetime, sender, base_url: str) -> int:
                     notify(store, meeting.get("owner") or caller_name(store), f"Meeting at {ist_text(meeting['start'])} — {lead.get('company', '')}",
                            meeting.get("join_url", ""), lead["id"], kind="meeting_soon", sender=sender)
                 elif lead.get("email") and not is_blocked(store, lead["email"]) and lead["stage"] not in CLOSED_FOR_REMINDERS:
-                    message = _meeting_email(store, lead, meeting, label)
+                    message = _meeting_email(store, lead, meeting, label, base_url)
                     result = sender(message) if (live and sender) else {"status": "dry_run"}
                     _log_transactional(store, message["to"], message["subject"], message["body"], "meeting_reminder", lead["id"], result)
                 sent += 1
