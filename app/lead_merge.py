@@ -10,6 +10,7 @@ from typing import Optional
 
 from .hygiene import dedupe_key as basic_dedupe_key, is_role_address
 from .lead_model import event
+from .source_names import add_touch, label_of, touches
 from .places import city_key, clean_city, size_bucket
 from .standardise import (company_key, company_similarity, email_alias_key, email_domain, host_of, is_free_mail,
                           is_role_email, key_similarity, names_compatible, parse_phone, person_key, registrable_domain)
@@ -224,8 +225,9 @@ def contact_entry(rec: dict, source: str, at: str) -> dict:
     return {**entry, "source": source, "added_at": at}
 
 
-def merge_record(lead: dict, rec: dict, who, source: str, import_id: str, at: str, taken_keys: set) -> tuple:
-    """Fill the lead's gaps from a standardised row. Returns (new lead, info). Stage and consent are never touched."""
+def merge_record(lead: dict, rec: dict, who, source: str, import_id: str, at: str, taken_keys: set, touch: bool = True) -> tuple:
+    """Fill the lead's gaps from a standardised row. Returns (new lead, info). Stage and consent are never touched.
+    A lead seen again from another kind of source keeps its primary `source` and grows `sources[]` (touch=False skips it)."""
     original = lead
     lead = {**lead, "timeline": list(lead.get("timeline") or [])}
     info = {"filled": [], "conflicts": [], "added_contact": None, "changed": False}
@@ -281,10 +283,15 @@ def merge_record(lead: dict, rec: dict, who, source: str, import_id: str, at: st
         taken_keys.discard(lead.get("dedupe_key"))
         lead["dedupe_key"] = new_key
         taken_keys.add(new_key)
+    if touch and add_touch(lead, source, at=at):
+        info["touched"] = True
     if _without_timeline(lead) == _without_timeline(original):
         return original, info
     info["changed"] = True
     n = len(info["filled"])
+    if not n and not info["added_contact"] and not info["conflicts"]:
+        lead["timeline"].append(event("merged", f"Also found through {label_of(source)}"))
+        return lead, info
     text = f"Merged from {source} ({n} field{'' if n == 1 else 's'} filled)"
     if info["added_contact"]:
         text += f"; added {info['added_contact']} as another contact"
@@ -323,7 +330,7 @@ def merge_leads(keep: dict, others: list, at: str, taken: Optional[set] = None) 
         rec = {**other, "emails": other.get("emails") or ([other["email"]] if other.get("email") else []),
                "phones": other.get("phones") or ([other["phone"]] if other.get("phone") else [])}
         same_person = names_compatible(other.get("contact_name"), lead.get("contact_name"))
-        lead, info = merge_record(lead, rec, "primary" if same_person else "company", source, "", at, taken)
+        lead, info = merge_record(lead, rec, "primary" if same_person else "company", source, "", at, taken, touch=False)
         if info["changed"]:
             lead = {**lead, "timeline": lead["timeline"][:-1]}   # replaced by one summary event below
         for person in other.get("other_contacts") or []:
@@ -341,6 +348,13 @@ def merge_leads(keep: dict, others: list, at: str, taken: Optional[set] = None) 
             if (lead.get("field_sources") or {}).get(field, "").endswith(f"(lead {other['id']})"):
                 lead["field_sources"][field] = origin
     lead["timeline"] = sorted(lead["timeline"], key=lambda e: e.get("at") or "")
+    seen = []
+    for one in all_leads:
+        for t in touches(one):
+            if not any(x["id"] == t["id"] and (x.get("detail") or "") == (t.get("detail") or "") for x in seen):
+                seen.append(t)
+    if len(seen) > 1:
+        lead["sources"] = seen
     lead["stage"] = merged_stage(all_leads)
     withdrawn = sorted(filter(None, (x.get("consent_withdrawn_at") for x in all_leads)))
     if lead["stage"] == "unsubscribed" or withdrawn:

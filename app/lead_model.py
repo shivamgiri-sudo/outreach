@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
+from .source_names import add_touch, canonical
 from .hygiene import business_domain, dedupe_key, is_role_address, normalise_email, normalise_phone
 
 NUMERIC_FIELDS = ("open_roles", "company_size", "max_job_age_days", "repost_count")
@@ -39,6 +40,7 @@ def build_lead(row: dict, source: str, allow_company_key: bool = False) -> Optio
         "domain": business_domain(row.get("website")) or business_domain(email),
         "country": row.get("country", ""),
         "source": source,
+        "source_id": canonical(source)[0],
         "stage": "new",
         "consent": None,
         "engagement": {"opens": 0, "clicks": 0, "replies": 0},
@@ -68,4 +70,5 @@ def merge_contact(existing: dict, new: dict) -> dict:
     merged = {**existing, **filled}
     merged["dedupe_key"] = dedupe_key(merged) or existing["dedupe_key"]
     merged["timeline"] = [*existing["timeline"], event("merged", f"Details added from {new['source']}")]
+    add_touch(merged, new["source"])
     return merged

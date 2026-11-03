@@ -16,6 +16,7 @@ from .header_map import detect_format, loose_header, map_columns
 from .hygiene import dedupe_key as basic_dedupe_key, is_role_address, normalise_phone
 from .lead_merge import CLOSED_STAGES, LeadIndex, merge_record
 from .lead_model import event, now_iso, to_int
+from .source_names import canonical
 from .places import (city_key, clean_city, clean_country, clean_state, is_indian_place, job_age_days, parse_address,
                      parse_company_size, parse_count, parse_location, state_for_city)
 from .sheet_import import STATUS_STAGE
@@ -225,6 +226,7 @@ def lead_from_record(rec: dict, source: str, import_id: str, at: str, taken: set
         "id": lead_id, "company": rec["company"], "contact_name": rec["contact_name"], "title": rec["title"],
         "email": rec["email"], "email_is_role": bool(rec["email"] and is_role_address(rec["email"])), "phone": rec["phone"],
         "website": rec["website"], "domain": rec["domain"] or None, "country": rec["country"], "source": source,
+        "source_id": canonical(source)[0],
         "stage": STATUS_STAGE.get(rec["lead_status"].lower(), (0, "new"))[1], "consent": None,
         "engagement": {"opens": 0, "clicks": 0, "replies": 0},
         "timeline": [event("created", f"Imported from {source}{detail}"), *[event("note", n) for n in rec["notes"]],

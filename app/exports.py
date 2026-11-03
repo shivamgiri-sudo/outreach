@@ -11,7 +11,7 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 
-from . import linkedin_bridge, linkedin_seq
+from . import linkedin_bridge, linkedin_seq, source_names
 from .activities import ensure_task_ids, lead_activity, now_utc, task_buckets
 from .channels.meetings import all_meetings, parse_time
 from .hygiene import csv_safe
@@ -143,10 +143,14 @@ def _lead_matches(lead: dict, params: dict, ids: set) -> bool:
     source = _text(params, "source").lower()
     text = " ".join(str(lead.get(k) or "") for k in ("company", "domain", "contact_name", "email", "phone", "role")).lower()
     lead_source = str(lead.get("source") or "").lower()
+    wanted = {part.strip().lower() for part in source.split(",") if part.strip()}
+    lead_sid = str(lead.get("source_id") or source_names.canonical(lead.get("source"))[0]).lower()
+    inbound = _text(params, "inbound").lower() in ("1", "true", "yes")
     return ((not ids or lead["id"] in ids) and (not q or q in text)
+            and (not inbound or bool(lead.get("inbound")))
             and (not _text(params, "stage") or lead.get("stage") == _text(params, "stage"))
             and (not _text(params, "band") or lead.get("band") == _text(params, "band"))
-            and (not source or source in (lead_source, lead_source.split(":")[0]))
+            and (not wanted or bool(wanted & {lead_source, lead_source.split(":")[0], lead_sid}))
             and (not _text(params, "campaign_id") or lead.get("campaign_id") == _text(params, "campaign_id"))
             and (not _text(params, "tag") or _text(params, "tag").lower() in [str(t).lower() for t in lead.get("tags") or []]))
 
@@ -331,7 +335,7 @@ def suppressed_rows(store, params: dict, present) -> list:
 
 # dataset: (builder, columns, filters people can pass)
 DATASETS = {
-    "leads": (leads_rows, LEAD_COLUMNS, ("stage", "band", "source", "campaign_id", "tag", "q", "ids")),
+    "leads": (leads_rows, LEAD_COLUMNS, ("stage", "band", "source", "inbound", "campaign_id", "tag", "q", "ids")),
     "outbox": (outbox_rows, cols("@sent_at", "lead_id", "company", "to", "step", "variant", "subject", "status", "delivered",
                                  "@delivered_at", "error"), ("status", "lead_id", "include_body")),
     "inbox": (inbox_rows, cols("@received_at", "channel", "from", "subject", "text", "label", "matched", "lead_id", "company",
