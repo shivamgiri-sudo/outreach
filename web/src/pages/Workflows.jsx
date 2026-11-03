@@ -44,8 +44,9 @@ export default function Workflows() {
 
   return (
     <>
-      <h2>Workflows</h2>
-      <p className="sub">Your own communication flow: when something happens, do something. Each rule runs once per lead. WhatsApp actions still respect consent.</p>
+      <h2>Simple rules</h2>
+      <p className="sub">When something happens, do one thing. Each rule runs once per lead. WhatsApp actions still respect consent.
+        For several steps, waits and branches, use the Flow builder.</p>
       {message && <div className="tip" style={{ marginBottom: 12 }}>{message}</div>}
 
       <div className="grid g2">
