@@ -1,0 +1,2468 @@
+{
+ "62d8fe8d7a009e840495c9f6": {
+  "organization_job_postings": []
+ },
+ "3049c75f8986c3529ef4d2c3": {
+  "organization_job_postings": [
+   {
+    "id": "0ff440e79fd4796e94aa483b",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.theta.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "a079ce5752cee8a21ea35b92",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.theta.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-02T00:00:00.000+00:00"
+   },
+   {
+    "id": "7415da4c1d76b7e97079f623",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.theta.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-03T00:00:00.000+00:00"
+   },
+   {
+    "id": "407add60f45ca098f8e39fde",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.theta.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-04T00:00:00.000+00:00"
+   },
+   {
+    "id": "689f64621a273f69a7195db8",
+    "title": "Accounts Executive",
+    "url": "https://careers.theta.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-05T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "d9b1a8f2c427a51e74902543": {
+  "organization_job_postings": [
+   {
+    "id": "cd394e4463b276ee9fff2a78",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.kappa.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "adad9fe42e7844a2fd4b6a16",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.kappa.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-03T00:00:00.000+00:00"
+   },
+   {
+    "id": "256ed16c3971cc7c3844c4b8",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.kappa.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-05T00:00:00.000+00:00"
+   },
+   {
+    "id": "2072425e24e41b82a0d214e7",
+    "title": "Accounts Executive",
+    "url": "https://careers.kappa.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-07T00:00:00.000+00:00"
+   },
+   {
+    "id": "fff19721bd00c03e34a52214",
+    "title": "Delivery Associate",
+    "url": "https://careers.kappa.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-09T00:00:00.000+00:00"
+   },
+   {
+    "id": "be1378d5febf68340258cb71",
+    "title": "Customer Support Executive",
+    "url": "https://careers.kappa.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-11T00:00:00.000+00:00"
+   },
+   {
+    "id": "29d7304a219f6411bfbaf79c",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.kappa.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "6764083a11c42c8299129668",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.kappa.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-15T00:00:00.000+00:00"
+   },
+   {
+    "id": "259ef4798c1ec760c8a056a0",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.kappa.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-17T00:00:00.000+00:00"
+   },
+   {
+    "id": "feb4c5257f443eade79a7fb2",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.kappa.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-19T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "3406373b33e2bb525b792014": {
+  "organization_job_postings": [
+   {
+    "id": "30d9d5c1a88ed53e2f39aac4",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.lambda.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "d53bfd834eb22d08d3bbb89e",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.lambda.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-04T00:00:00.000+00:00"
+   },
+   {
+    "id": "129b050f2b9cff94c041f9e7",
+    "title": "Accounts Executive",
+    "url": "https://careers.lambda.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-07T00:00:00.000+00:00"
+   },
+   {
+    "id": "14be03e337360059b6cab3d5",
+    "title": "Delivery Associate",
+    "url": "https://careers.lambda.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-10T00:00:00.000+00:00"
+   },
+   {
+    "id": "67e5c4b57618077f62c3baf5",
+    "title": "Customer Support Executive",
+    "url": "https://careers.lambda.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-13T00:00:00.000+00:00"
+   },
+   {
+    "id": "b4e86c2129e753e123cf25dd",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.lambda.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-16T00:00:00.000+00:00"
+   },
+   {
+    "id": "7dcf2820d398f3d5d5c74e5e",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.lambda.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "9225f22d0430b8c68117bcf6",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.lambda.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-22T00:00:00.000+00:00"
+   },
+   {
+    "id": "e692ea7142e8712fe5ed54e3",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.lambda.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-25T00:00:00.000+00:00"
+   },
+   {
+    "id": "af32f70723552c94803c873f",
+    "title": "Accounts Executive",
+    "url": "https://careers.lambda.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "941f3f0aa6d2b66d171d5068",
+    "title": "Delivery Associate",
+    "url": "https://careers.lambda.example/jobs/10",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-04T00:00:00.000+00:00"
+   },
+   {
+    "id": "90b6324df100664eb51b152b",
+    "title": "Customer Support Executive",
+    "url": "https://careers.lambda.example/jobs/11",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-07T00:00:00.000+00:00"
+   },
+   {
+    "id": "b3c43b930b55f7dd15cc9d4d",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.lambda.example/jobs/12",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-10T00:00:00.000+00:00"
+   },
+   {
+    "id": "633dd8d603e032d59775da71",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.lambda.example/jobs/13",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00"
+   },
+   {
+    "id": "d5518f13a5beff1f734f4cc4",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.lambda.example/jobs/14",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-16T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "1a41e287d6d3c474ad434d2c": {
+  "organization_job_postings": [
+   {
+    "id": "67f64e2e7be2cb4d90f9d65d",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.sigma.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "15371232afdae8fe323f1df7",
+    "title": "Accounts Executive",
+    "url": "https://careers.sigma.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-05T00:00:00.000+00:00"
+   },
+   {
+    "id": "058c9bab97f84a5c23010fa2",
+    "title": "Delivery Associate",
+    "url": "https://careers.sigma.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-09T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "001254169920dcaeb4e304a1": {
+  "organization_job_postings": [
+   {
+    "id": "329dafb614b9d97f2f117a64",
+    "title": "Accounts Executive",
+    "url": "https://careers.orion.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "4e025223569f7879efe8304a",
+    "title": "Delivery Associate",
+    "url": "https://careers.orion.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-06T00:00:00.000+00:00"
+   },
+   {
+    "id": "2c53c59174178a2a1a9035b3",
+    "title": "Customer Support Executive",
+    "url": "https://careers.orion.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-11T00:00:00.000+00:00"
+   },
+   {
+    "id": "b865df06d88dbbf6f64862a3",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.orion.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-16T00:00:00.000+00:00"
+   },
+   {
+    "id": "4ea6c23a923abfe587cd5e86",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.orion.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-21T00:00:00.000+00:00"
+   },
+   {
+    "id": "c9f218cabcded6c0c4b24c44",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.orion.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-26T00:00:00.000+00:00"
+   },
+   {
+    "id": "609aaa39bc7b75560e4af952",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.orion.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "7204c7a98dc6a74b31c5a371",
+    "title": "Accounts Executive",
+    "url": "https://careers.orion.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-09T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "3ca1f8a80ec8d2bad46e5108": {
+  "organization_job_postings": [
+   {
+    "id": "23744716ccc8066b7400e538",
+    "title": "Delivery Associate",
+    "url": "https://careers.nimbus.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "2ce6ae0c6e97b9970aa8459d",
+    "title": "Customer Support Executive",
+    "url": "https://careers.nimbus.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-07T00:00:00.000+00:00"
+   },
+   {
+    "id": "9b06f4e094293fa4e7f1815b",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.nimbus.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-13T00:00:00.000+00:00"
+   },
+   {
+    "id": "cf9f154a04db468a32f106d3",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.nimbus.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-19T00:00:00.000+00:00"
+   },
+   {
+    "id": "6f553a2f6adfa212ea7453fd",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.nimbus.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-25T00:00:00.000+00:00"
+   },
+   {
+    "id": "111d6cd9e3aa4f89cdd9ed0f",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.nimbus.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-04T00:00:00.000+00:00"
+   },
+   {
+    "id": "66f38a91f51554eb960bfc11",
+    "title": "Accounts Executive",
+    "url": "https://careers.nimbus.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "ae2ffa3c98622f95150dafe4",
+    "title": "Delivery Associate",
+    "url": "https://careers.nimbus.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-16T00:00:00.000+00:00"
+   },
+   {
+    "id": "dfba7bee9a2c654d0b218372",
+    "title": "Customer Support Executive",
+    "url": "https://careers.nimbus.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-22T00:00:00.000+00:00"
+   },
+   {
+    "id": "b567eb484db3804a30943902",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.nimbus.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "f0807f50aec7ca7edd290f28",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.nimbus.example/jobs/10",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-07T00:00:00.000+00:00"
+   },
+   {
+    "id": "608a895284f984d222643a43",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.nimbus.example/jobs/11",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-13T00:00:00.000+00:00"
+   },
+   {
+    "id": "5ba0ebe87e7e72f872f03e14",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.nimbus.example/jobs/12",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-19T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "da1c36b19879290075adfa99": {
+  "organization_job_postings": [
+   {
+    "id": "9d41a43e5397140085ec950a",
+    "title": "Customer Support Executive",
+    "url": "https://careers.saffron.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "288acc067043e0b600948a26": {
+  "organization_job_postings": [
+   {
+    "id": "b3821efb94a9490df0cf2ede",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.banyan.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "63adc06443024b5713457443",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.banyan.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-09T00:00:00.000+00:00"
+   },
+   {
+    "id": "5eb73299377efe495e90b7c1",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.banyan.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-17T00:00:00.000+00:00"
+   },
+   {
+    "id": "d227b515efc29ef39c6ce176",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.banyan.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-25T00:00:00.000+00:00"
+   },
+   {
+    "id": "576bd99542eadffa61c6fc64",
+    "title": "Accounts Executive",
+    "url": "https://careers.banyan.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-06T00:00:00.000+00:00"
+   },
+   {
+    "id": "b9d53a700eaddc7ac50ad159",
+    "title": "Delivery Associate",
+    "url": "https://careers.banyan.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-14T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "7a9a43836596c7eb8204b6a7": {
+  "organization_job_postings": [
+   {
+    "id": "3a25956cb473968b719e0471",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.peacock.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "d79b445c589fc0a83658fb09",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.peacock.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-10T00:00:00.000+00:00"
+   },
+   {
+    "id": "951944d7fb4fea62c5c63d93",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.peacock.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-19T00:00:00.000+00:00"
+   },
+   {
+    "id": "16f100a6aa36ae32535aa96b",
+    "title": "Accounts Executive",
+    "url": "https://careers.peacock.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "6fb7ac14004d55ca8ee4735c",
+    "title": "Delivery Associate",
+    "url": "https://careers.peacock.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-10T00:00:00.000+00:00"
+   },
+   {
+    "id": "b159470ffcf70e8edec9abfa",
+    "title": "Customer Support Executive",
+    "url": "https://careers.peacock.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-19T00:00:00.000+00:00"
+   },
+   {
+    "id": "56e0d0a69104c34e9f139e46",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.peacock.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "908544f300de4d434b3b7e51",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.peacock.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-10T00:00:00.000+00:00"
+   },
+   {
+    "id": "5101e97b238721aa52f51cb5",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.peacock.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-19T00:00:00.000+00:00"
+   },
+   {
+    "id": "c6d9e66bff44cd730b74aa99",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.peacock.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "0b42262f01e60460f828bd38",
+    "title": "Accounts Executive",
+    "url": "https://careers.peacock.example/jobs/10",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-10T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "27d00620b75a5c3bfcd8a86e": {
+  "organization_job_postings": [
+   {
+    "id": "632d372800fefaf4e5386dde",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.lotus.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "b89db785615c7dfdefea83f1",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.lotus.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-11T00:00:00.000+00:00"
+   },
+   {
+    "id": "328c51987cc4eac96157e17e",
+    "title": "Accounts Executive",
+    "url": "https://careers.lotus.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-21T00:00:00.000+00:00"
+   },
+   {
+    "id": "ae795a6751a0ae37241616d4",
+    "title": "Delivery Associate",
+    "url": "https://careers.lotus.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-04T00:00:00.000+00:00"
+   },
+   {
+    "id": "b61d5d73648b21ee0b574821",
+    "title": "Customer Support Executive",
+    "url": "https://careers.lotus.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-14T00:00:00.000+00:00"
+   },
+   {
+    "id": "abd347349aaeac7413cf5075",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.lotus.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-24T00:00:00.000+00:00"
+   },
+   {
+    "id": "6ddefe661b59eb161a8cd358",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.lotus.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "921b9568bc1de4392268cf6a",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.lotus.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-17T00:00:00.000+00:00"
+   },
+   {
+    "id": "67f7626bff257a771406107a",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.lotus.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-27T00:00:00.000+00:00"
+   },
+   {
+    "id": "6111134fa817d4efca7709d8",
+    "title": "Accounts Executive",
+    "url": "https://careers.lotus.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-10T00:00:00.000+00:00"
+   },
+   {
+    "id": "98a85196c57402307d6a6eb6",
+    "title": "Delivery Associate",
+    "url": "https://careers.lotus.example/jobs/10",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-20T00:00:00.000+00:00"
+   },
+   {
+    "id": "76e48ce16aba46e24a46c83f",
+    "title": "Customer Support Executive",
+    "url": "https://careers.lotus.example/jobs/11",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-03T00:00:00.000+00:00"
+   },
+   {
+    "id": "b355cc93fe801345e8fc0836",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.lotus.example/jobs/12",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-13T00:00:00.000+00:00"
+   },
+   {
+    "id": "41b2d52742716408b72c9541",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.lotus.example/jobs/13",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00"
+   },
+   {
+    "id": "bf4b1d2402db89978ab03a91",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.lotus.example/jobs/14",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-06T00:00:00.000+00:00"
+   },
+   {
+    "id": "c47c20c4da9728ccc1a2babf",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.lotus.example/jobs/15",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-16T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "39fa8ed20ae7606713a61c2e": {
+  "organization_job_postings": [
+   {
+    "id": "3c80baeaeed400a505ee4908",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.ganga.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "979d8beeb34dd27d7dfa217b",
+    "title": "Accounts Executive",
+    "url": "https://careers.ganga.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-12T00:00:00.000+00:00"
+   },
+   {
+    "id": "5778eae244dbeb944f52db13",
+    "title": "Delivery Associate",
+    "url": "https://careers.ganga.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-23T00:00:00.000+00:00"
+   },
+   {
+    "id": "2fb814b1b964e1081e28e352",
+    "title": "Customer Support Executive",
+    "url": "https://careers.ganga.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-07T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "6c69e96a6e07499c7f58f61a": {
+  "organization_job_postings": [
+   {
+    "id": "b34e02cfad9521fff13a0877",
+    "title": "Accounts Executive",
+    "url": "https://careers.indus.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "038691c0290f67ba357672a9",
+    "title": "Delivery Associate",
+    "url": "https://careers.indus.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-13T00:00:00.000+00:00"
+   },
+   {
+    "id": "e246a33ef88b69f41bb878d9",
+    "title": "Customer Support Executive",
+    "url": "https://careers.indus.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-25T00:00:00.000+00:00"
+   },
+   {
+    "id": "bcc7432128b88925d7795f0d",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.indus.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-10T00:00:00.000+00:00"
+   },
+   {
+    "id": "7383df63684329e1875cb024",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.indus.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-22T00:00:00.000+00:00"
+   },
+   {
+    "id": "e963e11c59a0ffcc88b9e358",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.indus.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-07T00:00:00.000+00:00"
+   },
+   {
+    "id": "749bd6d453471c12365b8272",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.indus.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "8880648ab8070b40b2aa23dd",
+    "title": "Accounts Executive",
+    "url": "https://careers.indus.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-04T00:00:00.000+00:00"
+   },
+   {
+    "id": "c1305fb5b25ae317798ff1b3",
+    "title": "Delivery Associate",
+    "url": "https://careers.indus.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-16T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "8dc815d12f4232bf9187f1cd": {
+  "organization_job_postings": [
+   {
+    "id": "ad371266b1cffadacf068cbe",
+    "title": "Delivery Associate",
+    "url": "https://careers.deccan.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "104177c09625ba0bc574dfa6",
+    "title": "Customer Support Executive",
+    "url": "https://careers.deccan.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-14T00:00:00.000+00:00"
+   },
+   {
+    "id": "6c8c546b42fab98cf589cbaf",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.deccan.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-27T00:00:00.000+00:00"
+   },
+   {
+    "id": "449b8e5de524a0a0ccd0ce75",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.deccan.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-13T00:00:00.000+00:00"
+   },
+   {
+    "id": "26d13611c3428ad3df64f344",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.deccan.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-26T00:00:00.000+00:00"
+   },
+   {
+    "id": "b7388210ff4271996c10f604",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.deccan.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-12T00:00:00.000+00:00"
+   },
+   {
+    "id": "41e7a1d72343069524eaad85",
+    "title": "Accounts Executive",
+    "url": "https://careers.deccan.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "b2f5f50e632e82a8d4149aa8",
+    "title": "Delivery Associate",
+    "url": "https://careers.deccan.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-11T00:00:00.000+00:00"
+   },
+   {
+    "id": "02a8785d2df89756676a8926",
+    "title": "Customer Support Executive",
+    "url": "https://careers.deccan.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-24T00:00:00.000+00:00"
+   },
+   {
+    "id": "4307265983f8f8b9ca19023b",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.deccan.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-10T00:00:00.000+00:00"
+   },
+   {
+    "id": "0fa69db07820a3343d6adc34",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.deccan.example/jobs/10",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-23T00:00:00.000+00:00"
+   },
+   {
+    "id": "8a4e2b386e30ec8b455d5929",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.deccan.example/jobs/11",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-09T00:00:00.000+00:00"
+   },
+   {
+    "id": "d51394f272c8b98df33d325f",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.deccan.example/jobs/12",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-22T00:00:00.000+00:00"
+   },
+   {
+    "id": "ec10ddf3469baf1068ad0c3c",
+    "title": "Accounts Executive",
+    "url": "https://careers.deccan.example/jobs/13",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00"
+   }
+  ]
+ },
+ "cf70d67ae193fbce8420843b": {
+  "organization_job_postings": [
+   {
+    "id": "3f101079e2ba41c2d131f9ab",
+    "title": "Customer Support Executive",
+    "url": "https://careers.konkan.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "0123903b82a4d98e9693f9db",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.konkan.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-15T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "620e2f1c63cfc20ae1fb9470": {
+  "organization_job_postings": [
+   {
+    "id": "c014822882a6db03feee2121",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.malabar.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "8e33191f64af28de143ea192",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.malabar.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-16T00:00:00.000+00:00"
+   },
+   {
+    "id": "27fbb5d2d39e390e3f52107a",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.malabar.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-04T00:00:00.000+00:00"
+   },
+   {
+    "id": "63ef7fb6b0a7908ff99ad2f2",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.malabar.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-19T00:00:00.000+00:00"
+   },
+   {
+    "id": "bb8d08c6482f89caa1870c00",
+    "title": "Accounts Executive",
+    "url": "https://careers.malabar.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-07T00:00:00.000+00:00"
+   },
+   {
+    "id": "e4b84ea10f9dc8b6cad503d9",
+    "title": "Delivery Associate",
+    "url": "https://careers.malabar.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-22T00:00:00.000+00:00"
+   },
+   {
+    "id": "c7bcc0ef29bd772f59999658",
+    "title": "Customer Support Executive",
+    "url": "https://careers.malabar.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   }
+  ]
+ },
+ "22e3afbc8bfabc253ecb79fe": {
+  "organization_job_postings": [
+   {
+    "id": "104e1e98ea2907edd54c745f",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.vindhya.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "103d7ab4dd72b264f04ee41a",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.vindhya.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-17T00:00:00.000+00:00"
+   },
+   {
+    "id": "f719cfd6ef7c1aa7472fc93e",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.vindhya.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-06T00:00:00.000+00:00"
+   },
+   {
+    "id": "243b37be9c27201236ce795e",
+    "title": "Accounts Executive",
+    "url": "https://careers.vindhya.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-22T00:00:00.000+00:00"
+   },
+   {
+    "id": "751d24e85e730f4bb47ba1df",
+    "title": "Delivery Associate",
+    "url": "https://careers.vindhya.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-11T00:00:00.000+00:00"
+   },
+   {
+    "id": "1fefb18efb691117f1d4a6b0",
+    "title": "Customer Support Executive",
+    "url": "https://careers.vindhya.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-27T00:00:00.000+00:00"
+   },
+   {
+    "id": "b89d88ff7fa4c323d5a2725b",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.vindhya.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "27a04da1514ebbda5ab85ad3",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.vindhya.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-05T00:00:00.000+00:00"
+   },
+   {
+    "id": "45fd231ee91a5c6f5fd9dd69",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.vindhya.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-21T00:00:00.000+00:00"
+   },
+   {
+    "id": "be536aa60aeaf8fe5e6d4e43",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.vindhya.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-10T00:00:00.000+00:00"
+   },
+   {
+    "id": "eb859ca14610537333e2df0e",
+    "title": "Accounts Executive",
+    "url": "https://careers.vindhya.example/jobs/10",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-26T00:00:00.000+00:00"
+   },
+   {
+    "id": "313bedb23e9aa882079121ab",
+    "title": "Delivery Associate",
+    "url": "https://careers.vindhya.example/jobs/11",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-15T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "36d7d870f9150834d7694401": {
+  "organization_job_postings": []
+ },
+ "be02e47ee48060cbe9d3d4b2": {
+  "organization_job_postings": [
+   {
+    "id": "b54047f8d5495453683416c4",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.sahyadri.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "1d300ed8d1ba87d1cb4089ef",
+    "title": "Accounts Executive",
+    "url": "https://careers.sahyadri.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-19T00:00:00.000+00:00"
+   },
+   {
+    "id": "2b0883c430090d48a46b0b75",
+    "title": "Delivery Associate",
+    "url": "https://careers.sahyadri.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-10T00:00:00.000+00:00"
+   },
+   {
+    "id": "dc8626cf6249f7e04f03c598",
+    "title": "Customer Support Executive",
+    "url": "https://careers.sahyadri.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "17d9d7b869a7bdffe68c839e",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.sahyadri.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-19T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "05fcec18d0377c6aee4aa9a4": {
+  "organization_job_postings": [
+   {
+    "id": "3552f4c2e41dddd757213801",
+    "title": "Accounts Executive",
+    "url": "https://careers.narmada.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "26b4931187fee15efc124296",
+    "title": "Delivery Associate",
+    "url": "https://careers.narmada.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-20T00:00:00.000+00:00"
+   },
+   {
+    "id": "35a23277bf20f2f8a9de8c49",
+    "title": "Customer Support Executive",
+    "url": "https://careers.narmada.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-12T00:00:00.000+00:00"
+   },
+   {
+    "id": "dae8d9b55ebdb5f58874d176",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.narmada.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-04T00:00:00.000+00:00"
+   },
+   {
+    "id": "1e2026af5fa94b17beabea67",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.narmada.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-23T00:00:00.000+00:00"
+   },
+   {
+    "id": "9c3e9b23287e0cd825fa6f2f",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.narmada.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-15T00:00:00.000+00:00"
+   },
+   {
+    "id": "3ccc58053b54776686cc9dd6",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.narmada.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "b8770d9b8762477e5351e801",
+    "title": "Accounts Executive",
+    "url": "https://careers.narmada.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-26T00:00:00.000+00:00"
+   },
+   {
+    "id": "e2e1c66ca4fd7c2120a21113",
+    "title": "Delivery Associate",
+    "url": "https://careers.narmada.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-18T00:00:00.000+00:00"
+   },
+   {
+    "id": "37eb2ff8fdd31f8116711334",
+    "title": "Customer Support Executive",
+    "url": "https://careers.narmada.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-10T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "ef2e0a1f4068376c55b28fa4": {
+  "organization_job_postings": [
+   {
+    "id": "d05413caec21e3f56e82eafe",
+    "title": "Delivery Associate",
+    "url": "https://careers.acme.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "132021f7a712a318a2d7aeae",
+    "title": "Customer Support Executive",
+    "url": "https://careers.acme.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-21T00:00:00.000+00:00"
+   },
+   {
+    "id": "b01fbd7af5d95488881713c3",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.acme.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-14T00:00:00.000+00:00"
+   },
+   {
+    "id": "2b02af5c6387f5e81fee553b",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.acme.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-07T00:00:00.000+00:00"
+   },
+   {
+    "id": "6870bb88c9f476730e0b137d",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.acme.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-27T00:00:00.000+00:00"
+   },
+   {
+    "id": "38e11623059dd81940264e73",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.acme.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-20T00:00:00.000+00:00"
+   },
+   {
+    "id": "cac9df6a4aad422450c518e6",
+    "title": "Accounts Executive",
+    "url": "https://careers.acme.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "c82d1b2c88f0aa2a6f0ea2ea",
+    "title": "Delivery Associate",
+    "url": "https://careers.acme.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-06T00:00:00.000+00:00"
+   },
+   {
+    "id": "d054c4fa51089695abefc406",
+    "title": "Customer Support Executive",
+    "url": "https://careers.acme.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-26T00:00:00.000+00:00"
+   },
+   {
+    "id": "36cef1c77cfc1ad5e270c7ed",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.acme.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-19T00:00:00.000+00:00"
+   },
+   {
+    "id": "0ae02adc83569a18206af99b",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.acme.example/jobs/10",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-12T00:00:00.000+00:00"
+   },
+   {
+    "id": "131be900edd4a541346cc1ff",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.acme.example/jobs/11",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-05T00:00:00.000+00:00"
+   },
+   {
+    "id": "028296aafd053a1f99befb69",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.acme.example/jobs/12",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-25T00:00:00.000+00:00"
+   },
+   {
+    "id": "dd90ee0edb0e42e166169214",
+    "title": "Accounts Executive",
+    "url": "https://careers.acme.example/jobs/13",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00"
+   },
+   {
+    "id": "1568bcadb83064c1d5eb4993",
+    "title": "Delivery Associate",
+    "url": "https://careers.acme.example/jobs/14",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-11T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "fca095471b5585c061984271": {
+  "organization_job_postings": [
+   {
+    "id": "0a70ba4dc532eed308a983c0",
+    "title": "Customer Support Executive",
+    "url": "https://careers.zeta.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "b316260f51d3371cfc76925a",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.zeta.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-22T00:00:00.000+00:00"
+   },
+   {
+    "id": "b36bd3a7f1a80c6feacc8b1a",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.zeta.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-16T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "6e8dda9c215d004d2a9c3f77": {
+  "organization_job_postings": [
+   {
+    "id": "bfc1a3accc3321d60c4c900b",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.gamma.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "7d77e5b5ac7f098922997a79",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.gamma.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-23T00:00:00.000+00:00"
+   },
+   {
+    "id": "c1f9046c40b4abea3c139111",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.gamma.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-18T00:00:00.000+00:00"
+   },
+   {
+    "id": "34de68400ce5dd3de9731c53",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.gamma.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-13T00:00:00.000+00:00"
+   },
+   {
+    "id": "12a75730b8642c5d0600f0ce",
+    "title": "Accounts Executive",
+    "url": "https://careers.gamma.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-08T00:00:00.000+00:00"
+   },
+   {
+    "id": "6f16a8a76574a57350e6c483",
+    "title": "Delivery Associate",
+    "url": "https://careers.gamma.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-03T00:00:00.000+00:00"
+   },
+   {
+    "id": "0a908bafb49fd4cbfd2059d7",
+    "title": "Customer Support Executive",
+    "url": "https://careers.gamma.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "04008fbe33edec0f73e80774",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.gamma.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-20T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "5bb61a9a0519a81c3deadd77": {
+  "organization_job_postings": [
+   {
+    "id": "fb603095b39fa52c71a1b364",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.theta.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "445a1558ae1c2f6ebfce05ba",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.theta.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-24T00:00:00.000+00:00"
+   },
+   {
+    "id": "5b5941632b4943b6e1d23471",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.theta.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-20T00:00:00.000+00:00"
+   },
+   {
+    "id": "77a2716de4f1f9430617f612",
+    "title": "Accounts Executive",
+    "url": "https://careers.theta.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-16T00:00:00.000+00:00"
+   },
+   {
+    "id": "dc3761d8313d59c0660ba5c3",
+    "title": "Delivery Associate",
+    "url": "https://careers.theta.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-12T00:00:00.000+00:00"
+   },
+   {
+    "id": "df8641093c1c94be58c742f7",
+    "title": "Customer Support Executive",
+    "url": "https://careers.theta.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-08T00:00:00.000+00:00"
+   },
+   {
+    "id": "24c42b7e0fecfb9ff494bb5d",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.theta.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "955f6f4f3fd93217313c589a",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.theta.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-27T00:00:00.000+00:00"
+   },
+   {
+    "id": "7b7fdfbeb550b8a1ff217a61",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.theta.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-23T00:00:00.000+00:00"
+   },
+   {
+    "id": "7814e5520303d555bec31337",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.theta.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-19T00:00:00.000+00:00"
+   },
+   {
+    "id": "3fc6b24c5997d6d386b96c1b",
+    "title": "Accounts Executive",
+    "url": "https://careers.theta.example/jobs/10",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-15T00:00:00.000+00:00"
+   },
+   {
+    "id": "40946ea8f42a4ccfcf46ffab",
+    "title": "Delivery Associate",
+    "url": "https://careers.theta.example/jobs/11",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-11T00:00:00.000+00:00"
+   },
+   {
+    "id": "b2181c790d50aa57e46d2692",
+    "title": "Customer Support Executive",
+    "url": "https://careers.theta.example/jobs/12",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-07T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "39ce972da33c47f9d1ae5f2f": {
+  "organization_job_postings": [
+   {
+    "id": "0f040ea1265fedb1baa19d72",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.kappa.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "c387b2715cc260e31381b187": {
+  "organization_job_postings": [
+   {
+    "id": "d3218fe1f794ae1802b64f10",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.lambda.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "08af387c780bb6368710b161",
+    "title": "Accounts Executive",
+    "url": "https://careers.lambda.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-26T00:00:00.000+00:00"
+   },
+   {
+    "id": "3dbbd05d5c0c7c3d14227e13",
+    "title": "Delivery Associate",
+    "url": "https://careers.lambda.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-24T00:00:00.000+00:00"
+   },
+   {
+    "id": "951cc9b8dcafe434ac37df29",
+    "title": "Customer Support Executive",
+    "url": "https://careers.lambda.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-22T00:00:00.000+00:00"
+   },
+   {
+    "id": "b5fd08fa9a1a1aafb0e888ae",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.lambda.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-20T00:00:00.000+00:00"
+   },
+   {
+    "id": "38714886ed8d27f2fdc6afbc",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.lambda.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-18T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "63a4776efe4c53cdb7965d05": {
+  "organization_job_postings": [
+   {
+    "id": "89993160bc43dd0f43a8eca6",
+    "title": "Accounts Executive",
+    "url": "https://careers.sigma.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "44034c85b36145d0803503dd",
+    "title": "Delivery Associate",
+    "url": "https://careers.sigma.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-27T00:00:00.000+00:00"
+   },
+   {
+    "id": "ee1de02d9f794da7c1d60ca0",
+    "title": "Customer Support Executive",
+    "url": "https://careers.sigma.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-26T00:00:00.000+00:00"
+   },
+   {
+    "id": "5af808e559f8498af44ba96c",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.sigma.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-25T00:00:00.000+00:00"
+   },
+   {
+    "id": "e3ea6c0c99c4cc69794a281e",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.sigma.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-24T00:00:00.000+00:00"
+   },
+   {
+    "id": "76c66f712c489b09116a5128",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.sigma.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-23T00:00:00.000+00:00"
+   },
+   {
+    "id": "609097ffd0d8f69ad60f5753",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.sigma.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "a02025e8b54cbc4601dea58e",
+    "title": "Accounts Executive",
+    "url": "https://careers.sigma.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-21T00:00:00.000+00:00"
+   },
+   {
+    "id": "3bb6b2bb029948f3d688e4f4",
+    "title": "Delivery Associate",
+    "url": "https://careers.sigma.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-20T00:00:00.000+00:00"
+   },
+   {
+    "id": "5c7df5c2f63a62bc0068f9d8",
+    "title": "Customer Support Executive",
+    "url": "https://careers.sigma.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-19T00:00:00.000+00:00"
+   },
+   {
+    "id": "d6c41a6ab17a580d03312cdc",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.sigma.example/jobs/10",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-18T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "ccc01a7fbdbd630f416ff215": {
+  "organization_job_postings": [
+   {
+    "id": "a9cf845fb009881830541095",
+    "title": "Delivery Associate",
+    "url": "https://careers.orion.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "ff826cf84bcd83dd6c0c46a3",
+    "title": "Customer Support Executive",
+    "url": "https://careers.orion.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "b07c515b5cfd719039158a92",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.orion.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "50047cebd5abb9bbf782ac2c",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.orion.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "1ecae563a6efd92d20a21809",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.orion.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "42be3a35025af6f0913208f9",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.orion.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "013204c71c6cc6c81af34b95",
+    "title": "Accounts Executive",
+    "url": "https://careers.orion.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "1355a885c8ce3ffea4737d2c",
+    "title": "Delivery Associate",
+    "url": "https://careers.orion.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "e38bd71ca537a5c91eb827f2",
+    "title": "Customer Support Executive",
+    "url": "https://careers.orion.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "62fa4ddc462072f3e00a1bfd",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.orion.example/jobs/9",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "b6c0f73da0fa774a4b5b4cfc",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.orion.example/jobs/10",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "9d3ae6874e8103b2aace09eb",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.orion.example/jobs/11",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "aee869df445fcd07192bc93e",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.orion.example/jobs/12",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "d1d819a6197e16d2871dcfa4",
+    "title": "Accounts Executive",
+    "url": "https://careers.orion.example/jobs/13",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00"
+   },
+   {
+    "id": "68260d2acaebf4f903a483ea",
+    "title": "Delivery Associate",
+    "url": "https://careers.orion.example/jobs/14",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "0a0e67c28c32bdb9e5ffc0ea",
+    "title": "Customer Support Executive",
+    "url": "https://careers.orion.example/jobs/15",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-01T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "4641ff1be18f65a985ade7fb": {
+  "organization_job_postings": [
+   {
+    "id": "75fe86b329275f95550a7a64",
+    "title": "Customer Support Executive",
+    "url": "https://careers.nimbus.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "6b53b05e4c23c81245dce150",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.nimbus.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-02T00:00:00.000+00:00"
+   },
+   {
+    "id": "91d39461ed734f84cd05ccce",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.nimbus.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-03T00:00:00.000+00:00"
+   },
+   {
+    "id": "f6207b847f12a5cc9d8dc57e",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.nimbus.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-04T00:00:00.000+00:00"
+   }
+  ]
+ },
+ "68e73111db6504b65800e5ed": {
+  "organization_job_postings": [
+   {
+    "id": "06a3fcc6782a6c7029191405",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.saffron.example/jobs/0",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-10-01T00:00:00.000+00:00"
+   },
+   {
+    "id": "e6a6e64448ccc923c815e564",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.saffron.example/jobs/1",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-03T00:00:00.000+00:00"
+   },
+   {
+    "id": "ea609d9ef923137ccec2c7b9",
+    "title": "Customer Support Team Lead",
+    "url": "https://careers.saffron.example/jobs/2",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-05T00:00:00.000+00:00"
+   },
+   {
+    "id": "30514151f76d052f452d0887",
+    "title": "Inside Sales Executive",
+    "url": "https://careers.saffron.example/jobs/3",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-10-07T00:00:00.000+00:00"
+   },
+   {
+    "id": "fd490c2d477e33a594cd3610",
+    "title": "Accounts Executive",
+    "url": "https://careers.saffron.example/jobs/4",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-08-09T00:00:00.000+00:00"
+   },
+   {
+    "id": "cf81eaadcd221553daccbef3",
+    "title": "Delivery Associate",
+    "url": "https://careers.saffron.example/jobs/5",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-09-11T00:00:00.000+00:00"
+   },
+   {
+    "id": "4a095e37fb3b76eb68c92dce",
+    "title": "Customer Support Executive",
+    "url": "https://careers.saffron.example/jobs/6",
+    "city": "Pune",
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00"
+   },
+   {
+    "id": "9b50bb81645cd94b2ba55c82",
+    "title": "Customer Support Associate - Voice",
+    "url": "https://careers.saffron.example/jobs/7",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-02T05:00:00.000+00:00",
+    "posted_at": "2026-08-15T00:00:00.000+00:00"
+   },
+   {
+    "id": "d5a73df4acbc4df56a4e9d01",
+    "title": "Telecaller (Hindi/English)",
+    "url": "https://careers.saffron.example/jobs/8",
+    "city": null,
+    "state": null,
+    "country": "India",
+    "last_seen_at": "2026-11-01T05:00:00.000+00:00",
+    "posted_at": "2026-09-17T00:00:00.000+00:00"
+   }
+  ]
+ }
+}

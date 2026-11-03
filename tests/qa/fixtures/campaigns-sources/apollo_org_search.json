@@ -1,0 +1,583 @@
+{
+ "breadcrumbs": [
+  {
+   "label": "Job titles",
+   "signal_field_name": "q_organization_job_titles",
+   "value": [
+    "customer support"
+   ],
+   "display_name": "customer support"
+  }
+ ],
+ "partial_results_only": false,
+ "has_join": false,
+ "disable_eu_prospecting": false,
+ "partial_results_limit": 10000,
+ "pagination": {
+  "page": 1,
+  "per_page": 31,
+  "total_entries": 412,
+  "total_pages": 14
+ },
+ "accounts": [],
+ "organizations": [
+  {
+   "id": "62d8fe8d7a009e840495c9f6",
+   "name": "Gamma Call Solutions Private Limited",
+   "website_url": "http://www.gamma-call-solutions.example",
+   "primary_domain": "gamma-call-solutions.example",
+   "linkedin_url": "http://www.linkedin.com/company/gamma-call-solutions-example",
+   "founded_year": 1995,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "primary_phone": {
+    "number": "+91 90000 20000",
+    "source": "Account",
+    "sanitized_number": "+919000020000"
+   },
+   "phone": "+91 90000 20000",
+   "sanitized_phone": "+919000020000"
+  },
+  {
+   "id": "3049c75f8986c3529ef4d2c3",
+   "name": "Theta Infotech PRIVATE LIMITED",
+   "website_url": "http://www.theta-infotech.example",
+   "primary_domain": "theta-infotech.example",
+   "linkedin_url": "http://www.linkedin.com/company/theta-infotech-example",
+   "founded_year": 1996,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "primary_phone": {
+    "number": "+91 20 0712 3401",
+    "source": "Scraped",
+    "sanitized_number": "+912007123401"
+   },
+   "sanitized_phone": "+912007123401"
+  },
+  {
+   "id": "d9b1a8f2c427a51e74902543",
+   "name": "KAPPA BPO SERVICES LLP",
+   "website_url": "http://www.kappa-bpo-services.example",
+   "primary_domain": "kappa-bpo-services.example",
+   "linkedin_url": "http://www.linkedin.com/company/kappa-bpo-services-example",
+   "founded_year": 1997,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "sanitized_phone": "+919000000002"
+  },
+  {
+   "id": "3406373b33e2bb525b792014",
+   "name": "Lambda Textiles",
+   "website_url": "http://www.lambda-textiles.example",
+   "primary_domain": "lambda-textiles.example",
+   "linkedin_url": "http://www.linkedin.com/company/lambda-textiles-example",
+   "founded_year": 1998,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "1a41e287d6d3c474ad434d2c",
+   "name": "Sigma Care",
+   "website_url": "http://www.sigma-care.example",
+   "primary_domain": "sigma-care.example",
+   "linkedin_url": "http://www.linkedin.com/company/sigma-care-example",
+   "founded_year": 1999,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "estimated_num_employees": 184
+  },
+  {
+   "id": "001254169920dcaeb4e304a1",
+   "name": "Orion Motors (India) Pvt Ltd",
+   "website_url": "https://www.facebook.com/orion-motors-example",
+   "linkedin_url": "http://www.linkedin.com/company/orion-motors-example",
+   "founded_year": 2000,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "3ca1f8a80ec8d2bad46e5108",
+   "name": "Nimbus Logistics Ltd",
+   "website_url": "http://www.nimbus-logistics.example",
+   "primary_domain": "nimbus-logistics.example",
+   "linkedin_url": "http://www.linkedin.com/company/nimbus-logistics-example",
+   "founded_year": 2001,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "primary_phone": {
+    "number": "+91 90000 20006",
+    "source": "Account",
+    "sanitized_number": "+919000020006"
+   },
+   "phone": "+91 90000 20006",
+   "sanitized_phone": "+919000020006"
+  },
+  {
+   "id": "da1c36b19879290075adfa99",
+   "name": "Saffron Pharma Pvt Ltd",
+   "website_url": "http://www.saffron-pharma.example",
+   "primary_domain": "saffron-pharma.example",
+   "linkedin_url": "http://www.linkedin.com/company/saffron-pharma-example",
+   "founded_year": 2002,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "primary_phone": {
+    "number": "+91 20 0712 3407",
+    "source": "Scraped",
+    "sanitized_number": "+912007123407"
+   },
+   "sanitized_phone": "+912007123407"
+  },
+  {
+   "id": "288acc067043e0b600948a26",
+   "name": "Banyan Foods Pvt. Ltd.",
+   "website_url": null,
+   "primary_domain": "banyan-foods.example",
+   "linkedin_url": "http://www.linkedin.com/company/banyan-foods-example",
+   "founded_year": 2003,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "sanitized_phone": "+919000000008"
+  },
+  {
+   "id": "7a9a43836596c7eb8204b6a7",
+   "name": "Peacock Hospitality Private Limited",
+   "website_url": "http://www.peacock-hospitality.example",
+   "primary_domain": "peacock-hospitality.example",
+   "linkedin_url": "http://www.linkedin.com/company/peacock-hospitality-example",
+   "founded_year": 2004,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "27d00620b75a5c3bfcd8a86e",
+   "name": "Lotus Retail PRIVATE LIMITED",
+   "website_url": "http://www.lotus-retail.example",
+   "primary_domain": "lotus-retail.example",
+   "linkedin_url": "http://www.linkedin.com/company/lotus-retail-example",
+   "founded_year": 2005,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "39fa8ed20ae7606713a61c2e",
+   "name": "GANGA FINTECH LLP",
+   "website_url": "http://www.ganga-fintech.example",
+   "primary_domain": "ganga-fintech.example",
+   "linkedin_url": "http://www.linkedin.com/company/ganga-fintech-example",
+   "founded_year": 2006,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "6c69e96a6e07499c7f58f61a",
+   "name": "Indus Telecom",
+   "website_url": "http://www.indus-telecom.example",
+   "primary_domain": "indus-telecom.example",
+   "linkedin_url": "http://www.linkedin.com/company/indus-telecom-example",
+   "founded_year": 2007,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "primary_phone": {
+    "number": "+91 90000 20012",
+    "source": "Account",
+    "sanitized_number": "+919000020012"
+   },
+   "phone": "+91 90000 20012",
+   "sanitized_phone": "+919000020012"
+  },
+  {
+   "id": "8dc815d12f4232bf9187f1cd",
+   "name": "Deccan Staffing",
+   "website_url": "http://www.deccan-staffing.example",
+   "primary_domain": "deccan-staffing.example",
+   "linkedin_url": "http://www.linkedin.com/company/deccan-staffing-example",
+   "founded_year": 2008,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "primary_phone": {
+    "number": "+91 20 0712 3413",
+    "source": "Scraped",
+    "sanitized_number": "+912007123413"
+   },
+   "sanitized_phone": "+912007123413",
+   "estimated_num_employees": 193
+  },
+  {
+   "id": "cf70d67ae193fbce8420843b",
+   "name": "Konkan Healthcare (India) Pvt Ltd",
+   "website_url": "http://www.konkan-healthcare.example",
+   "primary_domain": "konkan-healthcare.example",
+   "linkedin_url": "http://www.linkedin.com/company/konkan-healthcare-example",
+   "founded_year": 2009,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "sanitized_phone": "+919000000014"
+  },
+  {
+   "id": "620e2f1c63cfc20ae1fb9470",
+   "name": "Malabar Call Solutions Ltd",
+   "website_url": "https://www.facebook.com/malabar-call-solutions-example",
+   "linkedin_url": "http://www.linkedin.com/company/malabar-call-solutions-example",
+   "founded_year": 2010,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "22e3afbc8bfabc253ecb79fe",
+   "name": "Vindhya Infotech Pvt Ltd",
+   "website_url": "http://www.vindhya-infotech.example",
+   "primary_domain": "vindhya-infotech.example",
+   "linkedin_url": "http://www.linkedin.com/company/vindhya-infotech-example",
+   "founded_year": 2011,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "36d7d870f9150834d7694401",
+   "name": "Coromandel BPO Services Pvt. Ltd.",
+   "website_url": "http://www.coromandel-bpo-services.example",
+   "primary_domain": "coromandel-bpo-services.example",
+   "linkedin_url": "http://www.linkedin.com/company/coromandel-bpo-services-example",
+   "founded_year": 2012,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "be02e47ee48060cbe9d3d4b2",
+   "name": "Sahyadri Textiles Private Limited",
+   "website_url": null,
+   "primary_domain": "sahyadri-textiles.example",
+   "linkedin_url": "http://www.linkedin.com/company/sahyadri-textiles-example",
+   "founded_year": 2013,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "primary_phone": {
+    "number": "+91 90000 20018",
+    "source": "Account",
+    "sanitized_number": "+919000020018"
+   },
+   "phone": "+91 90000 20018",
+   "sanitized_phone": "+919000020018"
+  },
+  {
+   "id": "05fcec18d0377c6aee4aa9a4",
+   "name": "Narmada Care PRIVATE LIMITED",
+   "website_url": "http://www.narmada-care.example",
+   "primary_domain": "narmada-care.example",
+   "linkedin_url": "http://www.linkedin.com/company/narmada-care-example",
+   "founded_year": 2014,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "primary_phone": {
+    "number": "+91 20 0712 3419",
+    "source": "Scraped",
+    "sanitized_number": "+912007123419"
+   },
+   "sanitized_phone": "+912007123419"
+  },
+  {
+   "id": "ef2e0a1f4068376c55b28fa4",
+   "name": "ACME MOTORS LLP",
+   "website_url": "http://www.acme-motors.example",
+   "primary_domain": "acme-motors.example",
+   "linkedin_url": "http://www.linkedin.com/company/acme-motors-example",
+   "founded_year": 2015,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "sanitized_phone": "+919000000020"
+  },
+  {
+   "id": "fca095471b5585c061984271",
+   "name": "Zeta Logistics",
+   "website_url": "http://www.zeta-logistics.example",
+   "primary_domain": "zeta-logistics.example",
+   "linkedin_url": "http://www.linkedin.com/company/zeta-logistics-example",
+   "founded_year": 2016,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "6e8dda9c215d004d2a9c3f77",
+   "name": "Gamma Pharma",
+   "website_url": "http://www.gamma-pharma.example",
+   "primary_domain": "gamma-pharma.example",
+   "linkedin_url": "http://www.linkedin.com/company/gamma-pharma-example",
+   "founded_year": 2017,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "5bb61a9a0519a81c3deadd77",
+   "name": "Theta Foods (India) Pvt Ltd",
+   "website_url": "http://www.theta-foods.example",
+   "primary_domain": "theta-foods.example",
+   "linkedin_url": "http://www.linkedin.com/company/theta-foods-example",
+   "founded_year": 2018,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "39ce972da33c47f9d1ae5f2f",
+   "name": "Kappa Hospitality Ltd",
+   "website_url": "http://www.kappa-hospitality.example",
+   "primary_domain": "kappa-hospitality.example",
+   "linkedin_url": "http://www.linkedin.com/company/kappa-hospitality-example",
+   "founded_year": 2019,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "primary_phone": {
+    "number": "+91 90000 20024",
+    "source": "Account",
+    "sanitized_number": "+919000020024"
+   },
+   "phone": "+91 90000 20024",
+   "sanitized_phone": "+919000020024"
+  },
+  {
+   "id": "c387b2715cc260e31381b187",
+   "name": "Lambda Retail Pvt Ltd",
+   "website_url": "https://www.facebook.com/lambda-retail-example",
+   "linkedin_url": "http://www.linkedin.com/company/lambda-retail-example",
+   "founded_year": 1995,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "primary_phone": {
+    "number": "+91 20 0712 3425",
+    "source": "Scraped",
+    "sanitized_number": "+912007123425"
+   },
+   "sanitized_phone": "+912007123425"
+  },
+  {
+   "id": "63a4776efe4c53cdb7965d05",
+   "name": "Sigma Fintech Pvt. Ltd.",
+   "website_url": "http://www.sigma-fintech.example",
+   "primary_domain": "sigma-fintech.example",
+   "linkedin_url": "http://www.linkedin.com/company/sigma-fintech-example",
+   "founded_year": 1996,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ],
+   "sanitized_phone": "+919000000026"
+  },
+  {
+   "id": "ccc01a7fbdbd630f416ff215",
+   "name": "Orion Telecom Private Limited",
+   "website_url": "http://www.orion-telecom.example",
+   "primary_domain": "orion-telecom.example",
+   "linkedin_url": "http://www.linkedin.com/company/orion-telecom-example",
+   "founded_year": 1997,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "4641ff1be18f65a985ade7fb",
+   "name": "Nimbus Staffing PRIVATE LIMITED",
+   "website_url": null,
+   "primary_domain": "nimbus-staffing.example",
+   "linkedin_url": "http://www.linkedin.com/company/nimbus-staffing-example",
+   "founded_year": 1998,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "68e73111db6504b65800e5ed",
+   "name": "SAFFRON HEALTHCARE LLP",
+   "website_url": "http://www.saffron-healthcare.example",
+   "primary_domain": "saffron-healthcare.example",
+   "linkedin_url": "http://www.linkedin.com/company/saffron-healthcare-example",
+   "founded_year": 1999,
+   "languages": [],
+   "naics_codes": [
+    "56142"
+   ],
+   "sic_codes": [
+    "7389"
+   ]
+  },
+  {
+   "id": "ce7f37b2bedce528c4a5aae2",
+   "website_url": null
+  }
+ ],
+ "model_ids": [
+  "62d8fe8d7a009e840495c9f6",
+  "3049c75f8986c3529ef4d2c3",
+  "d9b1a8f2c427a51e74902543",
+  "3406373b33e2bb525b792014",
+  "1a41e287d6d3c474ad434d2c",
+  "001254169920dcaeb4e304a1",
+  "3ca1f8a80ec8d2bad46e5108",
+  "da1c36b19879290075adfa99",
+  "288acc067043e0b600948a26",
+  "7a9a43836596c7eb8204b6a7",
+  "27d00620b75a5c3bfcd8a86e",
+  "39fa8ed20ae7606713a61c2e",
+  "6c69e96a6e07499c7f58f61a",
+  "8dc815d12f4232bf9187f1cd",
+  "cf70d67ae193fbce8420843b",
+  "620e2f1c63cfc20ae1fb9470",
+  "22e3afbc8bfabc253ecb79fe",
+  "36d7d870f9150834d7694401",
+  "be02e47ee48060cbe9d3d4b2",
+  "05fcec18d0377c6aee4aa9a4",
+  "ef2e0a1f4068376c55b28fa4",
+  "fca095471b5585c061984271",
+  "6e8dda9c215d004d2a9c3f77",
+  "5bb61a9a0519a81c3deadd77",
+  "39ce972da33c47f9d1ae5f2f",
+  "c387b2715cc260e31381b187",
+  "63a4776efe4c53cdb7965d05",
+  "ccc01a7fbdbd630f416ff215",
+  "4641ff1be18f65a985ade7fb",
+  "68e73111db6504b65800e5ed",
+  "ce7f37b2bedce528c4a5aae2"
+ ],
+ "num_fetch_result": null,
+ "derived_params": null
+}

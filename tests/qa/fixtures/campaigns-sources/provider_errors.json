@@ -1,0 +1,56 @@
+{
+ "apollo_429": "The maximum number of api calls allowed for api/v1/mixed_people/api_search is 600 times per hour. Please upgrade your plan from https://app.apollo.io/#/settings/plans/upgrade.",
+ "apollo_401": "Invalid access credentials.",
+ "apollo_422": {
+  "error": "Value too long for person_titles"
+ },
+ "places_400_key": {
+  "error": {
+   "code": 400,
+   "message": "API key not valid. Please pass a valid API key.",
+   "status": "INVALID_ARGUMENT",
+   "details": [
+    {
+     "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+     "reason": "API_KEY_INVALID",
+     "domain": "googleapis.com",
+     "metadata": {
+      "service": "places.googleapis.com"
+     }
+    }
+   ]
+  }
+ },
+ "places_403_disabled": {
+  "error": {
+   "code": 403,
+   "message": "Places API (New) has not been used in project 000000000000 before or it is disabled.",
+   "status": "PERMISSION_DENIED"
+  }
+ },
+ "places_429_quota": {
+  "error": {
+   "code": 429,
+   "message": "Quota exceeded for quota metric 'Text Search requests' and limit 'Text Search requests per day' of service 'places.googleapis.com'.",
+   "status": "RESOURCE_EXHAUSTED"
+  }
+ },
+ "zerobounce_key": {
+  "error": "Invalid API key or your account ran out of credits"
+ },
+ "neverbounce_auth": {
+  "status": "auth_failure",
+  "message": "We were unable to authenticate your request",
+  "execution_time": 3
+ },
+ "neverbounce_temp": {
+  "status": "temp_unavail",
+  "message": "A temporary service interruption occurred",
+  "execution_time": 12
+ },
+ "neverbounce_throttle": {
+  "status": "throttle_triggered",
+  "message": "Too many requests in a short amount of time",
+  "execution_time": 2
+ }
+}

@@ -1,0 +1,1450 @@
+{
+ "BPO in Pune": {
+  "places": [
+   {
+    "id": "ChIJ873ca6e9087b4f3efbb8599",
+    "displayName": {
+     "text": "KAPPA MOTORS LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 1, Baner Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=727920993477313159",
+    "websiteUri": "https://www.kappa-motors.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "090000 30000",
+    "internationalPhoneNumber": "+91 90000 30000"
+   },
+   {
+    "id": "ChIJ57b5c52aff270f681f700f5",
+    "displayName": {
+     "text": "Lambda Logistics",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 2, Sector 62, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=671680247407136586",
+    "websiteUri": "https://www.lambda-logistics.example/",
+    "nationalPhoneNumber": "020 0612 0001",
+    "internationalPhoneNumber": "+91 20 0612 0001"
+   },
+   {
+    "id": "ChIJ9eb37b12dbbbc5b3cad9932",
+    "displayName": {
+     "text": "Sigma Pharma",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 3, Sector 62, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=200806587946443263",
+    "websiteUri": "https://www.sigma-pharma.example/"
+   },
+   {
+    "id": "ChIJ7a0c95665efa3a5a052e90f",
+    "displayName": {
+     "text": "Orion Foods (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 4, Sector 62, Pune, India",
+    "businessStatus": "CLOSED_TEMPORARILY",
+    "googleMapsUri": "https://maps.google.com/?cid=617700881068603606",
+    "websiteUri": "https://www.orion-foods.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJf977d95931f6a6aaa7a23a5",
+    "displayName": {
+     "text": "Nimbus Hospitality Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 5, Sector 62, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=310302895933801535",
+    "nationalPhoneNumber": "090000 30004",
+    "internationalPhoneNumber": "+91 90000 30004"
+   },
+   {
+    "id": "ChIJ23f8feadcc7f868bdf36893",
+    "displayName": {
+     "text": "Saffron Retail Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 6, Sector 62, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=513020809635154849",
+    "websiteUri": "https://www.saffron-retail.example/",
+    "nationalPhoneNumber": "020 0612 0005",
+    "internationalPhoneNumber": "+91 20 0612 0005"
+   },
+   {
+    "id": "ChIJffcc4dfa2ef34ecf2678dac",
+    "displayName": {
+     "text": "Banyan Fintech Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 7, Baner Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=274510214362568953",
+    "websiteUri": "https://www.facebook.com/banyan-fintech-example"
+   },
+   {
+    "id": "ChIJeb4425225b3d718ad5ac2f2",
+    "displayName": {
+     "text": "Peacock Telecom Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 8, MG Road, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=322689168542555993",
+    "websiteUri": "https://peacock-telecom-example.business.site/"
+   },
+   {
+    "id": "ChIJf42b56e4670ba33f7033c0d",
+    "displayName": {
+     "text": "Lotus Staffing PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 9, Baner Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=102732446406972586",
+    "websiteUri": "https://www.lotus-staffing.example/",
+    "nationalPhoneNumber": "090000 30008",
+    "internationalPhoneNumber": "+91 90000 30008"
+   },
+   {
+    "id": "ChIJ57cbf527418ce0dadcc31ec",
+    "displayName": {
+     "text": "GANGA HEALTHCARE LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 10, Sector 62, Pune, India",
+    "businessStatus": "CLOSED_PERMANENTLY",
+    "googleMapsUri": "https://maps.google.com/?cid=767776012104050957",
+    "nationalPhoneNumber": "020 0612 0009",
+    "internationalPhoneNumber": "+91 20 0612 0009"
+   },
+   {
+    "id": "ChIJ1831ce562817998b300eb9e",
+    "displayName": {
+     "text": "Indus Call Solutions",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 11, Outer Ring Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=986857530795918605",
+    "websiteUri": "https://www.indus-call-solutions.example/"
+   },
+   {
+    "id": "ChIJeec31075fc04035a8c6e483",
+    "displayName": {
+     "text": "Deccan Infotech",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 12, Sector 62, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=798093034458456103",
+    "websiteUri": "https://www.deccan-infotech.example/"
+   },
+   {
+    "id": "ChIJ650c81aadb34349894dca84",
+    "displayName": {
+     "text": "Konkan BPO Services (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 13, MG Road, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=122632045264995027",
+    "websiteUri": "https://www.konkan-bpo-services.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "090000 30012",
+    "internationalPhoneNumber": "+91 90000 30012"
+   },
+   {
+    "id": "ChIJb88bfca14d2579cdf1a6960",
+    "displayName": {
+     "text": "Malabar Textiles Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 14, Sector 62, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=862498543891286660",
+    "websiteUri": "https://www.malabar-textiles.example/",
+    "nationalPhoneNumber": "020 0612 0013",
+    "internationalPhoneNumber": "+91 20 0612 0013"
+   },
+   {
+    "id": "ChIJ7fb766c455d99f230332c73",
+    "displayName": {
+     "text": "Vindhya Care Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 15, MG Road, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=501065553894989343"
+   },
+   {
+    "id": "ChIJfd2d87409dc46c3bb030bd8",
+    "displayName": {
+     "text": "Coromandel Motors Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 16, MG Road, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=206255794485967765",
+    "websiteUri": "https://www.coromandel-motors.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJd4f7b82bac4dee50ae52964",
+    "displayName": {
+     "text": "Sahyadri Logistics Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 17, Outer Ring Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=893360585918455267",
+    "websiteUri": "https://www.sahyadri-logistics.example/",
+    "nationalPhoneNumber": "090000 30016",
+    "internationalPhoneNumber": "+91 90000 30016"
+   },
+   {
+    "id": "ChIJ8a873941bdf5f278493ebbf",
+    "displayName": {
+     "text": "Narmada Pharma PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 18, MG Road, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=695286223099167061",
+    "websiteUri": "https://www.facebook.com/narmada-pharma-example",
+    "nationalPhoneNumber": "020 0612 0017",
+    "internationalPhoneNumber": "+91 20 0612 0017"
+   },
+   {
+    "id": "ChIJc02e6f427401bf0b4d7c3a1",
+    "displayName": {
+     "text": "ACME FOODS LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 19, Outer Ring Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=802322375708630325",
+    "websiteUri": "https://www.acme-foods.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJf174e92ae763387ffe7c639",
+    "displayName": {
+     "text": "Zeta Hospitality",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 20, Sector 62, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=581540398185260695"
+   }
+  ],
+  "nextPageToken": "AeeoHce009a4a03772d0d60e59f2657139feb2"
+ },
+ "BPO in Bengaluru": {
+  "places": [
+   {
+    "id": "ChIJ4cf01dae66586840b3bd3d7",
+    "displayName": {
+     "text": "Gamma Retail",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 21, Sector 62, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=203314065529272454",
+    "websiteUri": "https://gamma-retail-example.business.site/",
+    "nationalPhoneNumber": "090000 30020",
+    "internationalPhoneNumber": "+91 90000 30020"
+   },
+   {
+    "id": "ChIJcf108a9c7bea1acb82a643b",
+    "displayName": {
+     "text": "Theta Fintech (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 22, Baner Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=191051339227703016",
+    "websiteUri": "https://www.theta-fintech.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "020 0612 0021",
+    "internationalPhoneNumber": "+91 20 0612 0021"
+   },
+   {
+    "id": "ChIJ71acab4273f9a237adc8c18",
+    "displayName": {
+     "text": "Kappa Telecom Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 23, Baner Rd, Bengaluru, India",
+    "businessStatus": "CLOSED_TEMPORARILY",
+    "googleMapsUri": "https://maps.google.com/?cid=891835774760865760",
+    "websiteUri": "https://www.kappa-telecom.example/"
+   },
+   {
+    "id": "ChIJcde14bc6f87e34f9a990384",
+    "displayName": {
+     "text": "Lambda Staffing Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 24, Baner Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=528202000566815552",
+    "websiteUri": "https://www.lambda-staffing.example/"
+   },
+   {
+    "id": "ChIJ22b3bd92d9d8377ea7f21eb",
+    "displayName": {
+     "text": "Sigma Healthcare Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 25, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=975034119789678189",
+    "nationalPhoneNumber": "090000 30024",
+    "internationalPhoneNumber": "+91 90000 30024"
+   },
+   {
+    "id": "ChIJ298abe199814d19ef51a53a",
+    "displayName": {
+     "text": "Orion Call Solutions Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 26, Sector 62, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=680973826262452546",
+    "websiteUri": "https://www.orion-call-solutions.example/",
+    "nationalPhoneNumber": "020 0612 0025",
+    "internationalPhoneNumber": "+91 20 0612 0025"
+   },
+   {
+    "id": "ChIJ2f13ed4fa45c30008ef1cee",
+    "displayName": {
+     "text": "Nimbus Infotech PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 27, Outer Ring Rd, Bengaluru, India",
+    "businessStatus": "CLOSED_PERMANENTLY",
+    "googleMapsUri": "https://maps.google.com/?cid=904812935506186586",
+    "websiteUri": "https://www.nimbus-infotech.example/"
+   },
+   {
+    "id": "ChIJ03eb046c21757068c420f7f",
+    "displayName": {
+     "text": "SAFFRON BPO SERVICES LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 28, Sector 62, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=652821211489839142",
+    "websiteUri": "https://www.saffron-bpo-services.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJddc4c73b5b25168055d224c",
+    "displayName": {
+     "text": "Banyan Textiles",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 29, Baner Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=649732191294475555",
+    "websiteUri": "https://www.facebook.com/banyan-textiles-example",
+    "nationalPhoneNumber": "090000 30028",
+    "internationalPhoneNumber": "+91 90000 30028"
+   },
+   {
+    "id": "ChIJ821257a836e0d43efcb1f13",
+    "displayName": {
+     "text": "Peacock Care",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 30, Outer Ring Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=1027696480248972296",
+    "nationalPhoneNumber": "020 0612 0029",
+    "internationalPhoneNumber": "+91 20 0612 0029"
+   },
+   {
+    "id": "ChIJ2b18a8220523a683b8a5db0",
+    "displayName": {
+     "text": "Lotus Motors (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 31, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=812342436361348016",
+    "websiteUri": "https://www.lotus-motors.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJ890f5fb80bb595fbed57c74",
+    "displayName": {
+     "text": "Ganga Logistics Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 32, Baner Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=321560433542412522",
+    "websiteUri": "https://www.ganga-logistics.example/"
+   },
+   {
+    "id": "ChIJb296cd390380889fda78cca",
+    "displayName": {
+     "text": "Indus Pharma Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 33, Baner Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=420687147568060916",
+    "websiteUri": "https://www.indus-pharma.example/",
+    "nationalPhoneNumber": "090000 30032",
+    "internationalPhoneNumber": "+91 90000 30032"
+   },
+   {
+    "id": "ChIJd2c04735f1fc574f0b0698f",
+    "displayName": {
+     "text": "Deccan Foods Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 34, Outer Ring Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=258509933232877113",
+    "websiteUri": "https://deccan-foods-example.business.site/",
+    "nationalPhoneNumber": "020 0612 0033",
+    "internationalPhoneNumber": "+91 20 0612 0033"
+   },
+   {
+    "id": "ChIJ03d7fa4095f188ecdd71902",
+    "displayName": {
+     "text": "Konkan Hospitality Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 35, Sector 62, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=426336541774349549"
+   },
+   {
+    "id": "ChIJ9207f6fe169e8067408fed0",
+    "displayName": {
+     "text": "Malabar Retail PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 36, Sector 62, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=1101475091109923824",
+    "websiteUri": "https://www.malabar-retail.example/"
+   },
+   {
+    "id": "ChIJ7a7ce78b2c683f75dda1312",
+    "displayName": {
+     "text": "VINDHYA FINTECH LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 37, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=454878510585745812",
+    "websiteUri": "https://www.vindhya-fintech.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "090000 30036",
+    "internationalPhoneNumber": "+91 90000 30036"
+   },
+   {
+    "id": "ChIJ5b4f3a55441731b9255563c",
+    "displayName": {
+     "text": "Coromandel Telecom",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 38, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=817491048355022461",
+    "websiteUri": "https://www.coromandel-telecom.example/",
+    "nationalPhoneNumber": "020 0612 0037",
+    "internationalPhoneNumber": "+91 20 0612 0037"
+   },
+   {
+    "id": "ChIJb3ea6597233cd2de37fad93",
+    "displayName": {
+     "text": "Sahyadri Staffing",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 39, Baner Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=422639580451375986",
+    "websiteUri": "https://www.sahyadri-staffing.example/"
+   },
+   {
+    "id": "ChIJad475ff5a52a09d83d480d5",
+    "displayName": {
+     "text": "Narmada Healthcare (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 40, Baner Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=860126969424415232",
+    "websiteUri": "https://www.facebook.com/narmada-healthcare-example"
+   }
+  ],
+  "nextPageToken": "AeeoHc78990438cd97660f51980a34e8ea581d"
+ },
+ "BPO in Gurugram": {
+  "places": [
+   {
+    "id": "ChIJ6f8a75375a4ce056c94d01e",
+    "displayName": {
+     "text": "Acme Call Solutions Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 41, MG Road, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=471688438713970783",
+    "websiteUri": "https://www.acme-call-solutions.example/",
+    "nationalPhoneNumber": "090000 30040",
+    "internationalPhoneNumber": "+91 90000 30040"
+   },
+   {
+    "id": "ChIJ0084619be2bfdd4a9b2e63d",
+    "displayName": {
+     "text": "Zeta Infotech Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 42, Sector 62, Gurugram, India",
+    "businessStatus": "CLOSED_TEMPORARILY",
+    "googleMapsUri": "https://maps.google.com/?cid=192300417884120813",
+    "websiteUri": "https://www.zeta-infotech.example/",
+    "nationalPhoneNumber": "020 0612 0041",
+    "internationalPhoneNumber": "+91 20 0612 0041"
+   },
+   {
+    "id": "ChIJ12f37adf121ba49ab6661e9",
+    "displayName": {
+     "text": "Gamma BPO Services Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 43, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=494390776214122527",
+    "websiteUri": "https://www.gamma-bpo-services.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJ2cbe010b09dd840963f47b3",
+    "displayName": {
+     "text": "Theta Textiles Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 44, Sector 62, Gurugram, India",
+    "businessStatus": "CLOSED_PERMANENTLY",
+    "googleMapsUri": "https://maps.google.com/?cid=118681706563431360",
+    "websiteUri": "https://www.theta-textiles.example/"
+   },
+   {
+    "id": "ChIJc77d214f5ba422d32a8782e",
+    "displayName": {
+     "text": "Kappa Care PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 45, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=713329877477787137",
+    "nationalPhoneNumber": "090000 30044",
+    "internationalPhoneNumber": "+91 90000 30044"
+   },
+   {
+    "id": "ChIJf1f01ab12668eba66eb4108",
+    "displayName": {
+     "text": "LAMBDA MOTORS LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 46, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=1083544777302630993",
+    "websiteUri": "https://www.lambda-motors.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "020 0612 0045",
+    "internationalPhoneNumber": "+91 20 0612 0045"
+   },
+   {
+    "id": "ChIJ540ce571feff4a247c44c37",
+    "displayName": {
+     "text": "Sigma Logistics",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 47, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=629552024078223236",
+    "websiteUri": "https://sigma-logistics-example.business.site/"
+   },
+   {
+    "id": "ChIJ7c4b4ec7848d7ec57974d97",
+    "displayName": {
+     "text": "Orion Pharma",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 48, Sector 62, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=703067414715531872",
+    "websiteUri": "https://www.orion-pharma.example/"
+   },
+   {
+    "id": "ChIJ75b29331639553f9b9d557d",
+    "displayName": {
+     "text": "Nimbus Foods (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 49, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=127412612235710745",
+    "websiteUri": "https://www.nimbus-foods.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "090000 30048",
+    "internationalPhoneNumber": "+91 90000 30048"
+   },
+   {
+    "id": "ChIJ426e0ee6696db1cf6faa8ad",
+    "displayName": {
+     "text": "Saffron Hospitality Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 50, Sector 62, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=1134072622370889720",
+    "nationalPhoneNumber": "020 0612 0049",
+    "internationalPhoneNumber": "+91 20 0612 0049"
+   },
+   {
+    "id": "ChIJ2ebe7d11bb40a8d837adbdf",
+    "displayName": {
+     "text": "Banyan Retail Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 51, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=147736151394616523",
+    "websiteUri": "https://www.facebook.com/banyan-retail-example"
+   },
+   {
+    "id": "ChIJcc32d73cda546d1f2f3b96a",
+    "displayName": {
+     "text": "Peacock Fintech Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 52, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=995744180020835415",
+    "websiteUri": "https://www.peacock-fintech.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJ48489d140e407d305f39f6d",
+    "displayName": {
+     "text": "Lotus Telecom Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 53, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=97398879049971402",
+    "websiteUri": "https://www.lotus-telecom.example/",
+    "nationalPhoneNumber": "090000 30052",
+    "internationalPhoneNumber": "+91 90000 30052"
+   },
+   {
+    "id": "ChIJbe248a1ad2a74d44f6446db",
+    "displayName": {
+     "text": "Ganga Staffing PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 54, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=413456568644944102",
+    "websiteUri": "https://www.ganga-staffing.example/",
+    "nationalPhoneNumber": "020 0612 0053",
+    "internationalPhoneNumber": "+91 20 0612 0053"
+   },
+   {
+    "id": "ChIJe1b2885a35463a33a83774d",
+    "displayName": {
+     "text": "INDUS HEALTHCARE LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 55, MG Road, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=891052531331035269"
+   },
+   {
+    "id": "ChIJ3f70686a0477898cf583d44",
+    "displayName": {
+     "text": "Deccan Call Solutions",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 56, Sector 62, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=73538180560861744",
+    "websiteUri": "https://www.deccan-call-solutions.example/"
+   },
+   {
+    "id": "ChIJa4ed6a4173c73105a84351a",
+    "displayName": {
+     "text": "Konkan Infotech",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 57, Sector 62, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=745791267173539755",
+    "websiteUri": "https://www.konkan-infotech.example/",
+    "nationalPhoneNumber": "090000 30056",
+    "internationalPhoneNumber": "+91 90000 30056"
+   },
+   {
+    "id": "ChIJ909c9e5d3ff045cf928d1a4",
+    "displayName": {
+     "text": "Malabar BPO Services (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 58, MG Road, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=33662579041499990",
+    "websiteUri": "https://www.malabar-bpo-services.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "020 0612 0057",
+    "internationalPhoneNumber": "+91 20 0612 0057"
+   },
+   {
+    "id": "ChIJ4d893f900381dd7c3882982",
+    "displayName": {
+     "text": "Vindhya Textiles Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 59, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=982463813241784746",
+    "websiteUri": "https://www.vindhya-textiles.example/"
+   },
+   {
+    "id": "ChIJ1e2045aebbe81d11e85e088",
+    "displayName": {
+     "text": "Coromandel Care Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 60, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=181289762415571744",
+    "websiteUri": "https://coromandel-care-example.business.site/"
+   }
+  ],
+  "nextPageToken": "AeeoHc9af46d18249f34e51e123591537f88e9"
+ },
+ "Hospital in Pune": {
+  "places": [
+   {
+    "id": "ChIJ904bed45657b4247da88d24",
+    "displayName": {
+     "text": "Sahyadri Motors Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 61, Sector 62, Pune, India",
+    "businessStatus": "CLOSED_TEMPORARILY",
+    "googleMapsUri": "https://maps.google.com/?cid=804643814186448053",
+    "websiteUri": "https://www.sahyadri-motors.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "090000 30060",
+    "internationalPhoneNumber": "+91 90000 30060"
+   },
+   {
+    "id": "ChIJdef15d311b6eb857c1f2e7c",
+    "displayName": {
+     "text": "Narmada Logistics Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 62, Sector 62, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=316808465230358324",
+    "websiteUri": "https://www.facebook.com/narmada-logistics-example",
+    "nationalPhoneNumber": "020 0612 0061",
+    "internationalPhoneNumber": "+91 20 0612 0061"
+   },
+   {
+    "id": "ChIJaa71d9a15e97b5c91af3df9",
+    "displayName": {
+     "text": "Acme Pharma PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 63, Outer Ring Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=626475986743046448",
+    "websiteUri": "https://www.acme-pharma.example/"
+   },
+   {
+    "id": "ChIJa788d03a8ae89fe79df3651",
+    "displayName": {
+     "text": "ZETA FOODS LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 64, Baner Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=560114799651389736",
+    "websiteUri": "https://www.zeta-foods.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJa08cb6cb4559d9edad073db",
+    "displayName": {
+     "text": "Gamma Hospitality",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 65, MG Road, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=869377460514958730",
+    "nationalPhoneNumber": "090000 30064",
+    "internationalPhoneNumber": "+91 90000 30064"
+   },
+   {
+    "id": "ChIJ44eea056eaa4b95cfc78ef7",
+    "displayName": {
+     "text": "Theta Retail",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 66, MG Road, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=11034957856055727",
+    "websiteUri": "https://www.theta-retail.example/",
+    "nationalPhoneNumber": "020 0612 0065",
+    "internationalPhoneNumber": "+91 20 0612 0065"
+   },
+   {
+    "id": "ChIJ813da138f28c7dba3d89f09",
+    "displayName": {
+     "text": "Kappa Fintech (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 67, Sector 62, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=942989165994833132",
+    "websiteUri": "https://www.kappa-fintech.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJ825f24c85f9746939109a9e",
+    "displayName": {
+     "text": "Lambda Telecom Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 68, MG Road, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=80502910863111881",
+    "websiteUri": "https://www.lambda-telecom.example/"
+   },
+   {
+    "id": "ChIJ427cf46ba448915615d020d",
+    "displayName": {
+     "text": "Sigma Staffing Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 69, Outer Ring Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=699212658924559350",
+    "websiteUri": "https://www.sigma-staffing.example/",
+    "nationalPhoneNumber": "090000 30068",
+    "internationalPhoneNumber": "+91 90000 30068"
+   },
+   {
+    "id": "ChIJ2a34976449950c2ce6543c9",
+    "displayName": {
+     "text": "Orion Healthcare Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 70, Outer Ring Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=1121697882995989738",
+    "nationalPhoneNumber": "020 0612 0069",
+    "internationalPhoneNumber": "+91 20 0612 0069"
+   },
+   {
+    "id": "ChIJ6b58528792188eb257defb6",
+    "displayName": {
+     "text": "Nimbus Call Solutions Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 71, MG Road, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=713006900544976247",
+    "websiteUri": "https://www.nimbus-call-solutions.example/"
+   },
+   {
+    "id": "ChIJ06154f67976277447e2e494",
+    "displayName": {
+     "text": "Saffron Infotech PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 72, Outer Ring Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=863173483984717746",
+    "websiteUri": "https://www.saffron-infotech.example/"
+   },
+   {
+    "id": "ChIJ358eb81a5c3b15269c4df2b",
+    "displayName": {
+     "text": "BANYAN BPO SERVICES LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 73, Sector 62, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=642472916064856585",
+    "websiteUri": "https://banyan-bpo-services-example.business.site/",
+    "nationalPhoneNumber": "090000 30072",
+    "internationalPhoneNumber": "+91 90000 30072"
+   },
+   {
+    "id": "ChIJ8d92be123855345997a921e",
+    "displayName": {
+     "text": "Peacock Textiles",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 74, Outer Ring Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=582454003046458892",
+    "websiteUri": "https://www.peacock-textiles.example/",
+    "nationalPhoneNumber": "020 0612 0073",
+    "internationalPhoneNumber": "+91 20 0612 0073"
+   },
+   {
+    "id": "ChIJ2b3d16820a0cb1807fba476",
+    "displayName": {
+     "text": "Lotus Care",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 75, Baner Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=42128784228398685"
+   },
+   {
+    "id": "ChIJfc3f16c16b9b2eeae36b483",
+    "displayName": {
+     "text": "Ganga Motors (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 76, Baner Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=371185136537428722",
+    "websiteUri": "https://www.ganga-motors.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJ17cfea0babddf3b3b44e68b",
+    "displayName": {
+     "text": "Indus Logistics Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 77, Baner Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=469315847030679173",
+    "websiteUri": "https://www.indus-logistics.example/",
+    "nationalPhoneNumber": "090000 30076",
+    "internationalPhoneNumber": "+91 90000 30076"
+   },
+   {
+    "id": "ChIJ26fd8eec9c115ff9f13fe9b",
+    "displayName": {
+     "text": "Deccan Pharma Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 78, MG Road, Pune, India",
+    "businessStatus": "CLOSED_PERMANENTLY",
+    "googleMapsUri": "https://maps.google.com/?cid=656077260500419461",
+    "websiteUri": "https://www.deccan-pharma.example/",
+    "nationalPhoneNumber": "020 0612 0077",
+    "internationalPhoneNumber": "+91 20 0612 0077"
+   },
+   {
+    "id": "ChIJc24e6a1693cb49ed39d99f9",
+    "displayName": {
+     "text": "Konkan Foods Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 79, Outer Ring Rd, Pune, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=904882826768789375",
+    "websiteUri": "https://www.konkan-foods.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJa41ac324122321f1670da6e",
+    "displayName": {
+     "text": "Malabar Hospitality Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 80, Baner Rd, Pune, India",
+    "businessStatus": "CLOSED_TEMPORARILY",
+    "googleMapsUri": "https://maps.google.com/?cid=115484642471781994"
+   }
+  ],
+  "nextPageToken": "AeeoHc17889fe9feb07a1c78fea08716daa06e"
+ },
+ "Hospital in Bengaluru": {
+  "places": [
+   {
+    "id": "ChIJ760169f13338f27d5e0199a",
+    "displayName": {
+     "text": "Vindhya Retail PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 81, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=1063955329199139929",
+    "websiteUri": "https://www.vindhya-retail.example/",
+    "nationalPhoneNumber": "090000 30080",
+    "internationalPhoneNumber": "+91 90000 30080"
+   },
+   {
+    "id": "ChIJ900b59bd12bb683e30813b8",
+    "displayName": {
+     "text": "COROMANDEL FINTECH LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 82, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=52102867491700634",
+    "websiteUri": "https://www.coromandel-fintech.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "020 0612 0081",
+    "internationalPhoneNumber": "+91 20 0612 0081"
+   },
+   {
+    "id": "ChIJfdff62d44e7a307652cd772",
+    "displayName": {
+     "text": "Sahyadri Telecom",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 83, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=744035789264090002",
+    "websiteUri": "https://www.sahyadri-telecom.example/"
+   },
+   {
+    "id": "ChIJ967b73566f2733e656fd4a2",
+    "displayName": {
+     "text": "Narmada Staffing",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 84, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=965776802164163541",
+    "websiteUri": "https://www.facebook.com/narmada-staffing-example"
+   },
+   {
+    "id": "ChIJ6ca9e47b85707342bef7db8",
+    "displayName": {
+     "text": "Acme Healthcare (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 85, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=559523797077608730",
+    "nationalPhoneNumber": "090000 30084",
+    "internationalPhoneNumber": "+91 90000 30084"
+   },
+   {
+    "id": "ChIJ4faf1ccc50955c4c42e90f4",
+    "displayName": {
+     "text": "Zeta Call Solutions Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 86, Outer Ring Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=846547498868346236",
+    "websiteUri": "https://zeta-call-solutions-example.business.site/",
+    "nationalPhoneNumber": "020 0612 0085",
+    "internationalPhoneNumber": "+91 20 0612 0085"
+   },
+   {
+    "id": "ChIJc12a87e9a066124ca7bcd39",
+    "displayName": {
+     "text": "Gamma Infotech Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 87, Baner Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=433139315990968665",
+    "websiteUri": "https://www.gamma-infotech.example/"
+   },
+   {
+    "id": "ChIJ7443609ca39eda8b14a8db8",
+    "displayName": {
+     "text": "Theta BPO Services Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 88, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=625831248246513031",
+    "websiteUri": "https://www.theta-bpo-services.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJ75bffc55ea043ca7d2c1464",
+    "displayName": {
+     "text": "Kappa Textiles Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 89, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=322660219259395989",
+    "websiteUri": "https://www.kappa-textiles.example/",
+    "nationalPhoneNumber": "090000 30088",
+    "internationalPhoneNumber": "+91 90000 30088"
+   },
+   {
+    "id": "ChIJ2a4c399cd9439a4254bb493",
+    "displayName": {
+     "text": "Lambda Care PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 90, Sector 62, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=34682207502524630",
+    "nationalPhoneNumber": "020 0612 0089",
+    "internationalPhoneNumber": "+91 20 0612 0089"
+   },
+   {
+    "id": "ChIJ2cc52ab6ad4b41ac95fffa6",
+    "displayName": {
+     "text": "SIGMA MOTORS LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 91, Baner Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=545077701504040659",
+    "websiteUri": "https://www.sigma-motors.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJ804c6c45c28999fc74e10b7",
+    "displayName": {
+     "text": "Orion Logistics",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 92, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=82263788537735635",
+    "websiteUri": "https://www.orion-logistics.example/"
+   },
+   {
+    "id": "ChIJ150e7d46eb246c8a6b479ed",
+    "displayName": {
+     "text": "Nimbus Pharma",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 93, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=615266070193574233",
+    "websiteUri": "https://www.nimbus-pharma.example/",
+    "nationalPhoneNumber": "090000 30092",
+    "internationalPhoneNumber": "+91 90000 30092"
+   },
+   {
+    "id": "ChIJ7fe1c908c0985eb153d5ba7",
+    "displayName": {
+     "text": "Saffron Foods (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 94, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=528443727471273161",
+    "websiteUri": "https://www.saffron-foods.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "020 0612 0093",
+    "internationalPhoneNumber": "+91 20 0612 0093"
+   },
+   {
+    "id": "ChIJfbe1a56ae01e5e7dd85f779",
+    "displayName": {
+     "text": "Banyan Hospitality Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 95, Sector 62, Bengaluru, India",
+    "businessStatus": "CLOSED_PERMANENTLY",
+    "googleMapsUri": "https://maps.google.com/?cid=1095317568512488587",
+    "websiteUri": "https://www.facebook.com/banyan-hospitality-example"
+   },
+   {
+    "id": "ChIJ536521f779c9b1e946080fe",
+    "displayName": {
+     "text": "Peacock Retail Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 96, Sector 62, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=986370868830641292",
+    "websiteUri": "https://www.peacock-retail.example/"
+   },
+   {
+    "id": "ChIJcf921ff6e3803c5bb5bc552",
+    "displayName": {
+     "text": "Lotus Fintech Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 97, MG Road, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=725933886925019877",
+    "websiteUri": "https://www.lotus-fintech.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "090000 30096",
+    "internationalPhoneNumber": "+91 90000 30096"
+   },
+   {
+    "id": "ChIJ5a870f311eb27e4f2816392",
+    "displayName": {
+     "text": "Ganga Telecom Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 98, Sector 62, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=806856326576605457",
+    "websiteUri": "https://www.ganga-telecom.example/",
+    "nationalPhoneNumber": "020 0612 0097",
+    "internationalPhoneNumber": "+91 20 0612 0097"
+   },
+   {
+    "id": "ChIJ435355f7255b32dd37ef9db",
+    "displayName": {
+     "text": "Indus Staffing PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 99, MG Road, Bengaluru, India",
+    "businessStatus": "CLOSED_TEMPORARILY",
+    "googleMapsUri": "https://maps.google.com/?cid=916043928638945129",
+    "websiteUri": "https://indus-staffing-example.business.site/"
+   },
+   {
+    "id": "ChIJe238f7a6254068171264071",
+    "displayName": {
+     "text": "DECCAN HEALTHCARE LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 100, Outer Ring Rd, Bengaluru, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=933082170281029665"
+   }
+  ],
+  "nextPageToken": "AeeoHcbfdcd31b07ffbbe27458ed3ec01b9d5b"
+ },
+ "Hospital in Gurugram": {
+  "places": [
+   {
+    "id": "ChIJ6f8a75375a4ce056c94d01e",
+    "displayName": {
+     "text": "Acme Call Solutions Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 41, MG Road, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=471688438713970783",
+    "websiteUri": "https://www.acme-call-solutions.example/",
+    "nationalPhoneNumber": "090000 30040",
+    "internationalPhoneNumber": "+91 90000 30040"
+   },
+   {
+    "id": "ChIJ6b113db755161de39ecc0e6",
+    "displayName": {
+     "text": "Malabar Infotech",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 102, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=271428479357639607",
+    "websiteUri": "https://www.malabar-infotech.example/",
+    "nationalPhoneNumber": "020 0612 0101",
+    "internationalPhoneNumber": "+91 20 0612 0101"
+   },
+   {
+    "id": "ChIJ5e7b2a81148dad56eb7cdf6",
+    "displayName": {
+     "text": "Vindhya BPO Services (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 103, Sector 62, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=489520455768265433",
+    "websiteUri": "https://www.vindhya-bpo-services.example/?utm_source=gmb&utm_medium=organic"
+   },
+   {
+    "id": "ChIJf8b649184f330c1012e6b59",
+    "displayName": {
+     "text": "Coromandel Textiles Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 104, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=628454081725103639",
+    "websiteUri": "https://www.coromandel-textiles.example/"
+   },
+   {
+    "id": "ChIJec94cd755358c7e66422271",
+    "displayName": {
+     "text": "Sahyadri Care Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 105, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=604218365126335779",
+    "nationalPhoneNumber": "090000 30104",
+    "internationalPhoneNumber": "+91 90000 30104"
+   },
+   {
+    "id": "ChIJb28b511f72bf40f9d9f04c6",
+    "displayName": {
+     "text": "Narmada Motors Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 106, Sector 62, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=823579092167168860",
+    "websiteUri": "https://www.facebook.com/narmada-motors-example",
+    "nationalPhoneNumber": "020 0612 0105",
+    "internationalPhoneNumber": "+91 20 0612 0105"
+   },
+   {
+    "id": "ChIJce0b8b443a0f5f9df065ca4",
+    "displayName": {
+     "text": "Acme Logistics Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 107, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=1013786618062909852",
+    "websiteUri": "https://www.acme-logistics.example/"
+   },
+   {
+    "id": "ChIJ83e0452e63db696740515a8",
+    "displayName": {
+     "text": "Zeta Pharma PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 108, Sector 62, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=900412481795256851",
+    "websiteUri": "https://www.zeta-pharma.example/"
+   },
+   {
+    "id": "ChIJc09c3e2fa5e4df27548266a",
+    "displayName": {
+     "text": "GAMMA FOODS LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 109, MG Road, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=907410855190277233",
+    "websiteUri": "https://www.gamma-foods.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "090000 30108",
+    "internationalPhoneNumber": "+91 90000 30108"
+   },
+   {
+    "id": "ChIJ841b1122fcf8bda43dfdb13",
+    "displayName": {
+     "text": "Theta Hospitality",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 110, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=344159195713717309",
+    "nationalPhoneNumber": "020 0612 0109",
+    "internationalPhoneNumber": "+91 20 0612 0109"
+   },
+   {
+    "id": "ChIJ4919f818588e8a3dfbb6cae",
+    "displayName": {
+     "text": "Kappa Retail",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 111, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=820511534324941145",
+    "websiteUri": "https://www.kappa-retail.example/"
+   },
+   {
+    "id": "ChIJcaf2b5184f2d9d58b01bc92",
+    "displayName": {
+     "text": "Lambda Fintech (India) Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 112, Sector 62, Gurugram, India",
+    "businessStatus": "CLOSED_PERMANENTLY",
+    "googleMapsUri": "https://maps.google.com/?cid=604776717352513986",
+    "websiteUri": "https://lambda-fintech-example.business.site/"
+   },
+   {
+    "id": "ChIJ52ad20094bff59ac3c22977",
+    "displayName": {
+     "text": "Sigma Telecom Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 113, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=909613157210019461",
+    "websiteUri": "https://www.sigma-telecom.example/",
+    "nationalPhoneNumber": "090000 30112",
+    "internationalPhoneNumber": "+91 90000 30112"
+   },
+   {
+    "id": "ChIJ9657e7b69010cb1bc3025df",
+    "displayName": {
+     "text": "Orion Staffing Pvt Ltd",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 114, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=863624953479797852",
+    "websiteUri": "https://www.orion-staffing.example/",
+    "nationalPhoneNumber": "020 0612 0113",
+    "internationalPhoneNumber": "+91 20 0612 0113"
+   },
+   {
+    "id": "ChIJa92edb1f3598356cee553bc",
+    "displayName": {
+     "text": "Nimbus Healthcare Pvt. Ltd.",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 115, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=669499329268040099"
+   },
+   {
+    "id": "ChIJa7538cc31695cbde09a8b64",
+    "displayName": {
+     "text": "Saffron Call Solutions Private Limited",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 116, Sector 62, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=918454345840445535",
+    "websiteUri": "https://www.saffron-call-solutions.example/"
+   },
+   {
+    "id": "ChIJ56e9d54bb67e585caaacab0",
+    "displayName": {
+     "text": "Banyan Infotech PRIVATE LIMITED",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 117, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=380177470498580143",
+    "websiteUri": "https://www.facebook.com/banyan-infotech-example",
+    "nationalPhoneNumber": "090000 30116",
+    "internationalPhoneNumber": "+91 90000 30116"
+   },
+   {
+    "id": "ChIJ6f1da1bfd5feab4039656e6",
+    "displayName": {
+     "text": "PEACOCK BPO SERVICES LLP",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 118, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "CLOSED_TEMPORARILY",
+    "googleMapsUri": "https://maps.google.com/?cid=1009703241560822221",
+    "websiteUri": "https://www.peacock-bpo-services.example/?utm_source=gmb&utm_medium=organic",
+    "nationalPhoneNumber": "020 0612 0117",
+    "internationalPhoneNumber": "+91 20 0612 0117"
+   },
+   {
+    "id": "ChIJf251cb0581bf4094e6d80f8",
+    "displayName": {
+     "text": "Lotus Textiles",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 119, Baner Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=962483417434385896",
+    "websiteUri": "https://www.lotus-textiles.example/"
+   },
+   {
+    "id": "ChIJ0b4a26e9f7bcd6ed793cf2c",
+    "displayName": {
+     "text": "Ganga Care",
+     "languageCode": "en"
+    },
+    "formattedAddress": "Unit 120, Outer Ring Rd, Gurugram, India",
+    "businessStatus": "OPERATIONAL",
+    "googleMapsUri": "https://maps.google.com/?cid=1096802113462739380"
+   }
+  ]
+ }
+}
