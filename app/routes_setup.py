@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from . import integrations
 from .ai import ANTHROPIC_URL, MODEL, _llm_config
+from .channels.netguard import guarded_post_json
 from .apollo import match_person
 from .growth_core import public_base_url, webhook_secret
 from .http_util import post_json
@@ -35,7 +36,7 @@ def _public_url_ok(url: str) -> bool:
 
 def make_router(store, email_transport=post_json, ai_transport=post_json, apollo_transport=post_json,
                 default_base_url: str = "", default_webhook_secret: str = "", auth_required=lambda: False,
-                get_transport=get_json, firecrawl_transport=post_json) -> APIRouter:
+                get_transport=get_json, firecrawl_transport=guarded_post_json) -> APIRouter:
     router = APIRouter()
 
     def saved(integration_id: str) -> dict:

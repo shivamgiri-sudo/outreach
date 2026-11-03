@@ -116,7 +116,8 @@ CATALOGUE = [
         ],
         "steps": [
             "Cloud: sign up at firecrawl.dev and copy your API key. Check their site for how many free credits you get.",
-            "Or self-host it with Docker on your own computer or server (e.g. http://localhost:3002) and leave the key empty.",
+            "Or self-host it with Docker on your own computer or server (e.g. http://localhost:3002) and leave the key empty. "
+            "A private address like that is blocked unless the server sets OUTREACH_ALLOW_PRIVATE_HOSTS=localhost:3002.",
             "Self-hosting is under the AGPL-3.0 licence: fine for internal use; if you change it and offer it to others you must share your changes.",
             "Paste the address and/or key here, then run the comparison on the Data sources page.",
         ],

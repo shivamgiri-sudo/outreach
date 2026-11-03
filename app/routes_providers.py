@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from . import providers as data_sources
-from .http_util import post_json
+from .channels.netguard import guarded_post_json
 
 MAX_SAMPLE = 100
 MAX_PROVIDERS = 10
@@ -26,7 +26,8 @@ class ImportBody(BaseModel):
     payload: Any = Field(alias="json")
 
 
-def make_router(store, fetcher, transport=post_json, get_transport=data_sources.get_json) -> APIRouter:
+def make_router(store, fetcher, transport=guarded_post_json, get_transport=data_sources.get_json) -> APIRouter:
+    """`transport` POSTs to Apollo and to Firecrawl, whose address the owner types: it goes through the SSRF guard."""
     router = APIRouter()
     transports = {"fetch": fetcher, "post": transport, "get": get_transport}
 

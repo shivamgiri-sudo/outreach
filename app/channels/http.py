@@ -2,26 +2,19 @@
 
 `request(url, headers, body)` has the same shape as `http_util.post_json`, so either can be injected where a
 provider only needs a JSON POST. Errors: 401/403 raise PermissionError, everything else raises OSError.
+Every call goes through the SSRF guard (channels/netguard.py): the host is resolved once, must be public, and the
+connection is pinned to that IP.
 """
 import json
-import urllib.error
 import urllib.parse
-import urllib.request
+
+from ..http_util import HttpStatusError   # a subclass of OSError: callers that catch OSError still work
+from .netguard import PRIVATE_MESSAGE, BlockedAddress, FetchFailed, guarded_request
 
 TIMEOUT_SECONDS = 20
 MAX_RESPONSE_BYTES = 1_000_000
 ERROR_DETAIL_CHARS = 300
-
-
-from ..http_util import HttpStatusError   # a subclass of OSError: callers that catch OSError still work
-
-
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D401 - urllib hook
-        return None  # a 3xx then surfaces as an HTTPError instead of being followed
-
-
-_OPENER = urllib.request.build_opener(_NoRedirect)
+USER_AGENT = "OutreachOS/1.0"
 
 
 def _encode(headers: dict, body, form, raw):
@@ -48,23 +41,23 @@ def parse_response(text: str, meta: dict) -> dict:
 
 
 def request(url: str, headers: dict = None, body=None, method: str = "POST", form: dict = None, raw=None,
-            timeout: int = TIMEOUT_SECONDS) -> dict:
+            timeout: int = TIMEOUT_SECONDS, resolver=None) -> dict:
     headers = dict(headers or {})
+    if not any(k.lower() == "user-agent" for k in headers):
+        headers["User-Agent"] = USER_AGENT
     data = _encode(headers, body, form, raw)
-    req = urllib.request.Request(url, data=data, method=method.upper(), headers=headers)
     try:
-        with _OPENER.open(req, timeout=timeout) as response:
-            text = response.read(MAX_RESPONSE_BYTES).decode("utf-8", "replace")
-            meta = {"_status": response.status, "_headers": {k.lower(): v for k, v in response.headers.items()}}
-    except urllib.error.HTTPError as exc:
-        detail = ""
-        try:
-            detail = exc.read(2000).decode("utf-8", "replace")
-        except (OSError, ValueError, AttributeError):
-            pass
-        if exc.code in (401, 403):
-            raise PermissionError(f"HTTP {exc.code}") from exc
-        raise HttpStatusError(exc.code, detail[:ERROR_DETAIL_CHARS]) from exc
-    except urllib.error.URLError as exc:
-        raise OSError(f"Could not connect ({exc.reason})") from exc
-    return parse_response(text, meta)
+        resp = guarded_request(url, method.upper(), headers, data, timeout=timeout, max_bytes=MAX_RESPONSE_BYTES,
+                               resolver=resolver)
+    except BlockedAddress as exc:
+        raise OSError(PRIVATE_MESSAGE) from exc
+    except FetchFailed as exc:
+        raise OSError("Could not connect") from exc
+    except ValueError as exc:
+        raise OSError(str(exc)) from exc
+    if resp.status in (401, 403):
+        raise PermissionError(f"HTTP {resp.status}")
+    if resp.status >= 300:            # a redirect is never followed: it surfaces as an error like any other status
+        detail = resp.body[:2000].decode("utf-8", "replace")
+        raise HttpStatusError(resp.status, detail[:ERROR_DETAIL_CHARS])
+    return parse_response(resp.body.decode("utf-8", "replace"), {"_status": resp.status, "_headers": resp.headers})
