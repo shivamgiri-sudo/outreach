@@ -8,8 +8,8 @@ Lead management and outreach for BookMyInterview. Indian employers first, intern
 - Run your own rules ("when X happens, do Y").
 - Hand warm leads to WhatsApp and Priya's call desk (PD dialling only).
 
-Email and WhatsApp stay in practice mode ("dry_run") until providers are connected under **Setup → Connections**.
-Real email also needs **Send for real** ticked on the Outbox page.
+Email, WhatsApp and SMS stay in practice mode ("dry_run") until providers are connected on the **Integrations** page.
+Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and SMS each have their own switch on their tab.
 
 ## What's inside
 - **Dashboard and Today:** one ranked list of what to do next: sending problems, replies to handle, calls to make, free-trial nudges.
@@ -39,6 +39,23 @@ Real email also needs **Send for real** ticked on the Outbox page.
 - **Copy:**
   - Short, link-free first email, Hinglish WhatsApp options and an honest call script. No invented customer stories.
   - AI prompts treat anything a lead writes as data, never as instructions.
+- **Integrations hub** (Admin → Integrations):
+  - One tab per channel: email sending, reply capture, bounces, WhatsApp, SMS, calls, calendar & meetings, lead data, AI.
+  - Every provider has plain setup steps (India specifics such as DLT for SMS), a test button and "make active".
+  - Providers:
+    - Email: Resend, SendGrid, Postmark, Amazon SES (SMTP), any SMTP, Gmail.
+    - Replies: IMAP, Resend / SendGrid / Postmark inbound.
+    - Bounces: Resend / SendGrid / Postmark events.
+    - WhatsApp: Meta Cloud API, Gupshup, Interakt, WATI, AiSensy.
+    - SMS: MSG91, Twilio, Fast2SMS.
+    - Calls: click-to-call link, Exotel, Knowlarity, Twilio Voice.
+    - Calendar: Google (Meet), Microsoft 365 (Teams), Zoom, Cal.com, Calendly, any booking link.
+  - **Custom connector** for any other provider: URL, headers, body template with `{{placeholders}}`, and a test showing the request and reply. A **custom webhook** maps any provider's payload.
+  - Webhook addresses to paste into provider dashboards are listed with copy buttons. They carry a secret, and calls without it (or without the provider's signature) are refused.
+- **Meetings:**
+  - "Book a meeting" in the lead panel creates the invite with a video link, or gives a prefilled booking link.
+  - Cal.com and Calendly bookings land on the matching lead.
+  - A Meetings page lists upcoming meetings in IST.
 - **Compliance:**
   - Consent is recorded before WhatsApp. Every message has an unsubscribe.
   - Opening the unsubscribe link asks for a click, so email link-scanners can't unsubscribe people.
@@ -50,24 +67,29 @@ Real email also needs **Send for real** ticked on the Outbox page.
 
 Optional environment variables:
 - `OUTREACH_ADMIN_PASSWORD`: turns on the login screen. **Without it the API only answers on this computer.**
-- `OUTREACH_AUTORUN=1`: sends due emails and runs time-based rules every 15 minutes (Mon–Fri 9–18 IST).
+- `OUTREACH_AUTORUN=1`: sends due emails and runs time-based rules every 15 minutes (Mon–Fri 9–18 IST), and checks the reply mailbox (IMAP) every 5 minutes.
 - `OUTREACH_DATA_FILE`: where data is stored. Default `data/store.json` (git-ignored). Saves are atomic, and saved keys are in plain text.
 - `OUTREACH_WEBHOOK_SECRET`: header `X-Webhook-Secret` that lets the BookMyInterview product call `POST /api/activation/event`. It can also be set in Setup.
 - `OUTREACH_BASE_URL`: public address for demo and unsubscribe links. It can also be set in Setup.
 - `OUTREACH_LLM_MODEL`: model used for AI reply drafts and reply reading. Default `claude-sonnet-5-5`.
+- `OUTREACH_UI_ORIGINS`: extra web addresses (comma-separated) the calendar sign-in may return to, if the UI is not served from the public address.
 - `OUTREACH_IGNORE_BUSINESS_HOURS=1` and `OUTREACH_TEST_MODE=1`: local testing only.
 
 ## Test
-    .venv\Scripts\python -m pytest -q          # 276 backend tests
+    .venv\Scripts\python -m pytest -q          # 375 backend tests
 
 Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a throwaway file and
 `OUTREACH_IGNORE_BUSINESS_HOURS=1`, then the UI):
 
-    cd web && npm run e2e                      # 71 steps; HEADED=1 shows the browser
+    cd web && npm run e2e                      # 75 steps; HEADED=1 shows the browser
     node e2e/tour.mjs                          # every page at desktop, tablet and phone width
     # with the API started using OUTREACH_ADMIN_PASSWORD=e2e-password:
     node e2e/auth.mjs                          # 6 login steps
 
 ## Not verified against live services
-Resend (email), Anthropic (reply drafts and reading), Apollo, Hunter and Firecrawl are tested with fake transports
-only. Try each once with a test address or a small sample before relying on it. No WhatsApp provider is connected yet.
+Resend (email), Anthropic (reply drafts and reading), Apollo, Hunter, Firecrawl and every Integrations hub provider
+(email, inbound, WhatsApp, SMS, calling, calendars) are coded from public documentation and tested with fake transports
+only. Try each once with a test address or a small sample before relying on it.
+
+`app/inbound.py` in this branch is a stub. Replies and bounces are captured and normalised, but matching them to leads
+comes from the core branch.
