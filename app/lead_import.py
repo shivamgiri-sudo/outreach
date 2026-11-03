@@ -321,6 +321,8 @@ def quick_rows(csv_text: str) -> list:
             "website": site if "//" in site or not site else f"https://{site}", "country": clean_country(get("country")),
             "open_roles": parse_count(get("open_roles")) or "", "company_size": parse_company_size(get("company_size"))[0] or "",
         }
+        if base.get("email") and clean_email(base["email"])[0] is None:
+            base["email"] = ""                     # e.g. Apollo's email_not_unlocked@domain.com placeholder
         for key, value in fill.items():
             if value and not base.get(key):
                 base[key] = str(value)

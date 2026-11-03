@@ -288,7 +288,7 @@ def clean_email(raw) -> tuple:
     if domain in EMAIL_TYPOS:
         text = f"{local}@{EMAIL_TYPOS[domain]}"
     ok = (EMAIL_RE.match(text) and ".." not in text and not local.startswith(".") and not local.endswith(".")
-          and re.search(r"\.[a-z]{2,}$", text))
+          and re.search(r"\.[a-z]{2,}$", text) and local != "email_not_unlocked")   # Apollo's locked-email placeholder
     if not ok:
         return None, "invalid_email"
     return text, ("typo_fixed" if domain in EMAIL_TYPOS else None)

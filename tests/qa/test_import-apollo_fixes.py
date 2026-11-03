@@ -74,3 +74,30 @@ def test_quick_paste_never_uses_a_facebook_page_as_the_company_website(client):
     assert leads["Royal Caterers"]["domain"] == "royalcaterers.example"
     assert leads["Deccan Motors"]["email"] == "harish@deccanmotors.example"
     assert all("facebook.com" not in (lead.get("website") or "") for lead in leads.values())
+
+
+# ---- 2. Apollo's locked-email placeholder was imported as a real, shared address
+LOCKED = "email_not_unlocked@domain.com"
+LOCKED_CSV = ("First Name,Last Name,Company Name,Email,Email Status,Mobile Phone,Website\n"
+              f"Sk.,Rahim,Shree Ganesh Traders,{LOCKED},Verified,'+91 90000 21001,\n"
+              f"Farhan,Qureshi,Royal Caterers,{LOCKED},Verified,'+91 90000 21002,\n"
+              f"Payal,Arora,Metro Mart,{LOCKED},Verified,,http://www.metromart.example\n"
+              f"Unknown,Prospect,,{LOCKED},Unavailable,,\n")
+
+
+def test_locked_apollo_emails_are_left_out_and_never_merge_companies(client):
+    r = preview(client, LOCKED_CSV, source="apollo")
+    assert r["summary"]["create"] == 3 and r["summary"]["duplicates_in_file"] == 0
+    assert r["summary"]["rejected"] == 1 and r["rejected"][0]["row"] == 5
+    assert "not a valid address" in r["rejected"][0]["reason"]
+    assert r["summary"]["warnings"]["invalid_email"] == 4
+    assert [row["email"] for row in r["rows"]] == [None, None, None, None]
+    assert [row["domain"] for row in r["rows"][:3]] == ["", "", "metromart.example"]     # never "domain.com"
+
+
+def test_quick_paste_leaves_out_locked_apollo_emails(client):
+    r = client.post("/api/leads/import", json={"csv": LOCKED_CSV, "source": "apollo"}).json()
+    assert r == {"created": 3, "duplicates": 0, "rejected": 1, "merged": 0}
+    leads = client.get("/api/leads").json()
+    assert all(lead["email"] is None for lead in leads)
+    assert sorted(lead["company"] for lead in leads) == ["Metro Mart", "Royal Caterers", "Shree Ganesh Traders"]
