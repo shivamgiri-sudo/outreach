@@ -12,7 +12,8 @@ from pydantic import BaseModel
 
 from . import integrations
 from .lead_model import build_lead as _build_lead, contactless_match as _contactless_match, event as _event, merge_contact as _merge_contact, now_iso as _now
-from .prompt_gen import build_prompt
+from .prompt_gen import build_prompt, build_prompt_body, with_guardrails
+from .ai import ai_write_prompt
 from .scoring import score_lead
 from .stages import ALL_STAGES, STAGES, can_move
 from .activation import next_nudge
@@ -112,6 +113,7 @@ class PromptBody(BaseModel):
     story: str = ""
     dos: str = ""
     donts: str = ""
+    use_ai: bool = False
 
 
 LOCAL_HOSTS = ("127.0.0.1", "::1", "localhost", "testclient")
@@ -352,7 +354,14 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
 
     @app.post("/api/prompts/generate")
     def generate_prompt(body: PromptBody):
-        return {"prompt": build_prompt(body.model_dump())}
+        spec = body.model_dump()
+        if body.use_ai:
+            written = ai_write_prompt(store, build_prompt_body(spec), ai_transport)
+            if written:
+                return {"prompt": with_guardrails(written), "ai": True}
+            return {"prompt": build_prompt(spec), "ai": False,
+                    "note": "The AI writer is not connected or did not answer, so the standard template was used."}
+        return {"prompt": build_prompt(spec), "ai": False}
 
     app.include_router(make_router(store, _build_lead, _present, email_sender, ai_transport))
     app.include_router(make_jobs_router(store, _build_lead, _present))

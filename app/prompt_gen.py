@@ -59,3 +59,14 @@ def build_prompt(spec: dict, task_rules: str = "") -> str:
     if spec.get("donts"):
         lines.append(f"Don't: {spec['donts']}")
     return "\n".join([*lines, *GUARDRAILS])
+
+
+def build_prompt_body(spec: dict, task_rules: str = "") -> str:
+    """The form-derived part of the prompt without the fixed honesty rules (what the AI writer may rewrite)."""
+    full = build_prompt(spec, task_rules)
+    return full[: full.rindex(GUARDRAILS[0])].rstrip()
+
+
+def with_guardrails(body: str) -> str:
+    """Any prompt body, with the fixed honesty rules always appended last."""
+    return "\n".join([body.rstrip(), *GUARDRAILS])

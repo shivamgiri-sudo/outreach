@@ -89,6 +89,29 @@ def _call_llm(cfg: dict, system: str, user: str, max_tokens: int, transport) -> 
     return "".join(part.get("text", "") for part in reply.get("content", []) if part.get("type") == "text").strip()
 
 
+PROMPT_WRITER_SYSTEM = "\n".join([
+    "You write system prompts for an Indian hiring-tech team's outreach assistant.",
+    "You get a draft prompt. Rewrite it into a clearer, richer, well-structured system prompt for the same channel, industry,",
+    "role, tone, language and goal: add concrete guidance on structure, length, opening line, how to handle questions and",
+    "how to ask for the next step. Keep every fact exactly as given and add no new facts, numbers, customers or stories.",
+    "Do not write any 'Rules', honesty or compliance section: those are appended separately by the app.",
+    "Return only the prompt text, no preamble and no code fences.",
+])
+
+
+def ai_write_prompt(store, draft: str, transport=post_json) -> Optional[str]:
+    """A richer prompt body from the AI writer, or None when it is not connected or gives nothing usable."""
+    cfg = _llm_config(store)
+    if not cfg or not (draft or "").strip():
+        return None
+    try:
+        out = _call_llm(cfg, PROMPT_WRITER_SYSTEM, f"Draft prompt:\n\n{draft}", 1200, transport)
+    except _AI_ERRORS:
+        return None
+    out = re.sub(r"^```[a-z]*\n|\n```$", "", out.strip())
+    return out if 80 <= len(out) <= 6000 else None
+
+
 def ai_classify(store, text: str, transport=post_json) -> Optional[str]:
     """One reply label from the AI writer, or None when it is not connected or gives anything unexpected."""
     cfg = _llm_config(store)

@@ -2,15 +2,25 @@ import { useState } from "react";
 import { api } from "../api.js";
 import { copyText } from "../clipboard.js";
 
-const START = { channel: "email", industry: "", role: "", tone: "warm", language: "English", goal: "", story: "", dos: "", donts: "" };
+const START = { use_ai: true, channel: "email", industry: "", role: "", tone: "warm", language: "English", goal: "", story: "", dos: "", donts: "" };
 
 export default function PromptGenerator() {
   const [spec, setSpec] = useState(START);
   const [prompt, setPrompt] = useState("");
   const [copied, setCopied] = useState(false);
+  const [info, setInfo] = useState("");
+  const [busy, setBusy] = useState(false);
   const set = (k, v) => setSpec({ ...spec, [k]: v });
 
-  const generate = async () => setPrompt((await api.generatePrompt(spec)).prompt);
+  const generate = async () => {
+    setBusy(true); setInfo("");
+    try {
+      const r = await api.generatePrompt(spec);
+      setPrompt(r.prompt);
+      setInfo(r.ai ? "Written with Claude. The honesty rules below were added by the app." : (r.note || ""));
+    } catch (e) { setInfo(e.message); }
+    setBusy(false);
+  };
   const copy = async () => {
     setCopied(await copyText(prompt));
     setTimeout(() => setCopied(false), 1500);
@@ -36,13 +46,18 @@ export default function PromptGenerator() {
           <label>Facts or a customer story you may use (optional, only with permission)</label><textarea rows={2} value={spec.story} onChange={(e) => set("story", e.target.value)} />
           <label>Do (preferences; cannot relax the honesty rules)</label><input value={spec.dos} onChange={(e) => set("dos", e.target.value)} />
           <label>Don't</label><input value={spec.donts} onChange={(e) => set("donts", e.target.value)} />
-          <button className="btn" style={{ marginTop: 12 }} onClick={generate}>Generate prompt</button>
+          <label className="row" style={{ fontWeight: 400, marginTop: 10 }}>
+            <input type="checkbox" style={{ width: "auto" }} checked={!!spec.use_ai} onChange={(e) => set("use_ai", e.target.checked)} />
+            Write it with Claude (richer wording; the honesty rules are still added by the app)
+          </label>
+          <button className="btn" style={{ marginTop: 12 }} onClick={generate} disabled={busy}>{busy ? "Writing…" : "Generate prompt"}</button>
         </div>
         <div className="card">
           <div className="row" style={{ justifyContent: "space-between" }}>
             <h3 style={{ margin: 0 }}>Your prompt</h3>
             {prompt && <button className="btn ghost" onClick={copy}>{copied ? "Copied" : "Copy"}</button>}
           </div>
+          {info && <p className="sub" role="status">{info}</p>}
           {prompt ? <pre>{prompt}</pre> : <p className="empty">Fill the form and click Generate.</p>}
         </div>
       </div>
