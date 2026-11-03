@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { copyText } from "../clipboard.js";
 import { SEQUENCE_STOPPED, sourceLabel, stageLabel } from "../labels.js";
+import LeadMeetings from "./LeadMeetings.jsx";
 
 const SIGNAL_LABELS = {
   hiring_volume: ["Hiring volume", 30], hiring_pain: ["Hiring pain", 25], fit: ["Fit", 15],
@@ -182,6 +183,8 @@ export default function LeadDrawer({ id, onClose }) {
         </div>
       )}
       {lead.consent && <p className="sub">Consent saved: “{lead.consent.text}” on {lead.consent.at.slice(0, 10)}</p>}
+
+      <LeadMeetings lead={lead} onChanged={load} />
 
       <h3>Free experience</h3>
       {lead.activation ? (

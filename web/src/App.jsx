@@ -15,6 +15,8 @@ import Growth from "./pages/Growth.jsx";
 import Insights from "./pages/Insights.jsx";
 import Setup from "./pages/Setup.jsx";
 import DataSources from "./pages/DataSources.jsx";
+import Integrations from "./pages/Integrations.jsx";
+import Meetings from "./pages/Meetings.jsx";
 
 // [id, label, component, icon]
 const PAGES = [
@@ -26,25 +28,27 @@ const PAGES = [
   ["workflows", "Workflows", Workflows, "workflow"],
   ["outbox", "Outbox & sending", Outbox, "send"],
   ["calls", "Priya's call desk", CallDesk, "phone"],
+  ["meetings", "Meetings", Meetings, "calendar"],
   ["templates", "Sequences & templates", Templates, "mail"],
   ["stories", "Success stories", Stories, "star"],
   ["prompts", "Prompt generator", PromptGenerator, "wand"],
   ["setup", "Setup", Setup, "settings"],
+  ["integrations", "Integrations", Integrations, "plug"],
 ];
 
 const GROUPS = [
   ["Overview", ["dashboard"]],
   ["Pipeline", ["leads", "sources", "insights", "growth"]],
-  ["Outreach", ["outbox", "workflows", "templates", "calls"]],
+  ["Outreach", ["outbox", "workflows", "templates", "calls", "meetings"]],
   ["Library", ["stories", "prompts"]],
-  ["Admin", ["setup"]],
+  ["Admin", ["setup", "integrations"]],
 ];
 const BY_ID = Object.fromEntries(PAGES.map((p) => [p[0], p]));
 // Old links to the separate Go live page now open the checklist inside Setup.
 const ALIASES = { golive: "setup" };
 
 function pageFromHash() {
-  const id = window.location.hash.replace(/^#\/?/, "").split("/")[0];
+  const id = window.location.hash.replace(/^#\/?/, "").split(/[/?]/)[0];
   const resolved = ALIASES[id] || id;
   return BY_ID[resolved] ? resolved : "dashboard";
 }

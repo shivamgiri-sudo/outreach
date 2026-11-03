@@ -1,6 +1,8 @@
 """WhatsApp: templates and the consent-gated send. Practice mode until a provider is connected."""
 from datetime import datetime, timedelta
 
+from .channels.http import request
+from .channels.whatsapp_send import send_whatsapp
 from .growth_core import ensure_demo
 from .sequence_runner import NO_EMAIL_STAGES, get_settings
 from .sequences import lead_variables, render
@@ -37,6 +39,7 @@ TEMPLATES = {
 }
 
 
+
 class WhatsAppError(Exception):
     """A message that must not be sent, with a reason a person can read."""
 
@@ -56,7 +59,7 @@ def within_session_window(lead: dict, now: datetime) -> bool:
     return bool(last) and now - last <= SESSION_WINDOW
 
 
-def send(store, lead_id: str, template: str, text: str, now: datetime, base_url: str) -> dict:
+def send(store, lead_id: str, template: str, text: str, now: datetime, base_url: str, transport=None) -> dict:
     """Queue one WhatsApp message (practice mode until a provider is live) and return the updated lead."""
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None:
@@ -83,10 +86,19 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
     body, missing = render(raw, variables)
     if missing:
         raise WhatsAppError(f"This message needs details the lead doesn't have yet: {', '.join(missing)}")
+    # Real delivery through the WhatsApp provider chosen on the Integrations page (dry_run until connected and
+    # "WhatsApp for real" is on). Approved templates receive their variables in this order:
+    # {{1}} first name, {{2}} sender, {{3}} company, {{4}} demo link.
+    params = [variables.get("first_name") or "there", variables.get("sender") or "", variables.get("company") or "", variables.get("demo_link") or ""]
+    result = send_whatsapp(store, lead["phone"], None if template == "custom" else template,
+                           "en", params, text=body if template == "custom" else None, transport=transport or request)
     message = {"lead_id": lead_id, "to": lead["phone"], "template": template, "body": body,
-               "sent_at": now.isoformat(timespec="seconds"), "status": "dry_run"}
+               "sent_at": now.isoformat(timespec="seconds"), "status": result.get("status", "dry_run"),
+               "provider_id": result.get("provider_id"), "error": result.get("error")}
     store.update("whatsapp_outbox", lambda rows: [*rows, message])
-    event = {"at": message["sent_at"], "kind": "whatsapp", "text": f"{template} — dry_run"}
+    if message["status"] == "failed":
+        raise WhatsAppError(f"The WhatsApp provider refused the message: {message['error'] or 'unknown error'}")
+    event = {"at": message["sent_at"], "kind": "whatsapp", "text": f"{template} — {message['status']}"}
     demo = {k: lead[k] for k in ("demo_token", "referral_code", "activation") if k in lead}
 
     def record(latest: dict) -> dict:

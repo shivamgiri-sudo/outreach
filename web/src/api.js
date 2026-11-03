@@ -87,4 +87,21 @@ export const api = {
   stories: () => request("/api/stories"),
   addStory: (story) => request("/api/stories", { method: "POST", body: story }),
   generatePrompt: (spec) => request("/api/prompts/generate", { method: "POST", body: spec }),
+  // Integrations hub
+  channels: () => request("/api/channels"),
+  saveChannel: (channel, provider, values, makeActive = false) =>
+    request(`/api/channels/${channel}/${provider}`, { method: "PUT", body: { values, make_active: makeActive } }),
+  deleteChannel: (channel, provider) => request(`/api/channels/${channel}/${provider}`, { method: "DELETE" }),
+  testChannel: (channel, provider, body = {}) => request(`/api/channels/${channel}/${provider}/test`, { method: "POST", body }),
+  setActiveChannel: (channel, provider) => request(`/api/channels/${channel}/active`, { method: "POST", body: { provider } }),
+  channelWebhooks: (channel = "", provider = "") =>
+    request(`/api/channels/webhooks${channel ? `?channel=${channel}&provider=${provider}` : ""}`),
+  rotateWebhook: (channel, provider) => request(`/api/channels/${channel}/${provider}/rotate-secret`, { method: "POST" }),
+  setLive: (flags) => request("/api/channels/live", { method: "PUT", body: flags }),
+  pollImap: () => request("/api/channels/inbound_email/imap/poll", { method: "POST" }),
+  oauthStart: (provider, returnTo) => request(`/api/oauth/${provider}/start?return_to=${encodeURIComponent(returnTo)}`),
+  meetings: (from = "", to = "") => request(`/api/meetings${from || to ? `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` : ""}`),
+  leadMeetings: (id) => request(`/api/leads/${id}/meetings`),
+  bookMeeting: (id, body) => request(`/api/leads/${id}/meetings`, { method: "POST", body }),
+  cancelMeeting: (meetingId) => request(`/api/meetings/${meetingId}/cancel`, { method: "POST" }),
 };

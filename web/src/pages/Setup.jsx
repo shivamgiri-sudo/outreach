@@ -142,6 +142,11 @@ export default function Setup({ onSetupChanged, go, tab: initialTab }) {
       {tab === "checklist" && <GoLive embedded go={(page) => (page === "setup" ? setTab("connections") : go?.(page))} />}
       {tab === "connections" && (
         <>
+          <div className="tip" style={{ marginBottom: 16 }}>
+            <b>New: the Integrations page.</b> Step-by-step setup for email, reply capture, bounces, WhatsApp, SMS, calls,
+            calendars and meetings, plus a custom option for any other provider.
+            <div className="row" style={{ marginTop: 8 }}><button className="btn" onClick={() => go?.("integrations")}>Open Integrations</button></div>
+          </div>
           <Basics onSaved={() => onSetupChanged?.()} />
           {groups.map((g) => (
             <div key={g}>

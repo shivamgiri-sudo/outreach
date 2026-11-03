@@ -22,6 +22,12 @@ class TestBody(BaseModel):
     to: str = ""
 
 
+def _hub_ready(store, channel_id: str) -> bool:
+    """True when an Integrations-hub channel has a working provider (any saved one for reply capture)."""
+    from .channels.config import channel_status
+    return channel_status(store.read("integrations"), channel_id) == "configured"
+
+
 def _public_url_ok(url: str) -> bool:
     host = urlparse(url).hostname or ""
     return bool(host) and host not in LOCAL_HOSTS and not host.startswith("192.168.") and not host.startswith("10.")
@@ -114,6 +120,10 @@ def make_router(store, email_transport=post_json, ai_transport=post_json, apollo
             row("apollo", "Connect Apollo", ints["apollo"]["mode"] == "api" and connected("apollo"), "Automatic email lookups.", "setup"),
             row("whatsapp", "Connect WhatsApp", connected("whatsapp"), "Messages stay in practice mode until sending is added.", "setup"),
             row("story", "Add one success story with permission", stories_ok, "Real results build trust.", "stories"),
+            row("reply_capture", "Connect reply capture (inbound email)", _hub_ready(store, "inbound_email"),
+                "Replies stop the sequence automatically instead of being pasted by hand.", "integrations"),
+            row("calendar", "Connect a calendar", _hub_ready(store, "calendar"),
+                "Book demos from a lead's page with a video link.", "integrations"),
         ]
         done = sum(1 for i in items if i["status"] == "done")
         ready = all(i["status"] == "done" for i in items if i["id"] in REQUIRED_FOR_LIVE_TEST)

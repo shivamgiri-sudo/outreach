@@ -9,7 +9,14 @@ RESEND_URL = "https://api.resend.com/emails"
 
 
 def email_ready(store) -> dict:
-    """The sending-domain settings when complete (direct API mode, key, from address and name), else {}."""
+    """The active email provider's settings when complete, else {}.
+
+    Resend through the classic "sending domain" card, or any provider chosen on the Integrations page (SendGrid,
+    Postmark, SMTP, Gmail, custom HTTP)."""
+    if _hub_email_provider(store):
+        from .channels.config import config_for
+        cfg = config_for(store, "email_send")
+        return dict(cfg["values"]) if cfg else {}
     return _email_config(store)
 
 
@@ -40,10 +47,21 @@ def _email_config(store) -> dict:
     return values if ready else {}
 
 
-def make_email_sender(store, transport=post_json, base_url: str = ""):
+def _hub_email_provider(store):
+    """The active Integrations-hub email provider when it is not Resend (SendGrid, Postmark, SMTP, custom), else None."""
+    from .channels.config import active_provider, entry_of
+    provider = active_provider("email_send", entry_of(store.read("integrations"), "email_send"))
+    return provider if provider and provider != "resend" else None
+
+
+def make_email_sender(store, transport=post_json, base_url: str = "", channel_transport=None, smtp_factory=None):
     """Returns send(message) -> {"status": "dry_run" | "sent" | "failed", ...}."""
 
     def send(message: dict) -> dict:
+        if _hub_email_provider(store):
+            from .channels.email_send import send_email
+            from .channels.http import request
+            return send_email(store, message, channel_transport or request, smtp_factory, base_url)
         cfg = _email_config(store)
         if not (store.read("settings").get("live_sending") and cfg):
             return {"status": "dry_run"}
@@ -73,6 +91,10 @@ def send_test(store, transport, to: str) -> dict:
     address = normalise_email(to)
     if not address:
         return {"ok": False, "message": "Enter a valid email address to send the test to."}
+    hub_provider = _hub_email_provider(store)
+    if hub_provider:
+        from .channels.email_send import test_email
+        return test_email(store, hub_provider, address)
     cfg = _email_config(store)
     if not cfg:
         return {"ok": False, "message": "Connect the sending domain first (all fields, direct API mode)."}
@@ -95,6 +117,9 @@ def make_transactional_sender(store, transport=post_json):
     Needs the sending domain connected; the caller decides whether real sending is allowed for that kind.
     """
     def send(message: dict) -> dict:
+        if _hub_email_provider(store):
+            from .channels.email_send import send_transactional
+            return send_transactional(store, message)
         cfg = _email_config(store)
         to = normalise_email(message.get("to"))
         if not cfg or not to:

@@ -147,13 +147,24 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
 - **Other free-experience features:** free pilot requests, referrals (both sides get bonus screens), a partners list, and a capacity calculator.
 - **Webhook:** the BookMyInterview product reports activity to `POST /api/activation/event` with an `X-Webhook-Secret` header, compared in constant time.
 
-### 5.7 WhatsApp and calls
+### 5.7 WhatsApp, SMS, calls and meetings
 - **WhatsApp templates:** first message after yes, demo-not-opened nudge, draft-not-published nudge, and pilot offer. Each has a Hinglish version and "Reply STOP to opt out".
-- **Practice mode:** WhatsApp stays in practice mode until a provider adapter is built (roadmap).
+- **WhatsApp providers:** Meta Cloud API, Gupshup, Interakt, WATI, AiSensy or any provider through the custom connector.
+  - `send_whatsapp()` (app/channels/whatsapp_send.py) returns `dry_run` unless a provider is connected **and** "Send for real" is on for WhatsApp.
+  - The app's message names map to the provider's approved template names ("Template names" field).
+  - The lead panel still queues messages in practice mode until app/whatsapp.py calls `send_whatsapp()` (core branch).
+- **SMS (India):** MSG91 (flow API), Twilio, Fast2SMS or custom. The setup steps explain DLT (entity ID, header, template ID) and the promotional window (10:00–21:00, no DND numbers). `send_sms()` is `dry_run` unless "Send for real" is on for SMS.
+- **Replies on WhatsApp and SMS:** provider webhooks are normalised and handed to `process_inbound_message` (app/inbound.py, core branch), which handles STOP.
+- **Meetings:**
+  - "Book a meeting" in the lead panel uses the active calendar: Google Calendar (Meet link), Microsoft 365 (Teams link), Zoom, or a custom API.
+  - Booking-page providers (Cal.com, Calendly, any booking link) give a link prefilled with the lead's name and email instead.
+  - Cal.com and Calendly booking webhooks attach the booking to the lead whose email (or other contact's email) matches, with a "Meeting booked" timeline event. Consent is never changed by a booking.
+  - Times are entered and shown in IST, with a heads-up outside Mon–Sat 09:00–18:00. A Meetings page lists upcoming meetings with join links.
 - **Call desk:**
   - Shows leads who said yes, with a click-to-call link built from your dialler's URL template (`{phone}`).
   - The script has an English and a Hinglish opener and an honest "proof" line (beta, no case studies yet).
   - There are 10 objection answers, and outcomes are logged.
+  - Bridged calls (agent phone first, then the lead) can go through Exotel, Knowlarity, Twilio Voice or a custom API: `start_call()` in app/channels/calls.py, `dry_run` while no calls provider is connected.
 - **LinkedIn:** a connection note (300 characters or fewer), a first message and a post comment, copied and sent by a person.
 
 ### 5.8 Today, workflows and insights
@@ -177,7 +188,22 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
 ### 5.9 Setup and go-live
 - **Setup page tabs:**
   - **Go-live checklist** (required: leads, public address, sending domain, test email, free limits confirmed; last switch: real sending).
-  - **Connections:** each connector has setup steps, masked keys and a "Test connection" button.
+  - **Connections:** each connector has setup steps, masked keys and a "Test connection" button. It links to the Integrations page.
+- **Integrations page (the hub):**
+  - One tab per channel: Email sending, Reply capture, Bounces, WhatsApp, SMS, Calls, Calendar & meetings, Lead data, AI, Custom, and a list of webhook addresses.
+  - Each provider card shows a status (Not set up, Missing details, Connected, Error), a "Recommended" badge where sensible and the last test result.
+  - Clicking a card opens a 4-step wizard:
+    1. What you need: plain numbered steps and a link to the provider's dashboard.
+    2. Your details: fields with help text and show / hide for secrets.
+    3. Webhook address or Connect: addresses and secrets with copy buttons, or the OAuth redirect URI and a Connect button.
+    4. Test, then "Make this the active provider".
+  - Cost notes never state prices; they say "check the provider's site".
+  - **Custom connector** for any provider: method, https URL, headers (secret values masked), a body template with click-to-insert `{{placeholders}}` (JSON-escaped in JSON bodies), a success field and a message-ID field. "Send test" shows the request (keys hidden) and the reply (first 2 KB).
+  - **Custom webhook** for any provider: a private address plus a field mapping, with a "paste a sample payload" preview of what the app will read.
+  - **Email providers:** Resend, SendGrid, Postmark (replies only; Postmark forbids cold email), Amazon SES (SMTP), any SMTP server, Gmail / Google Workspace (app password), custom. Port 25 is never suggested (most clouds, Oracle included, block it).
+  - **Reply capture:** IMAP mailbox check (every 5 minutes with `OUTREACH_AUTORUN=1`, or "Check now"), Resend / SendGrid Inbound Parse / Postmark inbound webhooks, custom webhook.
+  - **Bounces and complaints:** Resend, SendGrid and Postmark event webhooks, normalised and handed to `process_delivery_event` (app/inbound.py).
+  - Webhooks are open without login only when their per-provider secret (or the provider's signature) checks out. OAuth callbacks are open only with a valid signed `state`.
 - **Login:**
   - Login uses a single admin password (`OUTREACH_ADMIN_PASSWORD`), with signed tokens that expire after 12 hours.
   - Login lockout is per caller.
@@ -204,16 +230,29 @@ app/  FastAPI
   replies.py ai.py        rule classifier, AI drafting/reading with untrusted-data guards
   whatsapp.py workflows.py activation.py capacity.py demo.py growth_core.py
   jobs.py scraper.py enrich.py providers.py sheet_import.py apollo.py
-  routes_*.py             outreach, growth, jobs, enrich, providers, whatsapp, workflows, insights, setup, today
-tests/                    pytest (fake transports for every external API)
+  routes_*.py             outreach, growth, jobs, enrich, providers, whatsapp, workflows, insights, setup, today, channels
+  inbound.py              STUB in this branch: process_inbound_message / process_delivery_event (core branch implements)
+  channels/               Integrations hub
+    registry.py catalog_*.py   channels and providers: fields, steps, docs links, webhook needs
+    config.py                  saved provider settings, masking, active provider, test results, tokens
+    email_send.py whatsapp_send.py sms_send.py calls.py calendar.py oauth.py   provider adapters
+    custom_http.py netguard.py http.py   custom connector, SSRF guard, no-redirect HTTP transport
+    inbound_parse.py imap_poll.py webhooks.py meetings.py   inbound normalisation, IMAP, verification, meetings
+    routes_hooks.py routes_meetings.py testers.py poller.py
+tests/                    pytest (fake transports for every external API; fake SMTP and IMAP clients)
 docs/PRD.md               this document
 ```
 
 - **External calls go through injected transports** (`email_transport`, `ai_transport`, `apollo_transport`, `fetcher`, provider `get`/`post`). Tests never touch the network.
 - **Data:** one JSON file (`data/store.json`, git-ignored). Collections: leads, integrations, stories, templates, tasks, outbox, settings, suppressed, jobs, partners, whatsapp_outbox, workflows, provider_runs.
+- **Hub settings** live in `integrations`, one entry per channel (`sending_domain`, `inbound_email`, `email_events`, `whatsapp`, `sms`, `telephony`, `calendar`):
+  `{mode, values: {provider, ...active provider's fields}, providers: {<id>: {values, last_test{ok,message,at}, tokens, state}}, webhook_tokens: {<id>: secret}}`.
+  - `values` mirrors the active provider, so older code keeps reading it.
+  - OAuth tokens and webhook secrets are never returned by any API. Provider secrets come back as ••••last4, and saving a masked value keeps the real one.
+- **Settings added:** `server_secret` (signs OAuth state; never returned), `live_whatsapp`, `live_sms`.
 
 ### Lead record (main fields)
-`id, company, domain, website, contact_name, title, email, email_is_role, phone, phones, role, city, country, company_size, open_roles, source, stage, consent{text,at,source}, sequence{enrolled_at, sent_days, last_sent_at, stopped, in_flight, blocked, failed_attempts}, engagement{replies,…}, activation{step, usage,…}, demo_token, referral_code, linkedin_url, other_contacts[], technologies[], company_socials{}, timeline[{at, kind, text}]`
+`id, company, domain, website, contact_name, title, email, email_is_role, phone, phones, role, city, country, company_size, open_roles, source, stage, consent{text,at,source}, sequence{enrolled_at, sent_days, last_sent_at, stopped, in_flight, blocked, failed_attempts}, engagement{replies,…}, activation{step, usage,…}, demo_token, referral_code, linkedin_url, other_contacts[], technologies[], company_socials{}, meetings[{id, provider, title, start, end, join_url, status, created_at, external_id, attendee_email}], timeline[{at, kind, text}]`
 
 ## 8. Success metrics
 - Positive-reply rate per 100 sends. Judge by replies, not opens; tracking pixels are not used.
@@ -223,17 +262,27 @@ docs/PRD.md               this document
 - Data-source cost per usable contact.
 
 ## 9. Known gaps and roadmap
-1. **WhatsApp provider adapter** (Gupshup, Interakt or WATI), including inbound STOP handling.
-2. **Inbound email:** an IMAP poll or provider webhook, so Gmail replies stop the sequence automatically. A Resend bounce/complaint webhook, plus a circuit breaker above 2% bounces.
+1. **WhatsApp:** adapters are built (Meta, Gupshup, Interakt, WATI, AiSensy, custom). Left to do: app/whatsapp.py calls `send_whatsapp()`, and inbound STOP handling in app/inbound.py (core branch).
+2. **Inbound email:** IMAP polling and Resend / SendGrid / Postmark webhooks are built and hand messages and bounce events to app/inbound.py. Left to do: matching and suppression in app/inbound.py (core branch), and a circuit breaker above 2% bounces.
 3. **Real database:** SQLite or MongoDB, with pagination and indexes. The JSON store suits one small team.
 4. **Security:**
    - Encrypt saved provider keys.
    - Users and roles instead of one password, a set-password flow inside the app, and token revocation.
    - SSRF hardening on redirects in the scraper.
+   - Integrations hub:
+     - Webhook rate limiting is out of scope.
+     - A webhook address carries its secret as `?token=`, which server access logs record. Use the basic-auth form of the address where the provider accepts it, or run uvicorn with `--no-access-log`.
+     - SMTP and IMAP server names are not SSRF-checked, so a local mail relay keeps working.
+     - The SSRF check resolves the name before connecting but does not pin the IP, so DNS rebinding is still possible.
+     - OAuth state is signed and expires after 10 minutes but is not single-use.
+     - OAuth tokens are stored in plain text like other keys.
+     - SendGrid's signed event webhook (ECDSA) and Twilio's request signature are not checked; those providers use the secret in the webhook address instead.
 5. **DPDP:** a consent ledger (channel, purpose, notice version, withdrawal), data export and deletion endpoints, and phone suppression.
 6. **Scoring v2:** separate fit and intent, time decay, negative signals, and weights editable in settings.
 7. **Duplicates:** fuzzy company matching, eTLD+1 domains, Gmail alias normalisation, and conflict logs.
-8. **Live verification:** one live test each for Resend, Anthropic, Apollo, Hunter and Firecrawl. Their request and response formats are coded from documentation and tested with fakes only.
+8. **Live verification:** one live test each for Resend, Anthropic, Apollo, Hunter and Firecrawl, and for every Integrations hub provider. All request and response formats are coded from public documentation and tested with fakes only.
+   - Least certain: Resend inbound (the webhook may carry only metadata, so a body fetch may be needed), the AiSensy and MSG91 inbound payloads, Knowlarity's endpoint, the Google free/busy scope, and Cal.com API versions.
+   - The custom webhook mapping is the fallback when a payload differs.
 9. **More data providers** for India (for example Snov.io, Lusha, Prospeo, RocketReach), compared through the Data sources page.
 10. **International rollout:** time zones per lead, local holidays, and GDPR and CAN-SPAM notices.
 
@@ -246,8 +295,8 @@ cd web && npm install && npm run dev        # http://localhost:5173
 ```
 
 Tests:
-- `pytest -q`: 276 backend tests.
-- `npm run e2e`: 71 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
+- `pytest -q`: 378 backend tests.
+- `npm run e2e`: 75 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
 - `node e2e/tour.mjs`: every page at three screen sizes.
 - `node e2e/auth.mjs`: login checks.
 

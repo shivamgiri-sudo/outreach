@@ -40,6 +40,10 @@ from .activities import close_call_tasks, on_became_interested
 from .routes_whatsapp import make_router as make_whatsapp_router
 from .routes_growth import make_router as make_growth_router
 from .routes_jobs import make_router as make_jobs_router
+from .routes_channels import make_router as make_channels_router
+from .channels.http import request as channel_request
+from .channels.poller import start_imap_poller
+from .channels.webhooks import gate_allows
 from .routes_outreach import make_router
 from .store import Store
 from .suggest import suggest_next
@@ -126,7 +130,9 @@ def _present(lead: dict) -> dict:
 
 
 def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_password: Optional[str] = None,
-               email_transport=post_json, ai_transport=post_json, apollo_transport=post_json) -> FastAPI:
+               email_transport=post_json, ai_transport=post_json, apollo_transport=post_json,
+               channel_transport=None, smtp_factory=None, imap_factory=None, resolver=None,
+               inbound_processor=None, delivery_processor=None) -> FastAPI:
     password = admin_password if admin_password is not None else os.environ.get("OUTREACH_ADMIN_PASSWORD", "")
     limiter = LoginLimiter()
     app = FastAPI(title="Outreach OS")
@@ -141,7 +147,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         open_path = (not path.startswith("/api/") or path in PUBLIC_API_PATHS or request.method == "OPTIONS"
                      or (path == "/api/activation/event" and webhook_secret(store, routes_growth.WEBHOOK_SECRET)
                          and hmac.compare_digest(request.headers.get("x-webhook-secret", "").encode("utf-8", "replace"),
-                                                 webhook_secret(store, routes_growth.WEBHOOK_SECRET).encode("utf-8"))))
+                                                 webhook_secret(store, routes_growth.WEBHOOK_SECRET).encode("utf-8")))
+                     # Integrations hub: only the exact webhook / OAuth-callback routes, and only when their secret checks out.
+                     or (path.startswith(("/api/webhooks/", "/api/oauth/")) and await gate_allows(store, request)))
         if open_path:
             return await call_next(request)
         if not password:
@@ -171,7 +179,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         limiter.reset(caller)
         return {"token": make_token(password)}
 
-    email_sender = make_email_sender(store, email_transport, BASE_URL)
+    email_sender = make_email_sender(store, email_transport, BASE_URL, channel_transport, smtp_factory)
 
     def find(lead_id: str) -> tuple:
         leads = store.read("leads")
@@ -291,7 +299,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         saved = store.read("integrations")
         existing = saved.get(integration_id, {}).get("values", {})
         merged = {**existing, **{k: v for k, v in body.values.items() if v and not str(v).startswith("••••")}}
-        store.write("integrations", {**saved, integration_id: {"mode": body.mode, "values": merged}})
+        # keep hub data (other providers, last test, tokens) stored next to mode / values
+        store.write("integrations", {**saved, integration_id: {**saved.get(integration_id, {}), "mode": body.mode, "values": merged}})
         return next(i for i in integrations.describe(store.read("integrations")) if i["id"] == integration_id)
 
     @app.get("/api/stories")
@@ -319,8 +328,11 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_today_router(store, _present))
     app.include_router(make_providers_router(store, fetcher))
     app.include_router(make_activities_router(store))
+    app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,
+                                            BASE_URL, _present, inbound_processor, delivery_processor))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender)
+        start_imap_poller(store, imap_factory)
     return app
 
 

@@ -140,23 +140,41 @@ def _mask(value: str) -> str:
     return "••••" + value[-SECRET_TAIL:] if len(value) > SECRET_TAIL else "••••"
 
 
+SECRET_WORDS = ("password", "secret", "token", "api_key", "apikey", "authkey")
+
+
+def _hub():
+    """The Integrations hub registry, imported late (it imports this module)."""
+    from .channels import registry
+    return registry
+
+
 def _status(item: dict, mode: str, values: dict) -> str:
     if not mode:
         return "not_configured"
     if mode == "manual":
         return "configured"
-    missing = [f for f in item["fields"] if f["required"] and not values.get(f["key"])]
+    # sending_domain, whatsapp and telephony may now hold a hub provider (values.provider): use its required fields.
+    hub = _hub().hub_provider_for_legacy(item["id"], values)
+    fields = hub["fields"] if hub else item["fields"]
+    defaults = {f["key"]: f.get("default") for f in fields if f.get("default")}
+    missing = [f for f in fields if f.get("required") and not (values.get(f["key"]) or defaults.get(f["key"]))]
     return "incomplete" if missing else "configured"
 
 
+def _secret(key: str, secret_keys: set) -> bool:
+    return key in secret_keys or any(word in key.lower() for word in SECRET_WORDS)
+
+
 def describe(saved: dict) -> list:
-    """Merge the catalogue with saved settings; secrets are masked."""
+    """Merge the catalogue with saved settings; secrets are masked (including hub provider secrets)."""
     out = []
     for item in CATALOGUE:
         entry = saved.get(item["id"], {})
         mode, values = entry.get("mode", ""), entry.get("values", {})
-        secret_keys = {f["key"] for f in item["fields"] if f.get("secret")}
-        shown = {k: (_mask(v) if k in secret_keys and v else v) for k, v in values.items()}
+        secret_keys = {f["key"] for f in item["fields"] if f.get("secret")} | _hub().secret_keys_for_integration(item["id"])
+        shown = {k: (_mask(v) if _secret(k, secret_keys) and v and isinstance(v, str) else v) for k, v in values.items()
+                 if not isinstance(v, (list, dict))}
         out.append({**item, "mode": mode, "values": shown, "status": _status(item, mode, values)})
     return out
 
