@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { BAND_LABELS, STAGE_LABELS, STAGE_ORDER, sourceLabel, stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
+import ImportWizard from "./ImportWizard.jsx";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
 const SOURCES = ["apollo", "sales_navigator", "job_board", "web_scraper", "manual"];
@@ -34,7 +35,7 @@ async function downloadApolloList() {
   URL.revokeObjectURL(a.href);
 }
 
-export default function Leads({ focusLead }) {
+export default function Leads({ focusLead, go }) {
   const [leads, setLeads] = useState([]);
   const [open, setOpen] = useState(focusLead || null);
   const [query, setQuery] = useState("");
@@ -45,6 +46,7 @@ export default function Leads({ focusLead }) {
   const [busy, setBusy] = useState("");
   useEffect(() => { if (focusLead) setOpen(focusLead); }, [focusLead]);
   const [showImport, setShowImport] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [csv, setCsv] = useState(SAMPLE);
   const [source, setSource] = useState("apollo");
   const [message, setMessage] = useState("");
@@ -167,9 +169,11 @@ export default function Leads({ focusLead }) {
         <div className="row">
           <button className="btn ghost" onClick={() => setShowScrape(!showScrape)}>Find contacts on a website</button>
           <button className="btn ghost" onClick={() => setShowJobs(!showJobs)}>Read job pages</button>
-          <button className="btn" onClick={() => setShowImport(!showImport)}>Import leads</button>
+          <button className="btn ghost" onClick={() => { setShowImport(!showImport); setShowWizard(false); }}>Quick paste</button>
+          <button className="btn" onClick={() => { setShowWizard(!showWizard); setShowImport(false); }}>Import leads</button>
         </div>
       </div>
+      {showWizard && <ImportWizard onClose={() => { setShowWizard(false); load(); }} onDone={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message} <button className="linkish" aria-label="Dismiss message" onClick={() => setMessage("")}>✕</button></div>}
 
       {quality && quality.total > 0 && (
@@ -184,6 +188,7 @@ export default function Leads({ focusLead }) {
             </button>
             {apolloReady && <button className="btn ghost" title="Uses up to 10 Apollo credits" onClick={runApollo}>Look up emails in Apollo (10)</button>}
             <button className="btn ghost" onClick={downloadApolloList}>Download list for Apollo</button>
+            {go && <button className="btn ghost" onClick={() => go("hygiene")}>Duplicates and clean-up</button>}
           </span>
         </div>
       )}
@@ -226,7 +231,8 @@ export default function Leads({ focusLead }) {
           <label>Or paste CSV (first row = column names)</label>
           <textarea rows={6} value={csv} onChange={(e) => setCsv(e.target.value)} />
           <p className="sub" style={{ margin: "6px 0" }}>
-            Columns: company, contact_name, title, email, phone, website, open_roles, company_size, country. Duplicates are removed automatically.
+            Columns: company, contact_name, title, email, phone, website, open_roles, company_size, country (Apollo-style names such as
+            First Name or Mobile Phone also work). Duplicates are removed automatically. For a preview, column choices and undo, use “Import leads”.
           </p>
           <button className="btn" onClick={runImport}>Import</button>
         </div>

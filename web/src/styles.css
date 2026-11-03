@@ -184,3 +184,34 @@ td.pick, th:first-child { width: 36px; }
   .today-item { flex-wrap: wrap; }
   .drawer-head { top: -20px; }
 }
+
+/* ---------- import wizard and data hygiene ---------- */
+.wizard-steps { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 12px 0 16px; }
+.wizard-steps li { flex: 1 1 130px; margin: 0; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-weight: 600; font-size: 13px; }
+.wizard-steps li.on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); }
+.wizard-steps li.done { color: var(--ok); }
+.map-table td, .stack-table td { vertical-align: top; overflow-wrap: anywhere; }
+.map-table select { min-width: 180px; }
+.samples { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.kpi-row { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin: 12px 0; }
+.kpi { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: var(--panel); min-width: 0; }
+.kpi b { display: block; font-size: 24px; font-weight: 800; line-height: 1.2; }
+.kpi span { color: var(--muted); font-size: 13px; }
+details.section { border-top: 1px solid var(--line); padding: 10px 0; }
+details.section summary { cursor: pointer; font-weight: 700; }
+.section-block { padding: 12px 0; border-top: 1px solid var(--line); }
+.compare { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 10px; }
+.lead-card { display: grid; gap: 6px; align-content: start; padding: 12px; border: 1px solid var(--line); border-radius: 14px; overflow-wrap: anywhere; min-width: 0; }
+.lead-card dl { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; font-size: 13px; }
+.lead-card dt { color: var(--muted); }
+.lead-card dd { margin: 0; }
+@media (max-width: 760px) {
+  .map-table thead, .stack-table thead { display: none; }
+  .map-table, .map-table tbody, .map-table tr, .map-table td, .stack-table, .stack-table tbody, .stack-table tr, .stack-table td { display: block; width: 100%; }
+  .map-table tr, .stack-table tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .map-table td, .stack-table td { border: 0; padding: 3px 0; }
+  .map-table select { min-width: 0; }
+  .stack-table td[data-label]::before { content: attr(data-label) ": "; color: var(--muted); font-size: 12px; }
+}
+.check-row { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; margin: 8px 0; }
+.check-row input { margin-top: 3px; flex: none; }
