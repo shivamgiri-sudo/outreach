@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api.js";
+import { api, isOwner } from "../api.js";
 import { copyText } from "../clipboard.js";
 import { SEQUENCE_STOPPED, sourceLabel, stageLabel } from "../labels.js";
 import LeadMeetings from "./LeadMeetings.jsx";
@@ -79,6 +79,42 @@ function InlineForm({ fields, submitLabel, onSubmit, onCancel }) {
         <button className="btn ghost" type="button" onClick={onCancel}>Cancel</button>
       </div>
     </form>
+  );
+}
+
+// DPDP (owner only): download everything held on this person, or erase it for good.
+function PrivacyActions({ lead, onErased }) {
+  const [confirming, setConfirming] = useState(false);
+  const [message, setMessage] = useState("");
+  const exportData = async () => {
+    try {
+      const blob = await api.download(`/api/leads/${lead.id}/export`);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = `lead-${lead.id}.json`; a.click();
+    } catch (e) { setMessage(e.message); }
+  };
+  const erase = async () => {
+    try { await api.eraseLead(lead.id); onErased(); } catch (e) { setMessage(e.message); }
+  };
+  return (
+    <section data-testid="privacy-actions">
+      <h3>Their data (DPDP)</h3>
+      <div className="row">
+        <button className="btn ghost" onClick={exportData}>Download their data</button>
+        {!confirming && <button className="btn ghost danger" onClick={() => setConfirming(true)}>Erase their data…</button>}
+      </div>
+      {confirming && (
+        <div className="tip error" role="alert">
+          This deletes the lead, its emails, replies, messages, tasks and notes for good. Only a scrambled fingerprint of
+          the email and phone is kept, so they are never imported or contacted again.
+          <div className="row" style={{ marginTop: 8 }}>
+            <button className="btn danger-solid" onClick={erase}>Yes, erase everything</button>
+            <button className="btn ghost" onClick={() => setConfirming(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {message && <p className="sub" role="status">{message}</p>}
+    </section>
   );
 }
 
@@ -187,6 +223,7 @@ export default function LeadDrawer({ id, onClose }) {
 
       <LeadMeetings lead={lead} onChanged={load} />
       <LeadActivity lead={lead} onChanged={load} />
+      {isOwner() && <PrivacyActions lead={lead} onErased={onClose} />}
 
       <h3>Free experience</h3>
       {lead.activation ? (
