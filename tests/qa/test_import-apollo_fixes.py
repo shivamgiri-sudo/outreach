@@ -125,3 +125,15 @@ def test_emp_size_maps_to_company_size(client):
     csv = "Name,Organisation,Official Email,Emp Size\nLakshmi Singh,Acme Retail,lakshmi@acmeretail.example,350\n"
     r = preview(client, csv, source="apollo")
     assert r["mapping"]["Emp Size"] == "company_size" and r["rows"][0]["company_size_bucket"] == "201-500"
+
+
+# ---- 5. quick paste re-created leads for addresses on the do-not-contact list
+def test_quick_paste_skips_do_not_contact_addresses(tmp_path):
+    app = create_app(data_file=tmp_path / "d.json")
+    app.state.store.update("suppressed", lambda rows: [*rows, "stop@metromart.example"])
+    c = TestClient(app)
+    csv = ("First Name,Last Name,Company Name,Email\nPayal,Arora,Metro Mart,stop@metromart.example\n"
+           "Harish,Gupta,Deccan Motors,harish@deccanmotors.example\n")
+    r = c.post("/api/leads/import", json={"csv": csv, "source": "apollo"}).json()
+    assert r["created"] == 1 and r["suppressed"] == 1
+    assert [lead["company"] for lead in c.get("/api/leads").json()] == ["Deccan Motors"]

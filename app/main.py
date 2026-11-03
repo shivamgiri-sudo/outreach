@@ -239,6 +239,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             raise HTTPException(400, str(exc)) from exc
         stats = {}
         erased = set(store.read("suppressed_hashes"))
+        blocked = set(store.read("suppressed"))      # do-not-contact list, as the smart import skips it
 
         def merge_in(leads: list) -> list:
             seen = {lead["dedupe_key"] for lead in leads}
@@ -247,7 +248,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                 lead = _build_lead(row, body.source)
                 if lead is None:
                     rejected += 1
-                elif lead_hashes(lead) & erased:
+                elif lead_hashes(lead) & erased or (lead.get("email") or "") in blocked:
                     suppressed += 1                  # this person asked for their data to be erased
                 elif lead["dedupe_key"] in seen:
                     duplicates += 1
