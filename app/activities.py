@@ -112,7 +112,9 @@ def on_became_interested(store, lead_id: str, why: str = "Said yes") -> dict:
     """The lead said yes: give the caller a call task for the next allowed slot (one open call task per lead)."""
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), {})
     company = lead.get("company") or lead.get("domain") or "this lead"
-    return add_task(store, lead_id, "call", f"{why}. Call {company} through PD only, before 18:55.",
+    campaign = next((c.get("name") for c in store.read("campaigns") if lead.get("campaign_id") and c.get("id") == lead["campaign_id"]), None)
+    origin = f" Found by campaign {campaign}." if campaign else ""
+    return add_task(store, lead_id, "call", f"{why}. Call {company} through PD only, before 18:55.{origin}",
                     due_at=next_call_slot(now_utc()), owner=caller_name(store), priority="high", source="auto", dedupe_open=True)
 
 

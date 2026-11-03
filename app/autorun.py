@@ -15,11 +15,15 @@ DEFAULT_INTERVAL_SECONDS = 900          # sequence sends and time rules
 REMINDER_INTERVAL_SECONDS = 60          # task and meeting reminders need minute precision
 
 
-def tick(store, now: Optional[datetime] = None, sender=None) -> dict:
+def tick(store, now: Optional[datetime] = None, sender=None, campaign_runner=None) -> dict:
+    """Due sequence emails, time rules, and (when given) campaigns marked 'running' that have not run today."""
     now = now or datetime.now(timezone.utc)
     sender = sender or make_email_sender(store, base_url=BASE_URL)
     result = run_due(store, now, public_base_url(store, BASE_URL), sender, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1")
-    return {**result, "workflow_rules_run": run_time_rules(store, now)}
+    out = {**result, "workflow_rules_run": run_time_rules(store, now)}
+    if campaign_runner is not None:
+        out["campaign_runs"] = campaign_runner(now)
+    return out
 
 
 def reminder_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
@@ -27,8 +31,8 @@ def reminder_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
     return run_reminders(store, now, sender or make_transactional_sender(store), BASE_URL)
 
 
-def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVAL_SECONDS) -> threading.Event:
-    """Reminders every minute; due sequence emails and time rules every `interval_seconds`, until the event is set."""
+def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVAL_SECONDS, campaign_runner=None) -> threading.Event:
+    """Reminders every minute; due sequence emails, time rules and daily campaigns every `interval_seconds`."""
     stop = threading.Event()
 
     def loop():
@@ -42,7 +46,7 @@ def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVA
             if waited >= interval_seconds:
                 waited = 0
                 try:
-                    tick(store, sender=sender)
+                    tick(store, sender=sender, campaign_runner=campaign_runner)
                 except Exception as exc:
                     print(f"autorun tick failed: {exc}")
 

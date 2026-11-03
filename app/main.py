@@ -40,6 +40,10 @@ from .activities import close_call_tasks, on_became_interested
 from .routes_whatsapp import make_router as make_whatsapp_router
 from .routes_growth import make_router as make_growth_router
 from .routes_jobs import make_router as make_jobs_router
+from .routes_campaigns import make_router as make_campaigns_router
+from .campaigns import run_due_campaigns
+from .providers import get_json
+from .senders import make_transactional_sender
 from .routes_channels import make_router as make_channels_router
 from .channels.http import request as channel_request
 from .channels.poller import start_imap_poller
@@ -132,7 +136,7 @@ def _present(lead: dict) -> dict:
 def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_password: Optional[str] = None,
                email_transport=post_json, ai_transport=post_json, apollo_transport=post_json,
                channel_transport=None, smtp_factory=None, imap_factory=None, resolver=None,
-               inbound_processor=None, delivery_processor=None) -> FastAPI:
+               inbound_processor=None, delivery_processor=None, campaign_transports=None) -> FastAPI:
     password = admin_password if admin_password is not None else os.environ.get("OUTREACH_ADMIN_PASSWORD", "")
     limiter = LoginLimiter()
     app = FastAPI(title="Outreach OS")
@@ -330,8 +334,13 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_activities_router(store))
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,
                                             BASE_URL, _present, inbound_processor, delivery_processor))
+    # Campaigns: Apollo / Google Places / Firecrawl POSTs, Hunter / verifier GETs, careers pages and the crawler.
+    campaign_io = {"post": apollo_transport, "get": get_json, "fetch": fetcher, **(campaign_transports or {})}
+    campaign_notify = make_transactional_sender(store, email_transport)
+    app.include_router(make_campaigns_router(store, campaign_io, _present, campaign_notify))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
-        start_background(store, email_sender)
+        start_background(store, email_sender, campaign_runner=lambda now: run_due_campaigns(
+            store, now, campaign_io, campaign_notify, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"))
         start_imap_poller(store, imap_factory)
     return app
 
