@@ -142,19 +142,12 @@ Caddy's `reverse_proxy` sends `X-Forwarded-For` and `X-Forwarded-Proto`; the app
 - `GET /api/compliance/consent-ledger?lead_id=…`: consent given and withdrawn.
 
 ## Test
-    .venv\Scripts\python -m pytest -q          # 378 backend tests
-    .venv\Scripts\python -m pytest -q          # 436 backend tests
-    .venv\Scripts\python -m pytest -q          # 467 backend tests
-    .venv\Scripts\python -m pytest -q          # 539 backend tests
-    .venv\Scripts\python -m pytest -q          # 847 backend tests (99 flow builder)
+    .venv\Scripts\python -m pytest -q          # 2474 backend tests (+ 6 skipped)
 
 Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a throwaway file and
 `OUTREACH_IGNORE_BUSINESS_HOURS=1`, then the UI):
 
-    cd web && npm run e2e                      # 75 steps; HEADED=1 shows the browser
-    cd web && npm run e2e                      # 74 steps; HEADED=1 shows the browser; E2E_UI / E2E_API change the addresses
-    cd web && npm run e2e                      # 82 steps; HEADED=1 shows the browser
-    cd web && npm run e2e                      # 99 steps (6 flow builder)
+    cd web && npm run e2e                      # 99 steps; HEADED=1 shows the browser; E2E_UI / E2E_API change the addresses
     node e2e/tour.mjs                          # every page at desktop, tablet and phone width
     # with the API started using OUTREACH_ADMIN_PASSWORD=e2e-password:
     node e2e/auth.mjs                          # 9 login steps
