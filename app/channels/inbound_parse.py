@@ -109,12 +109,33 @@ def _content(part) -> str:
         return (part.get_payload(decode=True) or b"").decode("utf-8", "replace")
 
 
+_QMAIL_COPY = "--- Below this line is a copy of the message."
+
+
+def _bounced_message_id(m, text: str) -> str:
+    """A bounce report (DSN/NDR) often has no In-Reply-To; our Message-ID is in the returned message or its headers."""
+    for part in m.walk() if m.get_content_type() == "multipart/report" else ():
+        kind = part.get_content_type()
+        if kind == "message/rfc822":
+            inner = part.get_payload()
+            inner = inner[0] if isinstance(inner, list) and inner else inner
+            if hasattr(inner, "get"):
+                return str(inner.get("Message-ID", "")).strip()
+        if kind == "text/rfc822-headers":
+            return str(HeaderParser().parsestr(_content(part)).get("Message-ID", "")).strip()
+    if _QMAIL_COPY in text:                        # qmail (e.g. Rediffmail) pastes the original below this line
+        return str(HeaderParser().parsestr(text.split(_QMAIL_COPY, 1)[1].lstrip()).get("Message-ID", "")).strip()
+    return ""
+
+
 def email_from_mime(raw: bytes, provider: str, raw_id: str = "") -> dict:
     m = message_from_bytes(raw, policy=policy.default)
+    text = _content(m.get_body(preferencelist=("plain",)))
+    in_reply_to = str(m.get("In-Reply-To", "")).strip() or (_bounced_message_id(m, text) if not m.get("References") else "")
     return message("email", provider, from_email=_email_address(str(m.get("From", ""))), to=str(m.get("To", "")),
-                   subject=str(m.get("Subject", "")), text=_content(m.get_body(preferencelist=("plain",))),
+                   subject=str(m.get("Subject", "")), text=text,
                    html=_content(m.get_body(preferencelist=("html",))), message_id=str(m.get("Message-ID", "")).strip(),
-                   in_reply_to=str(m.get("In-Reply-To", "")).strip(), references=str(m.get("References", "")).split(),
+                   in_reply_to=in_reply_to, references=str(m.get("References", "")).split(),
                    received_at=_iso(m.get("Date")), raw_id=raw_id)
 
 
