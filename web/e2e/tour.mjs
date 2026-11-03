@@ -6,7 +6,7 @@ import fs from "node:fs";
 const UI = process.env.E2E_UI || "http://localhost:5173";
 const SHOTS = process.env.SHOT_DIR || "tour-shots";
 fs.mkdirSync(SHOTS, { recursive: true });
-const PAGES = ["Dashboard", "Leads", "Campaigns", "Data hygiene", "Data sources", "Insights", "Free experience", "Workflows",
+const PAGES = ["Dashboard", "Leads", "Campaigns", "Data hygiene", "Data sources", "Insights", "Free experience", "Flow builder", "Simple rules",
   "Outbox & sending", "Tasks & follow-ups", "LinkedIn outreach", "Priya's call desk", "Meetings", "Sequences & templates",
   "Success stories", "Prompt generator", "Setup", "Integrations"];
 const SIZES = [["desktop", 1440, 900], ["tablet", 820, 1100], ["phone", 390, 844]];

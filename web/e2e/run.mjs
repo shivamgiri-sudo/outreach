@@ -337,7 +337,7 @@ await step("Free experience: partners add + status change", async () => {
 
 // ---------- Workflows ----------
 await step("Workflows: add suggested rules, create a custom one, toggle and delete", async () => {
-  await nav("Workflows");
+  await nav("Simple rules");
   await expectText("No rules yet");
   await page.getByRole("button", { name: "Add suggested rules" }).click();
   await expectText("Yes by email → WhatsApp the sample screen");
@@ -940,6 +940,97 @@ await step("Backup: Setup downloads a backup and the restore dry run shows the c
   await plan.getByRole("button", { name: "Cancel" }).click();
   const after = await (await fetch(`${API}/api/leads`)).json();
   if (after.length !== leads.length) throw new Error("the dry run changed the data");
+});
+
+// ---------- Flow builder ----------
+const centre = async (loc) => { const b = await loc.boundingBox(); return [b.x + b.width / 2, b.y + b.height / 2]; };
+const dragTo = async (from, to) => {
+  const [x1, y1] = await centre(from);
+  const [x2, y2] = await centre(to);
+  await page.mouse.move(x1, y1);
+  await page.mouse.down();
+  await page.mouse.move((x1 + x2) / 2, (y1 + y2) / 2, { steps: 5 });
+  await page.mouse.move(x2, y2, { steps: 5 });
+  await page.mouse.up();
+};
+const flowNode = (prefix) => page.locator(`g.fb-node[aria-label^="${prefix}"]`).first();
+const nodeId = (prefix) => flowNode(prefix).getAttribute("data-node-id");
+let builtFlowUrl = "";
+await step("Flow builder: a flow from the Cold email template shows its 8 steps on the canvas", async () => {
+  await nav("Flow builder");
+  await expectText("No flows yet");
+  await page.getByRole("button", { name: "New from template" }).click();
+  await page.getByRole("button", { name: "Use template: Cold email 4-step" }).click();
+  await page.getByTestId("flow-canvas").waitFor();
+  await page.locator("g.fb-node").nth(7).waitFor();
+  const [nodes, edges] = [await page.locator("g.fb-node").count(), await page.locator("g.fb-edge").count()];
+  if (nodes !== 8 || edges !== 7) throw new Error(`expected 8 steps and 7 connections, got ${nodes} / ${edges}`);
+  await shot("14-flow-template");
+});
+await step("Flow builder: add an If step and connect its yes / no outputs by dragging", async () => {
+  await page.getByRole("button", { name: "← All flows" }).click();
+  await page.getByRole("button", { name: "Blank flow" }).click();
+  await page.getByTestId("flow-canvas").waitFor();
+  for (const name of ["If / else", "Send email", "Stop"]) await page.getByRole("button", { name: `Add step: ${name}` }).click();
+  await page.getByRole("button", { name: "Auto-layout" }).click();
+  const trigger = await nodeId("Added by hand");
+  await dragTo(page.locator(`[data-port="${trigger}:next"] .fb-port-hit`), flowNode("If / else").locator(".fb-card"));
+  await page.locator("g.fb-edge").first().waitFor();
+  await page.getByRole("button", { name: "Auto-layout" }).click();
+  const check = await nodeId("If / else");
+  await dragTo(page.locator(`[data-port="${check}:yes"] .fb-port-hit`), flowNode("Send email").locator(".fb-card"));
+  await dragTo(page.locator(`[data-port="${check}:no"] .fb-port-hit`), flowNode("Stop").locator(".fb-card"));
+  if ((await page.locator("g.fb-edge").count()) !== 3) throw new Error("expected 3 connections");
+  await page.locator("text.fb-edge-label", { hasText: "yes" }).waitFor();
+  await page.locator("text.fb-edge-label", { hasText: "no" }).waitFor();
+  await page.keyboard.press("Control+z");
+  if ((await page.locator("g.fb-edge").count()) !== 2) throw new Error("undo did not remove the last connection");
+  await page.keyboard.press("Control+y");
+  if ((await page.locator("g.fb-edge").count()) !== 3) throw new Error("redo did not restore it");
+});
+await step("Flow builder: the email step shows its problem in red until the subject is written", async () => {
+  await page.getByRole("button", { name: "Validate" }).click();
+  await flowNode("Send email").getByTestId("node-error").filter({ hasText: "Write the email subject" }).waitFor();
+  await flowNode("Send email").locator(".fb-card").click();
+  const panel = page.getByTestId("node-config");
+  await panel.getByLabel("Subject", { exact: true }).fill("{{role}} hiring at {{company}}");
+  await panel.getByLabel("Email text").click();
+  await panel.getByRole("button", { name: "{{first_name}}" }).click();
+  if (!(await panel.getByLabel("Email text").inputValue()).includes("{{first_name}}")) throw new Error("placeholder chip not inserted");
+  await page.getByRole("button", { name: "Validate" }).click();
+  await expectText("No problems found");
+  if (await page.getByTestId("node-error").count()) throw new Error("a step still shows a problem");
+});
+await step("Flow builder: save, then simulate on a lead: the path is highlighted and listed", async () => {
+  await page.locator("#fb-name").fill("E2E branch flow");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expectText("Saved.");
+  await page.getByRole("button", { name: "Run simulation" }).click();
+  await page.getByTestId("sim-result").waitFor();
+  const lit = await page.locator("g.fb-node.on").count();
+  const litEdges = await page.locator("g.fb-edge.on").count();
+  if (lit < 3 || litEdges < 2) throw new Error(`path not highlighted (${lit} steps, ${litEdges} connections)`);
+  await page.getByTestId("sim-result").getByText("If / else").waitFor();
+  await shot("15-flow-simulate");
+});
+await step("Flow builder: activate; the flow list shows it as Active", async () => {
+  await page.getByRole("button", { name: "Activate" }).click();
+  await page.getByTestId("flow-status").filter({ hasText: "Active" }).waitFor();
+  builtFlowUrl = page.url();
+  await page.getByRole("button", { name: "← All flows" }).click();
+  await page.locator("tr", { hasText: "E2E branch flow" }).getByText("Active").waitFor();
+});
+await step("Flow builder: on a phone the flow opens as a list of steps with no sideways scroll", async () => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto(builtFlowUrl);
+  const list = page.getByTestId("flow-list-view");
+  await list.waitFor();
+  await list.getByText("If yes:").waitFor();
+  await list.getByText("If no:").waitFor();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  await shot("16-flow-phone-list");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  if (overflow) throw new Error("flow editor scrolls sideways on a phone");
 });
 
 // ---------- Mobile layout ----------
