@@ -23,6 +23,14 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
   - Buying signals, stage, consent proof, demo link, free pilot, referral, and WhatsApp templates (with Hinglish versions).
   - LinkedIn drafts that you send by hand.
   - Logging a reply explains in plain words what it did.
+- **Campaigns** (Pipeline → Campaigns): save who to target (industries, cities, roles they hire for, company size) and
+  where to look (company careers pages, Apollo people search, Apollo companies hiring, Google Places, leads you imported).
+  One click finds companies, adds new leads without duplicates, fills missing contacts, checks emails, scores them and,
+  only if you tick it, starts the email sequence for the ones that qualify. "Run now (preview)" saves nothing.
+  - Unsubscribed, bounced and disqualified companies are never re-added; leads already in conversation are never touched.
+  - The campaign never sends: the sequence engine does, with practice mode, caps, warm-up and business hours.
+  - Priya (or the campaign's caller) gets an update after every run, and a morning summary at 09:30 IST on weekdays.
+  - "Run every weekday automatically" runs it once a day with `OUTREACH_AUTORUN=1`.
 - **Data sources:**
   - Run several providers on the same Indian leads and compare coverage and cost before keeping one. Providers: own website crawler, Hunter, Firecrawl, Apollo.
   - Import the JSON output of the open-source website contact scraper.
@@ -67,7 +75,8 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
 
 Optional environment variables:
 - `OUTREACH_ADMIN_PASSWORD`: turns on the login screen. **Without it the API only answers on this computer.**
-- `OUTREACH_AUTORUN=1`: sends due emails and runs time-based rules every 15 minutes (Mon–Fri 9–18 IST), and checks the reply mailbox (IMAP) every 5 minutes.
+- `OUTREACH_AUTORUN=1`: sends due emails and runs time-based rules every 15 minutes (Mon–Fri 9–18 IST), runs campaigns set to
+  run daily (once a day), checks the reply mailbox (IMAP) every 5 minutes, and sends reminders and the 09:30 IST summary.
 - `OUTREACH_DATA_FILE`: where data is stored. Default `data/store.json` (git-ignored). Saves are atomic, and saved keys are in plain text.
 - `OUTREACH_WEBHOOK_SECRET`: header `X-Webhook-Secret` that lets the BookMyInterview product call `POST /api/activation/event`. It can also be set in Setup.
 - `OUTREACH_BASE_URL`: public address for demo and unsubscribe links. It can also be set in Setup.
@@ -76,18 +85,19 @@ Optional environment variables:
 - `OUTREACH_IGNORE_BUSINESS_HOURS=1` and `OUTREACH_TEST_MODE=1`: local testing only.
 
 ## Test
-    .venv\Scripts\python -m pytest -q          # 378 backend tests
+    .venv\Scripts\python -m pytest -q          # 467 backend tests
 
 Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a throwaway file and
 `OUTREACH_IGNORE_BUSINESS_HOURS=1`, then the UI):
 
-    cd web && npm run e2e                      # 75 steps; HEADED=1 shows the browser
+    cd web && npm run e2e                      # 82 steps; HEADED=1 shows the browser
     node e2e/tour.mjs                          # every page at desktop, tablet and phone width
     # with the API started using OUTREACH_ADMIN_PASSWORD=e2e-password:
     node e2e/auth.mjs                          # 6 login steps
 
 ## Not verified against live services
-Resend (email), Anthropic (reply drafts and reading), Apollo, Hunter, Firecrawl and every Integrations hub provider
+Resend (email), Anthropic (reply drafts and reading), Apollo (match, People API Search, Organization Search, job
+postings, usage stats), Hunter, Firecrawl, Google Places, ZeroBounce, NeverBounce and every Integrations hub provider
 (email, inbound, WhatsApp, SMS, calling, calendars) are coded from public documentation and tested with fake transports
 only. Try each once with a test address or a small sample before relying on it.
 
