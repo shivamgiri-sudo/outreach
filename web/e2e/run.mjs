@@ -1033,6 +1033,37 @@ await step("Flow builder: on a phone the flow opens as a list of steps with no s
   if (overflow) throw new Error("flow editor scrolls sideways on a phone");
 });
 
+// ---------- Chrome assistant (pairing token) ----------
+await step("LinkedIn: Chrome assistant pairing token is created, shown once, works only for the extension routes, and can be revoked", async () => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await nav("LinkedIn outreach");
+  const card = page.getByTestId("chrome-assistant");
+  await card.locator("summary").click();
+  await card.getByLabel("Name for this computer").fill("E2E laptop");
+  await card.getByRole("button", { name: "Create pairing token" }).click();
+  await expectText("shown only once");
+  const token = (await page.getByTestId("pair-token").innerText()).trim();
+  if (!/^mcnx_[A-Za-z0-9_-]{40,}$/.test(token)) throw new Error(`unexpected token shape: ${token.slice(0, 8)}…`);
+  const headers = { Authorization: `Bearer ${token}` };
+  const queue = await page.request.get(`${API}/api/extension/queue`, { headers });
+  if (queue.status() !== 200) throw new Error(`extension queue answered ${queue.status()}`);
+  const other = await page.request.get(`${API}/api/leads`, { headers });
+  if (other.status() !== 403) throw new Error(`/api/leads with a pairing token answered ${other.status()}, expected 403`);
+  await shot("17-chrome-assistant-token");
+  await card.getByRole("button", { name: "I have copied it" }).click();
+  await nav("Leads");
+  await nav("LinkedIn outreach");
+  await page.getByTestId("chrome-assistant").locator("summary").click();
+  if (await page.getByText(token).count()) throw new Error("the raw token is still on the page after it was dismissed");
+  const row = page.getByTestId("pair-row").filter({ hasText: "E2E laptop" });
+  await row.waitFor();
+  await row.getByRole("button", { name: "Revoke" }).click();
+  await expectText("Pairing token revoked");
+  await page.getByTestId("pair-row").filter({ hasText: "E2E laptop" }).waitFor({ state: "detached" });
+  const after = await page.request.get(`${API}/api/extension/queue`, { headers });
+  if (after.status() !== 401) throw new Error(`revoked token answered ${after.status()}, expected 401`);
+});
+
 // ---------- Mobile layout ----------
 await step("Mobile width: no horizontal page scroll on Leads", async () => {
   await page.setViewportSize({ width: 390, height: 800 });

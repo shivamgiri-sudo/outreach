@@ -345,6 +345,36 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
   `GET /api/flows/{id}/runs`, `GET /api/leads/{id}/flows`, `POST /api/flow-runs/{id}/stop`, `POST /api/flows/tick`
   (`now` honoured only with `OUTREACH_TEST_MODE=1`).
 
+### 5.12 LinkedIn assistant (assisted, not automated)
+- **The rule:** LinkedIn forbids automation, so a human clicks every action on LinkedIn. The Chrome extension
+  (`extensions/linkedin-assistant/`, Manifest V3, plain JS) is an assistant. It must not click LinkedIn buttons, press
+  Send or Connect, submit forms, scroll or page through search results or lists, crawl or scrape profiles, simulate typing
+  or mouse events, use human-like or random delays, rotate anything or hide itself. `tests/test_extension_rules.py`
+  reads the extension source and fails on `.click(`, mouse / keyboard `dispatchEvent`, timers and random jitter,
+  and scroll calls, and checks the manifest stays narrow.
+- **What it does:** reads the one profile page the person opened (name, headline, company, profile link) to match a
+  lead; shows a side panel with the message from the LinkedIn sequence and a Copy button; fills the connection note or
+  message box once, only when the person presses its own "Insert message" button (never over text already typed without
+  asking); notices read-only that the box closed or the person shows as 1st degree, then asks the person to confirm
+  "I sent it", "They accepted" or "They replied" with one click. Nothing is reported silently.
+- **Pairing:** `POST /api/extension/pair` (owner or caller; viewers refused) returns a long random token once; only its
+  SHA-256 is stored (`settings.extension_tokens`, never returned by any API). Tokens expire after 90 days, at most 10 per
+  person, listed without values (`GET /api/extension/tokens`) and revoked (`DELETE /api/extension/tokens/{id}`; owners
+  revoke any, others their own). Web app: LinkedIn outreach → Chrome assistant.
+- **Narrow principal:** a token authenticates as its creator (role caller; viewer if that person became a viewer; gone
+  if the person was removed) and may call only the routes below. Everything else, including `/api/leads`, settings, users
+  and token management, answers 403.
+- **Routes:**
+  - `GET /api/extension/match?profile_url=&name=&company=`: lead by LinkedIn `/in/<slug>` (query, trailing slash, regional
+    domains and case ignored), else by exact name + company when that is unique. Returns `lead_id, name, company, title,
+    linkedin_seq {status, next_step, due}, message {step, kind, text}, can_send, reason`. Unsubscribed or disqualified
+    leads, stopped or finished sequences, steps waiting for acceptance, steps not yet due and "already sent today" never
+    return a message.
+  - `POST /api/extension/leads/{id}/sent {step}` (only the step currently offered), `/accepted` (only while waiting for
+    acceptance), `/replied {text}`: they call the same LinkedIn sequence functions as the web app and only record what
+    the person confirmed.
+  - `GET /api/extension/queue`: today's due steps with a verified http(s) profile link.
+
 ## 6. Out of scope (on purpose)
 - Automated LinkedIn scraping, auto-connecting or auto-messaging, and applying to job posts to pitch employers.
 - Bypassing anti-bot protection or rotating proxies to avoid blocks.
