@@ -96,6 +96,8 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
     if store.update_lead(lead_id, change) is None:
         return None
     effect = outcome["effect"]
+    if label not in ("auto_reply", "bounce") and channel != "linkedin":
+        _stop_linkedin(store, lead_id, f"replied by {channel}")       # one real reply stops every cold channel
     if label in ("unsubscribe", "bounce") and channel == "email":
         suppress(store, outcome["email"])
     if effect == "review" or label in ("question", "wrong_person", "other"):
@@ -107,6 +109,13 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
             on_became_interested(store, lead_id, f"Said yes by {channel}")
         fire(store, "reply", label, lead_id)
     return {"label": label, "effect": effect, "ai_label": ai_label}
+
+
+def _stop_linkedin(store, lead_id: str, why: str) -> None:
+    lead = next((l for l in store.read("leads") if l["id"] == lead_id), {})
+    if (lead.get("linkedin_seq") or {}).get("status") in ("waiting_to_connect", "waiting_for_acceptance", "messaging"):
+        from .linkedin_seq import stop
+        stop(store, lead_id, why)
 
 
 def _match_lead(store, msg: dict) -> tuple:

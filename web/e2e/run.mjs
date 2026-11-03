@@ -744,6 +744,15 @@ await step("Reminders bell opens and lists reminders", async () => {
   await page.getByRole("button", { name: /Reminders:/ }).click();
 });
 
+await step("LinkedIn: queue page explains the rules and saves settings", async () => {
+  await nav("LinkedIn outreach");
+  await expectText("LinkedIn doesn't allow automation");
+  await page.getByText("LinkedIn settings").click();
+  await page.getByLabel("Case-study link (step 4 is skipped until a real link is set)").fill("https://bookmyinterview.ai/case-study");
+  await page.locator("details", { hasText: "LinkedIn settings" }).getByRole("button", { name: "Save" }).click();
+  await expectText("Settings saved");
+});
+
 // ---------- Mobile layout ----------
 await step("Mobile width: no horizontal page scroll on Leads", async () => {
   await page.setViewportSize({ width: 390, height: 800 });

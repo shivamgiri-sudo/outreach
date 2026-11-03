@@ -18,6 +18,7 @@ import DataSources from "./pages/DataSources.jsx";
 import Integrations from "./pages/Integrations.jsx";
 import Meetings from "./pages/Meetings.jsx";
 import Tasks from "./pages/Tasks.jsx";
+import LinkedInQueue from "./pages/LinkedInQueue.jsx";
 
 // [id, label, component, icon]
 const PAGES = [
@@ -31,6 +32,7 @@ const PAGES = [
   ["calls", "Priya's call desk", CallDesk, "phone"],
   ["meetings", "Meetings", Meetings, "calendar"],
   ["tasks", "Tasks & follow-ups", Tasks, "tasks"],
+  ["linkedin", "LinkedIn outreach", LinkedInQueue, "users"],
   ["templates", "Sequences & templates", Templates, "mail"],
   ["stories", "Success stories", Stories, "star"],
   ["prompts", "Prompt generator", PromptGenerator, "wand"],
@@ -41,7 +43,7 @@ const PAGES = [
 const GROUPS = [
   ["Overview", ["dashboard"]],
   ["Pipeline", ["leads", "sources", "insights", "growth"]],
-  ["Outreach", ["tasks", "outbox", "workflows", "templates", "calls", "meetings"]],
+  ["Outreach", ["tasks", "outbox", "linkedin", "workflows", "templates", "calls", "meetings"]],
   ["Library", ["stories", "prompts"]],
   ["Admin", ["setup", "integrations"]],
 ];

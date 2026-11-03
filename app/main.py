@@ -36,6 +36,7 @@ from .routes_insights import make_router as make_insights_router
 from .routes_today import make_router as make_today_router
 from .routes_providers import make_router as make_providers_router
 from .routes_activities import make_router as make_activities_router
+from .routes_linkedin import make_router as make_linkedin_router
 from .activities import close_call_tasks, on_became_interested
 from .routes_whatsapp import make_router as make_whatsapp_router
 from .routes_growth import make_router as make_growth_router
@@ -328,6 +329,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_today_router(store, _present))
     app.include_router(make_providers_router(store, fetcher))
     app.include_router(make_activities_router(store))
+    app.include_router(make_linkedin_router(store))
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,
                                             BASE_URL, _present, inbound_processor, delivery_processor))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
