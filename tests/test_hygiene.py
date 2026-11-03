@@ -101,7 +101,8 @@ def test_manual_merge_repoints_rows_and_keeps_the_strictest_status(app, client):
     r = client.post("/api/hygiene/merge", json={"keep_id": "k1", "merge_ids": ["m1"]})
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["repointed"] == {"outbox": 1, "inbox": 1, "tasks": 1, "whatsapp_outbox": 1}
+    assert body["repointed"] == {"outbox": 1, "inbox": 1, "tasks": 1, "whatsapp_outbox": 1, "activities": 0,
+                                 "transactional_outbox": 0, "notifications": 0, "consent_ledger": 0}
     kept = by_id(client)
     assert list(kept) == ["k1"]
     k1 = kept["k1"]

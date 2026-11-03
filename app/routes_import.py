@@ -16,7 +16,8 @@ from .standardise import email_alias_key
 
 MAX_CSV_CHARS = 15_000_000
 HISTORY_KEPT = 100
-REPOINTED = ("outbox", "inbox", "tasks", "whatsapp_outbox")
+REPOINTED = ("outbox", "inbox", "tasks", "whatsapp_outbox", "activities", "transactional_outbox", "notifications",
+             "consent_ledger")          # so the kept lead's DPDP export and erasure cover the merged lead's rows too
 UNDO_NOTE = ("Undo removes only the leads this import created. Details it added to leads you already had were left in "
              "place, because other changes may depend on them.")
 
