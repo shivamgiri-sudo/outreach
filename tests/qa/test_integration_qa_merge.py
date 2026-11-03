@@ -111,3 +111,18 @@ def test_marking_notifications_read_for_one_owner_leaves_the_others_unread(tmp_p
     assert state == {"a": True, "b": False, "c": True}          # Rahul's stays unread; the broadcast one is read
     c.post("/api/notifications/read")                            # no owner on the no-password local app: everything, as before
     assert all(n["read"] for n in store.read("notifications"))
+
+
+def test_enroll_lead_rechecks_the_suppression_list_on_the_latest_copy(tmp_path):
+    from app.routes_outreach import EnrollRefused, enroll_lead
+    _, store = app_with_leads(tmp_path)
+    lead = store.read("leads")[0]
+    real = store.update_lead
+
+    def unsubscribed_meanwhile(lead_id, change):             # the address is suppressed between the first check and the save
+        store.update("suppressed", lambda rows: [*rows, lead["email"]])
+        return real(lead_id, change)
+    store.update_lead = unsubscribed_meanwhile
+    with pytest.raises(EnrollRefused, match="suppression"):
+        enroll_lead(store, lead["id"])
+    assert not store.read("leads")[0].get("sequence")

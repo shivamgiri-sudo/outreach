@@ -14,7 +14,7 @@ from .auth import PRIVATE_SETTINGS
 from .growth_core import public_base_url
 from .inbound import _rates, apply_reply, suppress as _suppress_email
 from .scraper import extract_contacts, fetch_page
-from .privacy import record_consent
+from .privacy import is_blocked, record_consent
 from .senders import email_ready
 from .unsubscribe import legacy_allowed, log_legacy_use, parse as parse_unsub
 from .sequence_runner import NO_EMAIL_STAGES, clear_practice, get_settings, resume_lead, run_due, sending_paused
@@ -120,7 +120,7 @@ def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence") -
         raise EnrollRefused(f"Lead is {lead['stage']} and cannot be emailed")
     if lead.get("sequence"):
         raise EnrollRefused(ALREADY_ENROLLED)
-    if lead["email"] in set(store.read("suppressed")):
+    if is_blocked(store, lead["email"]):
         raise EnrollRefused("This address is on the suppression list (unsubscribed or bounced)")
     sequence = {"enrolled_at": _now_iso(), "sent_days": [], "stopped": None}
     applied = {}
@@ -128,9 +128,14 @@ def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence") -
     def start(l: dict):
         if l.get("sequence") or l["stage"] in NO_EMAIL_STAGES or not l.get("email"):
             return None
+        if is_blocked(store, l["email"]):             # an unsubscribe / bounce / erasure saved since the checks above
+            applied["blocked"] = True
+            return None
         applied["ok"] = True
         return {**l, "sequence": sequence, "timeline": [*l["timeline"], _event("sequence", note)]}
     saved = store.update_lead(lead_id, start)
+    if applied.get("blocked"):
+        raise EnrollRefused("This address is on the suppression list (unsubscribed or bounced)")
     if not applied:
         raise EnrollRefused(ALREADY_ENROLLED)
     return saved
