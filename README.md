@@ -16,7 +16,15 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
 - **Leads:**
   - Search, filter by stage or temperature, sort by column.
   - Select several leads to start the sequence or download a CSV.
-  - Imports: CSV, Apollo or Sales Navigator exports, and the team Google Sheet tabs (Leads, Demo Shared, Decision Makers).
+  - **Import wizard:** upload or paste any lead list, whatever its column names (Apollo, Sales Navigator, Lusha, ZoomInfo,
+    Hunter, Snov.io, Naukri and other job boards, IndiaMART, JustDial, Google Maps, the team sheet or your own).
+    Check the column choices, see a dry run (new, merged, duplicates, left out and why), then import. Undo is one click.
+  - Every row is tidied: names, company names, job titles, emails, +91 phones, website domains, city, state, country, company size.
+  - Duplicates are merged by email, Gmail address, phone, company website or a similar company name in the same city.
+    Nothing filled in is overwritten; different values wait for you to choose.
+  - The team Google Sheet tabs (Leads, Demo Shared, Decision Makers) can still be imported on their own, and "Quick paste" keeps the simple form.
+- **Data hygiene:** what is missing or wrong, duplicate groups side by side with one-click merge, values to check,
+  and a previewed clean-up of older leads.
   - Enrichment from public company websites.
   - Shown as cards on phones.
 - **Lead panel:**
@@ -77,11 +85,13 @@ Optional environment variables:
 
 ## Test
     .venv\Scripts\python -m pytest -q          # 378 backend tests
+    .venv\Scripts\python -m pytest -q          # 436 backend tests
 
 Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a throwaway file and
 `OUTREACH_IGNORE_BUSINESS_HOURS=1`, then the UI):
 
     cd web && npm run e2e                      # 75 steps; HEADED=1 shows the browser
+    cd web && npm run e2e                      # 74 steps; HEADED=1 shows the browser; E2E_UI / E2E_API change the addresses
     node e2e/tour.mjs                          # every page at desktop, tablet and phone width
     # with the API started using OUTREACH_ADMIN_PASSWORD=e2e-password:
     node e2e/auth.mjs                          # 6 login steps

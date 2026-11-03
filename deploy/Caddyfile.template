@@ -1,0 +1,22 @@
+# Replaced by setup_server.sh: __HOST__ (e.g. 1-2-3-4.sslip.io or outreach.yourdomain.in)
+__HOST__ {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+	# API docs are never public
+	@docs path /docs* /redoc* /openapi.json
+	respond @docs 404
+	# The app's own endpoints
+	@api path /api/* /u/* /demo/*
+	reverse_proxy @api 127.0.0.1:8000 {
+		header_up X-Forwarded-For {remote_host}
+	}
+	# The web app (built files)
+	root * /opt/outreach/app/web/dist
+	try_files {path} /index.html
+	file_server
+}

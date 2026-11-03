@@ -1,7 +1,5 @@
 """Outreach OS API."""
-import csv
 import hmac
-import io
 import os
 import uuid
 from datetime import datetime, timezone
@@ -45,6 +43,8 @@ from .routes_channels import make_router as make_channels_router
 from .channels.http import request as channel_request
 from .channels.poller import start_imap_poller
 from .channels.webhooks import gate_allows
+from .routes_import import make_router as make_import_router
+from .lead_import import quick_rows
 from .routes_outreach import make_router
 from .store import Store
 from .suggest import suggest_next
@@ -227,7 +227,11 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
 
     @app.post("/api/leads/import")
     def import_leads(body: ImportBody):
-        rows = list(csv.DictReader(io.StringIO(body.csv)))
+        """Quick paste: the simple importer, now reading Apollo, Sales Navigator and other column names too."""
+        try:
+            rows = quick_rows(body.csv) if body.csv.strip() else []
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
         stats = {}
 
         def merge_in(leads: list) -> list:
@@ -332,6 +336,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_linkedin_router(store))
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,
                                             BASE_URL, _present, inbound_processor, delivery_processor))
+    app.include_router(make_import_router(store))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender)
         start_imap_poller(store, imap_factory)

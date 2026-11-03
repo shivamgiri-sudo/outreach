@@ -1,0 +1,23 @@
+[Unit]
+Description=Outreach OS (FastAPI, single worker)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=outreach
+Group=outreach
+WorkingDirectory=/opt/outreach/app
+EnvironmentFile=/etc/outreach/outreach.env
+# One worker only: the JSON data store and the background timer must live in one process.
+ExecStart=/opt/outreach/app/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips 127.0.0.1
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/outreach /var/backups/outreach
+
+[Install]
+WantedBy=multi-user.target

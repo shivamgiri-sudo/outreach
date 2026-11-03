@@ -19,11 +19,13 @@ import Integrations from "./pages/Integrations.jsx";
 import Meetings from "./pages/Meetings.jsx";
 import Tasks from "./pages/Tasks.jsx";
 import LinkedInQueue from "./pages/LinkedInQueue.jsx";
+import Hygiene from "./pages/Hygiene.jsx";
 
 // [id, label, component, icon]
 const PAGES = [
   ["dashboard", "Dashboard", Dashboard, "dashboard"],
   ["leads", "Leads", Leads, "users"],
+  ["hygiene", "Data hygiene", Hygiene, "check"],
   ["sources", "Data sources", DataSources, "chart"],
   ["insights", "Insights", Insights, "chart"],
   ["growth", "Free experience", Growth, "gift"],
@@ -42,7 +44,7 @@ const PAGES = [
 
 const GROUPS = [
   ["Overview", ["dashboard"]],
-  ["Pipeline", ["leads", "sources", "insights", "growth"]],
+  ["Pipeline", ["leads", "hygiene", "sources", "insights", "growth"]],
   ["Outreach", ["tasks", "outbox", "linkedin", "workflows", "templates", "calls", "meetings"]],
   ["Library", ["stories", "prompts"]],
   ["Admin", ["setup", "integrations"]],

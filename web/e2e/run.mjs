@@ -2,8 +2,8 @@
 import { chromium } from "playwright";
 import fs from "node:fs";
 
-const UI = "http://localhost:5173";
-const API = "http://localhost:8000";
+const UI = process.env.E2E_UI || "http://localhost:5173";
+const API = process.env.E2E_API || "http://localhost:8000";
 const SHOTS = process.env.SHOT_DIR || "e2e-shots";
 fs.mkdirSync(SHOTS, { recursive: true });
 
@@ -106,7 +106,7 @@ await step("Leads: empty state", async () => {
   await expectText("No leads yet");
 });
 await step("Leads: CSV paste import dedupes and rejects bad rows", async () => {
-  await page.getByRole("button", { name: "Import leads" }).click();
+  await page.getByRole("button", { name: "Quick paste" }).click();
   await page.locator("textarea").first().fill(IMPORT_CSV);
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await expectText("Added 2");
@@ -119,7 +119,7 @@ await step("Leads: data-quality bar is shown", async () => {
   await expectText("Of 2 companies");
 });
 await step("Leads: team-sheet import (Leads tab) works", async () => {
-  await page.getByRole("button", { name: "Import leads" }).click();
+  await page.getByRole("button", { name: "Quick paste" }).click();
   await page.locator("select").first().selectOption("team sheet — Leads tab");
   await page.locator("textarea").first().fill(SHEET_CSV);
   await page.getByRole("button", { name: "Import", exact: true }).click();
@@ -361,7 +361,7 @@ await step("Workflows: time-based rules check runs", async () => {
 });
 await step("Workflows: a 'yes' reply sends WhatsApp by rule, and an AI-less draft is offered first", async () => {
   await nav("Leads");
-  await page.getByRole("button", { name: "Import leads" }).click();
+  await page.getByRole("button", { name: "Quick paste" }).click();
   await page.locator("textarea").first().fill("company,contact_name,email,phone,website\nOmega Pharma,Priya Shah,priya@omega.invalid,98111 33344,https://omega.invalid");
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await expectText("Added 1");
@@ -381,7 +381,7 @@ await step("Workflows: a 'yes' reply sends WhatsApp by rule, and an AI-less draf
 await step("Safety: 'Not interested' is a no — no consent, no WhatsApp, plain explanation shown", async () => {
   await closeDrawer();
   await nav("Leads");
-  await page.getByRole("button", { name: "Import leads" }).click();
+  await page.getByRole("button", { name: "Quick paste" }).click();
   await page.locator("textarea").first().fill("company,contact_name,email,phone,website\nSigma Foods,Asha Rao,asha@sigma.invalid,98111 55566,https://sigma.invalid");
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await expectText("Added 1");
@@ -556,7 +556,7 @@ await step("Leads: pick several leads and start the email sequence in one go", a
   await expectText("Started the email sequence for");
 });
 await step("Leads: Decision Makers tab adds the hand-found person to the right company", async () => {
-  await page.getByRole("button", { name: "Import leads" }).click();
+  await page.getByRole("button", { name: "Quick paste" }).click();
   await page.locator("select").filter({ hasText: "team sheet — Leads tab" }).selectOption("team sheet — Decision Makers tab");
   await page.locator("textarea").first().fill("Company,Name,Designation (as shown),LinkedIn Profile URL,Where I found it,Confidence,Fits 50–400?\nEpsilon BPO,Nisha Verma,HR Head,https://www.linkedin.com/in/nisha-example,Company site,Medium,Yes");
   await page.getByRole("button", { name: "Import", exact: true }).click();
@@ -573,6 +573,7 @@ await step("Drawer: LinkedIn drafts are ready to copy (sent by hand)", async () 
 await step("Quick search: Ctrl+K jumps to a lead", async () => {
   await page.keyboard.press("Control+k");
   await page.getByLabel("Search pages and leads").fill("zeta");
+  await page.getByRole("option", { name: /Zeta Foods/ }).waitFor();   // the lead list loads after the palette opens
   await page.keyboard.press("Enter");
   await page.locator("#drawer-title", { hasText: "Zeta Foods" }).waitFor();
   await page.keyboard.press("Escape");
@@ -753,6 +754,43 @@ await step("LinkedIn: queue page explains the rules and saves settings", async (
   await expectText("Settings saved");
 });
 
+// ---------- Smart import wizard and data hygiene ----------
+const WIZARD_CSV = `First Name,Last Name,Title,Company,Company Name for Emails,Email,Mobile Phone,Person Linkedin Url,Website,# Employees,City,Country
+NEHA,JOSHI,head - human resources,KAPPA TEXTILES PVT. LTD.,Kappa Textiles,Neha.Joshi@kappa.invalid,90000 70007,,www.kappa.invalid,51-200,Bangalore,India
+Arun,Mehta,Founder & CEO,Lambda Foods,Lambda Foods,arun@lambda.invalid,+91 90000 80008,,lambda.invalid,"1,000+",Gurgaon,IN
+Sam,Rao,HR Head,Beta Logistics,Beta Logistics,sam@beta.invalid,,,beta.invalid,51-200,Pune,IN
+,,,,,not-an-email,,,,,,`;
+await step("Import wizard: reads an Apollo export, dry-runs, imports and undoes", async () => {
+  await closeDrawer();
+  await nav("Leads");
+  await page.getByRole("button", { name: "Import leads" }).click();
+  await page.locator("#import-paste").fill(WIZARD_CSV);
+  await page.getByRole("button", { name: "Next: check the columns" }).click();
+  await expectText("Apollo export");
+  await page.getByLabel("Field for # Employees").waitFor();
+  await page.getByRole("button", { name: "Next: dry run" }).click();
+  await expectText("Nothing has been saved yet");
+  await expectText("Row 5:");
+  await expectText("sam@beta.invalid is on the do-not-contact list");   // Beta unsubscribed earlier in this run
+  await shot("11-import-dry-run");
+  await page.getByRole("button", { name: /^Import: 2 new/ }).click();
+  await expectText("Done. Added 2 new lead(s)");
+  await page.getByRole("button", { name: "Undo this import" }).click();
+  await expectText("Undone: removed 2 lead(s)");
+  await page.getByRole("button", { name: "Close", exact: true }).last().click();
+  if (await page.locator("tr.click", { hasText: "Kappa Textiles" }).count()) throw new Error("undo left the lead");
+});
+await step("Data hygiene: duplicate leads are shown side by side and merged", async () => {
+  await fetch(`${API}/api/leads/import`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source: "manual", csv: "company,contact_name,email,phone\nACME RETAIL PVT LTD,Ravi Kumar,ravi.k@acme.invalid,98765 43210\n" }) });
+  await nav("Data hygiene");
+  await expectText("Overview of");
+  await expectText("same phone");
+  await shot("12-hygiene");
+  await page.locator(".section-block", { hasText: "same phone" }).getByRole("button", { name: /Keep this one/ }).first().click();
+  await expectText("Merged 1 lead(s) into");
+});
+
 // ---------- Mobile layout ----------
 await step("Mobile width: no horizontal page scroll on Leads", async () => {
   await page.setViewportSize({ width: 390, height: 800 });
@@ -760,6 +798,20 @@ await step("Mobile width: no horizontal page scroll on Leads", async () => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   await shot("10-mobile-leads");
   if (overflow) throw new Error("page scrolls sideways");
+});
+await step("Mobile width: no horizontal page scroll on Data hygiene and the import wizard", async () => {
+  await nav("Data hygiene");
+  await expectText("Overview of");
+  let overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  if (overflow) throw new Error("Data hygiene scrolls sideways");
+  await nav("Leads");
+  await page.getByRole("button", { name: "Import leads" }).click();
+  await page.locator("#import-paste").fill(WIZARD_CSV);
+  await page.getByRole("button", { name: "Next: check the columns" }).click();
+  await expectText("Apollo export");
+  overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  await shot("13-mobile-import-columns");
+  if (overflow) throw new Error("import wizard scrolls sideways");
 });
 
 await browser.close();
