@@ -56,6 +56,10 @@ def lead_domain(lead: dict) -> str:
     return "" if not email or is_free_mail(email) else registrable_domain(email_domain(email))
 
 
+def _li_key(url: str) -> str:
+    return str(url).strip().lower().rstrip("/")
+
+
 def _phone_key(value) -> str:
     found, _ = parse_phone(str(value or ""))
     return found[0] if found else ""
@@ -73,7 +77,7 @@ class LeadIndex:
         self.leads = leads
         self.email, self.alias, self.phone, self.domain_name, self.domain = {}, {}, {}, {}, {}
         self.company, self.blocks, self.keys = {}, {}, set()
-        self.ckey, self.ldomain = {}, {}
+        self.ckey, self.ldomain, self.linkedin = {}, {}, {}
         for i in range(len(leads)):
             self.add(i)
 
@@ -95,6 +99,8 @@ class LeadIndex:
             phones = [person.get("phone")] + list(person.get("phones") or [])
             for phone in filter(None, map(_phone_key, phones)):
                 self.phone.setdefault(phone, (i, who))
+            if person.get("linkedin_url"):
+                self.linkedin.setdefault(_li_key(person["linkedin_url"]), (i, who))
             name = person_key(person.get("contact_name"))
             if domain and name:
                 self.domain_name.setdefault((domain, name), (i, who))
@@ -134,6 +140,9 @@ class LeadIndex:
             if alias in self.alias:
                 i, who = self.alias[alias]
                 return self._check_person(i, who, rec, "same Gmail inbox (dots or +tag differ)", strong=True)
+        if rec.get("linkedin_url") and _li_key(rec["linkedin_url"]) in self.linkedin:
+            i, who = self.linkedin[_li_key(rec["linkedin_url"])]
+            return i, who, "same LinkedIn profile"
         for phone in rec.get("phones") or []:
             if phone in self.phone:
                 i, who = self.phone[phone]

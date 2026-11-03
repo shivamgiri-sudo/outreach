@@ -137,3 +137,36 @@ def test_unsafe_links_from_a_scraper_file_are_dropped_not_rewritten():
     for lead in leads:
         assert not lead.get("linkedin_url") and not lead.get("company_linkedin_url") and not lead.get("website")
         assert "script" not in str(lead).lower().replace("script labs", "")
+
+
+def test_same_linkedin_profile_from_two_tools_is_one_person():
+    """Leads were never matched on LinkedIn profile. A Sales Navigator lead (no email) and the Kaspr row for the same
+    profile under a differently written company became two leads, or a company match that dropped the email."""
+    leads, _, _, _ = run("Full Name,Company Name,Title,Profile Url\n"
+                         "PINKY KUMARI,ACME RETAIL PVT. LTD.,HR Manager,https://www.linkedin.com/in/pinky-kumari-qa010\n")
+    leads, result, _, _ = run("First name,Last name,Title,Company,LinkedIn,Work email,Direct email,Phone 1\n"
+                                "Pinky,Kumari,HR Manager,Acme Retail India Stores,linkedin.com/in/pinky-kumari-qa010/,"
+                                "pinky.kumari@acmeretail.example,,+91 90000 10010\n", leads)
+    assert len(leads) == 1 and result["merges"][0]["matched_by"] == "same LinkedIn profile"
+    assert leads[0]["email"] == "pinky.kumari@acmeretail.example" and leads[0]["phone"] == "+919000010010"
+
+
+def test_linkedin_only_rows_are_not_duplicated_on_reimport():
+    csv = ("linkedinProfileUrl,fullName,company,jobTitle\n"
+           "https://www.linkedin.com/in/bablu-yadav-qa011,Bablu Yadav,,\n"
+           "https://www.linkedin.com/in/sonu-kumar-qa012,sonu kumar,,\n")
+    leads, first, _, _ = run(csv)
+    leads, again, _, _ = run(csv, leads)
+    assert first["summary"]["create"] == 2 and again["summary"]["create"] == 0 and len(leads) == 2
+    assert again["summary"]["unchanged"] == 2
+
+
+def test_other_contact_is_matched_by_linkedin_too():
+    leads, _, _, _ = run("Company,Full name,LinkedIn URL\n"
+                         "Thar Solar,Ganesh Rao,https://www.linkedin.com/in/ganesh-rao-qa013\n"
+                         "Thar Solar,Simran Kaur,https://www.linkedin.com/in/simran-kaur-qa014\n")
+    leads, result, _, _ = run("email,firstName,lastName,companyName,linkedinUrl\n"
+                              "simran.kaur@tharsolar.example,Simran,Kaur,Thar Solar Pvt Ltd,"
+                              "http://linkedin.com/in/simran-kaur-qa014\n", leads)
+    assert result["merges"][0]["matched_by"] == "same LinkedIn profile"
+    assert leads[0]["other_contacts"][0]["email"] == "simran.kaur@tharsolar.example"
