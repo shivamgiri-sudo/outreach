@@ -118,6 +118,11 @@ def _stop_linkedin(store, lead_id: str, why: str) -> None:
         stop(store, lead_id, why)
 
 
+def _looks_like_reply(msg: dict) -> bool:
+    subject = (msg.get("subject") or "").strip().lower()
+    return bool(msg.get("in_reply_to") or msg.get("references")) or subject.startswith(("re:", "re :", "aw:", "fwd: re:"))
+
+
 def _match_lead(store, msg: dict) -> tuple:
     """(lead_id, matched_by) for an inbound message, or (None, None)."""
     thread_ids = {i.strip() for i in [msg.get("in_reply_to") or "", *(msg.get("references") or [])] if i and i.strip()}
@@ -148,6 +153,9 @@ def process_inbound_message(store, msg: dict, ai_transport=None) -> dict:
         return {"matched": False, "duplicate": True}
     channel = msg.get("channel") or "email"
     lead_id, matched_by = _match_lead(store, msg)
+    if not lead_id and channel == "email" and not _looks_like_reply(msg):
+        # A shared mailbox also gets newsletters, alerts and login codes: not ours to store or act on.
+        return {"matched": False, "ignored": "not a reply to our outreach"}
     text = (msg.get("text") or "").strip() or (msg.get("subject") or "").strip()
     row = {"id": uuid.uuid4().hex[:12], "message_id": message_id, "channel": channel, "provider": msg.get("provider", ""),
            "from": msg.get("from_email") or msg.get("from_phone") or "", "subject": (msg.get("subject") or "")[:300],

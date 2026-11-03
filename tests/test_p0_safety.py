@@ -201,10 +201,13 @@ def test_inbound_by_address_unsubscribe_suppresses_and_withdraws_consent(tmp_pat
     assert "ravi@acme.com" in store.read("suppressed")
 
 
-def test_unmatched_inbound_becomes_a_task(tmp_path):
+def test_unmatched_reply_becomes_a_task_but_other_mail_is_ignored(tmp_path):
     make(tmp_path)
     store = Store(tmp_path / "d.json")
-    assert process_inbound_message(store, {"from_email": "who@nowhere.in", "text": "hello", "message_id": "<x>"})["matched"] is False
+    newsletter = process_inbound_message(store, {"from_email": "alerts@linkedin.com", "subject": "Your code", "text": "123456", "message_id": "<n>"})
+    assert newsletter["ignored"] and store.read("inbox") == [] and store.read("tasks") == []
+    assert process_inbound_message(store, {"from_email": "who@nowhere.in", "subject": "Re: Hiring at Acme", "text": "hello",
+                                           "message_id": "<x>"})["matched"] is False
     assert store.read("tasks")[-1]["kind"] == "unmatched_reply"
 
 
