@@ -118,7 +118,7 @@ def _active_steps(settings: dict) -> list:
 def _next_step(state: dict, settings: dict) -> Optional[dict]:
     done = set(state.get("done", []))
     for step in _active_steps(settings):
-        if step["n"] not in done:
+        if step["n"] not in done and step["n"] > max(done, default=0):     # a skipped step never comes back later
             return step
     return None
 
