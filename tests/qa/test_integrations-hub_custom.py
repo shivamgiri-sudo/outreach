@@ -304,3 +304,23 @@ def test_custom_webhook_preview_uses_saved_mapping_when_none_is_typed(tmp_path):
     sample = json.dumps(fixture_json("webhook_payloads.json")["mailgun_failed_permanent"])
     r = c.post("/api/channels/email_events/custom_webhook/test", json={"sample": sample}).json()
     assert r["ok"] is True and r["extracted"][0]["type"] == "bounce"
+
+
+@pytest.mark.parametrize("channel,fixture,mapping,expect", [
+    ("sms", "plivo_sms_inbound.form", {"phone_path": "From", "text_path": "Text", "message_id_path": "MessageUUID"},
+     {"from_phone": "+919000012348", "text": "Interested. Please share pricing for 50 hires/month"}),
+    ("whatsapp", "twilio_whatsapp_inbound.form", {"phone_path": "WaId", "text_path": "Body", "message_id_path": "MessageSid"},
+     {"from_phone": "+919000012345"}),
+    ("inbound_email", "mailgun_inbound.form", {"from_path": "from", "text_path": "stripped-text", "subject_path": "subject"},
+     {"from_email": "rohit.verma@acme-logistics.example", "text": "Yes please send the sample screen."}),
+])
+def test_form_encoded_provider_posts_through_custom_mapping(tmp_path, channel, fixture, mapping, expect):
+    seen = Recorder()
+    c = make(tmp_path, inbound_processor=seen)
+    save(c, channel, "custom_webhook", mapping)
+    path, _ = hook(c, channel, "custom_webhook")
+    r = c.post(path, content=fixture_text(fixture).strip(), headers={"Content-Type": "application/x-www-form-urlencoded"})
+    assert r.status_code == 200 and r.json()["messages"] == 1, r.text
+    assert {k: seen.items[0][k] for k in expect} == expect
+    if channel == "whatsapp":
+        assert '"call"' in seen.items[0]["text"] and "\n" in seen.items[0]["text"] and "🙏" in seen.items[0]["text"]
