@@ -218,7 +218,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             "setup_total": len(setup),
             "reminders": [
                 {"lead_id": lead["id"], "company": lead["company"], "text": lead["suggestion"]["action"]}
-                for lead in leads if lead["band"] == "hot" and lead["stage"] not in ("customer", "advocate", "unsubscribed")
+                for lead in leads if lead["band"] == "hot" and lead["stage"] not in ("customer", "advocate", "unsubscribed", "disqualified")
             ][:10],
         }
 

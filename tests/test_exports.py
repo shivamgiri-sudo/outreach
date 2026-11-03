@@ -185,7 +185,7 @@ def test_duplicates_insights_linkedin(seeded):
     assert "same email" in dupes[0]["why"] and sorted(r["suggested_keep"] for r in dupes) == ["no", "yes"]
     insights = read_csv(get(client, "insights"))
     lookup = {(r["section"], r["item"], r["metric"]): r["value"] for r in insights}
-    assert lookup[("totals", "", "leads")] == "4" and lookup[("totals", "", "emails_sent")] == "3"
+    assert lookup[("totals", "", "leads")] == "4" and lookup[("totals", "", "emails_sent")] == "2"   # the failed send is not counted
     assert lookup[("by_source", "manual", "leads")] == "2" and lookup[("by_band", "hot", "leads")] == "1"
     linkedin = read_csv(get(client, "linkedin_queue"))
     assert [(r["section"], r["lead_id"]) for r in linkedin] == [("waiting for acceptance", "l1")]

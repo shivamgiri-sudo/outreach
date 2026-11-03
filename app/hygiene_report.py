@@ -69,10 +69,11 @@ def duplicate_clusters(leads: list) -> list:
     _bucket_join(clusters, by["email"], "same email")
     _bucket_join(clusters, by["alias"], "same Gmail inbox (dots or +tag differ)")
     for members in by["phone"].values():
-        for other in members[1:]:
-            a, b = leads[members[0]], leads[other]
-            if names_compatible(a.get("contact_name"), b.get("contact_name")):
-                clusters.join(members[0], other, "same phone")
+        for x, first in enumerate(members):                # every pair: a family number can carry two people
+            for other in members[x + 1:]:
+                a, b = leads[first], leads[other]
+                if names_compatible(a.get("contact_name"), b.get("contact_name")):
+                    clusters.join(first, other, "same phone")
     _bucket_join(clusters, by["domain_name"], "same company domain and person")
     for members in by["domain"].values():
         company_only = [i for i in members if not leads[i].get("contact_name")]
@@ -101,9 +102,10 @@ def _company_pairs(leads: list, clusters: _Clusters, by_company: dict) -> None:
     cities = [city_key(lead.get("city")) for lead in leads]
     clash = lambda i, j: domains[i] and domains[j] and domains[i] != domains[j]
     for members in by_company.values():
+        ambiguous = len({cities[i] for i in members if cities[i]}) > 1   # a city-less row can't pick between cities
         for x, i in enumerate(members):
             for j in members[x + 1:]:
-                if not clash(i, j) and (not cities[i] or not cities[j] or cities[i] == cities[j]):
+                if not clash(i, j) and (cities[i] == cities[j] or (not ambiguous and (not cities[i] or not cities[j]))):
                     clusters.join(i, j, "same company name" + (" and city" if cities[i] and cities[j] else ""))
     blocks = {}
     for i in range(len(leads)):

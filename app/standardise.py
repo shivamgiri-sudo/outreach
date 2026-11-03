@@ -71,7 +71,8 @@ _CREDENTIALS = re.compile(r",\s*(?:[A-Z][A-Za-z]{0,1}[A-Z][A-Z\-]*\.?\s*)+$")
 def clean_person_name(raw) -> str:
     """Strip honorifics (Mr, Ms, Dr, Shri, Smt, CA…), bracketed notes and trailing credentials; fix ALL CAPS."""
     text = clean_text(raw)
-    text = _CREDENTIALS.sub("", text)
+    stripped = _CREDENTIALS.sub("", text)
+    text = stripped if " " in stripped.strip() else text       # 'NAIDU, FARAH' is 'Last, First', not a credential
     text = clean_text(re.sub(r"\s*\([^)]*\)\s*", " ", text))
     for _ in range(3):
         stripped = _HONORIFIC.sub("", text)

@@ -1,4 +1,5 @@
 """Five buying signals -> 0-100 score. Weights are editable via DEFAULT_WEIGHTS."""
+from .places import clean_country, is_indian_place
 
 DEFAULT_WEIGHTS = {
     "hiring_volume": 30,
@@ -26,10 +27,20 @@ def _hiring_pain(lead: dict) -> float:
     return max(age, repost)
 
 
+def _in_india(lead: dict) -> bool:
+    """'India', 'IND' and 'in' count as IN; with no country, an Indian city or a +91 number does."""
+    country = clean_country(lead.get("country"))
+    if country:
+        return country == "IN"
+    phones = [lead.get("phone"), *(lead.get("phones") or [])]
+    return is_indian_place(lead.get("city") or "", lead.get("state") or "") or any(
+        str(p).replace(" ", "").startswith("+91") for p in phones if p)
+
+
 def _fit(lead: dict) -> float:
     size = lead.get("company_size") or 0
     size_ok = 0.6 if FIT_SIZE_MIN <= size <= FIT_SIZE_MAX else 0.0
-    india = 0.4 if (lead.get("country") or "").upper() == "IN" else 0.0
+    india = 0.4 if _in_india(lead) else 0.0
     return size_ok + india
 
 
