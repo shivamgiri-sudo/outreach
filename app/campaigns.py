@@ -18,12 +18,14 @@ from .lead_model import now_iso
 from .providers import provider_status
 from .reminders import notify
 from .routes_outreach import EnrollRefused, enroll_lead
+from .sources import registry as source_registry, runner as source_runner, waterfall as source_waterfall
 from .sequences import IST, in_business_hours
 
 STATUSES = ("draft", "running", "paused", "done")
 MAX_RUNS_KEPT = 30
 MAX_PREVIEW = 200
 MAX_LEAD_IDS = 500
+pipe.SOURCE_LABELS.update({k: v for k, v in source_registry.labels().items() if k not in pipe.SOURCE_LABELS})
 _LOCKS: dict = {}
 _LOCKS_GUARD = threading.Lock()
 
@@ -179,6 +181,7 @@ def discover(store, campaign: dict, transports: dict, report: dict, now: datetim
             pipe.add_error(report, "google_places", "Google Places is not connected. Add a Places API key under Integrations > Lead data.")
         else:
             attempt("google_places", lambda: src.google_places(target, places_key, transports["post"], limit))
+    rows += source_runner.discover_rows(store, campaign, transports, report, now, pipe.add_error)   # app/sources: the extra sources
     report["discovered"] = len(rows)
     return rows
 
@@ -277,6 +280,7 @@ def run_campaign(store, campaign_id: str, transports: dict, dry_run: bool = Fals
         if campaign["sources"].get("csv_import_ids"):
             pipe.attach_leads(store, campaign, campaign["sources"]["csv_import_ids"], report)
         pipe.enrich(store, campaign, transports, report)
+        source_waterfall.enrich_campaign(store, campaign, transports, report, pipe.scope, pipe.add_error, now)
         pipe.verify(store, campaign, transports, report)
         qualified = pipe.qualify(store, campaign, report)
         if campaign["rules"].get("auto_enrol"):

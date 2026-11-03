@@ -180,10 +180,11 @@ def _secret(key: str, secret_keys: set) -> bool:
     return key in secret_keys or any(word in key.lower() for word in SECRET_WORDS)
 
 
-def describe(saved: dict) -> list:
-    """Merge the catalogue with saved settings; secrets are masked (including hub provider secrets)."""
+def describe(saved: dict, all_cards: bool = False) -> list:
+    """Merge the catalogue with saved settings; secrets are masked (including hub provider secrets).
+    `all_cards` adds the lead-source cards (app/sources); the Setup page lists only the original connectors."""
     out = []
-    for item in CATALOGUE:
+    for item in CATALOGUE + (SOURCE_CATALOGUE if all_cards else []):
         entry = saved.get(item["id"], {})
         mode, values = entry.get("mode", ""), entry.get("values", {})
         secret_keys = {f["key"] for f in item["fields"] if f.get("secret")} | _hub().secret_keys_for_integration(item["id"])
@@ -194,4 +195,13 @@ def describe(saved: dict) -> list:
 
 
 def known_ids() -> set:
-    return {i["id"] for i in CATALOGUE}
+    return {i["id"] for i in CATALOGUE + SOURCE_CATALOGUE}
+
+
+def _build_source_cards() -> list:
+    """Lead-discovery and enrichment sources (app/sources) get their own Lead data cards in the Integrations hub, built from the source registry."""
+    from .sources.registry import catalogue_entries
+    return catalogue_entries()
+
+
+SOURCE_CATALOGUE = _build_source_cards()

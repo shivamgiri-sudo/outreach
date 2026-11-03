@@ -47,6 +47,7 @@ from .routes_whatsapp import make_router as make_whatsapp_router
 from .routes_growth import make_router as make_growth_router
 from .routes_jobs import make_router as make_jobs_router
 from .routes_campaigns import make_router as make_campaigns_router
+from .sources.routes import make_router as make_sources_router
 from .campaigns import run_due_campaigns
 from .routes_find_leads import make_router as make_find_leads_router
 from .providers import get_json
@@ -337,7 +338,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         merged = {**existing, **{k: v for k, v in body.values.items() if v and not str(v).startswith("••••")}}
         # keep hub data (other providers, last test, tokens) stored next to mode / values
         store.write("integrations", {**saved, integration_id: {**saved.get(integration_id, {}), "mode": body.mode, "values": merged}})
-        return next(i for i in integrations.describe(store.read("integrations")) if i["id"] == integration_id)
+        return next(i for i in integrations.describe(store.read("integrations"), all_cards=True) if i["id"] == integration_id)
 
     @app.get("/api/stories")
     def list_stories():
@@ -359,7 +360,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_enrich_router(store, fetcher, apollo_transport))
     app.include_router(make_workflows_router(store, ai_transport))
     app.include_router(make_flows_router(store, email_sender, channel_transport, resolver))
-    app.include_router(make_setup_router(store, email_transport, ai_transport, apollo_transport, BASE_URL, routes_growth.WEBHOOK_SECRET, lambda: bool(password)))
+    app.include_router(make_setup_router(store, email_transport, ai_transport, apollo_transport, BASE_URL, routes_growth.WEBHOOK_SECRET, lambda: bool(password),
+                                           source_transports={"fetch": fetcher, **(campaign_transports or {})}))
     app.include_router(make_whatsapp_router(store, _present))
     app.include_router(make_insights_router(store, _present))
     app.include_router(make_today_router(store, _present))
@@ -376,6 +378,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     campaign_io = {"post": apollo_transport, "get": get_json, "fetch": fetcher, **(campaign_transports or {})}
     app.include_router(make_campaigns_router(store, campaign_io, _present, transactional_sender))
     app.include_router(make_find_leads_router(store, campaign_io, transactional_sender))
+    app.include_router(make_sources_router(store, campaign_io))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender, campaign_runner=lambda now: run_due_campaigns(
             store, now, campaign_io, campaign_notify, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"))

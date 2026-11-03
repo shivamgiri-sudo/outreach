@@ -33,7 +33,7 @@ def secret_keys() -> frozenset:
     for ch in CHANNELS:
         for provider in providers_for(ch["id"]):
             keys.update(f["key"] for f in provider.get("fields", []) if f.get("secret"))
-    for item in integrations.CATALOGUE:
+    for item in integrations.CATALOGUE + integrations.SOURCE_CATALOGUE:
         keys.update(f["key"] for f in item["fields"] if f.get("secret"))
     return frozenset(keys)
 

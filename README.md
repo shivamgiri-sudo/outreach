@@ -45,6 +45,11 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
   credit limit, a live progress bar, a plain-English report, "Open these leads" and "Start the email sequence" for the qualified
   ones. LinkedIn (**LinkedIn outreach** page): "Export list for a LinkedIn tool" (CSV for Waalaxy, Dux-Soup, PhantomBuster) and
   "Import its results" to mark accepted and replied. Automating LinkedIn is at your own risk; use a separate account.
+
+- **Lead sources** (docs/SOURCES.md): about 30 lawful sources behind one registry: company job-board feeds (Greenhouse, Lever, Workable,
+  Ashby, SmartRecruiters, Recruitee, Zoho Recruit), Adzuna, Jooble, Brave search, OpenStreetMap, data.gov.in, Wikidata, a free website read,
+  Apollo/Hunter/Snov/Prospeo/Dropcontact/Lusha/RocketReach/PDL finders and six email verifiers. A cheapest-first waterfall stops at the first
+  verified email; a failing source never stops a run; answers are cached 7 days; a per-run credit cap applies. `GET /api/sources`.
 - **Flow builder** (Outreach → Flow builder): draw a flow like a mind map: a trigger (added by hand, new lead, reply,
   stage change, meeting booked, product activity, no reply for N days), then If / A-B split / Wait / Wait for a reply, then
   email, WhatsApp, SMS, LinkedIn task, call task, meeting link, stage, tag, notify, webhook or stop.
@@ -170,7 +175,9 @@ The Chrome assistant has not been run inside a real Chrome against the real link
 (name, company, note box, message box) will need maintenance when LinkedIn changes its pages; see its README.
 
 Resend (email), Anthropic (reply drafts and reading), Apollo (match, People API Search, Organization Search, job
-postings, usage stats), Hunter, Firecrawl, Google Places, ZeroBounce, NeverBounce and every Integrations hub provider
+postings, usage stats), Hunter, Firecrawl, Google Places, ZeroBounce, NeverBounce, every source in docs/SOURCES.md (job-board feeds,
+Adzuna, Jooble, Brave, OpenStreetMap, data.gov.in, Wikidata, Snov.io, Prospeo, Dropcontact, Lusha, RocketReach, People Data Labs, Kickbox,
+MillionVerifier, Bouncer) and every Integrations hub provider
 (email, inbound, WhatsApp, SMS, calling, calendars) are coded from public documentation and tested with fake transports
 only. Try each once with a test address or a small sample before relying on it.
 

@@ -9,6 +9,7 @@ from .campaign_sources import SIZE_BUCKETS
 from .hygiene import safe_http_url
 from .jobs import JSONLD_RE
 from .routes_outreach import resolve_now
+from .sources import registry as source_registry
 
 MAX_ITEMS = 20
 MAX_ITEM_CHARS = 80
@@ -57,7 +58,31 @@ class PastedPage(BaseModel):
         return "\n".join(f'<script type="application/ld+json">{block}</script>' for block in JSONLD_RE.findall(value))
 
 
+def _known_sources(values, goals) -> list:
+    """Ids from the source registry that can do one of `goals`; anything else is refused with a readable message."""
+    out = list(dict.fromkeys(str(v).strip() for v in values if str(v).strip()))
+    for sid in out:
+        spec = source_registry.get(sid)
+        if spec is None or not (set(goals) & set(spec.caps)):
+            raise ValueError(f"Unknown source: {sid[:40]}")
+    return out
+
+
+def _params(values) -> dict:
+    """Per-source settings typed in the wizard: only company identifiers ('slugs'), as text, kept short."""
+    out = {}
+    for sid, item in (values or {}).items():
+        if source_registry.get(str(sid)) is None or not isinstance(item, dict):
+            raise ValueError(f"Unknown source: {str(sid)[:40]}")
+        slugs = item.get("slugs", "")
+        slugs = "\n".join(str(x) for x in slugs) if isinstance(slugs, list) else str(slugs)
+        out[str(sid)] = {"slugs": slugs[:2000]}
+    return out
+
+
 class Sources(BaseModel):
+    extra: list[str] = Field(default=[], max_length=40)
+    extra_params: dict = {}
     careers_pages: list[str] = []
     careers_html: list[PastedPage] = Field(default=[], max_length=10)
     apollo_search: bool = False
@@ -65,6 +90,16 @@ class Sources(BaseModel):
     google_places: bool = False
     csv_import_ids: list[str] = Field(default=[], max_length=MAX_LEAD_IDS)
     max_results: int = Field(default=25, ge=1, le=100)
+
+    @field_validator("extra")
+    @classmethod
+    def extra_sources(cls, values):
+        return _known_sources(values, ("discover_companies", "discover_people", "hiring_signal"))
+
+    @field_validator("extra_params")
+    @classmethod
+    def extra_settings(cls, values):
+        return _params(values)
 
     @field_validator("careers_pages")
     @classmethod
@@ -88,6 +123,18 @@ class Enrich(BaseModel):
     hunter: bool = False
     firecrawl: bool = False
     apollo_match: bool = False
+    extra: list[str] = Field(default=[], max_length=40)
+    extra_params: dict = {}
+
+    @field_validator("extra")
+    @classmethod
+    def extra_sources(cls, values):
+        return _known_sources(values, ("find_email", "discover_people", "verify_email"))
+
+    @field_validator("extra_params")
+    @classmethod
+    def extra_settings(cls, values):
+        return _params(values)
 
 
 class Rules(BaseModel):
@@ -96,6 +143,7 @@ class Rules(BaseModel):
     skip_role_addresses: bool = False
     max_new_leads_per_run: int = Field(default=50, ge=1, le=200)
     auto_enrol: bool = False
+    credit_cap: int = Field(default=100, ge=0, le=5000)
     caller: str = Field(default="", max_length=60)
 
 
