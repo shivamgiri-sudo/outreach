@@ -18,11 +18,13 @@ import DataSources from "./pages/DataSources.jsx";
 import Integrations from "./pages/Integrations.jsx";
 import Meetings from "./pages/Meetings.jsx";
 import Tasks from "./pages/Tasks.jsx";
+import Campaigns from "./pages/Campaigns.jsx";
 
 // [id, label, component, icon]
 const PAGES = [
   ["dashboard", "Dashboard", Dashboard, "dashboard"],
   ["leads", "Leads", Leads, "users"],
+  ["campaigns", "Campaigns", Campaigns, "rocket"],
   ["sources", "Data sources", DataSources, "chart"],
   ["insights", "Insights", Insights, "chart"],
   ["growth", "Free experience", Growth, "gift"],
@@ -40,7 +42,7 @@ const PAGES = [
 
 const GROUPS = [
   ["Overview", ["dashboard"]],
-  ["Pipeline", ["leads", "sources", "insights", "growth"]],
+  ["Pipeline", ["leads", "campaigns", "sources", "insights", "growth"]],
   ["Outreach", ["tasks", "outbox", "workflows", "templates", "calls", "meetings"]],
   ["Library", ["stories", "prompts"]],
   ["Admin", ["setup", "integrations"]],
