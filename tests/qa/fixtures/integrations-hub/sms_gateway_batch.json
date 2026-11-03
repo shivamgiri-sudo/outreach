@@ -1,0 +1,1479 @@
+[
+ {
+  "msg_id": "gw-2026110400000",
+  "sender": {
+   "msisdn": "+919000011000",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "YES",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:00:00"
+ },
+ {
+  "msg_id": "gw-2026110400001",
+  "sender": {
+   "msisdn": "919000011001",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Haan ji, bhej dijiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:01:00"
+ },
+ {
+  "msg_id": "gw-2026110400002",
+  "sender": {
+   "msisdn": "09000011002",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Nahi chahiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:02:00"
+ },
+ {
+  "msg_id": "gw-2026110400003",
+  "sender": {
+   "msisdn": "9000011003",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "STOP",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:03:00"
+ },
+ {
+  "msg_id": "gw-2026110400004",
+  "sender": {
+   "msisdn": "+91 90000 11004",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Call me after 6 pm",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:04:00"
+ },
+ {
+  "msg_id": "gw-2026110400005",
+  "sender": {
+   "msisdn": "+91-90000-11005",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "interested hai, details bhejo",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:05:00"
+ },
+ {
+  "msg_id": "gw-2026110400006",
+  "sender": {
+   "msisdn": "(+91) 90000 11006",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Not interested",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:06:00"
+ },
+ {
+  "msg_id": "gw-2026110400007",
+  "sender": {
+   "msisdn": " 90000 11007 ",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Kitna price hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:07:00"
+ },
+ {
+  "msg_id": "gw-2026110400008",
+  "sender": {
+   "msisdn": 919000011008,
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Demo kab ho sakta hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:08:00"
+ },
+ {
+  "msg_id": "gw-2026110400009",
+  "sender": {
+   "msisdn": "+919000011009",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "🙏 thank you",
+   "encoding": "unicode"
+  },
+  "received": "2026-11-04 10:09:00"
+ },
+ {
+  "msg_id": "gw-2026110400010",
+  "sender": {
+   "msisdn": "919000011010",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "stop sms",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:10:00"
+ },
+ {
+  "msg_id": "gw-2026110400011",
+  "sender": {
+   "msisdn": "09000011011",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Please share the sample screen",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:11:00"
+ },
+ {
+  "msg_id": "gw-2026110400012",
+  "sender": {
+   "msisdn": "9000011012",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Abhi busy hoon, next week",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:12:00"
+ },
+ {
+  "msg_id": "gw-2026110400013",
+  "sender": {
+   "msisdn": "+91 90000 11013",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "WRONG NUMBER",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:13:00"
+ },
+ {
+  "msg_id": "gw-2026110400014",
+  "sender": {
+   "msisdn": "+91-90000-11014",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "ok",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:14:00"
+ },
+ {
+  "msg_id": "gw-2026110400015",
+  "sender": {
+   "msisdn": "(+91) 90000 11015",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "YES",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:15:00"
+ },
+ {
+  "msg_id": "gw-2026110400016",
+  "sender": {
+   "msisdn": " 90000 11016 ",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Haan ji, bhej dijiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:16:00"
+ },
+ {
+  "msg_id": "gw-2026110400017",
+  "sender": {
+   "msisdn": 919000011017,
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Nahi chahiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:17:00"
+ },
+ {
+  "msg_id": "gw-2026110400018",
+  "sender": {
+   "msisdn": "+919000011018",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "STOP",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:18:00"
+ },
+ {
+  "msg_id": "gw-2026110400019",
+  "sender": {
+   "msisdn": "919000011019",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Call me after 6 pm",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:19:00"
+ },
+ {
+  "msg_id": "gw-2026110400020",
+  "sender": {
+   "msisdn": "09000011020",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "interested hai, details bhejo",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:20:00"
+ },
+ {
+  "msg_id": "gw-2026110400021",
+  "sender": {
+   "msisdn": "9000011021",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Not interested",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:21:00"
+ },
+ {
+  "msg_id": "gw-2026110400022",
+  "sender": {
+   "msisdn": "+91 90000 11022",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Kitna price hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:22:00"
+ },
+ {
+  "msg_id": "gw-2026110400023",
+  "sender": {
+   "msisdn": "+91-90000-11023",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Demo kab ho sakta hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:23:00"
+ },
+ {
+  "msg_id": "gw-2026110400024",
+  "sender": {
+   "msisdn": "(+91) 90000 11024",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "🙏 thank you",
+   "encoding": "unicode"
+  },
+  "received": "2026-11-04 10:24:00"
+ },
+ {
+  "msg_id": "gw-2026110400025",
+  "sender": {
+   "msisdn": " 90000 11025 ",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "stop sms",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:25:00"
+ },
+ {
+  "msg_id": "gw-2026110400026",
+  "sender": {
+   "msisdn": 919000011026,
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Please share the sample screen",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:26:00"
+ },
+ {
+  "msg_id": "gw-2026110400027",
+  "sender": {
+   "msisdn": "+919000011027",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Abhi busy hoon, next week",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:27:00"
+ },
+ {
+  "msg_id": "gw-2026110400028",
+  "sender": {
+   "msisdn": "919000011028",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "WRONG NUMBER",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:28:00"
+ },
+ {
+  "msg_id": "gw-2026110400029",
+  "sender": {
+   "msisdn": "09000011029",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "ok",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:29:00"
+ },
+ {
+  "msg_id": "gw-2026110400030",
+  "sender": {
+   "msisdn": "9000011030",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "YES",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:30:00"
+ },
+ {
+  "msg_id": "gw-2026110400031",
+  "sender": {
+   "msisdn": "+91 90000 11031",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Haan ji, bhej dijiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:31:00"
+ },
+ {
+  "msg_id": "gw-2026110400032",
+  "sender": {
+   "msisdn": "+91-90000-11032",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Nahi chahiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:32:00"
+ },
+ {
+  "msg_id": "gw-2026110400033",
+  "sender": {
+   "msisdn": "(+91) 90000 11033",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "STOP",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:33:00"
+ },
+ {
+  "msg_id": "gw-2026110400034",
+  "sender": {
+   "msisdn": " 90000 11034 ",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Call me after 6 pm",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:34:00"
+ },
+ {
+  "msg_id": "gw-2026110400035",
+  "sender": {
+   "msisdn": 919000011035,
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "interested hai, details bhejo",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:35:00"
+ },
+ {
+  "msg_id": "gw-2026110400036",
+  "sender": {
+   "msisdn": "+919000011036",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Not interested",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:36:00"
+ },
+ {
+  "msg_id": "gw-2026110400037",
+  "sender": {
+   "msisdn": "919000011037",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Kitna price hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:37:00"
+ },
+ {
+  "msg_id": "gw-2026110400038",
+  "sender": {
+   "msisdn": "09000011038",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Demo kab ho sakta hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:38:00"
+ },
+ {
+  "msg_id": "gw-2026110400039",
+  "sender": {
+   "msisdn": "9000011039",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "🙏 thank you",
+   "encoding": "unicode"
+  },
+  "received": "2026-11-04 10:39:00"
+ },
+ {
+  "msg_id": "gw-2026110400040",
+  "sender": {
+   "msisdn": "+91 90000 11040",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "stop sms",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:40:00"
+ },
+ {
+  "msg_id": "gw-2026110400041",
+  "sender": {
+   "msisdn": "+91-90000-11041",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Please share the sample screen",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:41:00"
+ },
+ {
+  "msg_id": "gw-2026110400042",
+  "sender": {
+   "msisdn": "(+91) 90000 11042",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Abhi busy hoon, next week",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:42:00"
+ },
+ {
+  "msg_id": "gw-2026110400043",
+  "sender": {
+   "msisdn": " 90000 11043 ",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "WRONG NUMBER",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:43:00"
+ },
+ {
+  "msg_id": "gw-2026110400044",
+  "sender": {
+   "msisdn": 919000011044,
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "ok",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:44:00"
+ },
+ {
+  "msg_id": "gw-2026110400045",
+  "sender": {
+   "msisdn": "+919000011045",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "YES",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:45:00"
+ },
+ {
+  "msg_id": "gw-2026110400046",
+  "sender": {
+   "msisdn": "919000011046",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Haan ji, bhej dijiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:46:00"
+ },
+ {
+  "msg_id": "gw-2026110400047",
+  "sender": {
+   "msisdn": "09000011047",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Nahi chahiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:47:00"
+ },
+ {
+  "msg_id": "gw-2026110400048",
+  "sender": {
+   "msisdn": "9000011048",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "STOP",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:48:00"
+ },
+ {
+  "msg_id": "gw-2026110400049",
+  "sender": {
+   "msisdn": "+91 90000 11049",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Call me after 6 pm",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:49:00"
+ },
+ {
+  "msg_id": "gw-2026110400050",
+  "sender": {
+   "msisdn": "+91-90000-11050",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "interested hai, details bhejo",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:50:00"
+ },
+ {
+  "msg_id": "gw-2026110400051",
+  "sender": {
+   "msisdn": "(+91) 90000 11051",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Not interested",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:51:00"
+ },
+ {
+  "msg_id": "gw-2026110400052",
+  "sender": {
+   "msisdn": " 90000 11052 ",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Kitna price hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:52:00"
+ },
+ {
+  "msg_id": "gw-2026110400053",
+  "sender": {
+   "msisdn": 919000011053,
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Demo kab ho sakta hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:53:00"
+ },
+ {
+  "msg_id": "gw-2026110400054",
+  "sender": {
+   "msisdn": "+919000011054",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "🙏 thank you",
+   "encoding": "unicode"
+  },
+  "received": "2026-11-04 10:54:00"
+ },
+ {
+  "msg_id": "gw-2026110400055",
+  "sender": {
+   "msisdn": "919000011055",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "stop sms",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:55:00"
+ },
+ {
+  "msg_id": "gw-2026110400056",
+  "sender": {
+   "msisdn": "09000011056",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Please share the sample screen",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:56:00"
+ },
+ {
+  "msg_id": "gw-2026110400057",
+  "sender": {
+   "msisdn": "9000011057",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Abhi busy hoon, next week",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:57:00"
+ },
+ {
+  "msg_id": "gw-2026110400058",
+  "sender": {
+   "msisdn": "+91 90000 11058",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "WRONG NUMBER",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:58:00"
+ },
+ {
+  "msg_id": "gw-2026110400059",
+  "sender": {
+   "msisdn": "+91-90000-11059",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "ok",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:59:00"
+ },
+ {
+  "msg_id": "gw-2026110400060",
+  "sender": {
+   "msisdn": "(+91) 90000 11060",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "YES",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:00:00"
+ },
+ {
+  "msg_id": "gw-2026110400061",
+  "sender": {
+   "msisdn": " 90000 11061 ",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Haan ji, bhej dijiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:01:00"
+ },
+ {
+  "msg_id": "gw-2026110400062",
+  "sender": {
+   "msisdn": 919000011062,
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Nahi chahiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:02:00"
+ },
+ {
+  "msg_id": "gw-2026110400063",
+  "sender": {
+   "msisdn": "+919000011063",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "STOP",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:03:00"
+ },
+ {
+  "msg_id": "gw-2026110400064",
+  "sender": {
+   "msisdn": "919000011064",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Call me after 6 pm",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:04:00"
+ },
+ {
+  "msg_id": "gw-2026110400065",
+  "sender": {
+   "msisdn": "09000011065",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "interested hai, details bhejo",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:05:00"
+ },
+ {
+  "msg_id": "gw-2026110400066",
+  "sender": {
+   "msisdn": "9000011066",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Not interested",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:06:00"
+ },
+ {
+  "msg_id": "gw-2026110400067",
+  "sender": {
+   "msisdn": "+91 90000 11067",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Kitna price hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:07:00"
+ },
+ {
+  "msg_id": "gw-2026110400068",
+  "sender": {
+   "msisdn": "+91-90000-11068",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Demo kab ho sakta hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:08:00"
+ },
+ {
+  "msg_id": "gw-2026110400069",
+  "sender": {
+   "msisdn": "(+91) 90000 11069",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "🙏 thank you",
+   "encoding": "unicode"
+  },
+  "received": "2026-11-04 10:09:00"
+ },
+ {
+  "msg_id": "gw-2026110400070",
+  "sender": {
+   "msisdn": " 90000 11070 ",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "stop sms",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:10:00"
+ },
+ {
+  "msg_id": "gw-2026110400071",
+  "sender": {
+   "msisdn": 919000011071,
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Please share the sample screen",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:11:00"
+ },
+ {
+  "msg_id": "gw-2026110400072",
+  "sender": {
+   "msisdn": "+919000011072",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Abhi busy hoon, next week",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:12:00"
+ },
+ {
+  "msg_id": "gw-2026110400073",
+  "sender": {
+   "msisdn": "919000011073",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "WRONG NUMBER",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:13:00"
+ },
+ {
+  "msg_id": "gw-2026110400074",
+  "sender": {
+   "msisdn": "09000011074",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "ok",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:14:00"
+ },
+ {
+  "msg_id": "gw-2026110400075",
+  "sender": {
+   "msisdn": "9000011075",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "YES",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:15:00"
+ },
+ {
+  "msg_id": "gw-2026110400076",
+  "sender": {
+   "msisdn": "+91 90000 11076",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Haan ji, bhej dijiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:16:00"
+ },
+ {
+  "msg_id": "gw-2026110400077",
+  "sender": {
+   "msisdn": "+91-90000-11077",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Nahi chahiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:17:00"
+ },
+ {
+  "msg_id": "gw-2026110400078",
+  "sender": {
+   "msisdn": "(+91) 90000 11078",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "STOP",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:18:00"
+ },
+ {
+  "msg_id": "gw-2026110400079",
+  "sender": {
+   "msisdn": " 90000 11079 ",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Call me after 6 pm",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:19:00"
+ },
+ {
+  "msg_id": "gw-2026110400080",
+  "sender": {
+   "msisdn": 919000011080,
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "interested hai, details bhejo",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:20:00"
+ },
+ {
+  "msg_id": "gw-2026110400081",
+  "sender": {
+   "msisdn": "+919000011081",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Not interested",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:21:00"
+ },
+ {
+  "msg_id": "gw-2026110400082",
+  "sender": {
+   "msisdn": "919000011082",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Kitna price hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:22:00"
+ },
+ {
+  "msg_id": "gw-2026110400083",
+  "sender": {
+   "msisdn": "09000011083",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Demo kab ho sakta hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:23:00"
+ },
+ {
+  "msg_id": "gw-2026110400084",
+  "sender": {
+   "msisdn": "9000011084",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "🙏 thank you",
+   "encoding": "unicode"
+  },
+  "received": "2026-11-04 10:24:00"
+ },
+ {
+  "msg_id": "gw-2026110400085",
+  "sender": {
+   "msisdn": "+91 90000 11085",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "stop sms",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:25:00"
+ },
+ {
+  "msg_id": "gw-2026110400086",
+  "sender": {
+   "msisdn": "+91-90000-11086",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Please share the sample screen",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:26:00"
+ },
+ {
+  "msg_id": "gw-2026110400087",
+  "sender": {
+   "msisdn": "(+91) 90000 11087",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Abhi busy hoon, next week",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:27:00"
+ },
+ {
+  "msg_id": "gw-2026110400088",
+  "sender": {
+   "msisdn": " 90000 11088 ",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "WRONG NUMBER",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:28:00"
+ },
+ {
+  "msg_id": "gw-2026110400089",
+  "sender": {
+   "msisdn": 919000011089,
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "ok",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:29:00"
+ },
+ {
+  "msg_id": "gw-2026110400090",
+  "sender": {
+   "msisdn": "+919000011090",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "YES",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:30:00"
+ },
+ {
+  "msg_id": "gw-2026110400091",
+  "sender": {
+   "msisdn": "919000011091",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Haan ji, bhej dijiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:31:00"
+ },
+ {
+  "msg_id": "gw-2026110400092",
+  "sender": {
+   "msisdn": "09000011092",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Nahi chahiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:32:00"
+ },
+ {
+  "msg_id": "gw-2026110400093",
+  "sender": {
+   "msisdn": "9000011093",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "STOP",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:33:00"
+ },
+ {
+  "msg_id": "gw-2026110400094",
+  "sender": {
+   "msisdn": "+91 90000 11094",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Call me after 6 pm",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:34:00"
+ },
+ {
+  "msg_id": "gw-2026110400095",
+  "sender": {
+   "msisdn": "+91-90000-11095",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "interested hai, details bhejo",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:35:00"
+ },
+ {
+  "msg_id": "gw-2026110400096",
+  "sender": {
+   "msisdn": "(+91) 90000 11096",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Not interested",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:36:00"
+ },
+ {
+  "msg_id": "gw-2026110400097",
+  "sender": {
+   "msisdn": " 90000 11097 ",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Kitna price hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:37:00"
+ },
+ {
+  "msg_id": "gw-2026110400098",
+  "sender": {
+   "msisdn": 919000011098,
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "Demo kab ho sakta hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:38:00"
+ },
+ {
+  "msg_id": "gw-2026110400099",
+  "sender": {
+   "msisdn": "+919000011099",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "🙏 thank you",
+   "encoding": "unicode"
+  },
+  "received": "2026-11-04 10:39:00"
+ },
+ {
+  "msg_id": "gw-2026110400100",
+  "sender": {
+   "msisdn": "919000011100",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "stop sms",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:40:00"
+ },
+ {
+  "msg_id": "gw-2026110400101",
+  "sender": {
+   "msisdn": "09000011101",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Please share the sample screen",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:41:00"
+ },
+ {
+  "msg_id": "gw-2026110400102",
+  "sender": {
+   "msisdn": "9000011102",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Abhi busy hoon, next week",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:42:00"
+ },
+ {
+  "msg_id": "gw-2026110400103",
+  "sender": {
+   "msisdn": "+91 90000 11103",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "WRONG NUMBER",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:43:00"
+ },
+ {
+  "msg_id": "gw-2026110400104",
+  "sender": {
+   "msisdn": "+91-90000-11104",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "ok",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:44:00"
+ },
+ {
+  "msg_id": "gw-2026110400105",
+  "sender": {
+   "msisdn": "(+91) 90000 11105",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "YES",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:45:00"
+ },
+ {
+  "msg_id": "gw-2026110400106",
+  "sender": {
+   "msisdn": " 90000 11106 ",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Haan ji, bhej dijiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:46:00"
+ },
+ {
+  "msg_id": "gw-2026110400107",
+  "sender": {
+   "msisdn": 919000011107,
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Nahi chahiye",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:47:00"
+ },
+ {
+  "msg_id": "gw-2026110400108",
+  "sender": {
+   "msisdn": "+919000011108",
+   "operator": "Vi"
+  },
+  "content": {
+   "text": "STOP",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:48:00"
+ },
+ {
+  "msg_id": "gw-2026110400109",
+  "sender": {
+   "msisdn": "919000011109",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Call me after 6 pm",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:49:00"
+ },
+ {
+  "msg_id": "gw-2026110400110",
+  "sender": {
+   "msisdn": "09000011110",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "interested hai, details bhejo",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:50:00"
+ },
+ {
+  "msg_id": "gw-2026110400111",
+  "sender": {
+   "msisdn": "9000011111",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "Not interested",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:51:00"
+ },
+ {
+  "msg_id": "gw-2026110400112",
+  "sender": {
+   "msisdn": "+91 90000 11112",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Kitna price hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:52:00"
+ },
+ {
+  "msg_id": "gw-2026110400113",
+  "sender": {
+   "msisdn": "+91-90000-11113",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "Demo kab ho sakta hai?",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:53:00"
+ },
+ {
+  "msg_id": "gw-2026110400114",
+  "sender": {
+   "msisdn": "(+91) 90000 11114",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "🙏 thank you",
+   "encoding": "unicode"
+  },
+  "received": "2026-11-04 10:54:00"
+ },
+ {
+  "msg_id": "gw-2026110400115",
+  "sender": {
+   "msisdn": " 90000 11115 ",
+   "operator": "Airtel"
+  },
+  "content": {
+   "text": "stop sms",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:55:00"
+ },
+ {
+  "msg_id": "gw-2026110400116",
+  "sender": {
+   "msisdn": 919000011116,
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Please share the sample screen",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:56:00"
+ },
+ {
+  "msg_id": "gw-2026110400117",
+  "sender": {
+   "msisdn": "+919000011117",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "Abhi busy hoon, next week",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:57:00"
+ },
+ {
+  "msg_id": "gw-2026110400118",
+  "sender": {
+   "msisdn": "919000011118",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "WRONG NUMBER",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:58:00"
+ },
+ {
+  "msg_id": "gw-2026110400119",
+  "sender": {
+   "msisdn": "09000011119",
+   "operator": "BSNL"
+  },
+  "content": {
+   "text": "ok",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:59:00"
+ },
+ {
+  "msg_id": "gw-blank-text",
+  "sender": {
+   "msisdn": "+919000019001"
+  },
+  "content": {
+   "text": ""
+  }
+ },
+ {
+  "msg_id": "gw-no-sender",
+  "sender": {},
+  "content": {
+   "text": "YES"
+  }
+ },
+ {
+  "msg_id": "gw-shortcode",
+  "sender": {
+   "msisdn": "56767"
+  },
+  "content": {
+   "text": "Your OTP is 1234"
+  }
+ },
+ {
+  "msg_id": "gw-2026110400000",
+  "sender": {
+   "msisdn": "+919000011000",
+   "operator": "Jio"
+  },
+  "content": {
+   "text": "YES",
+   "encoding": "gsm7"
+  },
+  "received": "2026-11-04 10:00:00"
+ }
+]
