@@ -41,12 +41,13 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
         incoming = demo_leads(rows) if body.tab == "demo" else sheet_leads(rows)
         stats = {"created": 0, "duplicates": 0, "merged": 0}
         erased = set(store.read("suppressed_hashes"))
+        blocked = set(store.read("suppressed"))
 
         def merge_in(leads: list) -> list:
             seen = {lead["dedupe_key"] for lead in leads}
             for lead in incoming:
-                if lead_hashes(lead) & erased:
-                    stats["suppressed"] = stats.get("suppressed", 0) + 1     # erased on request: never imported again
+                if lead_hashes(lead) & erased or lead.get("email") in blocked:
+                    stats["suppressed"] = stats.get("suppressed", 0) + 1     # erased or do-not-contact: never imported again
                 elif lead["dedupe_key"] in seen:
                     stats["duplicates"] += 1
                 elif (target := contactless_match(leads, lead)) is not None:

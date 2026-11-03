@@ -264,9 +264,11 @@ def merge_record(lead: dict, rec: dict, who, source: str, import_id: str, at: st
         _put_lists(lead, rec)
         if not lead.get("phone") and rec.get("phone"):
             lead["phone"], lead["phone_type"] = rec["phone"], rec.get("phone_type", "")
+            lead.setdefault("field_sources", {})["phone"] = source
             info["filled"].append("phone")
         if not lead.get("email") and rec.get("email"):
             lead["email"] = rec["email"]
+            lead.setdefault("field_sources", {})["email"] = source
             info["filled"].append("email")
     if "email" in info["filled"] and lead.get("email"):
         lead["email_is_role"] = is_role_address(lead["email"])

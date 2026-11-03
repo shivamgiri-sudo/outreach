@@ -22,7 +22,7 @@ STATUS_STAGE = {
 
 def read_rows(csv_text: str) -> list:
     """CSV rows as dicts; a repeated header (the sheet has two 'Remarks') gets ' (2)' so nothing is lost."""
-    reader = csv.reader(io.StringIO(csv_text))
+    reader = csv.reader(io.StringIO(csv_text.lstrip("\ufeff")))    # Excel "CSV UTF-8" starts with a BOM
     header = next(reader, [])
     seen, names = {}, []
     for name in (h.strip() for h in header):

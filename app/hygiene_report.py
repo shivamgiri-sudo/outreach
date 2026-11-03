@@ -101,12 +101,15 @@ def _company_pairs(leads: list, clusters: _Clusters, by_company: dict) -> None:
     domains = [lead_domain(lead) for lead in leads]
     cities = [city_key(lead.get("city")) for lead in leads]
     clash = lambda i, j: domains[i] and domains[j] and domains[i] != domains[j]
+    people = [person_key(lead.get("contact_name")) for lead in leads]
     for members in by_company.values():
         ambiguous = len({cities[i] for i in members if cities[i]}) > 1   # a city-less row can't pick between cities
         for x, i in enumerate(members):
             for j in members[x + 1:]:
-                if not clash(i, j) and (cities[i] == cities[j] or (not ambiguous and (not cities[i] or not cities[j]))):
-                    clusters.join(i, j, "same company name" + (" and city" if cities[i] and cities[j] else ""))
+                same_person = bool(people[i]) and people[i] == people[j] and bool(cities[i]) and cities[i] == cities[j]
+                if (not clash(i, j) or same_person) and (cities[i] == cities[j] or (not ambiguous and (not cities[i] or not cities[j]))):
+                    clusters.join(i, j, "same company name" + (" and city" if cities[i] and cities[j] else "")
+                                  + (" and person (websites differ)" if clash(i, j) else ""))
     blocks = {}
     for i in range(len(leads)):
         if keys[i] and cities[i]:

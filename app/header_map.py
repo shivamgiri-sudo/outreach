@@ -29,7 +29,8 @@ _A = {
                 "sender company"],
     "contact_name": ["full name", "name", "contact name", "contact person", "person name", "lead name", "prospect name",
                      "decision maker", "hr name", "hr contact", "contact person name", "spoc", "spoc name", "poc",
-                     "poc name", "owner name", "proprietor name", "concerned person", "key person", "representative"],
+                     "poc name", "owner name", "proprietor name", "concerned person", "key person", "representative",
+                     "sender name"],
     "first_name": ["first name", "firstname", "first", "given name", "fname", "contact first name", "person first name"],
     "last_name": ["last name", "lastname", "last", "surname", "family name", "lname", "contact last name",
                   "person last name"],
@@ -65,7 +66,7 @@ _A = {
     "company_size": ["company size", "size", "employees", "number of employees", "employee count", "no of employees",
                      "# employees", "headcount", "staff size", "employee range", "company employees",
                      "company size employees", "team size", "employee strength", "company headcount", "employees range", "emp size",
-                     "size range", "estimated num employees", "head count"],
+                     "size range", "estimated num employees", "head count", "company employee count"],
     "open_roles": ["open roles", "openings", "no of openings", "number of openings", "vacancies", "vacancy",
                    "no of positions", "job openings count", "hiring count", "total openings", "openings count"],
     "role": ["open position", "open positions", "job opening", "hiring for", "vacancy title", "position open", "opening",
@@ -100,6 +101,7 @@ _SECONDARY = {
 _FILLERS = frozenset({"no", "of", "number", "num", "nos", "the", "a", "s"})
 # Columns every export carries that are not lead data; named here so fuzzy matching never grabs them.
 KNOWN_EXTRA = (
+    "query product name", "query message", "query time", "query type", "unique query id", "sender pincode",
     "number of sources", "confidence score", "email status", "email confidence", "vmid", "query", "timestamp",
     "apollo contact id", "apollo account id", "zoominfo contact id", "zoominfo company id", "record id", "id", "sr no",
     "serial no", "sl no", "index", "caller name", "contact owner", "account owner", "lists", "stage", "last contacted",
