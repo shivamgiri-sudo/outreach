@@ -23,6 +23,7 @@ OWNER_ROUTES = {
     ("POST", "/api/sequences/run"), ("POST", "/api/sending/resume"), ("POST", "/api/sequences/resume-failed"),
     ("POST", "/api/practice/clear"), ("GET", "/api/enrich/apollo-export"),
     ("GET", "/api/leads/{lead_id}/export"), ("POST", "/api/leads/{lead_id}/erase"),
+    ("POST", "/api/find-leads"),          # spends provider credits
 }
 OWNER_PREFIXES = ("/api/users", "/api/compliance", "/api/backup")    # any method
 OWNER_WRITE_PREFIXES = ("/api/integrations", "/api/channels", "/api/workflows", "/api/flows")   # anything but GET
