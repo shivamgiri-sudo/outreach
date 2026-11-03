@@ -131,9 +131,11 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
             continue
         message, demo = composed
         day = steps[0]["day"]
-        message.update({"idempotency_key": f"{lead['id']}:{day}:{counts['mode']}",
-                        "message_id": f"<{uuid.uuid4().hex}.{lead['id']}@{_message_domain(store)}>"})
-        if not _claim(store, lead["id"], day, now, lead["email"]):
+        key = f"{lead['id']}:{day}:{counts['mode']}"
+        # The Message-ID comes from the key: a retry must be the same request, or Resend refuses it (409).
+        message.update({"idempotency_key": key,
+                        "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead['id']}@{_message_domain(store)}>"})
+        if not _claim(store, lead["id"], day, now, lead["email"], demo):
             continue                                   # stopped, unsubscribed or suppressed a moment ago
         message.update(sender(message))
         store.update("outbox", lambda rows: [*rows, message])
@@ -160,8 +162,10 @@ def _message_domain(store) -> str:
     return (cfg.get("from_email", "").rpartition("@")[2] or cfg.get("domain") or "outreach.local").strip() or "outreach.local"
 
 
-def _claim(store, lead_id: str, day: int, now: datetime, email: str) -> bool:
-    """Mark the send as in progress on the latest saved lead, but only if it may still be emailed right now."""
+def _claim(store, lead_id: str, day: int, now: datetime, email: str, demo: dict = None) -> bool:
+    """Mark the send as in progress on the latest saved lead, but only if it may still be emailed right now.
+
+    The demo link fields are saved now too, so a retry after a provider error sends the very same text."""
     if is_blocked(store, email):                 # unsubscribed, bounced, or erased on request (hashed list)
         return False
     suppressed = set(store.read("suppressed"))
@@ -173,7 +177,8 @@ def _claim(store, lead_id: str, day: int, now: datetime, email: str) -> bool:
                 or lead.get("email") != email or email in suppressed):
             return None
         claimed["ok"] = True
-        return {**lead, "sequence": {**seq, "in_flight": {"day": day, "at": now.isoformat(timespec="seconds")}}}
+        return {**{k: v for k, v in (demo or {}).items() if not lead.get(k)}, **lead,
+                "sequence": {**seq, "in_flight": {"day": day, "at": now.isoformat(timespec="seconds")}}}
 
     store.update_lead(lead_id, claim)
     return bool(claimed)
