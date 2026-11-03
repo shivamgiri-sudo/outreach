@@ -126,7 +126,9 @@ def extract_record(row: dict, columns: list, today: date) -> tuple:
         website = f"https://{domain}" if domain else ""
     person_li = _linkedin(row, columns, "linkedin_url", "in")
     locs = [parse_location(v) for v in _values(row, columns, "location")]  # person "India", then company "Pune, …"
-    loc = next((p for p in locs if p["city"]), locs[0] if locs else parse_location(""))
+    loc = dict(next((p for p in locs if p["city"]), locs[0] if locs else parse_location("")))
+    for other in (p for p in locs if loc["city"] and city_key(p["city"]) == city_key(loc["city"])):
+        loc = {k: loc[k] or other[k] for k in loc}  # "Kota" + "Kota, Rajasthan, India"
     addr = parse_address(get("address"))
     city = clean_city(get("city")) or loc["city"] or addr["city"]
     country = clean_country(get("country")) or loc["country"] or addr["country"]

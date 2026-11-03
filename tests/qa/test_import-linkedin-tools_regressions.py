@@ -241,3 +241,10 @@ def test_person_location_india_falls_back_to_the_company_location():
     assert got["Sahyadri Hospitals"] == ("Pune", "Maharashtra", "IN")
     assert got["Malabar Spices"] == ("Mumbai", "Maharashtra", "IN")
     assert got["Indus Fintech"] == ("Gurugram", "Haryana", "IN")
+
+
+def test_same_city_in_both_location_columns_completes_state_and_country():
+    csv = ("First Name,Last Name,Company Name,Location,Company Location\n"
+           'Gurpreet,Iyer,Chambal Fertilisers QA,Kota,"Kota, Rajasthan, India"\n')
+    leads, _, _, _ = run(csv)
+    assert (leads[0]["city"], leads[0]["state"], leads[0]["country"]) == ("Kota", "Rajasthan", "IN")
