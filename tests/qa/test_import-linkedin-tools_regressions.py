@@ -93,3 +93,47 @@ def test_extra_columns_are_not_remapped_by_their_values():
     assert mapping["Sales Navigator Profile URL"] is None and mapping["Twitter URL"] is None
     assert mapping["lastState"] is None
     assert all(not l.get("state") for l in leads) and result["summary"]["warnings"] == {}
+
+
+def test_sales_navigator_link_does_not_hide_the_real_profile_link():
+    """profileUrl (a Sales Navigator /sales/lead/ link) maps to LinkedIn first; only the first non-empty value was
+    tried, it did not parse, and the lead ended up with no LinkedIn at all. The public /in/slug is preferred over
+    the internal ACw… member id, so the same person matches the slug other tools export."""
+    csv = PB_SALESNAV_HEAD + (
+        '"https://www.linkedin.com/sales/lead/ACwAAQA00008xQa,NAME_SEARCH,q8",RAVI KUMAR,RAVI,KUMAR,'
+        "ACME RETAIL PVT. LTD.,head - human resources,https://www.linkedin.com/sales/company/70000,"
+        'https://www.linkedin.com/company/70000,"Bengaluru, Karnataka, India",,,,,ACwAAQA00008xQa,'
+        "https://www.linkedin.com/in/ACwAAQA00008xQa,https://www.linkedin.com/in/ravi-kumar-qa008,QA Seller\n")
+    leads, _, _, _ = run(csv)
+    lead = leads[0]
+    assert lead["linkedin_url"] == "https://www.linkedin.com/in/ravi-kumar-qa008"
+    assert lead["company_linkedin_url"] == "https://www.linkedin.com/company/70000"
+    assert lead["company"] == "Acme Retail" and lead["contact_name"] == "Ravi Kumar"
+
+
+@pytest.mark.parametrize("raw, expected", [
+    ("https://www.linkedin.com/in/neha-gupta-qa009/", "https://www.linkedin.com/in/neha-gupta-qa009"),
+    ("in.linkedin.com/in/neha-gupta-qa009", "https://www.linkedin.com/in/neha-gupta-qa009"),
+    ("http://m.linkedin.com/in/neha-gupta-qa009?trk=x", "https://www.linkedin.com/in/neha-gupta-qa009"),
+    ("  LINKEDIN.COM/in/Neha-Gupta-qa009  ", "https://www.linkedin.com/in/Neha-Gupta-qa009"),
+    ("javascript:alert(document.cookie)//www.linkedin.com/in/neha-gupta-qa009", ""),
+    ("JAVASCRIPT:alert(1)//linkedin.com/in/x", ""),
+    ("https://evil.invalid/?next=linkedin.com/in/neha-gupta-qa009", ""),
+    ("https://notlinkedin.com/in/neha-gupta-qa009", ""),
+    ("data:text/html,linkedin.com/in/x", ""),
+    ("https://www.linkedin.com/sales/lead/ACwAAQA00009xQa,NAME_SEARCH,q", ""),
+])
+def test_person_linkedin_links_must_really_be_linkedin(raw, expected):
+    from app.standardise import linkedin_url
+    assert linkedin_url(raw, "in") == expected
+
+
+def test_unsafe_links_from_a_scraper_file_are_dropped_not_rewritten():
+    csv = ("First Name;Last Name;Occupation;Company;Company URL;LinkedIn URL\n"
+           "Xss;Probe;HR;Probe Labs;javascript:alert(1);javascript:alert(document.cookie)//www.linkedin.com/in/xss-qa\n"
+           "Js;Link;HR;Script Labs;JAVASCRIPT:alert(2)//linkedin.com/company/x;vbscript:msgbox(1)\n")
+    leads, _, _, _ = run(csv)
+    assert len(leads) == 2
+    for lead in leads:
+        assert not lead.get("linkedin_url") and not lead.get("company_linkedin_url") and not lead.get("website")
+        assert "script" not in str(lead).lower().replace("script labs", "")

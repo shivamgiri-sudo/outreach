@@ -459,5 +459,5 @@ def website_domain(raw) -> tuple:
 def linkedin_url(raw, kind: str = "in") -> str:
     """A tidy https LinkedIn profile (kind 'in') or company (kind 'company') link, or ''."""
     text = clean_text(raw)
-    match = re.search(rf"(?:https?://)?(?:[a-z]{{2,3}}\.)?linkedin\.com/{kind}/([A-Za-z0-9\-_%.]+)", text, re.IGNORECASE)
+    match = re.match(rf"(?:https?://)?(?:[a-z]{{1,3}}\.)?linkedin\.com/{kind}/([A-Za-z0-9\-_%.]+)", text, re.IGNORECASE)
     return f"https://www.linkedin.com/{kind}/{match.group(1).rstrip('/')}" if match else ""
