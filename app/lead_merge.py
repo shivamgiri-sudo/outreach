@@ -250,7 +250,7 @@ def merge_record(lead: dict, rec: dict, who, source: str, import_id: str, at: st
         if not lead.get("email") and rec.get("email"):
             lead["email"] = rec["email"]
             info["filled"].append("email")
-    if "email" in info["filled"]:
+    if "email" in info["filled"] and lead.get("email"):
         lead["email_is_role"] = is_role_address(lead["email"])
     links = _union(lead.get("job_links"), rec.get("job_links"))
     if links:
