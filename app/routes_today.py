@@ -4,11 +4,13 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from .activities import ensure_task_ids
 from .sequences import IST
 
 TASK_TITLES = {
     "review": "Check a reply", "question": "Answer a question", "wrong_person": "Find the right contact",
     "other": "Read a reply", "pilot": "Run a free pilot", "workflow": "Follow up",
+    "call": "Call them", "follow_up": "Follow up", "unmatched_reply": "Match a reply to a lead",
 }
 CALL_STAGES = ("interested", "whatsapp_active")
 CLOSED = ("unsubscribed", "disqualified", "customer", "advocate")
@@ -46,7 +48,10 @@ def make_router(store, present) -> APIRouter:
     def today():
         now = datetime.now(timezone.utc)
         today_ist = now.astimezone(IST).date().isoformat()
+        ensure_task_ids(store)
         leads = {lead["id"]: lead for lead in store.read("leads")}
+        open_tasks = [t for t in store.read("tasks") if t.get("status", "open") == "open" and not t.get("done")]
+        call_task_leads = {t.get("lead_id") for t in open_tasks if t.get("kind") == "call"}
         name = lambda lid: (leads.get(lid) or {}).get("company") or (leads.get(lid) or {}).get("domain") or "a lead"
         problems, tasks, calls, nudges, starts = [], [], [], [], []
 
@@ -55,15 +60,22 @@ def make_router(store, present) -> APIRouter:
             if why:
                 problems.append({"kind": "problem", "lead_id": lead["id"], "company": name(lead["id"]),
                                  "title": "Sending needs a look", "detail": why, "action": "Open lead"})
-            if lead["stage"] in CALL_STAGES and not _called_today(lead, today_ist):
+            if lead["stage"] in CALL_STAGES and not _called_today(lead, today_ist) and lead["id"] not in call_task_leads:
                 calls.append({"kind": "call", "lead_id": lead["id"], "company": name(lead["id"]),
                               "title": "Call them", "action": "Open call desk",
                               "detail": "Said yes. Dial through PD only, before 18:55."})
         for index, task in enumerate(store.read("tasks")):
-            if task.get("done") or (leads.get(task.get("lead_id")) or {}).get("stage") in ("unsubscribed",):
+            if task.get("done") or task.get("status", "open") != "open" or (leads.get(task.get("lead_id")) or {}).get("stage") in ("unsubscribed",):
                 continue
-            tasks.append({"kind": "task", "task_index": index, "lead_id": task.get("lead_id"), "company": name(task.get("lead_id")),
-                          "title": TASK_TITLES.get(task.get("kind"), "Follow up"), "detail": task.get("text", ""), "action": "Open lead"})
+            due = task.get("due_at")
+            overdue = bool(due) and datetime.fromisoformat(due) < now
+            is_call = task.get("kind") == "call"
+            tasks.append({"kind": "call" if is_call else "task", "task_index": index, "task_id": task.get("id"), "lead_id": task.get("lead_id"),
+                          "company": name(task.get("lead_id")), "due_at": due, "overdue": overdue, "owner": task.get("owner"),
+                          "priority": task.get("priority", "normal"),
+                          "title": task.get("title") or TASK_TITLES.get(task.get("kind"), "Follow up"), "detail": task.get("text", ""),
+                          "action": "Open call desk" if is_call else "Open lead"})
+        tasks.sort(key=lambda t: (not t["overdue"], t["due_at"] or "9999", t["priority"] != "high"))
         for lead in map(present, leads.values()):
             if lead["stage"] in CLOSED:
                 continue
@@ -75,17 +87,20 @@ def make_router(store, present) -> APIRouter:
                                "title": "Start the email sequence", "detail": f"Score {lead['score']}: strong hiring signals.",
                                "action": "Open lead"})
 
-        items = (problems + list(reversed(tasks)) + calls + nudges + starts)[:MAX_ITEMS]
-        replies = sum(1 for t in tasks if t["title"] in ("Check a reply", "Answer a question", "Read a reply", "Find the right contact"))
+        items = (problems + tasks + calls + nudges + starts)[:MAX_ITEMS]
+        replies = sum(1 for t in tasks if t["kind"] == "task" and t["title"] in ("Check a reply", "Answer a question", "Read a reply", "Find the right contact"))
         if not leads:
             summary = "Import your first list of leads to get started."
         elif not items:
             summary = "Nothing waiting on you right now. New replies and calls will show up here."
         else:
+            overdue = sum(1 for t in tasks if t["overdue"])
             summary = (f"{_plural(len(problems), 'sending issue')}, {_plural(replies, 'reply')} to handle, "
-                       f"{_plural(len(calls), 'call')} to make.").replace("replys", "replies")
+                       f"{_plural(len(calls) + sum(1 for t in tasks if t['kind'] == 'call'), 'call')} to make"
+                       + (f", {overdue} overdue" if overdue else "") + ".").replace("replys", "replies")
         return {"summary": summary, "items": items,
-                "counts": {"problems": len(problems), "tasks": len(tasks), "calls": len(calls), "nudges": len(nudges), "starts": len(starts)}}
+                "counts": {"problems": len(problems), "tasks": sum(1 for t in tasks if t["kind"] == "task"),
+                           "calls": len(calls) + sum(1 for t in tasks if t["kind"] == "call"), "nudges": len(nudges), "starts": len(starts)}}
 
     @router.post("/api/tasks/done")
     def task_done(body: DoneBody):

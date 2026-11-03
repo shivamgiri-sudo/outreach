@@ -7,6 +7,7 @@ from typing import Optional
 from .activation import EVENT_STEP
 from .growth_core import public_base_url
 from .replies import _RULES as REPLY_RULES
+from .activities import add_task
 from .sequence_runner import NO_EMAIL_STAGES
 from .stages import ALL_STAGES, CONSENT_REQUIRED, can_move
 from .whatsapp import TEMPLATES, WhatsAppError, send
@@ -50,7 +51,7 @@ def new_rule(name: str, trigger: dict, action: dict) -> dict:
 
 
 def _task(store, lead_id: str, text: str, now: datetime) -> None:
-    store.update("tasks", lambda rows: [*rows, {"lead_id": lead_id, "kind": "workflow", "text": text, "at": now.isoformat(timespec="seconds")}])
+    add_task(store, lead_id, "workflow", text, source="workflow")
 
 
 def _update(store, lead_id: str, change) -> None:

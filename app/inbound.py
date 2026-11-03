@@ -13,6 +13,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from .activities import add_task, on_became_interested
 from .ai import ai_classify
 from .hygiene import normalise_email, normalise_phone
 from .replies import classify_reply, strip_quoted
@@ -98,10 +99,12 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
     if label in ("unsubscribe", "bounce") and channel == "email":
         suppress(store, outcome["email"])
     if effect == "review" or label in ("question", "wrong_person", "other"):
-        task = {"id": uuid.uuid4().hex[:10], "lead_id": lead_id, "kind": label if effect != "review" else "review",
-                "text": clean[:TEXT_KEPT], "channel": channel, "at": _now()}
-        store.update("tasks", lambda rows: [*rows, task])
+        add_task(store, lead_id, label if effect != "review" else "review", clean[:TEXT_KEPT],
+                 due_at=datetime.now(timezone.utc) + timedelta(hours=2), priority="high" if effect == "review" else "normal",
+                 source=f"{channel} reply")
     if effect == "applied":
+        if label == "interested":
+            on_became_interested(store, lead_id, f"Said yes by {channel}")
         fire(store, "reply", label, lead_id)
     return {"label": label, "effect": effect, "ai_label": ai_label}
 
@@ -145,9 +148,7 @@ def process_inbound_message(store, msg: dict, ai_transport=None) -> dict:
     row["label"] = (result or {}).get("label")
     store.update("inbox", lambda rows: [*rows, row])
     if not lead_id:
-        task = {"id": uuid.uuid4().hex[:10], "lead_id": None, "kind": "unmatched_reply", "channel": channel,
-                "text": f"From {row['from']}: {row['text'][:500]}", "at": _now()}
-        store.update("tasks", lambda rows: [*rows, task])
+        add_task(store, None, "unmatched_reply", f"From {row['from']}: {row['text'][:500]}", source=f"{channel} inbound")
         return {"matched": False, "inbox_id": row["id"]}
     return {"matched": True, "lead_id": lead_id, "matched_by": matched_by, "inbox_id": row["id"], **(result or {})}
 

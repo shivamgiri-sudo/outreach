@@ -35,6 +35,8 @@ from .workflows import fire
 from .routes_insights import make_router as make_insights_router
 from .routes_today import make_router as make_today_router
 from .routes_providers import make_router as make_providers_router
+from .routes_activities import make_router as make_activities_router
+from .activities import close_call_tasks, on_became_interested
 from .routes_whatsapp import make_router as make_whatsapp_router
 from .routes_growth import make_router as make_growth_router
 from .routes_jobs import make_router as make_jobs_router
@@ -254,6 +256,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         store.update_lead(lead_id, move)
         if refused:
             raise HTTPException(400, f"Cannot move from {refused['from']} to {body.stage}")
+        if body.stage == "interested":
+            on_became_interested(store, lead_id, "Moved to Interested")
         fire(store, "stage_change", body.stage, lead_id)
         return _present(next(l for l in store.read("leads") if l["id"] == lead_id))
 
@@ -270,7 +274,11 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
 
     @app.post("/api/leads/{lead_id}/note")
     def add_note(lead_id: str, body: NoteBody):
-        return change_lead(lead_id, lambda lead: {**lead, "timeline": [*lead["timeline"], _event(body.kind, body.text)]})
+        saved = change_lead(lead_id, lambda lead: {**lead, "timeline": [*lead["timeline"], _event(body.kind, body.text)]})
+        if body.kind == "call":
+            close_call_tasks(store, lead_id, body.text)
+            saved = _present(next(l for l in store.read("leads") if l["id"] == lead_id))
+        return saved
 
     @app.get("/api/integrations")
     def list_integrations():
@@ -310,6 +318,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_insights_router(store, _present))
     app.include_router(make_today_router(store, _present))
     app.include_router(make_providers_router(store, fetcher))
+    app.include_router(make_activities_router(store))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender)
     return app

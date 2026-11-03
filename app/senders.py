@@ -86,3 +86,27 @@ def send_test(store, transport, to: str) -> dict:
         return {"ok": False, "message": f"Could not reach the email provider: {exc}"}
     store.write("settings", {**store.read("settings"), "test_email_ok_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
     return {"ok": True, "message": f"Test email sent to {address}. Check the inbox and spam folder."}
+
+
+def make_transactional_sender(store, transport=post_json):
+    """One-to-one emails that aren't cold outreach: meeting reminders to a lead, reminders to your own team.
+
+    Returns send({to, subject, body, kind}) -> {"status": "sent" | "failed" | "dry_run" | "provider_error", ...}.
+    Needs the sending domain connected; the caller decides whether real sending is allowed for that kind.
+    """
+    def send(message: dict) -> dict:
+        cfg = _email_config(store)
+        to = normalise_email(message.get("to"))
+        if not cfg or not to:
+            return {"status": "dry_run"}
+        body = {"from": _from_header(cfg["from_name"], cfg["from_email"]), "to": [to],
+                "subject": message["subject"][:300], "text": message["body"]}
+        if cfg.get("reply_to"):
+            body["reply_to"] = cfg["reply_to"]
+        try:
+            reply = transport(RESEND_URL, {"Authorization": f"Bearer {cfg['api_key']}"}, body)
+        except (OSError, ValueError, PermissionError) as exc:
+            return classify_send_error(exc)
+        return {"status": "sent", "provider_id": reply.get("id", "")}
+
+    return send
