@@ -48,6 +48,7 @@ from .channels.http import request as channel_request
 from .channels.poller import start_imap_poller
 from .channels.webhooks import gate_allows
 from .routes_import import make_router as make_import_router
+from .routes_exports import make_router as make_exports_router
 from .lead_import import quick_rows
 from .routes_outreach import make_router
 from .store import Store
@@ -341,6 +342,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,
                                             BASE_URL, _present, inbound_processor, delivery_processor))
     app.include_router(make_import_router(store))
+    app.include_router(make_exports_router(store, _present))
     # Campaigns: Apollo / Google Places / Firecrawl POSTs, Hunter / verifier GETs, careers pages and the crawler.
     campaign_io = {"post": apollo_transport, "get": get_json, "fetch": fetcher, **(campaign_transports or {})}
     campaign_notify = make_transactional_sender(store, email_transport)
