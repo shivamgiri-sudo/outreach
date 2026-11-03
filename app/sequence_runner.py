@@ -245,16 +245,22 @@ def _record_send(lead: dict, day: int, message: dict, demo: dict, now: datetime,
 
 
 def resume_lead(store, lead_id: str):
-    """Restart a sequence that stopped after repeated send failures, keeping what was already sent."""
+    """Restart a sequence that stopped after repeated send failures, keeping what was already sent.
+
+    Returns None when the lead is missing or was not stopped by send failures (replies and unsubscribes stay stopped)."""
+    resumed = {}
+
     def resume(lead: dict):
         seq = lead.get("sequence") or {}
         if seq.get("stopped") != "send_failed":
             return None
+        resumed["ok"] = True
         cleaned = {k: v for k, v in seq.items() if k not in ("failed_attempts", "last_failed_at", "in_flight")}
         return {**lead, "sequence": {**cleaned, "stopped": None},
                 "timeline": [*lead["timeline"], {"at": datetime.now().astimezone().isoformat(timespec="seconds"),
                                                  "kind": "sequence", "text": "Sequence resumed after send failures"}]}
-    return store.update_lead(lead_id, resume)
+    lead = store.update_lead(lead_id, resume)
+    return lead if resumed else None
 
 
 def clear_practice(store) -> dict:
