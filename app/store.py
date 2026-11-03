@@ -58,6 +58,34 @@ class Store:
         shutil.copy2(self._path, newest)
         os.chmod(newest, 0o600)
 
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    def snapshot(self) -> dict:
+        """A copy of every collection at one moment (for a full backup)."""
+        with self._lock:
+            return json.loads(json.dumps(self._data))
+
+    def replace_all(self, build, keep_copy_as: Path = None) -> dict:
+        """Swap in a whole new data set (a restore), atomically and under the lock.
+
+        `build(current)` returns the new data; it must not call the store. When `keep_copy_as` is given, the file as it
+        is now is copied there first, so the previous state can always be put back by hand.
+        """
+        with self._lock:
+            current = json.loads(json.dumps(self._data))
+            new = build(current)
+            if keep_copy_as is not None:
+                if self._path.exists():
+                    shutil.copy2(self._path, keep_copy_as)
+                else:
+                    Path(keep_copy_as).write_text(json.dumps(current, ensure_ascii=False, indent=1), encoding="utf-8")
+                os.chmod(keep_copy_as, 0o600)
+            self._data = {**json.loads(json.dumps(EMPTY)), **json.loads(json.dumps(new))}
+            self._save()
+            return json.loads(json.dumps(self._data))
+
     def read(self, key: str):
         with self._lock:
             return json.loads(json.dumps(self._data[key]))
