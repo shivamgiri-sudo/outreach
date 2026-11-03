@@ -15,6 +15,7 @@ TASK_TITLES = {
 CALL_STAGES = ("interested", "whatsapp_active")
 CLOSED = ("unsubscribed", "disqualified", "customer", "advocate")
 MAX_ITEMS = 20
+KEEP_IF_UNSUBSCRIBED = ("erasure_request", "review")      # a deletion request or a "yes" to check still needs a person
 
 
 class DoneBody(BaseModel):
@@ -65,7 +66,10 @@ def make_router(store, present) -> APIRouter:
                               "title": "Call them", "action": "Open call desk",
                               "detail": "Said yes. Dial through PD only, before 18:55."})
         for index, task in enumerate(store.read("tasks")):
-            if task.get("done") or task.get("status", "open") != "open" or (leads.get(task.get("lead_id")) or {}).get("stage") in ("unsubscribed",):
+            stage = (leads.get(task.get("lead_id")) or {}).get("stage")
+            if task.get("done") or task.get("status", "open") != "open" or (
+                    stage == "unsubscribed" and task.get("kind") not in KEEP_IF_UNSUBSCRIBED) or (
+                    stage == "disqualified" and task.get("kind") == "call"):          # they said no after the yes
                 continue
             due = task.get("due_at")
             overdue = bool(due) and datetime.fromisoformat(due) < now
