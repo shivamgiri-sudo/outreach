@@ -15,6 +15,7 @@ from .apollo import match_person
 from .growth_core import public_base_url, webhook_secret
 from .http_util import post_json
 from .providers import check_firecrawl, check_hunter, get_json
+from .sources import registry as source_registry, runner as source_runner
 from .senders import send_test
 
 REQUIRED_FOR_LIVE_TEST = ("leads", "public_url", "sending_domain", "test_email", "bmi_limits")
@@ -38,7 +39,7 @@ def _public_url_ok(url: str) -> bool:
 
 def make_router(store, email_transport=post_json, ai_transport=post_json, apollo_transport=post_json,
                 default_base_url: str = "", default_webhook_secret: str = "", auth_required=lambda: False,
-                get_transport=get_json, firecrawl_transport=guarded_post_json) -> APIRouter:
+                get_transport=get_json, firecrawl_transport=guarded_post_json, source_transports=None) -> APIRouter:
     router = APIRouter()
 
     def saved(integration_id: str) -> dict:
@@ -88,6 +89,8 @@ def make_router(store, email_transport=post_json, ai_transport=post_json, apollo
             return check_firecrawl(saved("firecrawl"), firecrawl_transport)
         if integration_id == "google_places":
             return check_places(saved("google_places"), apollo_transport)   # the shared JSON POST transport
+        if integration_id in source_registry.BY_ID:                      # app/sources: free "Test connection" per source
+            return source_runner.test_source(store, integration_id, source_transports)
         if integration_id == "contact_scraper":
             return {"ok": True, "message": "Manual: run the scraper on your computer, then upload its JSON on the Data sources page."}
         if integration_id == "sales_navigator":

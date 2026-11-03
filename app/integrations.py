@@ -195,3 +195,12 @@ def describe(saved: dict) -> list:
 
 def known_ids() -> set:
     return {i["id"] for i in CATALOGUE}
+
+
+def _add_source_cards() -> None:
+    """Lead-discovery and enrichment sources (app/sources) get their own Lead data cards, built from the source registry."""
+    from .sources.registry import catalogue_entries
+    CATALOGUE.extend(catalogue_entries())
+
+
+_add_source_cards()
