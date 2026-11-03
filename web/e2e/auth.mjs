@@ -54,7 +54,7 @@ await step("Sign out returns to login, API calls are refused and the old token i
   if (old.status !== 401) throw new Error(`revoked token answered ${old.status}`);
 });
 await step("Wrong email or password shows an error", async () => {
-  await page.getByLabel("Email (team login, optional)").fill("caller@e2e.invalid");
+  await page.getByLabel("Work email").fill("caller@e2e.invalid");
   await page.getByLabel("Password").fill("not-the-password");
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByText("Wrong email or password").waitFor();
