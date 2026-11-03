@@ -131,7 +131,7 @@ def test_enrich_picks_early_leads_without_email_websites_first(tmp_path):
 def test_crawler_fills_only_empty_fields_with_provenance(tmp_path):
     io = FakeIO(pages={"https://gamma-works.in/contact": CONTACT_PAGE})
     c = client(tmp_path, io)
-    add_leads(c, "company,contact_name,phone,website,open_roles,company_size\nGamma Works,Ravi Kumar,9811100011,https://gamma-works.in,25,200\n")
+    add_leads(c, "company,contact_name,phone,website,open_roles,company_size,max_job_age_days,country\nGamma Works,Ravi Kumar,9811100011,https://gamma-works.in,25,200,30,IN\n")
     run = go(c, mode="enrich_existing")
     lead = by_company(c, "Gamma Works")
     assert lead["email"] == "careers@gamma-works.in" and lead["contact_name"] == "Ravi Kumar" and lead["phone"] == "+919811100011"
