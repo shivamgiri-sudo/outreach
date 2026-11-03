@@ -296,6 +296,9 @@ def delivery_events(pid: str, payload, values: dict = None) -> list:
     values = values or {}
     if pid == "resend_events" and isinstance(payload, dict) and payload.get("type") in RESEND_TYPES:
         data = payload.get("data") or {}
+        bounce = data.get("bounce") if isinstance(data.get("bounce"), dict) else {}
+        if payload["type"] == "email.bounced" and str(bounce.get("type") or "Permanent").lower() != "permanent":
+            return []                              # a temporary (soft) bounce must not suppress the address for good
         to = data.get("to") if isinstance(data.get("to"), list) else [data.get("to")]
         return [_event(RESEND_TYPES[payload["type"]], _email_address(t), data.get("email_id"), payload.get("created_at"))
                 for t in to if _email_address(t)]
