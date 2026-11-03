@@ -189,9 +189,10 @@ def lead_activity(store, lead: dict) -> list:
                       "title": meeting.get("title") or "Meeting", "body": meeting.get("join_url", ""), "status": meeting.get("status", ""),
                       "start": meeting.get("start"), "end": meeting.get("end"), "detail": meeting.get("provider", "")})
     inbox_texts = {(m.get("text") or "")[:120] for m in store.read("inbox") if m.get("lead_id") == lid}
+    logged = {(a["at"], a["type"]) for a in store.read("activities") if a.get("lead_id") == lid}
     for e in lead.get("timeline", []):
-        if e["kind"] in _DETAILED_ELSEWHERE:
-            continue
+        if e["kind"] in _DETAILED_ELSEWHERE or (e["at"], e["kind"]) in logged:
+            continue                       # logged notes / "other" activities are already listed above
         if e["kind"] == "reply" and any(t and t in e["text"] for t in inbox_texts):
             continue                       # the captured message already shows this reply in full
         items.append({"at": e["at"], "type": e["kind"], "direction": "in" if e["kind"] == "reply" else "none",
