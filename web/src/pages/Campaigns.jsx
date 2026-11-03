@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
+import { EmptyArt } from "../states.jsx";
 import { stageLabel } from "../labels.js";
 import { istLabel } from "../time.js";
 import CampaignWizard from "./CampaignWizard.jsx";
@@ -117,7 +118,7 @@ export default function Campaigns({ go }) {
       </div>
       {error && <div className="tip error" role="alert">{error}</div>}
       {!list ? <p className="empty">Loading…</p> : list.length === 0 ? (
-        <div className="card"><p className="empty">No campaigns yet. Click “New campaign” to set up your first one, for example BPOs in Pune hiring customer support staff.</p></div>
+        <div className="card"><div className="empty"><EmptyArt name="campaigns" /><p>No campaigns yet. Click “New campaign” to set up your first one, for example BPOs in Pune hiring customer support staff.</p></div></div>
       ) : (
         <div className="grid g2">
           {list.map((c) => (

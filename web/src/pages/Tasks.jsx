@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { ErrorState } from "../states.jsx";
+import { EmptyArt, ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 
@@ -83,7 +83,11 @@ export default function Tasks() {
           <option value="">Everyone</option>{(board?.team || []).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
         </select>
       </div>
-      {board && BUCKETS.map(([key, label]) => (
+      {board && BUCKETS.every(([key]) => board[key].length === 0) && (
+        <div className="card empty"><EmptyArt name="tasks" />
+          <p>{owner ? `No tasks for ${owner}.` : "No tasks yet. Add one above; when a lead says yes, a call task for the caller appears here automatically."}</p></div>
+      )}
+      {board && !BUCKETS.every(([key]) => board[key].length === 0) && BUCKETS.map(([key, label]) => (
         <div key={key} className="card" style={{ marginBottom: 12 }}>
           <div className="row" style={{ justifyContent: "space-between" }}>
             <b>{label}</b><span className={`pill ${key === "overdue" && board[key].length ? "warn" : ""}`}>{board[key].length}</span>

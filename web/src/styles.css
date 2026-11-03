@@ -308,3 +308,17 @@ details.section summary { cursor: pointer; font-weight: 700; }
 }
 .check-row { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; margin: 8px 0; }
 .check-row input { margin-top: 3px; flex: none; }
+
+/* ---------- empty-state illustrations (states.jsx EmptyArt) ---------- */
+.empty-art { display: block; margin: 0 auto 10px; }
+.empty-art * { fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.empty-art .art-card { fill: var(--panel); stroke: var(--line); }
+.empty-art .art-front { stroke: color-mix(in srgb, var(--muted) 45%, var(--line)); }
+.empty-art .art-line { stroke: var(--line); stroke-width: 4; }
+.empty-art .art-ring { stroke: color-mix(in srgb, var(--mcn-blue) 30%, transparent); stroke-width: 3; }
+.empty-art .art-blue { stroke: var(--mcn-blue); } .empty-art .art-green { stroke: #3f8f2f; }
+.empty-art .art-dot-red { fill: var(--mcn-red); stroke: none; } .empty-art .art-dot-blue { fill: var(--mcn-blue); stroke: none; }
+.empty-art .art-dot-green { fill: var(--mcn-green); stroke: none; } .empty-art .art-plus { stroke: #fff; stroke-width: 2.6; }
+.page-intro { display: flex; gap: var(--s6); align-items: center; justify-content: space-between; }
+.page-intro .empty-art { flex: none; margin: 0; }
+@media (max-width: 760px) { .page-intro .empty-art { display: none; } }
