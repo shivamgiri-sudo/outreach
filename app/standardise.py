@@ -353,7 +353,7 @@ def parse_phone(part: str) -> tuple:
         if len(national) == 10 and 6 <= sub_len <= 8 and national not in FAKE_NUMBERS:
             return ("+91" + national, "landline"), None
     if plus and not digits.startswith("91"):
-        return (("+" + digits, "intl"), None) if 8 <= len(digits) <= 15 else (None, "invalid_phone")
+        return (("+" + digits, "intl"), None) if 8 <= len(digits) <= 15 and digits[0] != "0" else (None, "invalid_phone")
     if len(digits) == 12 and digits.startswith("91"):
         national = digits[2:]
     elif len(digits) == 13 and digits.startswith("091"):

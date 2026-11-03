@@ -86,7 +86,8 @@ def clean_city(raw) -> str:
     if key in CITY_ALIASES:
         return CITY_ALIASES[key]
     trimmed = _key(_AREA_WORDS.sub("", text))
-    return CITY_ALIASES.get(trimmed) or smart_title(text)
+    head = _key(re.split(r"[(/]", text)[0])            # job boards: 'Bengaluru(Whitefield)', 'Bangalore/Bengaluru'
+    return CITY_ALIASES.get(trimmed) or CITY_ALIASES.get(head) or smart_title(text)
 
 
 def city_key(city) -> str:
@@ -119,7 +120,7 @@ def clean_country(raw) -> str:
 
 
 def is_indian_place(city: str = "", state: str = "") -> bool:
-    return clean_city(city) in CITY_STATE or clean_state(state) in STATES
+    return clean_city(city) in CITY_STATE or clean_city(city) == "Delhi NCR" or clean_state(state) in STATES
 
 
 def parse_location(raw) -> dict:
@@ -214,12 +215,16 @@ def job_age_days(raw, today: date) -> int:
         return 0
     if text == "yesterday":
         return 1
+    text = re.sub(r"^(?:posted|active|updated)\s+", "", text)
     rel = re.match(r"^(\d+)\+?\s*(day|week|month)s?\s*(?:ago)?", text)
     if rel:
         return int(rel.group(1)) * {"day": 1, "week": 7, "month": 30}[rel.group(2)]
+    if re.fullmatch(r"[2-6]\d{4}(?:\.0+)?", text):            # Excel serial date, e.g. 46316
+        return max(0, (today - date(1899, 12, 30)).days - int(float(text)))
+    day = re.split(r"[T ]\d{1,2}:\d{2}", clean_text(raw)[:30])[0].strip()
     for fmt in _DATE_FORMATS:
         try:
-            return max(0, (today - datetime.strptime(clean_text(raw)[:30].split("T")[0], fmt).date()).days)
+            return max(0, (today - datetime.strptime(day, fmt).date()).days)
         except ValueError:
             continue
     return 0
