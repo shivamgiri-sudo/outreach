@@ -126,3 +126,24 @@ def test_enroll_lead_rechecks_the_suppression_list_on_the_latest_copy(tmp_path):
     with pytest.raises(EnrollRefused, match="suppression"):
         enroll_lead(store, lead["id"])
     assert not store.read("leads")[0].get("sequence")
+
+
+@pytest.mark.parametrize("host", ["172.16.0.5", "172.20.1.1", "172.31.255.1", "crm.local", "app.internal", "box.localhost",
+                                  "10.1.2.3", "192.168.1.9", "169.254.169.254", "127.0.0.2", "intranet"])
+def test_private_addresses_are_not_a_public_web_address(tmp_path, host):
+    from app.routes_outreach import live_blockers
+    from app.routes_setup import _public_url_ok
+    _, store = app_with_leads(tmp_path)
+    store.update("settings", lambda s: {**s, "public_base_url": f"https://{host}", "sender_company": "Acme", "sender_address": "Pune"})
+    assert any("public https web address" in m for m in live_blockers(store, "https://" + host))
+    assert not _public_url_ok(f"https://{host}")
+
+
+@pytest.mark.parametrize("host", ["outreach.example.com", "172.15.0.1", "172.32.0.1", "93.184.216.34"])
+def test_public_addresses_are_still_accepted(tmp_path, host):
+    from app.routes_outreach import live_blockers
+    from app.routes_setup import _public_url_ok
+    _, store = app_with_leads(tmp_path)
+    store.update("settings", lambda s: {**s, "public_base_url": f"https://{host}"})
+    assert not any("public https web address" in m for m in live_blockers(store, "https://" + host))
+    assert _public_url_ok(f"https://{host}")

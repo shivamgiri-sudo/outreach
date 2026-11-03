@@ -14,6 +14,7 @@ from .auth import PRIVATE_SETTINGS
 from .growth_core import public_base_url
 from .inbound import _rates, apply_reply, suppress as _suppress_email
 from .scraper import extract_contacts, fetch_page
+from .channels.netguard import is_public_host
 from .privacy import is_blocked, record_consent
 from .senders import email_ready
 from .unsubscribe import legacy_allowed, log_legacy_use, parse as parse_unsub
@@ -77,7 +78,7 @@ def live_blockers(store, base_url: str) -> list:
     parsed = urlparse(url)
     host = parsed.hostname or ""
     blockers = []
-    if parsed.scheme != "https" or not host or host in NOT_PUBLIC_HOSTS or host.startswith(("10.", "192.168.", "172.16.")):
+    if parsed.scheme != "https" or not host or host in NOT_PUBLIC_HOSTS or not is_public_host(host):
         blockers.append("Set a public https web address under Setup (unsubscribe links must open for recipients).")
     if not email_ready(store):
         blockers.append("Connect the cold-email sending domain under Integrations.")

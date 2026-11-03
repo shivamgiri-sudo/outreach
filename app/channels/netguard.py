@@ -63,6 +63,18 @@ def is_public_ip(ip) -> bool:
     return ip.is_global and not ip.is_multicast
 
 
+def is_public_host(host: str) -> bool:
+    """False for localhost, *.local / *.internal / *.localhost names and any private literal IP (10.x, 172.16-31.x,
+    192.168.x, loopback, link-local ...). No DNS lookup: for judging a configured web address, not for fetching."""
+    name = (host or "").strip().strip("[]").rstrip(".").lower()
+    if not name or name in BLOCKED_HOSTS or name.endswith(BLOCKED_SUFFIXES) or "." not in name and ":" not in name:
+        return False
+    try:
+        return is_public_ip(name)
+    except ValueError:
+        return True
+
+
 def _public(ip) -> bool:                     # kept for older callers
     return is_public_ip(ip)
 

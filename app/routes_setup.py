@@ -10,7 +10,7 @@ from . import integrations
 from .ai import ANTHROPIC_URL, MODEL, _llm_config
 from .apollo import check_usage
 from .campaign_sources import check_places
-from .channels.netguard import guarded_post_json
+from .channels.netguard import guarded_post_json, is_public_host
 from .apollo import match_person
 from .growth_core import public_base_url, webhook_secret
 from .http_util import post_json
@@ -34,7 +34,7 @@ def _hub_ready(store, channel_id: str) -> bool:
 def _public_url_ok(url: str) -> bool:
     parsed = urlparse(url)
     host = parsed.hostname or ""
-    return parsed.scheme == "https" and bool(host) and host not in LOCAL_HOSTS and not host.startswith("192.168.") and not host.startswith("10.")
+    return parsed.scheme == "https" and bool(host) and host not in LOCAL_HOSTS and is_public_host(host)
 
 
 def make_router(store, email_transport=post_json, ai_transport=post_json, apollo_transport=post_json,
