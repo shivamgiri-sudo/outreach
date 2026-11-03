@@ -1,8 +1,11 @@
 """Meetings on leads: book through the calendar provider, list, cancel, and attach bookings from webhooks.
 
 lead.meetings = [{id, provider, title, start, end, join_url, status: scheduled|cancelled|done, created_at,
-                  external_id, attendee_email}]. Every change goes through store.update on the latest copy of
-the lead, so a reply saved meantime is never overwritten. Bookings never change consent.
+                  external_id, attendee_email, invite?}]. Every change goes through store.update on the latest copy
+of the lead, so a reply saved meantime is never overwritten. Bookings never change consent.
+Providers that don't email the attendee (Zoom, custom API, a booking link used with a fixed time), or any provider
+when "Send our own invite" is ticked, get an .ics invite from us (app/channels/invites.py); cancelling sends the
+matching cancellation.
 """
 import re
 import uuid
@@ -12,6 +15,7 @@ from ..hygiene import normalise_email
 from .calendar import LINK_PROVIDERS, booking_link, cancel_event, create_event
 from .config import active_provider, config_for, entry_of
 from .http import request
+from .invites import needs_our_invite, send_invite
 
 IST = timezone(timedelta(hours=5, minutes=30))
 MIN_MINUTES, MAX_MINUTES = 5, 480
@@ -69,8 +73,10 @@ def default_title(lead: dict) -> str:
     return f"BookMyInterview.ai demo — {company}" if company else "BookMyInterview.ai demo"
 
 
-def book(store, lead_id: str, body: dict, transport=request, resolver=None, now: datetime = None) -> dict:
-    """Create the meeting (event providers) or a booking link (link providers). Raises NoCalendar / ValueError."""
+def book(store, lead_id: str, body: dict, transport=request, resolver=None, now: datetime = None, sender=None) -> dict:
+    """Create the meeting (event providers) or a booking link (link providers). Raises NoCalendar / ValueError.
+
+    A plain booking link with a fixed `start` becomes a meeting whose join link is that page, with our invite."""
     now = now or now_utc()
     lead = find_lead(store, lead_id)
     if lead.get("stage") == "unsubscribed":
@@ -84,7 +90,8 @@ def book(store, lead_id: str, body: dict, transport=request, resolver=None, now:
     attendee = normalise_email(typed or lead.get("email"))
     if typed and not attendee:
         raise ValueError("The attendee email is not valid.")
-    if pid in LINK_PROVIDERS:
+    fixed_link = pid == "booking_link" and bool(body.get("start"))
+    if pid in LINK_PROVIDERS and not fixed_link:
         url = booking_link(store, pid, lead.get("contact_name", ""), attendee or "")
         _update_lead(store, lead_id, lambda l: {**l, "timeline": [*l["timeline"], _event("meeting", f"Booking link prepared: {url}")]})
         return {"kind": "link", "provider": pid, "url": url}
@@ -102,14 +109,29 @@ def book(store, lead_id: str, body: dict, transport=request, resolver=None, now:
     spec = {"start": start, "end": end, "title": title, "attendee_email": attendee or "",
             "notes": (body.get("notes") or "").strip()[:2000], "name": lead.get("contact_name", ""),
             "company": lead.get("company", "")}
-    created = create_event(store, pid, spec, transport, resolver)
+    if fixed_link:
+        created = {"join_url": booking_link(store, pid, lead.get("contact_name", ""), attendee or ""), "external_id": ""}
+    else:
+        created = create_event(store, pid, spec, transport, resolver)
     meeting = {"id": uuid.uuid4().hex[:12], "provider": pid, "title": title, "start": start.isoformat(),
                "end": end.isoformat(), "join_url": created.get("join_url", ""), "status": "scheduled",
                "created_at": now.isoformat(timespec="seconds"), "external_id": created.get("external_id", ""),
                "attendee_email": attendee or ""}
+    if spec["notes"]:
+        meeting["notes"] = spec["notes"]
     updated = _update_lead(store, lead_id, lambda l: {**l, "meetings": [*(l.get("meetings") or []), meeting],
                                                       "timeline": [*l["timeline"], _event("meeting", f"Meeting booked: {title}, {ist_label(start)}")]})
-    return {"kind": "event", "meeting": meeting, "lead": updated}
+    invite = None
+    if needs_our_invite(pid, body.get("send_invite")):
+        invite = send_invite(store, updated, meeting, sender, "REQUEST")
+        status = invite.get("status")
+        meeting = {**meeting, "invite": status}
+        updated = _update_lead(store, lead_id, lambda l: {
+            **l, "meetings": [{**m, "invite": status} if m.get("id") == meeting["id"] else m for m in l.get("meetings") or []],
+            "timeline": [*l["timeline"], _event("meeting", f"Calendar invite emailed to {invite.get('to')} ({status})"
+                                                 if status not in ("skipped",) else f"No invite sent: {invite.get('reason')}")]})
+    return {"kind": "event", "meeting": meeting, "lead": updated,
+            "invite": {k: invite.get(k) for k in ("status", "to", "reason") if invite.get(k)} if invite else None}
 
 
 def lead_meetings(store, lead_id: str) -> list:
@@ -130,8 +152,8 @@ def all_meetings(store, start: datetime = None, end: datetime = None) -> list:
     return sorted(out, key=lambda m: parse_time(m["start"]))
 
 
-def cancel(store, meeting_id: str, transport=request, resolver=None) -> dict:
-    """Cancel at the provider where possible, then mark it cancelled on the lead."""
+def cancel(store, meeting_id: str, transport=request, resolver=None, sender=None) -> dict:
+    """Cancel at the provider where possible, then mark it cancelled on the lead (and withdraw our invite)."""
     lead = next((l for l in store.read("leads") if any(m.get("id") == meeting_id for m in l.get("meetings") or [])), None)
     if lead is None:
         raise LookupError("Meeting not found")
@@ -149,7 +171,28 @@ def cancel(store, meeting_id: str, transport=request, resolver=None) -> dict:
         meetings = [{**m, "status": "cancelled"} if m["id"] == meeting_id else m for m in l.get("meetings") or []]
         return {**l, "meetings": meetings, "timeline": [*l["timeline"], _event("meeting", f"Meeting cancelled: {meeting['title']}")]}
     updated = _update_lead(store, lead["id"], mark)
+    if meeting.get("invite") in ("sent", "dry_run"):
+        withdrawn = send_invite(store, updated, meeting, sender, "CANCEL")
+        message += f" The lead was sent a cancellation ({withdrawn.get('status')})."
     return {"meeting": next(m for m in updated["meetings"] if m["id"] == meeting_id), "message": message}
+
+
+def mark_done(store, meeting_id: str) -> dict:
+    """The meeting happened: mark it done and close its no-show follow-up task, if one was created."""
+    from ..activities import complete_task
+    lead = next((l for l in store.read("leads") if any(m.get("id") == meeting_id for m in l.get("meetings") or [])), None)
+    if lead is None:
+        raise LookupError("Meeting not found")
+    meeting = next(m for m in lead["meetings"] if m["id"] == meeting_id)
+    if meeting.get("status") == "cancelled":
+        raise ValueError("This meeting was cancelled.")
+    updated = _update_lead(store, lead["id"], lambda l: {
+        **l, "meetings": [{**m, "status": "done"} if m["id"] == meeting_id else m for m in l.get("meetings") or []],
+        "timeline": [*l["timeline"], _event("meeting", f"Meeting done: {meeting.get('title', '')}")]})
+    for task in store.read("tasks"):
+        if task.get("meeting_id") == meeting_id and task.get("status", "open") == "open":
+            complete_task(store, task["id"], "Meeting marked done")
+    return next(m for m in updated["meetings"] if m["id"] == meeting_id)
 
 
 # ---------- bookings from Cal.com / Calendly webhooks ----------

@@ -46,7 +46,7 @@ class LiveBody(BaseModel):
 
 
 def make_router(store, transport=request, smtp_factory=None, imap_factory=None, resolver=None, default_base_url: str = "",
-                present=None, inbound_processor=None, delivery_processor=None) -> APIRouter:
+                present=None, inbound_processor=None, delivery_processor=None, transactional_sender=None) -> APIRouter:
     router = APIRouter()
     base = lambda: public_base_url(store, default_base_url)
 
@@ -154,5 +154,5 @@ def make_router(store, transport=request, smtp_factory=None, imap_factory=None, 
         return poll_imap(store, inbound_processor or routes_hooks.default_inbound, imap_factory)
 
     router.include_router(routes_hooks.make_router(store, transport, default_base_url, inbound_processor, delivery_processor))
-    router.include_router(routes_meetings.make_router(store, transport, resolver, present))
+    router.include_router(routes_meetings.make_router(store, transport, resolver, present, transactional_sender))
     return router

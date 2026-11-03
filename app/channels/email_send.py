@@ -2,7 +2,11 @@
 
 `send_email` only sends when the provider is complete AND settings.live_sending is on; otherwise "dry_run".
 `test_email` sends one test message regardless of the switch (like the old Setup test button).
+Attachments ({filename, content: bytes, content_type}) are supported for SMTP and the Resend / SendGrid / Postmark
+APIs; a calendar invite (text/calendar) also goes in as an alternative part over SMTP, which mail apps show as an
+invitation. The custom HTTP connector cannot carry attachments; only the text goes out.
 """
+import base64
 import smtplib
 import ssl
 from datetime import datetime, timezone
@@ -47,7 +51,7 @@ class RecipientRejected(ValueError):
     """This one address was refused; the provider itself is fine."""
 
 
-def build_message(values: dict, to: str, subject: str, text: str, headers: dict) -> EmailMessage:
+def build_message(values: dict, to: str, subject: str, text: str, headers: dict, attachments=None) -> EmailMessage:
     msg = EmailMessage()
     msg["From"] = _from(values)
     msg["To"] = to
@@ -60,6 +64,13 @@ def build_message(values: dict, to: str, subject: str, text: str, headers: dict)
         if key not in ("Message-ID", "X-Idempotency-Key"):    # the idempotency key is for HTTP APIs, not an email header
             msg[key] = value
     msg.set_content(text)
+    for item in attachments or []:
+        maintype, _, rest = item["content_type"].partition("/")
+        subtype, *raw_params = [p.strip() for p in rest.split(";")]
+        params = dict(p.split("=", 1) for p in raw_params if "=" in p and not p.lower().startswith("charset"))
+        if (maintype, subtype) == ("text", "calendar"):
+            msg.add_alternative(item["content"].decode("utf-8"), subtype="calendar", params=params)
+        msg.add_attachment(item["content"], maintype=maintype, subtype=subtype, filename=item["filename"], params=params)
     return msg
 
 
@@ -92,24 +103,38 @@ def smtp_send(pid: str, values: dict, msg: EmailMessage, smtp_factory=None) -> s
     return msg["Message-ID"]
 
 
-def http_request_for(pid: str, values: dict, to: str, subject: str, text: str, headers: dict):
+def _b64(data: bytes) -> str:
+    return base64.b64encode(data).decode("ascii")
+
+
+def http_request_for(pid: str, values: dict, to: str, subject: str, text: str, headers: dict, attachments=None):
     """(url, headers, json body) for the HTTP email providers."""
+    files = attachments or []
     if pid == "resend":
         auth = {"Authorization": f"Bearer {values['api_key']}"}
         if headers.get("X-Idempotency-Key"):
             auth["Idempotency-Key"] = headers["X-Idempotency-Key"]
-        return RESEND_URL, auth, {
-            "from": _from(values), "to": [to], "subject": subject, "text": text,
-            "headers": {k: v for k, v in headers.items() if k != "X-Idempotency-Key"}}
+        body = {"from": _from(values), "to": [to], "subject": subject, "text": text,
+                "headers": {k: v for k, v in headers.items() if k != "X-Idempotency-Key"}}
+        if files:
+            body["attachments"] = [{"filename": f["filename"], "content": _b64(f["content"]), "content_type": f["content_type"]}
+                                   for f in files]
+        return RESEND_URL, auth, body
     if pid == "sendgrid":
-        return SENDGRID_URL, {"Authorization": f"Bearer {values['api_key']}"}, {
-            "personalizations": [{"to": [{"email": to}]}], "from": {"email": values["from_email"], "name": values["from_name"]},
-            "subject": subject, "content": [{"type": "text/plain", "value": text}], **({"headers": headers} if headers else {})}
+        body = {"personalizations": [{"to": [{"email": to}]}], "from": {"email": values["from_email"], "name": values["from_name"]},
+                "subject": subject, "content": [{"type": "text/plain", "value": text}], **({"headers": headers} if headers else {})}
+        if files:
+            body["attachments"] = [{"content": _b64(f["content"]), "type": f["content_type"], "filename": f["filename"],
+                                    "disposition": "attachment"} for f in files]
+        return SENDGRID_URL, {"Authorization": f"Bearer {values['api_key']}"}, body
     if pid == "postmark":
-        return POSTMARK_URL, {"X-Postmark-Server-Token": values["server_token"], "Accept": "application/json"}, {
-            "From": _from(values), "To": to, "Subject": subject, "TextBody": text,
-            "MessageStream": values.get("message_stream") or "outbound",
-            "Headers": [{"Name": k, "Value": v} for k, v in headers.items()]}
+        body = {"From": _from(values), "To": to, "Subject": subject, "TextBody": text,
+                "MessageStream": values.get("message_stream") or "outbound",
+                "Headers": [{"Name": k, "Value": v} for k, v in headers.items()]}
+        if files:
+            body["Attachments"] = [{"Name": f["filename"], "Content": _b64(f["content"]), "ContentType": f["content_type"]}
+                                   for f in files]
+        return POSTMARK_URL, {"X-Postmark-Server-Token": values["server_token"], "Accept": "application/json"}, body
     raise ValueError(f"{pid} is not an HTTP email provider")
 
 
@@ -122,19 +147,20 @@ def _http_id(pid: str, reply: dict) -> str:
 
 
 def deliver(cfg: dict, to: str, subject: str, text: str, headers: dict, transport=request, smtp_factory=None,
-            resolver=None, extra: dict = None) -> dict:
+            resolver=None, extra: dict = None, attachments=None) -> dict:
     """Send one email with a provider config from config_for(). Returns {status: sent|failed, provider_id?, error?}."""
     pid, values = cfg["provider"], cfg["values"]
     try:
         if pid in SMTP_PROVIDERS:
-            return {"status": "sent", "provider_id": smtp_send(pid, values, build_message(values, to, subject, text, headers), smtp_factory)}
+            msg = build_message(values, to, subject, text, headers, attachments)
+            return {"status": "sent", "provider_id": smtp_send(pid, values, msg, smtp_factory)}
         if pid == "custom_http":
             result = call_custom(values, {"to": to, "email": to, "subject": subject, "text": text, **(extra or {})},
                                  transport, resolver)
             return ({"status": "sent", "provider_id": result.get("provider_id", "")} if result["ok"]
                     else {"status": "failed", "error": result.get("error", "failed")})
         headers = {k: v for k, v in headers.items() if k != "X-Idempotency-Key" or pid == "resend"}
-        url, auth, body = http_request_for(pid, values, to, subject, text, headers)
+        url, auth, body = http_request_for(pid, values, to, subject, text, headers, attachments)
         reply = transport(url, auth, body)
         if pid == "postmark" and reply.get("ErrorCode") not in (None, 0):
             return {"status": "failed", "error": f"Postmark error {reply.get('ErrorCode')}: {reply.get('Message', '')}"}
@@ -167,13 +193,23 @@ def send_email(store, message: dict, transport=request, smtp_factory=None, base_
     return deliver(cfg, message["to"], message["subject"], message["body"], headers, transport, smtp_factory, resolver)
 
 
+def invite_attachments(message: dict) -> list:
+    """The .ics calendar invite of a message ({ics, ics_method}) as an attachment, or nothing."""
+    if not message.get("ics"):
+        return []
+    method = message.get("ics_method") or "REQUEST"
+    return [{"filename": "invite.ics" if method != "CANCEL" else "cancel.ics", "content": message["ics"].encode("utf-8"),
+             "content_type": f"text/calendar; method={method}; charset=UTF-8"}]
+
+
 def send_transactional(store, message: dict, transport=request, smtp_factory=None, resolver=None) -> dict:
-    """A one-to-one email (meeting reminder, team reminder) through the active hub provider."""
+    """A one-to-one email (meeting invite or reminder, team reminder) through the active hub provider."""
     cfg = config_for(store, "email_send")
     to = normalise_email(message.get("to"))
     if not cfg or not to:
         return {"status": "dry_run"}
-    return deliver(cfg, to, message["subject"][:300], message["body"], {}, transport, smtp_factory, resolver)
+    return deliver(cfg, to, message["subject"][:300], message["body"], {}, transport, smtp_factory, resolver,
+                   attachments=invite_attachments(message))
 
 
 def test_email(store, pid: str, to: str, transport=request, smtp_factory=None, resolver=None) -> dict:

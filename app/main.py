@@ -31,7 +31,7 @@ from .http_util import post_json
 from . import routes_growth
 from .growth_core import webhook_secret
 from .routes_setup import make_router as make_setup_router
-from .senders import make_email_sender
+from .senders import make_email_sender, make_transactional_sender
 from .routes_workflows import make_router as make_workflows_router
 from .workflows import fire
 from .routes_insights import make_router as make_insights_router
@@ -179,6 +179,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_auth_router(store, password, limiter))
 
     email_sender = make_email_sender(store, email_transport, BASE_URL, channel_transport, smtp_factory)
+    transactional_sender = make_transactional_sender(store, email_transport, channel_transport, smtp_factory)
 
     def find(lead_id: str) -> tuple:
         leads = store.read("leads")
@@ -333,10 +334,10 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_insights_router(store, _present))
     app.include_router(make_today_router(store, _present))
     app.include_router(make_providers_router(store, fetcher))
-    app.include_router(make_activities_router(store))
+    app.include_router(make_activities_router(store, transactional_sender))
     app.include_router(make_compliance_router(store))
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,
-                                            BASE_URL, _present, inbound_processor, delivery_processor))
+                                            BASE_URL, _present, inbound_processor, delivery_processor, transactional_sender))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender)
         start_imap_poller(store, imap_factory)
