@@ -170,3 +170,28 @@ def test_other_contact_is_matched_by_linkedin_too():
                               "http://linkedin.com/in/simran-kaur-qa014\n", leads)
     assert result["merges"][0]["matched_by"] == "same LinkedIn profile"
     assert leads[0]["other_contacts"][0]["email"] == "simran.kaur@tharsolar.example"
+
+
+@pytest.mark.parametrize("raw, title", [
+    ("Head HR at Punjab Agro Pvt Ltd | Ex-TCS | Hiring 100+", "HR Head"),
+    ("Talent Acquisition @ Zenith Infotech", "Talent Acquisition"),
+    ("TALENT ACQUISITION LEAD AT KOSI EDTECH", "TA Lead"),
+    ("CHRO | People leader | Speaker", "CHRO"),
+    ("Founder & CEO • Verma Foods", "Founder & CEO"),
+    ("HR Manager", "HR Manager"), ("R&D Head", "R&D Head"), ("FOUNDER/CEO", "Founder & CEO"),
+])
+def test_linkedin_headline_keeps_only_the_job_title(raw, title):
+    from app.standardise import clean_title
+    assert clean_title(raw) == title
+
+
+def test_headline_is_a_fallback_title_never_over_the_real_one():
+    csv = ("linkedinProfileUrl,fullName,headline,company,jobTitle\n"
+           "https://www.linkedin.com/in/anjali-iyer-qa015,Anjali Iyer,VP - Human Resources @ Kosi Edtech | Mentor,"
+           "Kosi Edtech,\n"
+           "https://www.linkedin.com/in/rohit-das-qa016,Rohit Das,Building teams | Speaker,Pench Hotels,HR Generalist\n")
+    leads, _, mapping, _ = run(csv)
+    assert mapping["headline"] == "title"
+    by_name = {l["contact_name"]: l for l in leads}
+    assert by_name["Anjali Iyer"]["title"] == "VP HR" and by_name["Anjali Iyer"]["seniority"] == "vp"
+    assert by_name["Rohit Das"]["title"] == "HR Generalist"

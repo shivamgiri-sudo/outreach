@@ -210,7 +210,8 @@ def _title_tokens(text: str) -> list:
 def clean_title(raw) -> str:
     """'head - human resources' -> 'HR Head', 'FOUNDER/CEO' -> 'Founder & CEO', 'Sr. HR Exec' -> 'Senior HR Executive'."""
     text = clean_text(raw)
-    if not text:
+    text = re.split(r"\s+(?:at|@)\s+|\s*@\s*(?=[A-Z])|\s+[|•]\s+", text, maxsplit=1, flags=re.IGNORECASE)[0].strip(" |•-")
+    if not text:  # a LinkedIn headline 'HR Head at Acme | Hiring' keeps only the job title
         return ""
     canon = TITLE_CANON.get(frozenset(_title_tokens(text)))
     if canon:

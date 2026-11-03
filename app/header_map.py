@@ -90,6 +90,7 @@ _SECONDARY = {
     "secondary email": ("email", 0.9), "other email": ("email", 0.85), "personal email": ("email", 0.85),
     "alternate email": ("email", 0.85), "alt email": ("email", 0.85), "additional email": ("email", 0.85),
     "company address": ("address", 0.9), "hr contact": ("contact_name", 0.9),
+    "headline": ("title", 0.7),
 }
 _FILLERS = frozenset({"no", "of", "number", "num", "nos", "the", "a", "s"})
 # Columns every export carries that are not lead data; named here so fuzzy matching never grabs them.
