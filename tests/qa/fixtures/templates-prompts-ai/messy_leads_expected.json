@@ -1,0 +1,33 @@
+{
+  "_about": "Expected Email 1 values for the hand-picked rows of messy_leads.csv (fictional data). greeting = first line, company = what 'Saw that <company> is hiring' shows, role = cleaned role or null for the no-role variant, blocked = the email must not go out (unfilled placeholder).",
+  "rows": {
+    "ravi.kumar@acmetech.example": {"greeting": "Hi Ravi,", "company": "Acme Technologies", "role": "telecaller"},
+    "ramesh@sharmatraders.example": {"greeting": "Hi Ramesh,", "company": "Sharma Traders", "role": "senior exec - BPO"},
+    "kavita@xyzservices.example": {"greeting": "Hi Kavita,", "company": "XYZ Services", "role": null},
+    "meena@gammait.example": {"greeting": "Hi Meena,", "company": "Gamma IT Solutions", "role": "python developer"},
+    "ak.sharma@deltalogistics.example": {"greeting": "Hello,", "company": "Delta Logistics", "role": "warehouse associate and delivery"},
+    "rakesh@epsilonretail.example": {"greeting": "Hi Rakesh,", "company": "Epsilon Retail", "role": "store cashier"},
+    "priya@zetabpo.example": {"greeting": "Hi Priya,", "company": "Zeta BPO Services", "role": "customer care executive"},
+    "hr@thetaent.example": {"greeting": "Hello,", "company": "M/s. Theta Enterprises", "role": null,
+                            "_note": "M/s prefix kept: product limitation, see report"},
+    "suresh@iotafoods.example": {"greeting": "Hi Suresh,", "company": "iota foods", "role": "machine operator",
+                                 "_note": "all-lowercase company kept as typed: product limitation, see report"},
+    "anil@kappahealth.example": {"greeting": "Hi Anil,", "company": "Kappa Healthcare", "role": "staff nurse"},
+    "pooja@lambdafin.example": {"greeting": "Hi Pooja,", "company": "Lambda Fintech", "role": "telecaller"},
+    "founder@muedtech.example": {"greeting": "Hello,", "company": "MU Edtech", "role": null},
+    "nikhil@mailmerge-leftover.example": {"blocked": true},
+    "mahesh@numart.example": {"greeting": "Hi Mahesh,", "company": "Nu Mart", "role": "telecaller"},
+    "arif@omicronpharma.example": {"greeting": "Hi Mohd,", "company": "Omicron Pharma", "role": "medical representative"},
+    "vikram@piinfra.example": {"greeting": "Hi Vikram,", "company": "Pi Infra", "role": "site engineer"},
+    "nisha@rhoconsult.example": {"greeting": "Hi Nisha,", "company": "RHO Consultants", "role": "legal associate"},
+    "arjun@sigmamotors.example": {"greeting": "Hi Arjun,", "company": "Sigma Motors", "role": "service advisor"},
+    "rk@tautextiles.example": {"greeting": "Hi Kumar,", "company": "Tau Textiles", "role": "tailor and helper",
+                               "_note": "'Last, First' order is not detected: product limitation, see report"},
+    "owner@upsilonhotels.example": {"greeting": "Hi Ravi,", "company": "Upsilon Hotels", "role": "front office executive"},
+    "ops@phisecurity.example": {"greeting": "Hello,", "company": "PHI Security Services", "role": "security guard"},
+    "rk.singh@chisolar.example": {"greeting": "Hello,", "company": "Chi Solar", "role": "solar technician"},
+    "ravi@psigarments.example": {"greeting": "Hi रवि,", "company": "Psi Garments", "role": "sewing machine operator"},
+    "anita@omegasteel.example": {"greeting": "Hi Anita,", "company": "Omega Steel", "role": "crane operator"},
+    "neha@alphaone.example": {"greeting": "Hi Neha,", "company": "Alpha One", "role": "sales executive and telecaller"}
+  }
+}
