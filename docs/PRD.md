@@ -64,13 +64,45 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
 ## 5. Scope — features and requirements
 
 ### 5.1 Leads and list building
-- **Import:**
-  - CSV paste or upload (Apollo, Sales Navigator exports, any CSV).
-  - Team Google Sheet tabs exported as CSV: **Leads**, **Demo Shared**, **Decision Makers**.
-- **Hygiene:**
-  - Normalise email and phone (+91), detect role addresses (info@, hr@).
-  - Business domain, excluding free-mail domains.
-  - Remove duplicates by email, phone or domain. Merge company-only rows (from job pages) with contact rows.
+- **Import wizard** (Leads → Import leads): upload or paste any CSV, check the columns, see a dry run, then import with undo.
+  - **Any column names.** Columns are matched to our fields by a large list of known names (case, spaces and punctuation don't
+    matter), then keywords, then a fuzzy match, then by looking at the values (a column full of emails is an email column).
+    Each column shows how sure the match is and can be changed by hand or set to "Don't import".
+  - **Known layouts are recognised:** Apollo, LinkedIn Sales Navigator (Evaboot / Phantombuster style), Lusha, ZoomInfo, Hunter,
+    Snov.io, job boards (Naukri, Indeed, Shine, Apna), IndiaMART / JustDial-style lists, Google Maps exports and the team sheet tabs.
+    The column choices are remembered per layout (`settings.import_mappings`), so the next file of the same shape maps itself.
+  - **Dry run first:** how many leads would be created, which existing leads get new details (and why they matched), duplicates
+    inside the file, and rows left out with the reason (downloadable as a formula-safe CSV). Warnings cover shared inboxes
+    (info@, hr@), personal addresses (Gmail, Yahoo), numbers outside India and addresses on the do-not-contact list.
+    Options leave out shared inboxes or personal addresses.
+  - **Commit is one atomic change**; **undo** removes the leads that import created if nobody has touched or contacted them since.
+    Details it added to leads you already had stay.
+  - **Quick paste** (the old simple form) is still there and now also understands Apollo-style column names.
+  - Team Google Sheet tabs can still be imported on their own: **Leads**, **Demo Shared**, **Decision Makers**.
+- **Standardisation** (applied to every imported row):
+  - Names lose honorifics (Mr, Ms, Dr, Shri, Smt, CA) and ALL CAPS; first and last name columns are joined.
+  - Company names lose legal suffixes for display (Pvt Ltd, Private Limited, LLP, Ltd, Inc, OPC); the original is kept in `company_legal`.
+  - Common Indian HR titles are tidied (HR Head, TA Lead, HRBP, Founder & CEO), with a seniority (owner, c-level, vp, head,
+    manager, executive) and a department (Founder, HR, TA, Ops, Other).
+  - Emails are lower-cased and checked; phones become +91 numbers (mobiles and landlines with STD code) or international numbers;
+    several numbers in one cell are split.
+  - Websites become the company domain (eTLD+1, so `careers.acme.co.in` is `acme.co.in`); free-mail and social sites are not company sites.
+  - City aliases (Bangalore/Bengaluru, Gurgaon/Gurugram, Bombay/Mumbai, NCR), state from city, country codes (India → IN),
+    and company size buckets (1-10 … 1000+) with a number estimate.
+- **Duplicates and merging** (within the file and against saved leads), strongest match first: same email; same Gmail inbox
+  (dots and +tags ignored, for matching only); same phone; same company domain and person; same company domain; similar
+  company name (token similarity ≥ 0.92) in the same city.
+  - A lead is a company: another person at the same company is kept in `other_contacts`.
+  - Merging only fills empty fields. A different value for a filled field is kept for review in `merge_conflicts`;
+    `field_sources` records where each field came from, and the timeline says what was merged.
+  - Rows whose email is on the do-not-contact list are skipped. An import never changes a lead's stage, so unsubscribed and
+    disqualified leads stay that way.
+- **Data hygiene page:** gaps (no email, phone, decision maker, website), invalid / shared / personal emails, numbers outside India,
+  stale leads, differing values to keep or replace, and duplicate groups shown side by side with the reason they match.
+  - "Keep this one, merge the others in" keeps every person, phone and timeline event, keeps the strictest status (unsubscribed,
+    disqualified, consent withdrawn) or else the most advanced stage, records `merged_ids`, and moves outbox, inbox, task and
+    WhatsApp rows to the kept lead.
+  - "Standardise existing leads" applies the same clean-up to older leads after a preview. Emails, stages and consent are not changed.
 - **Hiring signals from job pages:**
   - Read a careers page URL, pasted HTML (JSON-LD JobPosting) or a CSV.
   - Open roles, job age and reposts raise the score.
@@ -204,7 +236,8 @@ app/  FastAPI
   replies.py ai.py        rule classifier, AI drafting/reading with untrusted-data guards
   whatsapp.py workflows.py activation.py capacity.py demo.py growth_core.py
   jobs.py scraper.py enrich.py providers.py sheet_import.py apollo.py
-  routes_*.py             outreach, growth, jobs, enrich, providers, whatsapp, workflows, insights, setup, today
+  header_map.py standardise.py places.py lead_import.py lead_merge.py hygiene_report.py   smart import, merging, hygiene (5.1)
+  routes_*.py             outreach, growth, jobs, enrich, providers, whatsapp, workflows, insights, setup, today, import
 tests/                    pytest (fake transports for every external API)
 docs/PRD.md               this document
 ```
@@ -232,7 +265,8 @@ docs/PRD.md               this document
    - SSRF hardening on redirects in the scraper.
 5. **DPDP:** a consent ledger (channel, purpose, notice version, withdrawal), data export and deletion endpoints, and phone suppression.
 6. **Scoring v2:** separate fit and intent, time decay, negative signals, and weights editable in settings.
-7. **Duplicates:** fuzzy company matching, eTLD+1 domains, Gmail alias normalisation, and conflict logs.
+7. **Duplicates:** done for imports and the hygiene page (5.1). Still open: a full public-suffix list (only a short list of
+   two-part suffixes such as co.in is built in) and nickname matching beyond initials.
 8. **Live verification:** one live test each for Resend, Anthropic, Apollo, Hunter and Firecrawl. Their request and response formats are coded from documentation and tested with fakes only.
 9. **More data providers** for India (for example Snov.io, Lusha, Prospeo, RocketReach), compared through the Data sources page.
 10. **International rollout:** time zones per lead, local holidays, and GDPR and CAN-SPAM notices.
@@ -246,7 +280,7 @@ cd web && npm install && npm run dev        # http://localhost:5173
 ```
 
 Tests:
-- `pytest -q`: 276 backend tests.
+- `pytest -q`: 436 backend tests.
 - `npm run e2e`: 71 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
 - `node e2e/tour.mjs`: every page at three screen sizes.
 - `node e2e/auth.mjs`: login checks.
