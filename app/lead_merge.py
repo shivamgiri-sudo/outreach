@@ -21,6 +21,7 @@ COMPANY_FIELDS = ("company", "company_legal", "website", "domain", "company_link
 PERSON_FIELDS = ("contact_name", "title", "seniority", "department", "email", "linkedin_url")
 CONTACT_FIELDS = ("contact_name", "title", "seniority", "department", "email", "phone", "linkedin_url")
 CLOSED_STAGES = ("unsubscribed", "disqualified")
+NCR_CITIES = frozenset({"delhi", "gurugram", "noida", "greater noida", "ghaziabad", "faridabad"})
 
 
 def _empty(value) -> bool:
@@ -153,7 +154,8 @@ class LeadIndex:
         clash = lambda i: domain and self.ldomain[i] and self.ldomain[i] != domain
         for i in self.company.get(key, []):
             other_city = city_key(self.leads[i].get("city"))
-            if clash(i) or (city and other_city and city != other_city):
+            ncr = "delhi ncr" in (city, other_city) and {city, other_city} <= NCR_CITIES | {"delhi ncr"}
+            if clash(i) or (city and other_city and city != other_city and not ncr):
                 continue
             return i, "company", "same company name and city" if city and other_city else "same company name"
         if city:

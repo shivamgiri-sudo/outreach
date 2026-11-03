@@ -98,3 +98,16 @@ def test_hiring_signals_keep_the_oldest_posting_and_most_openings():
     assert leads[0]["max_job_age_days"] == 37 and again["summary"]["merge"] == 1
     _, same, _ = _import(later, leads, today=date(2026, 11, 10))
     assert same["summary"]["unchanged"] == 3                     # idempotent: the same file again changes nothing
+
+
+def test_delhi_ncr_listing_matches_the_same_company_in_gurugram_or_noida():
+    """Job boards often say 'Delhi NCR' where a directory says 'Gurgaon'; the same company became two leads."""
+    leads, _, _ = _import("Company Name,Job Title,Location,Posted On,Job Link\n"
+                          "Kesari Staffing Pvt Ltd,Telecaller,Delhi NCR,2 days ago,https://www.naukri.com/j-9\n")
+    _, result, _ = _import("Company Name,Contact Person,Designation,Email ID,City\n"
+                           "KESARI STAFFING PVT. LTD.,Rinku Testwala,HR Manager,rinku@kesari.example,Gurgaon\n", leads)
+    assert len(leads) == 1 and result["summary"]["merge"] == 1
+    assert leads[0]["contact_name"] == "Rinku Testwala" and leads[0]["role"] == "Telecaller"
+    _, other, _ = _import("Company Name,Contact Person,Email ID,City\n"
+                          "Kesari Staffing,Dolly Exampur,dolly@kesari-blr.example,Bangalore\n", leads)
+    assert other["summary"]["create"] == 1 and len(leads) == 2   # outside NCR is still a different branch
