@@ -53,6 +53,8 @@ def needed_role(method: str, path: str) -> str:
         return "viewer"
     if (method, path) in OWNER_ROUTES or path.startswith(OWNER_PREFIXES):
         return "owner"
+    if path in ("/api/extension/pair", "/api/extension/tokens") or path.startswith("/api/extension/tokens/"):
+        return "caller"                       # viewers cannot create, list or revoke pairing tokens
     if method in READ_METHODS:
         return "viewer"
     return "owner" if path.startswith(OWNER_WRITE_PREFIXES) else "caller"

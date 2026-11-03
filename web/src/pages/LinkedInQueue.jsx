@@ -52,6 +52,46 @@ function BranchHelper({ leadId, onMessage }) {
   );
 }
 
+function ChromeAssistant({ onMessage }) {
+  const [tokens, setTokens] = useState([]);
+  const [label, setLabel] = useState("");
+  const [fresh, setFresh] = useState(null);       // the raw token, shown once
+  const load = () => api.extensionTokens().then(setTokens).catch(() => {});
+  useEffect(() => { load(); }, []);
+  const create = async () => {
+    try { setFresh(await api.extensionPair(label.trim())); setLabel(""); load(); } catch (e) { onMessage(e.message); }
+  };
+  const revoke = async (id) => {
+    try { await api.extensionRevoke(id); if (fresh && fresh.id === id) setFresh(null); onMessage("Pairing token revoked."); load(); } catch (e) { onMessage(e.message); }
+  };
+  return (
+    <details className="card" style={{ marginBottom: 14 }} data-testid="chrome-assistant">
+      <summary><b>Chrome assistant</b> <span className="sub">— shows these messages next to the LinkedIn profile you have open</span></summary>
+      <p className="sub">A Chrome extension reads the one profile you open, shows the ready message and lets you insert it. You press LinkedIn's Send
+        yourself and confirm in the panel. It never clicks, scrolls or sends for you. Install steps: <code>extensions/linkedin-assistant/README.md</code> in the project.</p>
+      <div className="row">
+        <input aria-label="Name for this computer" placeholder="Name for this computer (optional)" value={label} maxLength={60} onChange={(e) => setLabel(e.target.value)} />
+        <button className="btn" onClick={create}>Create pairing token</button>
+      </div>
+      {fresh && (
+        <div className="tip" role="status" data-testid="pair-token-box" style={{ marginTop: 8 }}>
+          <b>Copy this token now. It is shown only once.</b>
+          <p className="trail-text" data-testid="pair-token" style={{ wordBreak: "break-all" }}>{fresh.token}</p>
+          <button className="btn ghost" onClick={() => copyText(fresh.token).then(() => onMessage("Token copied. Paste it into the extension's settings."))}>Copy token</button>
+          <button className="btn ghost" onClick={() => setFresh(null)}>I have copied it</button>
+        </div>
+      )}
+      {tokens.length === 0 ? <p className="sub">No computers paired yet.</p> : (
+        <ul className="task-list">{tokens.map((t) => (
+          <li key={t.id} data-testid="pair-row"><div><b>{t.label}</b> · …{t.hint} <span className="sub">({t.owner})</span></div>
+            <div className="sub">Made {istLabel(t.created_at)} · {t.last_used_at ? `last used ${istLabel(t.last_used_at)}` : "never used"} · expires {istLabel(t.expires_at)}</div>
+            <div className="row"><button className="btn ghost" onClick={() => revoke(t.id)}>Revoke</button></div></li>))}
+        </ul>
+      )}
+    </details>
+  );
+}
+
 export default function LinkedInQueue() {
   const [q, setQ] = useState(null);
   const [cfg, setCfg] = useState({ linkedin_daily_connections: 12, linkedin_owner: "", case_study_url: "" });
@@ -71,6 +111,7 @@ export default function LinkedInQueue() {
       {error && <ErrorState message="The LinkedIn queue could not load." detail={error} onRetry={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
       <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />
+      <ChromeAssistant onMessage={setMessage} />
       {q && !q.case_study_set && <p className="sub">Step 4 (case study) is skipped until you add a real case-study link in the settings above.</p>}
 
       <div className="row dl-head">

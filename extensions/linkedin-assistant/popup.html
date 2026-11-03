@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MCN LinkedIn Assistant</title>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body class="popup">
+  <h1>MCN LinkedIn Assistant</h1>
+  <p class="status" id="status" role="status">Checking…</p>
+  <button id="open-panel" class="primary" hidden>Open assistant panel</button>
+
+  <h2>Today</h2>
+  <p class="hint" id="queue-hint"></p>
+  <ul id="queue" class="list"></ul>
+
+  <details id="settings">
+    <summary>Settings and pairing</summary>
+    <label>Server address
+      <input id="server" type="url" placeholder="https://outreach.example.com" autocomplete="off"></label>
+    <label>Pairing token (made in the app under LinkedIn outreach)
+      <input id="token" type="password" placeholder="mcnx_…" autocomplete="off"></label>
+    <div class="row">
+      <button id="save" class="primary">Save and connect</button>
+      <button id="forget" class="ghost">Disconnect</button>
+    </div>
+    <p class="hint">Only your own server is contacted. The token stays in this browser (chrome.storage.local).</p>
+  </details>
+  <script src="popup.js"></script>
+</body>
+</html>

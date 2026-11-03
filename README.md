@@ -106,6 +106,13 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
   - Consent is recorded before WhatsApp. Every message has an unsubscribe.
   - Opening the unsubscribe link asks for a click, so email link-scanners can't unsubscribe people.
   - There is a suppression list, robots.txt is respected, and no LinkedIn scraping or automation.
+- **Chrome assistant (assisted, not automated):** `extensions/linkedin-assistant/` is a Manifest V3 Chrome extension
+  (plain JS, no build step). On a LinkedIn profile you have open it finds the matching lead, shows the ready-made
+  message, and can copy it or insert it once into the open note / message box when you press its button. **You press
+  LinkedIn's Send yourself**, then confirm "I sent it / They accepted / They replied" in the panel. It never clicks,
+  scrolls, scrapes, crawls or sends for you (LinkedIn forbids automation); `tests/test_extension_rules.py` fails if such a
+  call ever appears in its source. Pair it with a token made on the LinkedIn outreach page (shown once, stored hashed,
+  revocable, valid only for `/api/extension/*`). Install steps: [extensions/linkedin-assistant/README.md](extensions/linkedin-assistant/README.md).
 
 ## Run
     .venv\Scripts\python -m uvicorn app.main:app --port 8000
@@ -153,6 +160,9 @@ Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a thro
     node e2e/auth.mjs                          # 9 login steps
 
 ## Not verified against live services
+The Chrome assistant has not been run inside a real Chrome against the real linkedin.com. Its LinkedIn page selectors
+(name, company, note box, message box) will need maintenance when LinkedIn changes its pages; see its README.
+
 Resend (email), Anthropic (reply drafts and reading), Apollo (match, People API Search, Organization Search, job
 postings, usage stats), Hunter, Firecrawl, Google Places, ZeroBounce, NeverBounce and every Integrations hub provider
 (email, inbound, WhatsApp, SMS, calling, calendars) are coded from public documentation and tested with fake transports

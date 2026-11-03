@@ -38,6 +38,8 @@ from .routes_today import make_router as make_today_router
 from .routes_providers import make_router as make_providers_router
 from .routes_activities import make_router as make_activities_router
 from .routes_linkedin import make_router as make_linkedin_router
+from . import extension_api
+from .routes_extension import make_router as make_extension_router
 from .routes_compliance import make_router as make_compliance_router
 from .privacy import lead_hashes, record_consent as ledger_consent
 from .activities import close_call_tasks, on_became_interested
@@ -163,13 +165,24 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                      or (path.startswith(("/api/webhooks/", "/api/oauth/")) and await gate_allows(store, request)))
         if open_path:
             return await call_next(request)
+        token = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
+        if token.startswith(extension_api.TOKEN_PREFIX):
+            # Chrome-assistant pairing token: only the few /api/extension/ routes, never anything else.
+            agent = extension_api.authenticate(store, password, token)
+            if agent is None:
+                return JSONResponse({"detail": "Login required"}, status_code=401)
+            if not extension_api.path_allowed(request.method, path):
+                return JSONResponse({"detail": "A pairing token can only be used by the Chrome assistant."}, status_code=403)
+            if agent["sub"] == "local" and not _is_local(request):
+                return JSONResponse({"detail": "This app has no password yet, so it only answers on this computer."}, status_code=403)
+            request.state.user = agent
+            return await call_next(request)
         if not auth.auth_on(store, password):
             if not _is_local(request):
                 return JSONResponse({"detail": "This app has no password yet, so it only answers on this computer. "
                                                "Set OUTREACH_ADMIN_PASSWORD before opening it to anyone else."}, status_code=403)
             request.state.user = LOCAL_OWNER
             return await call_next(request)
-        token = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
         user = auth.authenticate(store, password, token)
         if user is None:
             return JSONResponse({"detail": "Login required"}, status_code=401)
@@ -352,6 +365,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_providers_router(store, fetcher))
     app.include_router(make_activities_router(store, transactional_sender))
     app.include_router(make_linkedin_router(store))
+    app.include_router(make_extension_router(store))
     app.include_router(make_compliance_router(store))
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,
                                             BASE_URL, _present, inbound_processor, delivery_processor, transactional_sender))
