@@ -25,7 +25,8 @@ _A = {
     "company": ["company", "company name", "organisation", "organization", "organization name", "organisation name",
                 "account name", "account", "employer", "employer name", "firm", "firm name", "business name", "business",
                 "brand", "company legal name", "current company", "hiring company", "client name", "name of company",
-                "name of the company", "establishment name", "shop name", "store name", "company / organisation"],
+                "name of the company", "establishment name", "shop name", "store name", "company / organisation",
+                "sender company"],
     "contact_name": ["full name", "name", "contact name", "contact person", "person name", "lead name", "prospect name",
                      "decision maker", "hr name", "hr contact", "contact person name", "spoc", "spoc name", "poc",
                      "poc name", "owner name", "proprietor name", "concerned person", "key person", "representative"],
@@ -60,7 +61,7 @@ _A = {
                 "registered address", "postal address", "street", "address line 1", "complete address", "address 1"],
     "sector": ["industry", "industries", "sector", "company sector", "vertical", "business category", "category",
                "main category", "categories", "company industry", "primary industry", "industry type", "nature of business",
-               "segment"],
+               "segment", "category name"],
     "company_size": ["company size", "size", "employees", "number of employees", "employee count", "no of employees",
                      "# employees", "headcount", "staff size", "employee range", "company employees",
                      "company size employees", "team size", "employee strength", "company headcount", "employees range",
@@ -68,12 +69,12 @@ _A = {
     "open_roles": ["open roles", "openings", "no of openings", "number of openings", "vacancies", "vacancy",
                    "no of positions", "job openings count", "hiring count", "total openings", "openings count"],
     "role": ["open position", "open positions", "job opening", "hiring for", "vacancy title", "position open", "opening",
-             "job position", "job role", "role hiring for", "requirement", "job profile"],
+             "job position", "job role", "role hiring for", "requirement", "job profile", "position name"],
     "job_age_days": ["days live", "days open", "job age", "age days", "days since posted", "days active", "max job age days"],
     "posted_on": ["posted on", "date posted", "posted date", "posting date", "post date", "job posted on", "published on",
-                  "published date"],
+                  "published date", "posted at"],
     "job_link": ["job link", "job url", "job posting link", "job posting url", "apply link", "job page", "job listing url",
-                 "posting link", "job post link"],
+                 "posting link", "job post link", "jd url", "external apply link"],
     "lead_status": ["lead status"],
     "source_detail": ["source", "lead source", "job portal source", "where i found it", "found at", "data source",
                       "list source", "portal", "job portal", "job source", "platform", "list name"],
@@ -103,6 +104,7 @@ KNOWN_EXTRA = (
     "management level", "keywords", "technologies", "annual revenue", "total funding", "latest funding",
     "position level", "next follow up date", "demo date and time", "contact confidence", "sales navigator url",
     "sales navigator profile url", "job title hierarchy level", "job function", "fits 50 400", "opening hours",
+    "receiver mobile", "receiver name", "receiver email", "query product name", "query mcat name", "location link",
 )
 
 
@@ -143,7 +145,8 @@ KEYWORD_RULES = (
     ({"state"}, set(), "state"), ({"country"}, {"code"}, "country"), ({"industry"}, set(), "sector"),
     ({"sector"}, set(), "sector"), ({"openings"}, set(), "open_roles"), ({"vacancies"}, set(), "open_roles"),
     ({"address"}, {"email", "ip"}, "address"), ({"remarks"}, set(), "notes"), ({"notes"}, set(), "notes"),
-    ({"name"}, {"file", "list", "campaign", "user", "caller", "owner", "sheet"}, "contact_name"),
+    ({"name"}, {"file", "list", "campaign", "user", "caller", "owner", "sheet", "product", "category", "position", "job"},
+     "contact_name"),
 )
 
 
@@ -196,7 +199,8 @@ FORMATS = (
          ["Posted On", "Date Posted", "Openings", "Job Link", "Job URL", "Experience", "Salary", "Skills", "Key Skills",
           "Job ID", "Vacancies", "Job Description", "Apply Link"],
          ["Company Name", "Job Title", "Location", "Company", "Title"],
-         {"Job Title": "role", "Title": "role", "Position": "role", "Designation": "role", "Role": "role"}),
+         {"Job Title": "role", "Title": "role", "Position": "role", "Designation": "role", "Role": "role",
+          "URL": "job_link"}),
     _fmt("directory", "Business directory (IndiaMART / JustDial style)", "directory",
          ["Firm Name", "Mobile No.", "GST", "GSTIN", "GST No", "Pincode", "Pin Code", "Business Category",
           "Nature of Business", "Year of Establishment", "Deals In", "Landline"],
