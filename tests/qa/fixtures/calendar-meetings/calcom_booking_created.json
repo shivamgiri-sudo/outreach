@@ -1,0 +1,49 @@
+{
+  "triggerEvent": "BOOKING_CREATED",
+  "createdAt": "2026-11-04T06:12:44.120Z",
+  "payload": {
+    "type": "bmi-demo-60",
+    "title": "BookMyInterview.ai demo between Priya and Pooja Rao",
+    "description": "",
+    "additionalNotes": "Hum 40 log hire kar rahe hain, Pune warehouse",
+    "customInputs": {},
+    "startTime": "2026-11-12T04:30:00Z",
+    "endTime": "2026-11-12T05:30:00Z",
+    "organizer": {
+      "id": 7,
+      "name": "Priya (BMI)",
+      "email": "priya@outreach-mail.example",
+      "username": "priya-bmi",
+      "timeZone": "Asia/Kolkata",
+      "language": {"locale": "en"},
+      "timeFormat": "h:mma"
+    },
+    "responses": {
+      "name": {"label": "your_name", "value": "Pooja Rao", "isHidden": false},
+      "email": {"label": "email_address", "value": "POOJA.RAO@SAGAR-FINTECH-01.EXAMPLE", "isHidden": false},
+      "location": {"label": "location", "value": {"optionValue": "", "value": "integrations:daily"}, "isHidden": false}
+    },
+    "userFieldsResponses": {},
+    "attendees": [
+      {"email": "POOJA.RAO@SAGAR-FINTECH-01.EXAMPLE", "name": "Pooja Rao", "timeZone": "Asia/Kolkata", "language": {"locale": "en"}},
+      {"email": "guest.colleague@personal-mail.example", "name": "Colleague", "timeZone": "Asia/Kolkata", "language": {"locale": "en"}}
+    ],
+    "location": "integrations:daily",
+    "destinationCalendar": null,
+    "hideCalendarNotes": false,
+    "requiresConfirmation": null,
+    "eventTypeId": 4211,
+    "seatsShowAttendees": true,
+    "seatsPerTimeSlot": null,
+    "uid": "bk-7Hq2Ld9xZ0",
+    "appsStatus": [],
+    "eventTitle": "BookMyInterview.ai demo",
+    "eventDescription": "",
+    "price": 0,
+    "currency": "inr",
+    "length": 60,
+    "bookingId": 91001,
+    "metadata": {"videoCallUrl": "https://app.cal.com/video/bk-7Hq2Ld9xZ0"},
+    "status": "ACCEPTED"
+  }
+}

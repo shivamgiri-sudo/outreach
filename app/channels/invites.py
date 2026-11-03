@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, timezone
 from ..privacy import is_blocked
 from ..reminders import _log_transactional, ist_text
 from ..sequences import identity_footer
+from ..unsubscribe import unsub_url
 
 OWN_INVITE = ("zoom", "custom_http", "booking_link")          # these never email the attendee themselves
 PRODID = "-//BookMyInterview.ai//Outreach OS//EN"
@@ -114,7 +115,7 @@ def _body(store, lead: dict, meeting: dict, cancel: bool, organizer_name: str) -
         lines += ["", "The calendar invite is attached. If the time doesn't work, just reply and we'll find another slot."]
     lines += ["", f"— {organizer_name}"]
     footer = identity_footer(store.read("settings"))
-    return "\n".join(lines + ([footer] if footer else []))
+    return "\n".join(lines + ([footer] if footer else []) + [f"Unsubscribe: {unsub_url(store, '', lead['id'])}"])
 
 
 def send_invite(store, lead: dict, meeting: dict, sender=None, method: str = "REQUEST") -> dict:

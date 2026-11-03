@@ -1,0 +1,153 @@
+{
+  "_sources": {
+    "google_token": "https://developers.google.com/identity/protocols/oauth2/web-server#exchange-authorization-code",
+    "google_event": "https://developers.google.com/workspace/calendar/api/v3/reference/events (conferenceData, hangoutLink)",
+    "google_freebusy": "https://developers.google.com/workspace/calendar/api/v3/reference/freebusy/query",
+    "ms_token": "https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow",
+    "graph_event": "https://learn.microsoft.com/en-us/graph/api/user-post-events",
+    "zoom_token": "https://developers.zoom.us/docs/internal-apps/s2s-oauth/",
+    "zoom_meeting": "https://developers.zoom.us/docs/api/meetings/#tag/meetings/POST/users/{userId}/meetings",
+    "calendly_users_me": "https://developer.calendly.com/api-docs/calendly-api/users/get-current-user"
+  },
+  "google_token": {
+    "access_token": "ya29.a0FAKE-access-token-for-tests",
+    "expires_in": 3599,
+    "refresh_token": "1//0gFAKE-refresh-token-for-tests",
+    "scope": "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.freebusy",
+    "token_type": "Bearer"
+  },
+  "google_refresh": {
+    "access_token": "ya29.a0FAKE-refreshed-token",
+    "expires_in": 3599,
+    "scope": "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.freebusy",
+    "token_type": "Bearer"
+  },
+  "google_invalid_grant": {"error": "invalid_grant", "error_description": "Token has been expired or revoked."},
+  "google_event": {
+    "kind": "calendar#event",
+    "etag": "\"3460000000000000\"",
+    "id": "fake7evt0q9lb2h4m8nq3r1s",
+    "status": "confirmed",
+    "htmlLink": "https://www.google.com/calendar/event?eid=ZmFrZTdldnQwcTlsYjJoNG04bnEzcjFz",
+    "created": "2026-11-04T05:00:00.000Z",
+    "updated": "2026-11-04T05:00:01.000Z",
+    "summary": "BookMyInterview.ai demo — Sagar Fintech",
+    "creator": {"email": "priya@outreach-mail.example", "self": true},
+    "organizer": {"email": "priya@outreach-mail.example", "self": true},
+    "start": {"dateTime": "2026-11-12T10:00:00+05:30", "timeZone": "Asia/Kolkata"},
+    "end": {"dateTime": "2026-11-12T10:45:00+05:30", "timeZone": "Asia/Kolkata"},
+    "iCalUID": "fake7evt0q9lb2h4m8nq3r1s@google.com",
+    "sequence": 0,
+    "attendees": [{"email": "pooja.rao@sagar-fintech-01.example", "responseStatus": "needsAction"}],
+    "hangoutLink": "https://meet.google.com/fak-emee-tqa",
+    "conferenceData": {
+      "createRequest": {"requestId": "echoed", "conferenceSolutionKey": {"type": "hangoutsMeet"}, "status": {"statusCode": "success"}},
+      "entryPoints": [
+        {"entryPointType": "video", "uri": "https://meet.google.com/fak-emee-tqa", "label": "meet.google.com/fak-emee-tqa"},
+        {"entryPointType": "phone", "uri": "tel:+91-00000-00000", "label": "+91 00000 00000", "pin": "000000000", "regionCode": "IN"},
+        {"entryPointType": "more", "uri": "https://tel.meet/fak-emee-tqa?pin=0000000000000", "pin": "0000000000000"}
+      ],
+      "conferenceSolution": {"key": {"type": "hangoutsMeet"}, "name": "Google Meet", "iconUri": "https://fonts.gstatic.com/s/i/productlogos/meet_2020q4/v6/web-512dp/logo_meet_2020q4_color_2x_web_512dp.png"},
+      "conferenceId": "fak-emee-tqa"
+    },
+    "reminders": {"useDefault": true},
+    "eventType": "default"
+  },
+  "google_event_pending": {
+    "kind": "calendar#event",
+    "id": "fakependingevt001",
+    "status": "confirmed",
+    "htmlLink": "https://www.google.com/calendar/event?eid=ZmFrZXBlbmRpbmdldnQwMDE",
+    "summary": "BookMyInterview.ai demo",
+    "start": {"dateTime": "2026-11-12T10:00:00+05:30", "timeZone": "Asia/Kolkata"},
+    "end": {"dateTime": "2026-11-12T10:30:00+05:30", "timeZone": "Asia/Kolkata"},
+    "conferenceData": {"createRequest": {"requestId": "echoed", "conferenceSolutionKey": {"type": "hangoutsMeet"}, "status": {"statusCode": "pending"}}}
+  },
+  "google_freebusy": {
+    "kind": "calendar#freeBusy",
+    "timeMin": "2026-11-12T03:30:00.000Z",
+    "timeMax": "2026-11-12T12:30:00.000Z",
+    "calendars": {
+      "primary": {
+        "busy": [
+          {"start": "2026-11-12T10:00:00+05:30", "end": "2026-11-12T11:00:00+05:30"},
+          {"start": "2026-11-12T14:30:00+05:30", "end": "2026-11-12T15:15:00+05:30"}
+        ]
+      }
+    }
+  },
+  "google_freebusy_not_found": {
+    "kind": "calendar#freeBusy",
+    "timeMin": "2026-11-12T03:30:00.000Z",
+    "timeMax": "2026-11-12T12:30:00.000Z",
+    "calendars": {"sales-team@group.calendar.google.com": {"errors": [{"domain": "global", "reason": "notFound"}], "busy": []}}
+  },
+  "ms_token": {
+    "token_type": "Bearer",
+    "scope": "Calendars.ReadWrite OnlineMeetings.ReadWrite User.Read",
+    "expires_in": 3736,
+    "ext_expires_in": 3736,
+    "access_token": "eyJ0eXAiOiJKV1QiFAKE.ms-access",
+    "refresh_token": "M.R3_BAY.FAKE-ms-refresh"
+  },
+  "graph_event": {
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('priya%40outreach-mail.example')/events/$entity",
+    "id": "AAMkAGFAKE00EVENT00=",
+    "createdDateTime": "2026-11-04T05:00:00.0000000Z",
+    "subject": "BookMyInterview.ai demo — Nirmal Textiles",
+    "isOnlineMeeting": true,
+    "onlineMeetingProvider": "teamsForBusiness",
+    "webLink": "https://outlook.office365.com/owa/?itemid=AAMkAGFAKE00EVENT00%3D&exvsurl=1&path=/calendar/item",
+    "onlineMeetingUrl": null,
+    "start": {"dateTime": "2026-11-12T04:30:00.0000000", "timeZone": "UTC"},
+    "end": {"dateTime": "2026-11-12T05:00:00.0000000", "timeZone": "UTC"},
+    "attendees": [{"type": "required", "status": {"response": "none", "time": "0001-01-01T00:00:00Z"},
+                   "emailAddress": {"name": "Harpreet Sharma", "address": "harpreet.sharma@nirmal-textiles-02.example"}}],
+    "organizer": {"emailAddress": {"name": "Priya", "address": "priya@outreach-mail.example"}},
+    "onlineMeeting": {"joinUrl": "https://teams.microsoft.com/l/meetup-join/19%3ameeting_FAKE%40thread.v2/0?context=%7b%7d",
+                      "conferenceId": "000000000", "tollNumber": "+91 00000 00000"}
+  },
+  "zoom_token": {
+    "access_token": "eyJzdiI6IjAwMDAwMSIsImFsZyI6IkhTNTEyFAKE",
+    "token_type": "bearer",
+    "expires_in": 3599,
+    "scope": "meeting:write:meeting:admin user:read:user:admin",
+    "api_url": "https://api.zoom.us"
+  },
+  "zoom_meeting": {
+    "uuid": "FAKEuuid0000000000000==",
+    "id": 85746065432,
+    "host_id": "FAKEhost000000000000",
+    "host_email": "priya@outreach-mail.example",
+    "topic": "BookMyInterview.ai demo — Desi Hospitality",
+    "type": 2,
+    "status": "waiting",
+    "start_time": "2026-11-12T18:45:00Z",
+    "duration": 45,
+    "timezone": "Asia/Kolkata",
+    "agenda": "",
+    "created_at": "2026-11-04T05:00:00Z",
+    "start_url": "https://us05web.zoom.us/s/85746065432?zak=FAKEHOSTKEY",
+    "join_url": "https://us05web.zoom.us/j/85746065432?pwd=FAKEpwd123",
+    "password": "000000",
+    "h323_password": "000000",
+    "pre_schedule": false,
+    "settings": {"host_video": false, "participant_video": false, "join_before_host": false, "waiting_room": true}
+  },
+  "zoom_user": {"id": "FAKEhost000000000000", "email": "priya@outreach-mail.example", "type": 1, "timezone": "Asia/Kolkata"},
+  "calendly_users_me": {
+    "resource": {
+      "avatar_url": null,
+      "created_at": "2026-01-10T10:00:00.000000Z",
+      "current_organization": "https://api.calendly.com/organizations/OFAKEORG00000001",
+      "email": "priya@outreach-mail.example",
+      "name": "Priya",
+      "resource_type": "User",
+      "scheduling_url": "https://calendly.com/priya-bmi-fake",
+      "slug": "priya-bmi-fake",
+      "timezone": "Asia/Calcutta",
+      "updated_at": "2026-10-01T10:00:00.000000Z",
+      "uri": "https://api.calendly.com/users/UFAKEPRIYA000001"
+    }
+  }
+}

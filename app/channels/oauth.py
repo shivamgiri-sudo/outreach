@@ -70,7 +70,12 @@ def refresh_tokens(provider: str, values: dict, refresh_token: str, transport=re
             "grant_type": "refresh_token"}
     if provider == "microsoft":
         form["scope"] = MS_SCOPES
-    reply = transport(_token_url(provider, values), {"Accept": "application/json"}, None, method="POST", form=form)
+    try:
+        reply = transport(_token_url(provider, values), {"Accept": "application/json"}, None, method="POST", form=form)
+    except OSError as exc:
+        if "invalid_grant" in str(exc):      # refresh token revoked or expired: only a new sign-in helps
+            raise PermissionError("The calendar sign-in expired or was revoked. Reconnect it.") from None
+        raise
     return _tokens(reply, now or time.time())
 
 

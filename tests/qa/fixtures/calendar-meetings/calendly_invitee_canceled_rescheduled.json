@@ -1,0 +1,31 @@
+{
+  "created_at": "2026-11-05T07:20:00.000000Z",
+  "created_by": "https://api.calendly.com/users/UFAKEPRIYA000001",
+  "event": "invitee.canceled",
+  "payload": {
+    "cancel_url": "https://calendly.com/cancellations/IFAKEINVITEE0001",
+    "created_at": "2026-11-04T13:01:54.611122Z",
+    "email": "manoj.pillai@kesar-foods-06.example",
+    "event": "https://api.calendly.com/scheduled_events/EFAKEEVENT000001",
+    "name": "MANOJ PILLAI",
+    "new_invitee": "https://api.calendly.com/scheduled_events/EFAKEEVENT000002/invitees/IFAKEINVITEE0002",
+    "old_invitee": null,
+    "rescheduled": true,
+    "status": "canceled",
+    "timezone": "Asia/Calcutta",
+    "updated_at": "2026-11-05T07:19:59.000000Z",
+    "uri": "https://api.calendly.com/scheduled_events/EFAKEEVENT000001/invitees/IFAKEINVITEE0001",
+    "cancellation": {"canceled_by": "MANOJ PILLAI", "canceler_type": "invitee", "created_at": "2026-11-05T07:19:59.000000Z", "reason": null},
+    "scheduled_event": {
+      "uri": "https://api.calendly.com/scheduled_events/EFAKEEVENT000001",
+      "name": "BookMyInterview.ai demo (60 min)",
+      "status": "canceled",
+      "start_time": "2026-11-12T18:45:00.000000Z",
+      "end_time": "2026-11-12T19:45:00.000000Z",
+      "event_type": "https://api.calendly.com/event_types/ETFAKE0000000001",
+      "location": {"type": "google_conference", "status": "pushed", "join_url": "https://meet.google.com/fak-ecal-ndly"},
+      "invitees_counter": {"total": 1, "active": 0, "limit": 1},
+      "event_guests": []
+    }
+  }
+}

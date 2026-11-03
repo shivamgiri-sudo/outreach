@@ -162,8 +162,13 @@ def cancel(store, meeting_id: str, transport=request, resolver=None, sender=None
         return {"meeting": meeting, "message": "Already cancelled."}
     message = "Cancelled."
     if meeting["provider"] in REMOTE_CANCEL and meeting.get("external_id"):
-        cancel_event(store, meeting["provider"], meeting["external_id"], transport, resolver)
-        message = "Cancelled, and the invite was withdrawn in the calendar."
+        try:
+            cancel_event(store, meeting["provider"], meeting["external_id"], transport, resolver)
+            message = "Cancelled, and the invite was withdrawn in the calendar."
+        except OSError as exc:
+            if getattr(exc, "code", None) not in (404, 410):    # 404/410: already deleted in the calendar itself
+                raise
+            message = "Cancelled. It was already removed from the calendar."
     else:
         message = "Marked as cancelled here. Also cancel it in your calendar tool."
 
@@ -210,7 +215,8 @@ def parse_booking(pid: str, payload) -> list:
         join = (data.get("metadata") or {}).get("videoCallUrl") or (location if location.startswith("https://") else "")
         return [{"event": kind, "emails": [a.get("email", "") for a in attendees], "name": (attendees[0].get("name", "") if attendees else ""),
                  "title": data.get("title", "Booked meeting"), "start": data.get("startTime", ""), "end": data.get("endTime", ""),
-                 "join_url": join, "external_id": str(data.get("uid") or data.get("bookingId") or "")}]
+                 "join_url": join, "external_id": str(data.get("uid") or data.get("bookingId") or ""),
+                 "replaces": str(data.get("rescheduleUid") or "") if kind == "created" else ""}]
     if pid == "calendly":
         kind = {"invitee.created": "created", "invitee.canceled": "cancelled"}.get(payload.get("event"))
         data = payload.get("payload") or {}
@@ -244,6 +250,10 @@ def attach_booking(store, pid: str, booking: dict) -> dict:
         label = ist_label(start)
     except ValueError:
         start, label = None, "time not given"
+    try:
+        end = parse_time(booking.get("end")).isoformat()     # '...Z' is unreadable to fromisoformat on Python 3.10
+    except ValueError:
+        end = ""
 
     def change(l: dict) -> dict:
         meetings = list(l.get("meetings") or [])
@@ -253,11 +263,16 @@ def attach_booking(store, pid: str, booking: dict) -> dict:
                 meetings[index] = {**meetings[index], "status": "cancelled"}
             return {**l, "meetings": meetings, "timeline": [*l["timeline"], _event("meeting", f"Meeting cancelled by the lead ({pid})")]}
         record = {"provider": pid, "title": booking.get("title") or "Booked meeting", "start": start.isoformat() if start else "",
-                  "end": booking.get("end", ""), "join_url": booking.get("join_url", ""), "status": "scheduled", "external_id": ext,
+                  "end": end, "join_url": booking.get("join_url", ""), "status": "scheduled", "external_id": ext,
                   "attendee_email": normalise_email((booking.get("emails") or [""])[0]) or ""}
+        if booking.get("replaces"):          # Cal.com reschedule: the old booking's slot is gone
+            meetings = [{**m, "status": "cancelled"} if m.get("provider") == pid and m.get("external_id") == booking["replaces"]
+                        and m.get("status") == "scheduled" else m for m in meetings]
         if index is None:
             meetings.append({"id": uuid.uuid4().hex[:12], "created_at": now_utc().isoformat(timespec="seconds"), **record})
         else:
+            if meetings[index].get("status") == "cancelled":   # a retried/late delivery never reopens it
+                return l
             meetings[index] = {**meetings[index], **record}
         return {**l, "meetings": meetings, "timeline": [*l["timeline"], _event("meeting", f"Meeting booked: {record['title']}, {label}")]}
     _update_lead(store, lead["id"], change)

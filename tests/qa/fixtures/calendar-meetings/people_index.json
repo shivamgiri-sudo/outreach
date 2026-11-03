@@ -1,0 +1,646 @@
+[
+ {
+  "email": "ravi.kumar@shubh-logistics-00.example",
+  "company": "SHUBH LOGISTICS PVT. LTD.",
+  "domain": "shubh-logistics-00.example",
+  "primary": true,
+  "name": "Ravi Kumar"
+ },
+ {
+  "email": "anita.nair@shubh-logistics-00.example",
+  "company": "SHUBH LOGISTICS PVT. LTD.",
+  "domain": "shubh-logistics-00.example",
+  "primary": false,
+  "name": "Anita Nair"
+ },
+ {
+  "email": "suresh.gupta@shubh-logistics-00.example",
+  "company": "SHUBH LOGISTICS PVT. LTD.",
+  "domain": "shubh-logistics-00.example",
+  "primary": false,
+  "name": "Suresh Gupta"
+ },
+ {
+  "email": "pooja.rao@sagar-fintech-01.example",
+  "company": "Sagar Fintech Private Limited",
+  "domain": "sagar-fintech-01.example",
+  "primary": true,
+  "name": "Pooja Rao"
+ },
+ {
+  "email": "harpreet.sharma@nirmal-textiles-02.example",
+  "company": "Nirmal Textiles PVT LTD",
+  "domain": "nirmal-textiles-02.example",
+  "primary": true,
+  "name": "Harpreet Sharma"
+ },
+ {
+  "email": "sandeep.iyer@apna-retail-03.example",
+  "company": "Apna Retail LLP",
+  "domain": "apna-retail-03.example",
+  "primary": true,
+  "name": "Sandeep Iyer"
+ },
+ {
+  "email": "neha.reddy@apna-retail-03.example",
+  "company": "Apna Retail LLP",
+  "domain": "apna-retail-03.example",
+  "primary": false,
+  "name": "Neha Reddy"
+ },
+ {
+  "email": "farah.khan@desi-hospitality-04.example",
+  "company": "Desi Hospitality Ltd",
+  "domain": "desi-hospitality-04.example",
+  "primary": true,
+  "name": "Farah Khan"
+ },
+ {
+  "email": "gaurav.nair@bharat-pharma-05.example",
+  "company": "Bharat Pharma",
+  "domain": "bharat-pharma-05.example",
+  "primary": true,
+  "name": "Gaurav Nair"
+ },
+ {
+  "email": "divya.gupta@bharat-pharma-05.example",
+  "company": "Bharat Pharma",
+  "domain": "bharat-pharma-05.example",
+  "primary": false,
+  "name": "Divya Gupta"
+ },
+ {
+  "email": "sneha.kaur@kesar-foods-06.example",
+  "company": "KESAR FOODS (OPC) PVT LTD",
+  "domain": "kesar-foods-06.example",
+  "primary": true,
+  "name": "Sneha Kaur"
+ },
+ {
+  "email": "manoj.pillai@kesar-foods-06.example",
+  "company": "KESAR FOODS (OPC) PVT LTD",
+  "domain": "kesar-foods-06.example",
+  "primary": false,
+  "name": "Manoj Pillai"
+ },
+ {
+  "email": "karthik.mehta@ganga-bpo-07.example",
+  "company": "Ganga BPO Pvt. Ltd.",
+  "domain": "ganga-bpo-07.example",
+  "primary": true,
+  "name": "Karthik Mehta"
+ },
+ {
+  "email": "tanvi.reddy@tara-motors-08.example",
+  "company": "Tara Motors Private Limited",
+  "domain": "tara-motors-08.example",
+  "primary": true,
+  "name": "Tanvi Reddy"
+ },
+ {
+  "email": "nikhil.singh@vayu-staffing-09.example",
+  "company": "Vayu Staffing PVT LTD",
+  "domain": "vayu-staffing-09.example",
+  "primary": true,
+  "name": "Nikhil Singh"
+ },
+ {
+  "email": "zoya.menon@vayu-staffing-09.example",
+  "company": "Vayu Staffing PVT LTD",
+  "domain": "vayu-staffing-09.example",
+  "primary": false,
+  "name": "Zoya Menon"
+ },
+ {
+  "email": "ravi.gupta@prakash-logistics-10.example",
+  "company": "Prakash Logistics LLP",
+  "domain": "prakash-logistics-10.example",
+  "primary": true,
+  "name": "Ravi Gupta"
+ },
+ {
+  "email": "anita.joshi@prakash-logistics-10.example",
+  "company": "Prakash Logistics LLP",
+  "domain": "prakash-logistics-10.example",
+  "primary": false,
+  "name": "Anita Joshi"
+ },
+ {
+  "email": "pooja.pillai@moti-fintech-11.example",
+  "company": "Moti Fintech Ltd",
+  "domain": "moti-fintech-11.example",
+  "primary": true,
+  "name": "Pooja Pillai"
+ },
+ {
+  "email": "harpreet.sheikh@lotus-textiles-12.example",
+  "company": "LOTUS TEXTILES",
+  "domain": "lotus-textiles-12.example",
+  "primary": true,
+  "name": "Harpreet Sheikh"
+ },
+ {
+  "email": "arjun.bose@lotus-textiles-12.example",
+  "company": "LOTUS TEXTILES",
+  "domain": "lotus-textiles-12.example",
+  "primary": false,
+  "name": "Arjun Bose"
+ },
+ {
+  "email": "sandeep.verma@saffron-retail-13.example",
+  "company": "Saffron Retail (OPC) Pvt Ltd",
+  "domain": "saffron-retail-13.example",
+  "primary": true,
+  "name": "Sandeep Verma"
+ },
+ {
+  "email": "farah.menon@indus-hospitality-14.example",
+  "company": "Indus Hospitality Pvt. Ltd.",
+  "domain": "indus-hospitality-14.example",
+  "primary": true,
+  "name": "Farah Menon"
+ },
+ {
+  "email": "gaurav.joshi@neel-pharma-15.example",
+  "company": "Neel Pharma Private Limited",
+  "domain": "neel-pharma-15.example",
+  "primary": true,
+  "name": "Gaurav Joshi"
+ },
+ {
+  "email": "divya.kumar@neel-pharma-15.example",
+  "company": "Neel Pharma Private Limited",
+  "domain": "neel-pharma-15.example",
+  "primary": false,
+  "name": "Divya Kumar"
+ },
+ {
+  "email": "abhishek.nair@neel-pharma-15.example",
+  "company": "Neel Pharma Private Limited",
+  "domain": "neel-pharma-15.example",
+  "primary": false,
+  "name": "Abhishek Nair"
+ },
+ {
+  "email": "sneha.das@chakra-foods-16.example",
+  "company": "Chakra Foods PVT LTD",
+  "domain": "chakra-foods-16.example",
+  "primary": true,
+  "name": "Sneha Das"
+ },
+ {
+  "email": "karthik.bose@dhruv-bpo-17.example",
+  "company": "Dhruv BPO LLP",
+  "domain": "dhruv-bpo-17.example",
+  "primary": true,
+  "name": "Karthik Bose"
+ },
+ {
+  "email": "tanvi.patil@surya-motors-18.example",
+  "company": "SURYA MOTORS LTD",
+  "domain": "surya-motors-18.example",
+  "primary": true,
+  "name": "Tanvi Patil"
+ },
+ {
+  "email": "pritam.iyer@surya-motors-18.example",
+  "company": "SURYA MOTORS LTD",
+  "domain": "surya-motors-18.example",
+  "primary": false,
+  "name": "Pritam Iyer"
+ },
+ {
+  "email": "nikhil.yadav@megh-staffing-19.example",
+  "company": "Megh Staffing",
+  "domain": "megh-staffing-19.example",
+  "primary": true,
+  "name": "Nikhil Yadav"
+ },
+ {
+  "email": "ravi.kumar@shubh-logistics-20.example",
+  "company": "Shubh Logistics (OPC) Pvt Ltd",
+  "domain": "shubh-logistics-20.example",
+  "primary": true,
+  "name": "Ravi Kumar"
+ },
+ {
+  "email": "anita.nair@shubh-logistics-20.example",
+  "company": "Shubh Logistics (OPC) Pvt Ltd",
+  "domain": "shubh-logistics-20.example",
+  "primary": false,
+  "name": "Anita Nair"
+ },
+ {
+  "email": "pooja.rao@sagar-fintech-21.example",
+  "company": "Sagar Fintech Pvt. Ltd.",
+  "domain": "sagar-fintech-21.example",
+  "primary": true,
+  "name": "Pooja Rao"
+ },
+ {
+  "email": "imran.kaur@sagar-fintech-21.example",
+  "company": "Sagar Fintech Pvt. Ltd.",
+  "domain": "sagar-fintech-21.example",
+  "primary": false,
+  "name": "Imran Kaur"
+ },
+ {
+  "email": "harpreet.sharma@nirmal-textiles-22.example",
+  "company": "Nirmal Textiles Private Limited",
+  "domain": "nirmal-textiles-22.example",
+  "primary": true,
+  "name": "Harpreet Sharma"
+ },
+ {
+  "email": "sandeep.iyer@apna-retail-23.example",
+  "company": "Apna Retail PVT LTD",
+  "domain": "apna-retail-23.example",
+  "primary": true,
+  "name": "Sandeep Iyer"
+ },
+ {
+  "email": "farah.khan@desi-hospitality-24.example",
+  "company": "DESI HOSPITALITY LLP",
+  "domain": "desi-hospitality-24.example",
+  "primary": true,
+  "name": "Farah Khan"
+ },
+ {
+  "email": "rohit.singh@desi-hospitality-24.example",
+  "company": "DESI HOSPITALITY LLP",
+  "domain": "desi-hospitality-24.example",
+  "primary": false,
+  "name": "Rohit Singh"
+ },
+ {
+  "email": "gaurav.nair@bharat-pharma-25.example",
+  "company": "Bharat Pharma Ltd",
+  "domain": "bharat-pharma-25.example",
+  "primary": true,
+  "name": "Gaurav Nair"
+ },
+ {
+  "email": "divya.gupta@bharat-pharma-25.example",
+  "company": "Bharat Pharma Ltd",
+  "domain": "bharat-pharma-25.example",
+  "primary": false,
+  "name": "Divya Gupta"
+ },
+ {
+  "email": "sneha.kaur@kesar-foods-26.example",
+  "company": "Kesar Foods",
+  "domain": "kesar-foods-26.example",
+  "primary": true,
+  "name": "Sneha Kaur"
+ },
+ {
+  "email": "karthik.mehta@ganga-bpo-27.example",
+  "company": "Ganga BPO (OPC) Pvt Ltd",
+  "domain": "ganga-bpo-27.example",
+  "primary": true,
+  "name": "Karthik Mehta"
+ },
+ {
+  "email": "ritu.sheikh@ganga-bpo-27.example",
+  "company": "Ganga BPO (OPC) Pvt Ltd",
+  "domain": "ganga-bpo-27.example",
+  "primary": false,
+  "name": "Ritu Sheikh"
+ },
+ {
+  "email": "tanvi.reddy@tara-motors-28.example",
+  "company": "Tara Motors Pvt. Ltd.",
+  "domain": "tara-motors-28.example",
+  "primary": true,
+  "name": "Tanvi Reddy"
+ },
+ {
+  "email": "nikhil.singh@vayu-staffing-29.example",
+  "company": "Vayu Staffing Private Limited",
+  "domain": "vayu-staffing-29.example",
+  "primary": true,
+  "name": "Nikhil Singh"
+ },
+ {
+  "email": "ravi.gupta@prakash-logistics-30.example",
+  "company": "PRAKASH LOGISTICS PVT LTD",
+  "domain": "prakash-logistics-30.example",
+  "primary": true,
+  "name": "Ravi Gupta"
+ },
+ {
+  "email": "anita.joshi@prakash-logistics-30.example",
+  "company": "PRAKASH LOGISTICS PVT LTD",
+  "domain": "prakash-logistics-30.example",
+  "primary": false,
+  "name": "Anita Joshi"
+ },
+ {
+  "email": "suresh.kumar@prakash-logistics-30.example",
+  "company": "PRAKASH LOGISTICS PVT LTD",
+  "domain": "prakash-logistics-30.example",
+  "primary": false,
+  "name": "Suresh Kumar"
+ },
+ {
+  "email": "pooja.pillai@moti-fintech-31.example",
+  "company": "Moti Fintech LLP",
+  "domain": "moti-fintech-31.example",
+  "primary": true,
+  "name": "Pooja Pillai"
+ },
+ {
+  "email": "harpreet.sheikh@lotus-textiles-32.example",
+  "company": "Lotus Textiles Ltd",
+  "domain": "lotus-textiles-32.example",
+  "primary": true,
+  "name": "Harpreet Sheikh"
+ },
+ {
+  "email": "sandeep.verma@saffron-retail-33.example",
+  "company": "Saffron Retail",
+  "domain": "saffron-retail-33.example",
+  "primary": true,
+  "name": "Sandeep Verma"
+ },
+ {
+  "email": "neha.patil@saffron-retail-33.example",
+  "company": "Saffron Retail",
+  "domain": "saffron-retail-33.example",
+  "primary": false,
+  "name": "Neha Patil"
+ },
+ {
+  "email": "farah.menon@indus-hospitality-34.example",
+  "company": "Indus Hospitality (OPC) Pvt Ltd",
+  "domain": "indus-hospitality-34.example",
+  "primary": true,
+  "name": "Farah Menon"
+ },
+ {
+  "email": "gaurav.joshi@neel-pharma-35.example",
+  "company": "Neel Pharma Pvt. Ltd.",
+  "domain": "neel-pharma-35.example",
+  "primary": true,
+  "name": "Gaurav Joshi"
+ },
+ {
+  "email": "divya.kumar@neel-pharma-35.example",
+  "company": "Neel Pharma Pvt. Ltd.",
+  "domain": "neel-pharma-35.example",
+  "primary": false,
+  "name": "Divya Kumar"
+ },
+ {
+  "email": "sneha.das@chakra-foods-36.example",
+  "company": "CHAKRA FOODS PRIVATE LIMITED",
+  "domain": "chakra-foods-36.example",
+  "primary": true,
+  "name": "Sneha Das"
+ },
+ {
+  "email": "manoj.rao@chakra-foods-36.example",
+  "company": "CHAKRA FOODS PRIVATE LIMITED",
+  "domain": "chakra-foods-36.example",
+  "primary": false,
+  "name": "Manoj Rao"
+ },
+ {
+  "email": "karthik.bose@dhruv-bpo-37.example",
+  "company": "Dhruv BPO PVT LTD",
+  "domain": "dhruv-bpo-37.example",
+  "primary": true,
+  "name": "Karthik Bose"
+ },
+ {
+  "email": "tanvi.patil@surya-motors-38.example",
+  "company": "Surya Motors LLP",
+  "domain": "surya-motors-38.example",
+  "primary": true,
+  "name": "Tanvi Patil"
+ },
+ {
+  "email": "nikhil.yadav@megh-staffing-39.example",
+  "company": "Megh Staffing Ltd",
+  "domain": "megh-staffing-39.example",
+  "primary": true,
+  "name": "Nikhil Yadav"
+ },
+ {
+  "email": "zoya.khan@megh-staffing-39.example",
+  "company": "Megh Staffing Ltd",
+  "domain": "megh-staffing-39.example",
+  "primary": false,
+  "name": "Zoya Khan"
+ },
+ {
+  "email": "ravi.kumar@shubh-logistics-40.example",
+  "company": "Shubh Logistics",
+  "domain": "shubh-logistics-40.example",
+  "primary": true,
+  "name": "Ravi Kumar"
+ },
+ {
+  "email": "anita.nair@shubh-logistics-40.example",
+  "company": "Shubh Logistics",
+  "domain": "shubh-logistics-40.example",
+  "primary": false,
+  "name": "Anita Nair"
+ },
+ {
+  "email": "pooja.rao@sagar-fintech-41.example",
+  "company": "Sagar Fintech (OPC) Pvt Ltd",
+  "domain": "sagar-fintech-41.example",
+  "primary": true,
+  "name": "Pooja Rao"
+ },
+ {
+  "email": "harpreet.sharma@nirmal-textiles-42.example",
+  "company": "NIRMAL TEXTILES PVT. LTD.",
+  "domain": "nirmal-textiles-42.example",
+  "primary": true,
+  "name": "Harpreet Sharma"
+ },
+ {
+  "email": "arjun.mehta@nirmal-textiles-42.example",
+  "company": "NIRMAL TEXTILES PVT. LTD.",
+  "domain": "nirmal-textiles-42.example",
+  "primary": false,
+  "name": "Arjun Mehta"
+ },
+ {
+  "email": "sandeep.iyer@apna-retail-43.example",
+  "company": "Apna Retail Private Limited",
+  "domain": "apna-retail-43.example",
+  "primary": true,
+  "name": "Sandeep Iyer"
+ },
+ {
+  "email": "farah.khan@desi-hospitality-44.example",
+  "company": "Desi Hospitality PVT LTD",
+  "domain": "desi-hospitality-44.example",
+  "primary": true,
+  "name": "Farah Khan"
+ },
+ {
+  "email": "gaurav.nair@bharat-pharma-45.example",
+  "company": "Bharat Pharma LLP",
+  "domain": "bharat-pharma-45.example",
+  "primary": true,
+  "name": "Gaurav Nair"
+ },
+ {
+  "email": "divya.gupta@bharat-pharma-45.example",
+  "company": "Bharat Pharma LLP",
+  "domain": "bharat-pharma-45.example",
+  "primary": false,
+  "name": "Divya Gupta"
+ },
+ {
+  "email": "abhishek.joshi@bharat-pharma-45.example",
+  "company": "Bharat Pharma LLP",
+  "domain": "bharat-pharma-45.example",
+  "primary": false,
+  "name": "Abhishek Joshi"
+ },
+ {
+  "email": "sneha.kaur@kesar-foods-46.example",
+  "company": "Kesar Foods Ltd",
+  "domain": "kesar-foods-46.example",
+  "primary": true,
+  "name": "Sneha Kaur"
+ },
+ {
+  "email": "karthik.mehta@ganga-bpo-47.example",
+  "company": "Ganga BPO",
+  "domain": "ganga-bpo-47.example",
+  "primary": true,
+  "name": "Karthik Mehta"
+ },
+ {
+  "email": "tanvi.reddy@tara-motors-48.example",
+  "company": "TARA MOTORS (OPC) PVT LTD",
+  "domain": "tara-motors-48.example",
+  "primary": true,
+  "name": "Tanvi Reddy"
+ },
+ {
+  "email": "pritam.verma@tara-motors-48.example",
+  "company": "TARA MOTORS (OPC) PVT LTD",
+  "domain": "tara-motors-48.example",
+  "primary": false,
+  "name": "Pritam Verma"
+ },
+ {
+  "email": "nikhil.singh@vayu-staffing-49.example",
+  "company": "Vayu Staffing Pvt. Ltd.",
+  "domain": "vayu-staffing-49.example",
+  "primary": true,
+  "name": "Nikhil Singh"
+ },
+ {
+  "email": "ravi.gupta@prakash-logistics-50.example",
+  "company": "Prakash Logistics Private Limited",
+  "domain": "prakash-logistics-50.example",
+  "primary": true,
+  "name": "Ravi Gupta"
+ },
+ {
+  "email": "anita.joshi@prakash-logistics-50.example",
+  "company": "Prakash Logistics Private Limited",
+  "domain": "prakash-logistics-50.example",
+  "primary": false,
+  "name": "Anita Joshi"
+ },
+ {
+  "email": "pooja.pillai@moti-fintech-51.example",
+  "company": "Moti Fintech PVT LTD",
+  "domain": "moti-fintech-51.example",
+  "primary": true,
+  "name": "Pooja Pillai"
+ },
+ {
+  "email": "imran.das@moti-fintech-51.example",
+  "company": "Moti Fintech PVT LTD",
+  "domain": "moti-fintech-51.example",
+  "primary": false,
+  "name": "Imran Das"
+ },
+ {
+  "email": "harpreet.sheikh@lotus-textiles-52.example",
+  "company": "Lotus Textiles LLP",
+  "domain": "lotus-textiles-52.example",
+  "primary": true,
+  "name": "Harpreet Sheikh"
+ },
+ {
+  "email": "sandeep.verma@saffron-retail-53.example",
+  "company": "Saffron Retail Ltd",
+  "domain": "saffron-retail-53.example",
+  "primary": true,
+  "name": "Sandeep Verma"
+ },
+ {
+  "email": "farah.menon@indus-hospitality-54.example",
+  "company": "INDUS HOSPITALITY",
+  "domain": "indus-hospitality-54.example",
+  "primary": true,
+  "name": "Farah Menon"
+ },
+ {
+  "email": "rohit.yadav@indus-hospitality-54.example",
+  "company": "INDUS HOSPITALITY",
+  "domain": "indus-hospitality-54.example",
+  "primary": false,
+  "name": "Rohit Yadav"
+ },
+ {
+  "email": "gaurav.joshi@neel-pharma-55.example",
+  "company": "Neel Pharma (OPC) Pvt Ltd",
+  "domain": "neel-pharma-55.example",
+  "primary": true,
+  "name": "Gaurav Joshi"
+ },
+ {
+  "email": "divya.kumar@neel-pharma-55.example",
+  "company": "Neel Pharma (OPC) Pvt Ltd",
+  "domain": "neel-pharma-55.example",
+  "primary": false,
+  "name": "Divya Kumar"
+ },
+ {
+  "email": "sneha.das@chakra-foods-56.example",
+  "company": "Chakra Foods Pvt. Ltd.",
+  "domain": "chakra-foods-56.example",
+  "primary": true,
+  "name": "Sneha Das"
+ },
+ {
+  "email": "karthik.bose@dhruv-bpo-57.example",
+  "company": "Dhruv BPO Private Limited",
+  "domain": "dhruv-bpo-57.example",
+  "primary": true,
+  "name": "Karthik Bose"
+ },
+ {
+  "email": "ritu.sharma@dhruv-bpo-57.example",
+  "company": "Dhruv BPO Private Limited",
+  "domain": "dhruv-bpo-57.example",
+  "primary": false,
+  "name": "Ritu Sharma"
+ },
+ {
+  "email": "tanvi.patil@surya-motors-58.example",
+  "company": "Surya Motors PVT LTD",
+  "domain": "surya-motors-58.example",
+  "primary": true,
+  "name": "Tanvi Patil"
+ },
+ {
+  "email": "nikhil.yadav@megh-staffing-59.example",
+  "company": "Megh Staffing LLP",
+  "domain": "megh-staffing-59.example",
+  "primary": true,
+  "name": "Nikhil Yadav"
+ }
+]
