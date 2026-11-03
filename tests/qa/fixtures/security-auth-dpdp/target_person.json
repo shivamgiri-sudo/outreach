@@ -1,0 +1,11 @@
+{
+ "first": "Kavya",
+ "last": "Iyer",
+ "title": "HR Head",
+ "company": "Zentrix Logistics Pvt. Ltd.",
+ "email": "kavya.iyer@zentrix-logistics.example",
+ "mobile": "+91 90000 10042",
+ "website": "https://www.zentrix-logistics.example",
+ "city": "Pune",
+ "state": "Maharashtra"
+}

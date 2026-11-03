@@ -29,7 +29,10 @@ def company_domain(value: Optional[str]) -> Optional[str]:
     text = (value or "").strip().lower()
     if not text:
         return None
-    host = text.split("@", 1)[1] if "@" in text else urlparse(text if "//" in text else f"//{text}").netloc
+    try:
+        host = text.split("@", 1)[1] if "@" in text else urlparse(text if "//" in text else f"//{text}").netloc
+    except ValueError:                       # e.g. a full-width ＠ or ／ that NFKC-normalises into the host part
+        return None
     host = host.split("/")[0].split(":")[0]
     host = host[4:] if host.startswith("www.") else host
     return host or None

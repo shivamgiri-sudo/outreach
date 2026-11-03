@@ -22,6 +22,7 @@ from .channels.sms_send import send_sms
 from .flows import IF_FIELDS, title_of
 from .growth_core import ensure_demo, get_offer
 from .hygiene import business_domain
+from .privacy import is_blocked
 from .reminders import notify
 from .scoring import score_lead
 from .senders import email_ready
@@ -153,6 +154,8 @@ def blocked_reason(store, lead: dict):
         return "their email address is on the do-not-contact list"
     if lead.get("phone") and lead["phone"] in suppressed:
         return "their phone number is on the do-not-contact list"
+    if is_blocked(store, lead.get("email"), lead.get("phone")):          # erased on request (hashed list)
+        return "their details were erased on request (do-not-contact list)"
     if (lead.get("sequence") or {}).get("stopped") in ("bounced", "unsubscribed", "complained"):
         return f"their email {lead['sequence']['stopped']}"
     return None

@@ -19,6 +19,7 @@ from pathlib import Path
 
 from . import sequence_runner
 from .integrations import SECRET_WORDS
+from .privacy import guard_leads
 from .store import EMPTY
 
 FORMAT = "outreach-os-backup"
@@ -230,6 +231,11 @@ def restore(store, payload: dict, keep_secrets: bool = False, now: datetime = No
                 if (current.get("settings") or {}).get("server_secret"):
                     settings["server_secret"] = current["settings"]["server_secret"]
             settings.update({flag: False for flag in LIVE_FLAGS})
+            # an older backup must not bring back people erased or unsubscribed since it was made (DPDP; a no stays a no)
+            erased = set(data.get("suppressed_hashes") or []) | set(current.get("suppressed_hashes") or [])
+            data["suppressed_hashes"] = sorted(erased)
+            data["suppressed"] = list(dict.fromkeys([*(data.get("suppressed") or []), *(current.get("suppressed") or [])]))
+            data["leads"] = guard_leads([], data.get("leads") or [], erased)
             settings["restored_at"] = now.isoformat(timespec="seconds")
             return {**data, "settings": settings}
         saved = store.replace_all(swap, keep_copy_as=copy)
