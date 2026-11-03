@@ -215,7 +215,8 @@ def parse_booking(pid: str, payload) -> list:
         join = (data.get("metadata") or {}).get("videoCallUrl") or (location if location.startswith("https://") else "")
         return [{"event": kind, "emails": [a.get("email", "") for a in attendees], "name": (attendees[0].get("name", "") if attendees else ""),
                  "title": data.get("title", "Booked meeting"), "start": data.get("startTime", ""), "end": data.get("endTime", ""),
-                 "join_url": join, "external_id": str(data.get("uid") or data.get("bookingId") or "")}]
+                 "join_url": join, "external_id": str(data.get("uid") or data.get("bookingId") or ""),
+                 "replaces": str(data.get("rescheduleUid") or "") if kind == "created" else ""}]
     if pid == "calendly":
         kind = {"invitee.created": "created", "invitee.canceled": "cancelled"}.get(payload.get("event"))
         data = payload.get("payload") or {}
@@ -264,6 +265,9 @@ def attach_booking(store, pid: str, booking: dict) -> dict:
         record = {"provider": pid, "title": booking.get("title") or "Booked meeting", "start": start.isoformat() if start else "",
                   "end": end, "join_url": booking.get("join_url", ""), "status": "scheduled", "external_id": ext,
                   "attendee_email": normalise_email((booking.get("emails") or [""])[0]) or ""}
+        if booking.get("replaces"):          # Cal.com reschedule: the old booking's slot is gone
+            meetings = [{**m, "status": "cancelled"} if m.get("provider") == pid and m.get("external_id") == booking["replaces"]
+                        and m.get("status") == "scheduled" else m for m in meetings]
         if index is None:
             meetings.append({"id": uuid.uuid4().hex[:12], "created_at": now_utc().isoformat(timespec="seconds"), **record})
         else:
