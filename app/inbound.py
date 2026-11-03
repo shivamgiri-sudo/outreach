@@ -76,7 +76,7 @@ def reply_effect(lead: dict, label: str, text: str, channel: str = "email") -> t
 
 
 def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_transport=None, source: str = "pasted",
-                received_at: Optional[str] = None) -> Optional[dict]:
+                received_at: Optional[str] = None, message_id: str = "") -> Optional[dict]:
     """Read a reply and act on it, on the latest saved copy of the lead. Returns None when the lead doesn't exist."""
     clean = strip_quoted(text) or (text or "").strip()
     label, ai_label = classify_reply(clean), None
@@ -106,6 +106,8 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
         _stop_linkedin(store, lead_id, f"replied by {channel}")       # one real reply stops every cold channel
     if label in ("unsubscribe", "bounce") and channel == "email":
         suppress(store, outcome["email"])
+    if label == "bounce" and channel == "email":
+        _count_reply_bounce(store, outcome["email"], message_id)
     if label == "unsubscribe" and not outcome["was_unsubscribed"]:
         record_consent(store, lead_id, "withdrawn", channel, clean, f"{channel} reply ({source})")
     if outcome["consent_given"]:
@@ -185,7 +187,7 @@ def process_inbound_message(store, msg: dict, ai_transport=None) -> dict:
            "text": strip_quoted(text)[:TEXT_KEPT], "received_at": msg.get("received_at") or _now(),
            "lead_id": lead_id, "matched_by": matched_by}
     result = apply_reply(store, lead_id, text, channel, ai_transport, source=msg.get("provider") or "inbound",
-                         received_at=msg.get("received_at")) if lead_id else None
+                         received_at=msg.get("received_at"), message_id=message_id) if lead_id else None
     row["label"] = (result or {}).get("label")
     store.update("inbox", lambda rows: [*rows, row])
     if not lead_id:
@@ -238,10 +240,31 @@ def process_delivery_event(store, event: dict, now: Optional[datetime] = None) -
                 return {**l, "stage": stage, **({"sequence": {**seq, "stopped": seq.get("stopped") or reason}} if seq else {}),
                         "timeline": [*l["timeline"], _event(kind, f"Email provider reported a {kind} for {email}")]}
             store.update_lead(lead["id"], change)
+    rates, paused = _pause_if_unhealthy(store, now)
+    return {"ok": True, "suppressed": email, "paused": paused, "rates": rates}
+
+
+def _pause_if_unhealthy(store, now: datetime) -> tuple:
     rates = _rates(store, now)
     paused = None
     if rates["sent"] >= MIN_SENDS_FOR_RATE and (rates["bounce_rate"] > BOUNCE_PAUSE_RATE or rates["complaint_rate"] > COMPLAINT_PAUSE_RATE):
         paused = (f"{rates['bounces']} bounces and {rates['complaints']} complaints from {rates['sent']} emails in 7 days. "
                   "Check the list quality, then resume sending on the Outbox page.")
         store.update("settings", lambda s: {**s, "sending_paused": {"reason": paused, "at": now.isoformat(timespec="seconds"), "resume_at": None}})
-    return {"ok": True, "suppressed": email, "paused": paused, "rates": rates}
+    return rates, paused
+
+
+def _count_reply_bounce(store, email: Optional[str], message_id: str = "") -> None:
+    """A bounce notice found by the reply poller (IMAP / inbound mail) counts toward the bounce-rate pause like a provider event."""
+    email = normalise_email(email)
+    if not email:
+        return
+    key = f"bounce:{message_id or email}"
+    now = datetime.now(timezone.utc)
+    since = (now - RATE_WINDOW).isoformat(timespec="seconds")
+    if any(e.get("key") == key or (e.get("type") == "bounce" and e.get("email") == email and e.get("at", "") >= since)
+           for e in store.read("delivery_events")):
+        return                     # the provider webhook (or an earlier notice) already counted this bounce
+    record = {"key": key, "type": "bounce", "email": email, "provider_id": message_id, "at": now.isoformat(timespec="seconds"), "via": "reply"}
+    store.update("delivery_events", lambda rows: [*rows, record])
+    _pause_if_unhealthy(store, now)

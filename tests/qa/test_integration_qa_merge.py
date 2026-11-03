@@ -71,3 +71,32 @@ def test_five_fixture_families_imported_in_turn_into_one_store(tmp_path):
     assert all(l.get("id") for l in leads)
     # every lead kept at least one way to reach it or a name; none were created empty
     assert all(l.get("company") or l.get("contact_name") or l.get("email") or l.get("phone") for l in leads)
+
+
+# ---------- fixes made after the merge ----------
+from datetime import datetime, timezone
+
+from app.inbound import process_delivery_event, process_inbound_message
+from tests.qa.inbound_replies_support import app_with_leads, leads_by_email, seed_outbox
+
+
+def _now():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def test_bounce_notice_from_the_reply_poller_counts_toward_the_bounce_pause(tmp_path):
+    _, store = app_with_leads(tmp_path)
+    ids = seed_outbox(store, sent_at=_now())
+    emails = list(ids)[:4]
+    store.update("outbox", lambda r: [*r, *({"lead_id": "x", "to": f"s{i}@f{i}.example", "status": "sent", "sent_at": _now()}
+                                            for i in range(100))])
+    for n, email in enumerate(emails[:3]):             # 3 DSNs found in the mailbox: 3/100 = 3% > 2%
+        out = process_inbound_message(store, {"channel": "email", "from_email": "mailer-daemon@googlemail.com",
+                                              "subject": "Delivery Status Notification (Failure)", "message_id": f"<dsn{n}@x>",
+                                              "in_reply_to": ids[email], "raw_id": f"dsn{n}",
+                                              "text": f"Delivery to {email} failed. 550 5.1.1 user unknown. Address not found."})
+        assert out.get("label") == "bounce", out
+    events = [e for e in store.read("delivery_events") if e["type"] == "bounce"]
+    assert len(events) >= 1, "IMAP/inbound bounce wrote no delivery_events"
+    assert {e["email"] for e in events} == set(emails[:3])
+    assert store.read("settings").get("sending_paused"), "3 bounces from ~100+ sends should pause live sending"
