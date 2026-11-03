@@ -1,0 +1,29 @@
+{
+  "triggerEvent": "BOOKING_CANCELLED",
+  "createdAt": "2026-11-06T08:40:00.000Z",
+  "payload": {
+    "type": "bmi-demo-60",
+    "title": "BookMyInterview.ai demo between Priya and Pooja Rao",
+    "startTime": "2026-11-13T09:30:00+00:00",
+    "endTime": "2026-11-13T10:30:00+00:00",
+    "organizer": {
+      "id": 7,
+      "name": "Priya (BMI)",
+      "email": "priya@outreach-mail.example",
+      "timeZone": "Asia/Kolkata",
+      "language": {"locale": "en"}
+    },
+    "attendees": [
+      {"name": "Pooja Rao", "email": "pooja.rao@sagar-fintech-01.example", "timeZone": "Asia/Kolkata", "language": {"locale": "en"}}
+    ],
+    "responses": {
+      "name": {"label": "name", "value": "Pooja Rao"},
+      "email": {"label": "email", "value": "pooja.rao@sagar-fintech-01.example"}
+    },
+    "uid": "bk-Rs5Tt1Wq8M",
+    "bookingId": 91044,
+    "location": "integrations:daily",
+    "cancellationReason": "Abhi hiring freeze hai, next month baat karte hain",
+    "status": "CANCELLED"
+  }
+}

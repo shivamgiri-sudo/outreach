@@ -1,0 +1,39 @@
+{
+  "triggerEvent": "BOOKING_RESCHEDULED",
+  "createdAt": "2026-11-05T11:02:09.884Z",
+  "payload": {
+    "type": "bmi-demo-60",
+    "title": "BookMyInterview.ai demo between Priya and Pooja Rao",
+    "description": "",
+    "additionalNotes": "Hum 40 log hire kar rahe hain, Pune warehouse",
+    "startTime": "2026-11-13T09:30:00Z",
+    "endTime": "2026-11-13T10:30:00Z",
+    "organizer": {
+      "id": 7,
+      "name": "Priya (BMI)",
+      "email": "priya@outreach-mail.example",
+      "username": "priya-bmi",
+      "timeZone": "Asia/Kolkata",
+      "language": {"locale": "en"},
+      "timeFormat": "h:mma"
+    },
+    "responses": {
+      "name": {"label": "your_name", "value": "Pooja Rao", "isHidden": false},
+      "email": {"label": "email_address", "value": "pooja.rao@sagar-fintech-01.example", "isHidden": false}
+    },
+    "attendees": [
+      {"email": "pooja.rao@sagar-fintech-01.example", "name": "Pooja Rao", "timeZone": "Asia/Kolkata", "language": {"locale": "en"}}
+    ],
+    "location": "integrations:daily",
+    "eventTypeId": 4211,
+    "uid": "bk-Rs5Tt1Wq8M",
+    "bookingId": 91044,
+    "rescheduleId": 91001,
+    "rescheduleUid": "bk-7Hq2Ld9xZ0",
+    "rescheduleStartTime": "2026-11-12T04:30:00Z",
+    "rescheduleEndTime": "2026-11-12T05:30:00Z",
+    "length": 60,
+    "metadata": {"videoCallUrl": "https://app.cal.com/video/bk-Rs5Tt1Wq8M"},
+    "status": "ACCEPTED"
+  }
+}
