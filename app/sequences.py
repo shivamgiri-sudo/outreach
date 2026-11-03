@@ -220,7 +220,7 @@ NEEDS_POSTAL_ADDRESS = {"us", "usa", "united states", "united states of america"
 
 
 def needs_postal_address(lead: dict) -> bool:
-    return str(lead.get("country") or "").strip().lower() in NEEDS_POSTAL_ADDRESS
+    return re.sub(r"[^a-z ]", "", str(lead.get("country") or "").lower()).strip() in NEEDS_POSTAL_ADDRESS   # "U.S.A." too
 
 
 def in_business_hours(now: datetime) -> bool:
