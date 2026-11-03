@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { ErrorState } from "../states.jsx";
+import { EmptyArt, ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
@@ -92,7 +92,11 @@ export default function Tasks() {
             title={`${owner ? `${owner}'s` : "Everyone's"} tasks${bucket ? ` (${bucket.replace("_", " ")})` : ""}, with due times in IST`} />
         </span>
       </div>
-      {board && BUCKETS.map(([key, label]) => (
+      {board && BUCKETS.every(([key]) => board[key].length === 0) && (
+        <div className="card empty"><EmptyArt name="tasks" />
+          <p>{owner ? `No tasks for ${owner}.` : "No tasks yet. Add one above; when a lead says yes, a call task for the caller appears here automatically."}</p></div>
+      )}
+      {board && !BUCKETS.every(([key]) => board[key].length === 0) && BUCKETS.map(([key, label]) => (
         <div key={key} className="card" style={{ marginBottom: 12 }}>
           <div className="row" style={{ justifyContent: "space-between" }}>
             <b>{label}</b><span className={`pill ${key === "overdue" && board[key].length ? "warn" : ""}`}>{board[key].length}</span>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { ErrorState } from "../states.jsx";
+import { EmptyArt, ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import { CopyRow, StatusPill } from "./integrations/Fields.jsx";
 import Wizard from "./integrations/Wizard.jsx";
@@ -114,8 +114,11 @@ export default function Integrations({ go }) {
 
   return (
     <>
-      <h2>Integrations</h2>
-      <p className="sub">{connected} of {hub.length} channels connected. Every card has plain steps, a test button, and there is a custom option for any provider not listed.</p>
+      <div className="page-intro">
+        <div><h2>Integrations</h2>
+          <p className="sub">{connected} of {hub.length} channels connected. Every card has plain steps, a test button, and there is a custom option for any provider not listed.</p></div>
+        <EmptyArt name="integrations" />
+      </div>
       {notice && (
         <div className={`tip ${notice.ok ? "" : "error"}`} role="status" style={{ marginBottom: 12 }}>
           {notice.text} <button className="linkish" onClick={() => setNotice(null)}>Dismiss</button>

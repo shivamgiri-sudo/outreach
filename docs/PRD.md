@@ -1,4 +1,4 @@
-# Outreach OS — Product Requirements Document
+# MCN Outreach (formerly Outreach OS) — Product Requirements Document
 
 **Status:** working product, running locally in practice mode. Live sending is not switched on yet.
 **Product it serves:** BookMyInterview (bookmyinterview.ai), an AI hiring platform in beta.

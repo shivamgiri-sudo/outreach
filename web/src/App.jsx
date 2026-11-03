@@ -184,8 +184,11 @@ export default function App() {
   return (
     <div className="layout">
       <nav className="side" aria-label="Main">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">O</span><h1>Outreach OS</h1>
-          <Bell onOpen={() => go("tasks")} /></div>
+        <div className="brand">
+          <img className="brand-mark" src="/mcn-logo.png" width="34" height="34" alt="" />
+          <div className="brand-text"><h1>MCN Outreach</h1><span className="brand-sub">by Mas Callnet</span></div>
+          <Bell onOpen={() => go("tasks")} />
+        </div>
         <button className="search-trigger" onClick={() => setSearching(true)} aria-label="Quick search (Ctrl K)">
           <Icon name="wand" size={16} /><span>Search…</span><kbd>Ctrl K</kbd>
         </button>

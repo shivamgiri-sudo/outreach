@@ -60,7 +60,7 @@ export default function Dashboard({ go }) {
     <>
       <section className="hero">
         <div className="hero-text">
-          <span className="hero-kicker">Outreach OS</span>
+          <span className="hero-kicker">MCN Outreach</span>
           <h2>Dashboard</h2>
           <p className="sub">Who to talk to today, and where every lead stands.</p>
           <div className="row">

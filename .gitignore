@@ -6,6 +6,7 @@ __pycache__/
 .pytest_cache/
 web/e2e-shots/
 web/tour-shots/
+web/design-shots/
 *.tmp
 *.log
 .env

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, isOwner } from "../api.js";
+import { EmptyArt } from "../states.jsx";
 import { BAND_LABELS, STAGE_LABELS, STAGE_ORDER, sourceLabel, stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import ImportWizard from "./ImportWizard.jsx";
@@ -257,7 +258,7 @@ export default function Leads({ focusLead, go }) {
 
       <div className="card table-card">
         {leads.length === 0 ? (
-          <p className="empty">No leads yet. Click “Import leads” to add your first list.</p>
+          <div className="empty"><EmptyArt name="leads" /><p>No leads yet. Click “Import leads” to add your first list.</p></div>
         ) : shown.length === 0 ? (
           <p className="empty">No leads match. <button className="linkish" onClick={() => { setQuery(""); setStage(""); setBand(""); }}>Clear the filters</button></p>
         ) : (
