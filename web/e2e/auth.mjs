@@ -1,8 +1,8 @@
 // Login screen check. Run with the API started with OUTREACH_ADMIN_PASSWORD=e2e-password.
 import { chromium } from "playwright";
 
-const UI = "http://localhost:5173";
-const API = "http://localhost:8000";
+const UI = process.env.E2E_UI || "http://localhost:5173";
+const API = process.env.E2E_API || "http://localhost:8000";
 const PASSWORD = process.env.E2E_PASSWORD || "e2e-password";
 const results = [];
 let page;
