@@ -224,7 +224,7 @@ def test_all_vendors_imported_in_turn_dedupe_record_conflicts_and_suppress_opt_o
     zi = results["zoominfo_contacts"]["summary"]
     assert zi["merge"] == 20 and zi["create"] == 10               # 20-29 already known from Lusha
     first_merge = results["zoominfo_contacts"]["merges"][0]
-    assert first_merge["matched_by"] == "same phone"              # different email alias, same direct line
+    assert first_merge["matched_by"] in ("same phone", "same LinkedIn profile")   # different email alias, same direct line (and, since qa/import-linkedin-tools, the same profile URL)
     assert ("email", "tushar.das@nilgiri-hr.example", "tdas@nilgiri-hr.example") in {
         (c["field"], c["kept"], c["incoming"]) for c in first_merge["conflicts"]}
     assert results["hunter_email_finder"]["summary"]["unchanged"] == 10
