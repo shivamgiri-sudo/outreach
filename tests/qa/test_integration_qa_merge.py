@@ -184,3 +184,20 @@ def test_same_day_meeting_gets_no_24h_reminder_and_never_says_tomorrow(tmp_path)
     assert len(mails) == 1 and "tomorrow" not in mails[0]["body"] and "in about an hour" in mails[0]["body"]
     assert _when_phrase(start.isoformat(), "24h", now) == "later today"
     assert _when_phrase((now + timedelta(hours=24)).isoformat(), "24h", now) == "tomorrow"
+
+
+def test_fetch_page_refuses_a_redirect_that_lands_on_linkedin(monkeypatch):
+    from app.channels import netguard
+    from app.scraper import fetch_page
+    seen = []
+
+    def fake(url, method, headers, body, timeout, max_bytes, resolver, allow_http):
+        seen.append(url)
+        if "short.example" in url:
+            return netguard.Response(302, {"location": "https://www.linkedin.com/company/acme"}, b"", url)
+        return netguard.Response(200, {}, b"<html>ok</html>", url)
+    monkeypatch.setattr(netguard, "_one_request", fake)
+    with pytest.raises(PermissionError, match="LinkedIn"):
+        fetch_page("https://short.example/acme", resolver=lambda h: ["93.184.216.34"])
+    assert not any("linkedin.com" in u for u in seen)            # never even requested
+    assert "ok" in fetch_page("https://plain.example/", resolver=lambda h: ["93.184.216.34"])

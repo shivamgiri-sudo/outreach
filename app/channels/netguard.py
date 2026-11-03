@@ -189,7 +189,8 @@ def _one_request(url: str, method: str, headers: dict, body, timeout: float, max
 
 
 def guarded_request(url: str, method: str = "GET", headers: dict = None, body: bytes = None, timeout: float = 20,
-                    max_bytes: int = 1_000_000, resolver=None, allow_http: bool = False, max_redirects: int = 0) -> Response:
+                    max_bytes: int = 1_000_000, resolver=None, allow_http: bool = False, max_redirects: int = 0,
+                    check_hop=None) -> Response:
     """One HTTP request through the guard. Redirects (up to max_redirects) are re-checked hop by hop.
 
     Raises ValueError for a bad address, BlockedAddress for a private one and FetchFailed for anything else."""
@@ -199,6 +200,8 @@ def guarded_request(url: str, method: str = "GET", headers: dict = None, body: b
         if resp.status not in REDIRECTS or not max_redirects or not resp.headers.get("location"):
             return resp
         current = urljoin(current, resp.headers["location"])
+        if check_hop:
+            check_hop(current)               # a caller's own rule for every redirect target, before it is requested
         if resp.status == 303 or (resp.status in (301, 302) and verb == "POST"):
             verb, payload = "GET", None
     raise FetchFailed(GENERIC_FETCH_ERROR)

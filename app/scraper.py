@@ -41,9 +41,7 @@ def fetch_page(url: str, resolver=None) -> str:
     if parts.scheme not in ("http", "https"):
         raise ValueError("Only http/https URLs are allowed")
     _refuse_typed_private(parts.hostname or "")
-    host = (parts.hostname or "").rstrip(".").lower()
-    if host == "linkedin.com" or host.endswith(".linkedin.com"):
-        raise PermissionError("LinkedIn pages are never fetched: import a Sales Navigator export instead")
+    _refuse_linkedin(url)
     robots_url = f"{parts.scheme}://{parts.netloc}/robots.txt"
     try:
         robots = _get(robots_url, resolver)
@@ -52,6 +50,12 @@ def fetch_page(url: str, resolver=None) -> str:
     if robots and not robots_allows(robots, url):
         raise PermissionError("robots.txt does not allow fetching this page")
     return _get(url, resolver)
+
+
+def _refuse_linkedin(url: str) -> None:
+    host = (urlparse(url).hostname or "").rstrip(".").lower()
+    if host == "linkedin.com" or host.endswith(".linkedin.com") or host in ("lnkd.in", "linked.in"):
+        raise PermissionError("LinkedIn pages are never fetched: import a Sales Navigator export instead")
 
 
 def _refuse_typed_private(host: str) -> None:
@@ -72,7 +76,7 @@ def _get(url: str, resolver=None) -> str:
     try:
         resp = guarded_request(url, "GET", {"User-Agent": USER_AGENT, "Accept": "text/html,*/*"},
                                timeout=FETCH_TIMEOUT_SECONDS, max_bytes=MAX_PAGE_BYTES, resolver=resolver,
-                               allow_http=True, max_redirects=MAX_REDIRECTS)
+                               allow_http=True, max_redirects=MAX_REDIRECTS, check_hop=_refuse_linkedin)
     except (BlockedAddress, FetchFailed) as exc:
         raise FetchFailed(GENERIC_FETCH_ERROR) from exc
     if resp.status >= 300:
