@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { stageLabel, sourceLabel } from "../labels.js";
 import { ErrorState } from "../states.jsx";
+import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 
 const GROUPS_SHOWN = 20;
 const FIELD_NAMES = {
@@ -149,7 +150,11 @@ export default function Hygiene({ go }) {
         </div>
       </div>
       <div className="card" style={{ marginBottom: 14 }}>
-        <h3 style={{ marginTop: 0 }}>Duplicates ({report.duplicate_clusters})</h3>
+        <div className="row dl-head">
+          <h3 style={{ marginTop: 0 }}>Duplicates ({report.duplicate_clusters})</h3>
+          <DownloadButton path={exportPath("duplicates")} label="Download duplicates" disabled={!report.duplicate_clusters}
+            title="Every duplicate group, one row per lead, with why they match" testId="download-duplicates" />
+        </div>
         <p className="sub" style={{ margin: "0 0 8px" }}>Each group shows why the leads match. Pick the one to keep; nothing is lost from the others.</p>
         <Clusters clusters={report.clusters} onMerge={merge} busy={busy} />
       </div>

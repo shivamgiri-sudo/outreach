@@ -1,0 +1,102 @@
+"""Downloads (CSV / JSON of every list) and full backup / restore (owner only)."""
+from typing import Optional
+
+from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi.responses import JSONResponse, Response, StreamingResponse
+from starlette.concurrency import run_in_threadpool
+
+from . import backup, exports
+
+OWNER_ROLES = ("owner", "admin")
+
+
+def require_owner(request: Request) -> None:
+    """Backups, restores and the suppression list are for the owner only.
+
+    Today there is one admin login, already checked by the login middleware, so every request that reaches here passes.
+    When users and roles arrive, the auth layer sets `request.state.role` (or `request.state.user` with a `role`) and
+    this one check starts refusing everyone but the owner / admin.
+    """
+    role = getattr(request.state, "role", None)
+    user = getattr(request.state, "user", None)
+    if role is None and user is not None:
+        role = user.get("role") if isinstance(user, dict) else getattr(user, "role", None)
+    if role is not None and str(role).lower() not in OWNER_ROLES:
+        raise HTTPException(403, "Only the owner can do this.")
+
+
+def _attachment(name: str) -> dict:
+    return {"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"}
+
+
+def make_router(store, present) -> APIRouter:
+    router = APIRouter()
+
+    def rows(dataset: str, params: dict, request: Request) -> tuple:
+        if dataset in exports.OWNER_ONLY:
+            require_owner(request)
+        try:
+            return exports.build(store, dataset, params, present)
+        except exports.ExportError as exc:
+            raise HTTPException(exc.status, str(exc)) from None
+
+    def as_csv(dataset: str, params: dict, request: Request) -> StreamingResponse:
+        columns, found = rows(dataset, params, request)
+        return StreamingResponse(exports.csv_chunks(columns, found), media_type="text/csv; charset=utf-8",
+                                 headers=_attachment(exports.filename(dataset, params, "csv")))
+
+    @router.get("/api/export")
+    def catalogue():
+        return exports.catalogue()
+
+    @router.get("/api/export/{dataset}.csv")
+    def export_csv(dataset: str, request: Request):
+        return as_csv(dataset, dict(request.query_params), request)
+
+    @router.post("/api/export/{dataset}.csv")
+    def export_csv_post(dataset: str, request: Request, body: Optional[dict] = Body(default=None)):
+        """Same as the GET, for filters too long for an address (e.g. hundreds of picked lead ids)."""
+        return as_csv(dataset, {**dict(request.query_params), **(body or {})}, request)
+
+    @router.get("/api/export/{dataset}.json")
+    def export_json(dataset: str, request: Request):
+        params = dict(request.query_params)
+        columns, found = rows(dataset, params, request)
+        content = {"dataset": dataset, "generated_at": exports.now_utc().isoformat(timespec="seconds"),
+                   "filters": {k: v for k, v in params.items() if v}, "columns": columns, "count": len(found), "rows": found}
+        return JSONResponse(content, headers=_attachment(exports.filename(dataset, params, "json")))
+
+    @router.get("/api/backup")
+    def download_backup(request: Request, include_secrets: bool = False):
+        require_owner(request)
+        now = backup.now_utc()
+        payload = backup.build_backup(store, include_secrets, now)
+        return Response(backup.to_bytes(payload), media_type="application/gzip",
+                        headers=_attachment(backup.backup_filename(include_secrets, now)))
+
+    @router.post("/api/backup/restore")
+    async def restore_backup(request: Request, dry_run: Optional[bool] = None, confirm: bool = False, keep_secrets: bool = False):
+        """Upload a backup (raw body, or multipart field 'file'). Dry run by default; ?confirm=1 replaces everything."""
+        require_owner(request)
+        declared = request.headers.get("content-length") or ""
+        if declared.isdigit() and int(declared) > backup.MAX_UPLOAD_BYTES:
+            raise HTTPException(413, "The file is too large to be an Outreach OS backup.")
+        chunks, size = [], 0
+        async for chunk in request.stream():
+            size += len(chunk)
+            if size > backup.MAX_UPLOAD_BYTES:
+                raise HTTPException(413, "The file is too large to be an Outreach OS backup.")
+            chunks.append(chunk)
+        raw = b"".join(chunks)
+        content_type = request.headers.get("content-type") or ""
+        try:
+            if content_type.lower().startswith("multipart/form-data"):
+                raw = backup.file_from_multipart(raw, content_type)
+            payload = await run_in_threadpool(backup.read_payload, raw)
+            if confirm and dry_run is not True:
+                return await run_in_threadpool(backup.restore, store, payload, keep_secrets)
+            return await run_in_threadpool(backup.summary, store, payload, keep_secrets)
+        except backup.BackupError as exc:
+            raise HTTPException(exc.status, str(exc)) from None
+
+    return router

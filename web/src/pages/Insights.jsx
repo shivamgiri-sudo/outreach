@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
+import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 
 export default function Insights() {
   const [d, setD] = useState(null);
@@ -14,8 +15,11 @@ export default function Insights() {
 
   return (
     <>
-      <h2>Insights</h2>
-      <p className="sub">What is working. Rates are of leads we have emailed.</p>
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <div><h2>Insights</h2><p className="sub">What is working. Rates are of leads we have emailed.</p></div>
+        <DownloadButton path={exportPath("insights")} label="Download insights" testId="download-insights"
+          title="Every number on this page as one table: section, item, measure, value" />
+      </div>
       <div className="grid g4">
         <div className="card stat"><b>{d.totals.leads}</b><span>Leads</span></div>
         <div className="card stat"><b>{d.totals.emails_sent}</b><span>Emails sent</span></div>
