@@ -200,3 +200,11 @@ def test_no_show_follow_up_task_once_thirty_minutes_after_the_end(tmp_path):
     closed = next(t for t in store.read("tasks") if t.get("meeting_id") == "late")
     assert closed["status"] == "done" and closed["done_note"] == "Meeting marked done"
     assert c.post("/api/meetings/nope/done").status_code == 404
+
+
+def test_line_breaks_cannot_inject_calendar_lines_or_headers():
+    sneaky = {**MEETING, "title": "Demo\r\nATTENDEE:mailto:evil@x.in", "join_url": "https://zoom.us/j/1\r\nORGANIZER:mailto:evil@x.in"}
+    ics = build_ics(sneaky, "p@mail.example.in", "Priya", "asha@acme-retail.in")
+    lines = ics.replace("\r\n ", "").split("\r\n")
+    assert not any(line.startswith(("ATTENDEE:mailto:evil", "ORGANIZER:mailto:evil")) for line in lines)
+    assert sum(line.startswith("ATTENDEE") for line in lines) == 1 and sum(line.startswith("ORGANIZER") for line in lines) == 1
