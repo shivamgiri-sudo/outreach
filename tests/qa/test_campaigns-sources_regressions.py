@@ -7,6 +7,7 @@ import pytest
 
 from app import campaign_pipeline as pipe
 from app import campaign_sources as src
+from tests.campaign_fakes import FakeIO
 from app.jobs import job_domain, parse_job_postings
 from app.store import Store
 
@@ -55,3 +56,13 @@ def test_verifier_outage_is_not_a_risky_verdict():
     with pytest.raises(OSError):
         src.verify_email("meera@gamma-care.example", zb, lambda url, headers: {})
     assert src.verify_email("meera@gamma-care.example", nb, lambda url, headers: {"status": "success", "result": "catchall"}) == "risky"
+
+
+# ---------- Apollo job postings refused ----------
+def test_job_postings_refused_keeps_the_companies_already_found():
+    """Organization Search succeeded (credit spent); a 403 on job postings threw every company away."""
+    orgs = [{"id": f"org{i}", "name": f"Hiring Co {i} Pvt. Ltd.", "primary_domain": f"hiring-co-{i}.example"} for i in range(5)]
+    io = FakeIO(post={"mixed_companies/search": {"organizations": orgs}}, get={"/job_postings": PermissionError("HTTP 403")})
+    out = src.apollo_hiring({"roles_hiring": ["telecaller"]}, "k", io.post, io.get, 25, NOW)
+    assert [r["company"] for r in out["rows"]] == [o["name"] for o in orgs]
+    assert out["failed_lookups"] == 5 and len(io.urls("/job_postings")) == 1      # stops asking after the refusal

@@ -154,20 +154,22 @@ def apollo_hiring(target: dict, key: str, post, get, max_results: int, now: date
     except PermissionError as exc:
         raise KeyRejected("Apollo rejected the API key. Check it under Integrations > Lead data.") from exc
     orgs = [o for o in (reply.get("organizations") or []) + (reply.get("accounts") or []) if isinstance(o, dict)][:max_results]
-    rows, requests, failed = [], 1, 0
+    rows, requests, failed, refused = [], 1, 0, False
     for org in orgs:
         row = map_apollo_org(org)
         if not (row["company"] or row["domain"]):
             continue
-        if row["apollo_org_id"]:
+        if row["apollo_org_id"] and refused:
+            failed += 1
+        elif row["apollo_org_id"]:
             try:
                 requests += 1
                 listed = get(APOLLO_JOB_POSTINGS_URL.format(org_id=urllib.parse.quote(row["apollo_org_id"], safe="")), _apollo_headers(key))
                 postings = listed.get("organization_job_postings") or listed.get("job_postings") or []
                 if postings:
                     row.update(hiring_signals(postings, roles, now))
-            except PermissionError as exc:
-                raise KeyRejected("Apollo refused the job postings lookup for this key.") from exc
+            except PermissionError:         # job postings not in the plan: keep the companies already paid for
+                refused, failed = True, failed + 1
             except (OSError, ValueError):
                 failed += 1
         rows.append(row)
