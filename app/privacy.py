@@ -16,7 +16,7 @@ from typing import Optional
 from .hygiene import normalise_email, normalise_phone
 
 ERASURE_PATTERNS = re.compile(
-    r"\b(delete|remove|erase|wipe|purge|destroy)\b[^.!?\n]{0,40}\b(my|our|all)\b[^.!?\n]{0,25}"
+    r"\b(delete|deletion|remove|erase|erasure|wipe|purge|destroy)\b[^.!?\n]{0,40}\b(my|our|all)\b[^.!?\n]{0,25}"
     r"\b(data|details|information|info|personal|contact|number|email|record|records)\b"
     r"|\bforget (me|us|my)\b|\bright to (be forgotten|erasure)\b"
     r"|\b(mera|meri|mere|hamara|hamari)\b[^.!?\n]{0,25}\b(data|details|number|jankari)\b[^.!?\n]{0,25}\b(delete|hata|hatao|mita|remove)",
