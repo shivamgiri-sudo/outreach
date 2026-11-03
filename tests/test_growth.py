@@ -107,6 +107,9 @@ def test_demo_link_page_and_open_event(client):
     assert link["url"].endswith(link["token"])
     page = client.get(f"/demo/{link['token']}")
     assert page.status_code == 200 and "Acme" in page.text and "free" in page.text.lower()
+    assert client.get(f"/api/leads/{i}").json()["activation"]["step"] == "invited"   # link scanners only load the page
+    assert f"/demo/{link['token']}/opened" in page.text                                # a real browser runs this beacon
+    assert client.post(f"/demo/{link['token']}/opened").status_code == 200
     lead = client.get(f"/api/leads/{i}").json()
     assert lead["activation"]["step"] == "opened"
     assert client.get("/demo/nope").status_code == 404

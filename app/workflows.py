@@ -50,13 +50,11 @@ def new_rule(name: str, trigger: dict, action: dict) -> dict:
 
 
 def _task(store, lead_id: str, text: str, now: datetime) -> None:
-    store.write("tasks", [*store.read("tasks"), {"lead_id": lead_id, "kind": "workflow", "text": text, "at": now.isoformat(timespec="seconds")}])
+    store.update("tasks", lambda rows: [*rows, {"lead_id": lead_id, "kind": "workflow", "text": text, "at": now.isoformat(timespec="seconds")}])
 
 
 def _update(store, lead_id: str, change) -> None:
-    leads = store.read("leads")
-    leads = [change(lead) if lead["id"] == lead_id else lead for lead in leads]
-    store.write("leads", leads)
+    store.update_lead(lead_id, change)
 
 
 def _mark_run(store, lead_id: str, rule: dict, now: datetime, text: str) -> None:
@@ -111,6 +109,9 @@ def fire(store, trigger_type: str, value, lead_id: str, now: Optional[datetime] 
     return ran
 
 
+COLD_STAGES = ("new", "verified", "enriched", "contacted", "engaged")
+
+
 def run_time_rules(store, now: Optional[datetime] = None) -> int:
     """Rules that depend on time passing: no reply for N days after our last email."""
     now = now or datetime.now(timezone.utc)
@@ -126,7 +127,9 @@ def run_time_rules(store, now: Optional[datetime] = None) -> int:
     for rule in rules:
         for lead in store.read("leads"):
             sent_at = last_sent.get(lead["id"])
-            if not sent_at or lead["engagement"]["replies"] or lead["stage"] in NO_EMAIL_STAGES:
+            # Only leads still in the cold sequence: a warm lead (interested, on WhatsApp, called, on a trial) is
+            # being handled by a person and must never be demoted just because they didn't reply by email.
+            if not sent_at or lead["engagement"]["replies"] or lead["stage"] not in COLD_STAGES:
                 continue
             if (now - sent_at).days >= rule["trigger"]["value"] and _run_rule(store, rule, lead, now):
                 ran += 1

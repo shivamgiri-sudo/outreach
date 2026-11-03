@@ -13,6 +13,8 @@ from pathlib import Path
 EMPTY = {"leads": [], "integrations": {}, "stories": [], "templates": [], "tasks": [], "outbox": [], "settings": {}, "suppressed": [], "jobs": [], "partners": [], "whatsapp_outbox": [], "workflows": [], "inbox": [], "delivery_events": []}
 BACKUPS_KEPT = 5
 BACKUP_EVERY_SECONDS = 60
+# Flush every save to disk so a power cut can't lose it. Tests switch this off for speed.
+FSYNC = os.environ.get("OUTREACH_FSYNC", "1") != "0"
 
 
 class Store:
@@ -37,7 +39,8 @@ class Store:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(json.dumps(self._data, ensure_ascii=False, indent=1))
             handle.flush()
-            os.fsync(handle.fileno())
+            if FSYNC:
+                os.fsync(handle.fileno())
         self._rotate_backup()
         os.replace(temp, self._path)
 

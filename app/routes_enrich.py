@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from .apollo import match_person
 from .http_util import post_json
 from .enrich import find_public_contacts, needs, pick_best_email
-from .hygiene import is_role_address
+from .hygiene import business_domain, csv_safe, is_role_address, normalise_email, safe_http_url
 from .lead_model import contactless_match, event, merge_contact, now_iso
 from .sheet_import import company_match_key, decision_makers, demo_leads, read_rows, sheet_leads
 
@@ -38,21 +38,24 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
         if body.tab == "decision_makers":
             return attach_people(decision_makers(rows))
         incoming = demo_leads(rows) if body.tab == "demo" else sheet_leads(rows)
-        leads = store.read("leads")
-        seen = {lead["dedupe_key"] for lead in leads}
-        created = duplicates = merged = 0
-        for lead in incoming:
-            if lead["dedupe_key"] in seen:
-                duplicates += 1
-            elif (target := contactless_match(leads, lead)) is not None:
-                leads[target] = merge_contact(leads[target], lead)
-                seen.add(lead["dedupe_key"])
-                merged += 1
-            else:
-                seen.add(lead["dedupe_key"])
-                leads.append(lead)
-                created += 1
-        store.write("leads", leads)
+        stats = {"created": 0, "duplicates": 0, "merged": 0}
+
+        def merge_in(leads: list) -> list:
+            seen = {lead["dedupe_key"] for lead in leads}
+            for lead in incoming:
+                if lead["dedupe_key"] in seen:
+                    stats["duplicates"] += 1
+                elif (target := contactless_match(leads, lead)) is not None:
+                    leads[target] = merge_contact(leads[target], lead)
+                    seen.add(lead["dedupe_key"])
+                    stats["merged"] += 1
+                else:
+                    seen.add(lead["dedupe_key"])
+                    leads.append(lead)
+                    stats["created"] += 1
+            return leads
+        store.update("leads", merge_in)
+        created, duplicates, merged = stats["created"], stats["duplicates"], stats["merged"]
         return {"created": created, "duplicates": duplicates, "merged": merged, "rows": len(rows)}
 
     def attach_people(people: list) -> dict:
@@ -148,12 +151,17 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
                 errors += 1
                 continue
             changes, events = {"apollo_checked_at": now_iso()}, []
-            if person and person.get("email"):
-                email = person["email"].lower()
+            email = normalise_email(person.get("email")) if person else None
+            lead_domain = (lead.get("domain") or "").lower()
+            if email and lead_domain and business_domain(email) and business_domain(email) != lead_domain:
+                email = None            # Apollo matched someone at a different company; don't store it
+            if email and "email_not_unlocked" in email:
+                email = None
+            if email:
                 taken = any(other.get("dedupe_key") == f"email:{email}" for other in leads)
                 changes.update(email=email, email_is_role=is_role_address(email), email_source="apollo",
                                title=lead.get("title") or person.get("title") or "",
-                               linkedin_url=lead.get("linkedin_url") or person.get("linkedin_url") or "")
+                               linkedin_url=lead.get("linkedin_url") or safe_http_url(person.get("linkedin_url")))
                 events.append(event("enrichment", f"Apollo matched {email}"))
                 if not taken:
                     changes["dedupe_key"] = f"email:{email}"
@@ -169,8 +177,8 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
         writer.writerow(APOLLO_COLUMNS)
         for lead in store.read("leads"):
             if not lead.get("email") and lead["stage"] not in ("disqualified", "unsubscribed", "customer"):
-                writer.writerow([lead.get("company", ""), lead.get("contact_name", ""), lead.get("title", ""),
-                                 lead.get("domain") or "", lead.get("city", ""), lead["id"]])
+                writer.writerow([csv_safe(v) for v in (lead.get("company", ""), lead.get("contact_name", ""), lead.get("title", ""),
+                                                       lead.get("domain") or "", lead.get("city", ""), lead["id"])])
         return out.getvalue()
 
     @router.get("/api/quality")

@@ -62,6 +62,8 @@ class StageBody(BaseModel):
 
 class ConsentBody(BaseModel):
     text: str
+    source: str = ""
+    channel: str = ""
 
 
 class NoteBody(BaseModel):
@@ -103,8 +105,14 @@ def _caller(request) -> str:
 
 
 def _is_local(request) -> bool:
-    """A request from this computer that did not come through a proxy or tunnel."""
-    return _caller(request) in LOCAL_HOSTS and not any(h in request.headers for h in PROXY_HEADERS)
+    """A request from this computer that did not come through a proxy or tunnel.
+
+    The Host header must be a local name too: a reverse proxy on the same machine that forwards a public domain
+    (even without X-Forwarded-For) is refused, so a missing password can never expose the API to the internet.
+    """
+    host = (request.headers.get("host") or "").rsplit(":", 1)[0].strip("[]").lower()
+    return (_caller(request) in LOCAL_HOSTS and host in LOCAL_HOSTS + ("testserver",)
+            and not any(h in request.headers for h in PROXY_HEADERS))
 
 
 def _present(lead: dict) -> dict:
@@ -130,7 +138,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         path = request.url.path
         open_path = (not path.startswith("/api/") or path in PUBLIC_API_PATHS or request.method == "OPTIONS"
                      or (path == "/api/activation/event" and webhook_secret(store, routes_growth.WEBHOOK_SECRET)
-                         and hmac.compare_digest(request.headers.get("x-webhook-secret", ""), webhook_secret(store, routes_growth.WEBHOOK_SECRET))))
+                         and hmac.compare_digest(request.headers.get("x-webhook-secret", "").encode("utf-8", "replace"),
+                                                 webhook_secret(store, routes_growth.WEBHOOK_SECRET).encode("utf-8"))))
         if open_path:
             return await call_next(request)
         if not password:
@@ -169,10 +178,12 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                 return leads, i
         raise HTTPException(404, "Lead not found")
 
-    def save_lead(leads: list, index: int, lead: dict) -> dict:
-        leads[index] = lead
-        store.write("leads", leads)
-        return _present(lead)
+    def change_lead(lead_id: str, change) -> dict:
+        """Apply `change` to the latest saved copy of one lead (atomic) and return it presented."""
+        saved = store.update_lead(lead_id, change)
+        if saved is None:
+            raise HTTPException(404, "Lead not found")
+        return _present(saved)
 
     @app.get("/api/dashboard")
     def dashboard():
@@ -205,52 +216,61 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
 
     @app.post("/api/leads/import")
     def import_leads(body: ImportBody):
-        leads = store.read("leads")
-        seen = {lead["dedupe_key"] for lead in leads}
-        created = duplicates = rejected = merged = 0
-        for row in csv.DictReader(io.StringIO(body.csv)):
-            lead = _build_lead(row, body.source)
-            if lead is None:
-                rejected += 1
-            elif lead["dedupe_key"] in seen:
-                duplicates += 1
-            elif (target := _contactless_match(leads, lead)) is not None:
-                leads[target] = _merge_contact(leads[target], lead)
-                seen.add(lead["dedupe_key"])
-                merged += 1
-            else:
-                seen.add(lead["dedupe_key"])
-                leads.append(lead)
-                created += 1
-        store.write("leads", leads)
-        return {"created": created, "duplicates": duplicates, "rejected": rejected, "merged": merged}
+        rows = list(csv.DictReader(io.StringIO(body.csv)))
+        stats = {}
+
+        def merge_in(leads: list) -> list:
+            seen = {lead["dedupe_key"] for lead in leads}
+            created = duplicates = rejected = merged = 0
+            for row in rows:
+                lead = _build_lead(row, body.source)
+                if lead is None:
+                    rejected += 1
+                elif lead["dedupe_key"] in seen:
+                    duplicates += 1
+                elif (target := _contactless_match(leads, lead)) is not None:
+                    leads[target] = _merge_contact(leads[target], lead)
+                    seen.add(lead["dedupe_key"])
+                    merged += 1
+                else:
+                    seen.add(lead["dedupe_key"])
+                    leads.append(lead)
+                    created += 1
+            stats.update(created=created, duplicates=duplicates, rejected=rejected, merged=merged)
+            return leads
+        store.update("leads", merge_in)
+        return stats
 
     @app.post("/api/leads/{lead_id}/stage")
     def move_stage(lead_id: str, body: StageBody):
-        leads, i = find(lead_id)
-        lead = leads[i]
-        if not can_move(lead["stage"], body.stage, has_consent=bool(lead.get("consent"))):
-            raise HTTPException(400, f"Cannot move from {lead['stage']} to {body.stage}")
-        updated = {**lead, "stage": body.stage,
-                   "timeline": [*lead["timeline"], _event("stage", f"{lead['stage']} → {body.stage}")]}
-        save_lead(leads, i, updated)
+        find(lead_id)
+        refused = {}
+
+        def move(lead: dict):
+            if not can_move(lead["stage"], body.stage, has_consent=bool(lead.get("consent"))):
+                refused["from"] = lead["stage"]
+                return None
+            return {**lead, "stage": body.stage, "timeline": [*lead["timeline"], _event("stage", f"{lead['stage']} → {body.stage}")]}
+        store.update_lead(lead_id, move)
+        if refused:
+            raise HTTPException(400, f"Cannot move from {refused['from']} to {body.stage}")
         fire(store, "stage_change", body.stage, lead_id)
         return _present(next(l for l in store.read("leads") if l["id"] == lead_id))
 
     @app.post("/api/leads/{lead_id}/consent")
     def record_consent(lead_id: str, body: ConsentBody):
-        leads, i = find(lead_id)
-        lead = leads[i]
-        updated = {**lead, "consent": {"text": body.text, "at": _now()},
-                   "timeline": [*lead["timeline"], _event("consent", f"Said yes: {body.text}")]}
-        return save_lead(leads, i, updated)
+        text = body.text.strip()
+        if len(text) < 3:
+            raise HTTPException(400, "Write what they said and how (for example: 'Yes on a call with Priya, 3 Nov').")
+        return change_lead(lead_id, lambda lead: {
+            **lead, "consent": {"text": text[:500], "at": _now(), "source": body.source or "recorded by a person",
+                                "channel": body.channel or "any"},
+            "consent_withdrawn_at": None,
+            "timeline": [*lead["timeline"], _event("consent", f"Said yes: {text[:500]}")]})
 
     @app.post("/api/leads/{lead_id}/note")
     def add_note(lead_id: str, body: NoteBody):
-        leads, i = find(lead_id)
-        lead = leads[i]
-        updated = {**lead, "timeline": [*lead["timeline"], _event(body.kind, body.text)]}
-        return save_lead(leads, i, updated)
+        return change_lead(lead_id, lambda lead: {**lead, "timeline": [*lead["timeline"], _event(body.kind, body.text)]})
 
     @app.get("/api/integrations")
     def list_integrations():

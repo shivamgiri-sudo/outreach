@@ -4,7 +4,7 @@ import io
 import re
 from typing import Optional
 
-from .hygiene import business_domain, normalise_phone
+from .hygiene import business_domain, normalise_phone, safe_http_url
 from .lead_model import build_lead, event, to_int
 
 PHONE_SPLIT_RE = re.compile(r"[/,;]")
@@ -110,7 +110,7 @@ def sheet_leads(rows: list) -> list:
             "company_size": to_int(re.sub(r"[^0-9]", "", _first(group, "Company Size (employees)")[:6])) if _first(group, "Company Size (employees)")[:1].isdigit() else 0,
             "city": _first(group, "City"), "sector": _first(group, "Company Sector"),
             "job_links": [r["Job Posting Link"].strip() for r in group if r.get("Job Posting Link", "").strip()],
-            "linkedin_url": _first(group, "LinkedIn Profile URL"),
+            "linkedin_url": safe_http_url(_first(group, "LinkedIn Profile URL")),
             "contact_confidence": _first(group, "Contact Confidence"),
             "timeline": [*lead["timeline"], *[event("sheet", n) for n in notes]],
         })

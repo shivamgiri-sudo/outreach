@@ -60,3 +60,15 @@ def business_domain(value: Optional[str]) -> Optional[str]:
     """Company website domain; free-mail addresses do not identify a company."""
     domain = company_domain(value)
     return None if domain in FREE_MAIL_DOMAINS else domain
+
+
+def safe_http_url(raw) -> str:
+    """The URL if it is a plain http(s) link, else "". Blocks javascript:, data: and similar links from imports."""
+    url = str(raw or "").strip()
+    return url if re.match(r"^https?://[^\s<>\"']+$", url, re.IGNORECASE) else ""
+
+
+def csv_safe(value) -> str:
+    """A spreadsheet cell that can't run as a formula when the CSV is opened in Excel or Sheets."""
+    text = "" if value is None else str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text

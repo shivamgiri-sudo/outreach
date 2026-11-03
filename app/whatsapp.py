@@ -42,9 +42,13 @@ class WhatsAppError(Exception):
 
 
 def last_inbound_at(lead: dict):
-    """When the lead last wrote to us (a reply or a recorded yes), or None."""
-    stamps = [e["at"] for e in lead.get("timeline", []) if e["kind"] in ("reply", "consent")]
-    return datetime.fromisoformat(max(stamps)) if stamps else None
+    """When the lead last sent us a WhatsApp message, or None.
+
+    Meta's 24-hour customer-service window only opens on a WhatsApp message from the person; an email reply or
+    a consent noted by a person does not open it.
+    """
+    stamp = lead.get("whatsapp_last_inbound_at")
+    return datetime.fromisoformat(stamp) if stamp else None
 
 
 def within_session_window(lead: dict, now: datetime) -> bool:
@@ -53,12 +57,11 @@ def within_session_window(lead: dict, now: datetime) -> bool:
 
 
 def send(store, lead_id: str, template: str, text: str, now: datetime, base_url: str) -> dict:
-    """Queue one WhatsApp message (practice mode) and return the updated lead."""
-    leads = store.read("leads")
-    index = next((i for i, lead in enumerate(leads) if lead["id"] == lead_id), None)
-    if index is None:
+    """Queue one WhatsApp message (practice mode until a provider is live) and return the updated lead."""
+    lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+    if lead is None:
         raise LookupError("Lead not found")
-    lead = ensure_demo(leads[index], now)
+    lead = ensure_demo(lead, now)
     if lead["stage"] in NO_EMAIL_STAGES:
         raise WhatsAppError(f"Lead is {lead['stage']}; WhatsApp is not allowed")
     if not lead.get("consent"):
@@ -67,7 +70,7 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
         raise WhatsAppError("This lead has no phone number")
     if template == "custom":
         if not within_session_window(lead, now):
-            raise WhatsAppError("Free text is only allowed within 24 hours of their last message. Use a template.")
+            raise WhatsAppError("Free text is only allowed within 24 hours of their last WhatsApp message. Use a template.")
         raw = text.strip()
         if not raw:
             raise WhatsAppError("Write the message text")
@@ -77,12 +80,16 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
         raise WhatsAppError("Unknown template")
     variables = lead_variables(lead, get_settings(store)["sender_name"], base_url,
                                {"demo_link": f"{base_url}/demo/{lead['demo_token']}"})
-    body, _ = render(raw, variables)
+    body, missing = render(raw, variables)
+    if missing:
+        raise WhatsAppError(f"This message needs details the lead doesn't have yet: {', '.join(missing)}")
     message = {"lead_id": lead_id, "to": lead["phone"], "template": template, "body": body,
                "sent_at": now.isoformat(timespec="seconds"), "status": "dry_run"}
-    store.write("whatsapp_outbox", [*store.read("whatsapp_outbox"), message])
+    store.update("whatsapp_outbox", lambda rows: [*rows, message])
     event = {"at": message["sent_at"], "kind": "whatsapp", "text": f"{template} — dry_run"}
-    stage = "whatsapp_active" if lead["stage"] in ("interested", "engaged") else lead["stage"]
-    leads[index] = {**lead, "stage": stage, "timeline": [*lead["timeline"], event]}
-    store.write("leads", leads)
-    return leads[index]
+    demo = {k: lead[k] for k in ("demo_token", "referral_code", "activation") if k in lead}
+
+    def record(latest: dict) -> dict:
+        stage = "whatsapp_active" if latest["stage"] in ("interested", "engaged") else latest["stage"]
+        return {**demo, **latest, "stage": stage, "timeline": [*latest["timeline"], event]}
+    return store.update_lead(lead_id, record)

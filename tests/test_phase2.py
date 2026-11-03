@@ -69,9 +69,14 @@ def test_whatsapp_unknown_template_and_custom_window(client):
     lid = leads_by_company(client)["Acme"]["id"]
     client.post(f"/api/leads/{lid}/consent", json={"text": "yes"})
     assert client.post(f"/api/leads/{lid}/whatsapp", json={"template": "nope"}).status_code == 400
-    # custom text is only allowed within 24h of their last message
+    # custom text is only allowed within 24h of their last WhatsApp message (Meta's customer-service window)
+    refused = client.post(f"/api/leads/{lid}/whatsapp", json={"template": "custom", "text": "Thanks!"})
+    assert refused.status_code == 400   # a consent noted by a person does not open the window
+    from app.inbound import process_inbound_message
+    process_inbound_message(client.app.state.store, {"channel": "whatsapp", "from_phone": "+919876543210",
+                                                     "text": "Haan, details bhejiye", "raw_id": "wamid.test"})
     ok = client.post(f"/api/leads/{lid}/whatsapp", json={"template": "custom", "text": "Thanks!"})
-    assert ok.status_code == 200      # consent was just recorded, which counts as a recent message
+    assert ok.status_code == 200        # their WhatsApp message opened it
     assert "first_after_yes" in TEMPLATES
 
 
