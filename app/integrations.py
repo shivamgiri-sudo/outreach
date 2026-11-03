@@ -133,6 +133,19 @@ CATALOGUE = [
             "Export the results as JSON and upload the file on the Data sources page. Each value keeps the page it came from.",
         ],
     },
+    {
+        "id": "google_places", "title": "Google Places (business search)", "group": "Lead data",
+        "why": "Lets a campaign find businesses by type and city (name, website, office phone) with your own Google key.",
+        "modes": ["api"],
+        "fields": [{"key": "api_key", "label": "Places API key", "required": True, "secret": True}],
+        "steps": [
+            "Open the Google Cloud console and pick (or create) a project with billing switched on.",
+            "Enable 'Places API (New)' for that project.",
+            "Create an API key under APIs & Services > Credentials and restrict it to the Places API.",
+            "Check Google's pricing page for the free monthly allowance and the cost per search.",
+            "Paste the key here and save. Campaigns can then search for businesses such as 'BPO companies in Pune'.",
+        ],
+    },
 ]
 
 
