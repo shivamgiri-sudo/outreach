@@ -1,6 +1,8 @@
 """QA regressions for bugs found while testing the Integrations hub (each fixed in its own commit)."""
+import pytest
+
 from app.channels.custom_http import RESPONSE_PREVIEW_BYTES, response_preview
-from tests.qa.integrations_hub_support import make
+from tests.qa.integrations_hub_support import make, save
 
 
 def test_reply_preview_is_cut_at_2kb_even_for_hindi_text():
@@ -48,3 +50,15 @@ def test_legacy_save_refuses_a_mode_the_integration_does_not_offer(tmp_path):
     assert c.put("/api/integrations/sending_domain", json={"mode": "bogus", "values": {}}).status_code == 400
 
 
+
+
+# ---------- legacy Setup test buttons know about hub providers ----------
+@pytest.mark.parametrize("channel,pid,integration_id", [("whatsapp", "interakt", "whatsapp"), ("whatsapp", "meta_cloud", "whatsapp"),
+                                                         ("calls", "exotel", "telephony"), ("calls", "twilio_voice", "telephony")])
+def test_legacy_test_button_knows_about_hub_providers(tmp_path, channel, pid, integration_id):
+    """Regression: the old Setup test said WhatsApp 'stays in practice mode, tell us your provider' and that an Exotel
+    calls setup needed a {phone} link, although the Integrations page had a working provider."""
+    c = make(tmp_path)
+    save(c, channel, pid, make_active=True)
+    r = c.post(f"/api/integrations/{integration_id}/test", json={}).json()
+    assert r["ok"] is True and "Integrations" in r["message"], r
