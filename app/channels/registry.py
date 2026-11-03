@@ -31,7 +31,7 @@ CHANNELS = [
      "about": "Book demos from a lead's page, with a video link, and see bookings land on the lead."},
     {"id": "lead_data", "title": "Lead data", "kind": "legacy",
      "legacy_ids": ["apollo", "hunter", "firecrawl", "google_places", "contact_scraper", "sales_navigator", "email_verifier"]
-     + [e["id"] for e in legacy.CATALOGUE if e.get("source")],
+     + [e["id"] for e in legacy.SOURCE_CATALOGUE],
      "about": "Where contact details come from. Compare them on the Data sources page."},
     {"id": "ai", "title": "AI", "kind": "legacy", "legacy_ids": ["llm"],
      "about": "Writes reply drafts and reads replies the rules cannot place."},
@@ -45,7 +45,7 @@ LEGACY_DOCS = {
     "sales_navigator": "https://business.linkedin.com/sales-solutions", "email_verifier": "https://www.zerobounce.net/docs/",
     "llm": "https://docs.anthropic.com/en/api/getting-started",
 }
-LEGACY_DOCS.update({e["id"]: e["docs_url"] for e in legacy.CATALOGUE if e.get("source")})
+LEGACY_DOCS.update({e["id"]: e["docs_url"] for e in legacy.SOURCE_CATALOGUE})
 LEGACY_RECOMMENDED = {"apollo", "llm"}
 # Old free-text values of whatsapp.values.provider that now name a hub provider.
 LEGACY_PROVIDER_ALIASES = {"gupshup": "gupshup", "interakt": "interakt", "wati": "wati", "aisensy": "aisensy",
@@ -63,7 +63,7 @@ def _legacy_provider(item: dict, channel_id: str) -> dict:
 
 
 def _build() -> dict:
-    legacy_by_id = {i["id"]: i for i in legacy.CATALOGUE}
+    legacy_by_id = {i["id"]: i for i in legacy.CATALOGUE + legacy.SOURCE_CATALOGUE}
     out = {}
     for ch in CHANNELS:
         if ch["kind"] == "legacy":

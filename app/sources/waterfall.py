@@ -18,6 +18,7 @@ from .base import CreditCapReached, KeyRejected, RateLimited, split_name
 from .runner import credit_cap, describe_error
 from .site_discover import crawl
 
+MARKERS = {"hunter": "hunter_checked_at", "apollo": "apollo_checked_at"}
 RANK = {"valid": 0, "plausible": 1, "unknown": 1, "risky": 2}
 
 
@@ -82,7 +83,7 @@ def find_one(run: Run, lead: dict, titles: list, taken: set, suppressed: set):
         hits = []
         if first and spec.find_email:
             hits = run.guard(spec, lambda c: spec.find_email(c, first, last, domain, company), [])
-        elif spec.find_people:
+        elif spec.find_people and not lead.get(MARKERS.get(spec.id, "")):         # the Hunter/Apollo checkboxes already did this search
             hits = run.guard(spec, lambda c: spec.find_people(c, domain, company, titles, 5), [])
         if spec.id == "website_deep" and spec.id in run.bound:                  # cached by the call above: no new fetch
             page = run.guard(spec, lambda c: crawl(c, domain), {})

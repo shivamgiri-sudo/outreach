@@ -70,7 +70,7 @@ def make_router(store, transport=request, smtp_factory=None, imap_factory=None, 
         return next(p for c in channels_view() if c["id"] == channel for p in c["providers"] if p["id"] == provider)
 
     def channels_view() -> list:
-        return config.describe(store.read("integrations"), integrations.describe(store.read("integrations")),
+        return config.describe(store.read("integrations"), integrations.describe(store.read("integrations"), all_cards=True),
                                store.read("settings"))
 
     @router.get("/api/channels")

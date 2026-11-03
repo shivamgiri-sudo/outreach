@@ -100,14 +100,16 @@ def test_setup_test_button_routes_to_the_same_source_test(tmp_path):
 
 def test_integrations_cards_exist_for_every_new_source_and_mask_secrets(tmp_path):
     new = [s for s in registry.SOURCES if not s.legacy and s.id not in ("builtin_verifier", "website_deep")]
-    ids = {i["id"] for i in integrations.CATALOGUE}
+    ids = {i["id"] for i in integrations.SOURCE_CATALOGUE}
+    assert not ids & {i["id"] for i in integrations.CATALOGUE}                      # the Setup page keeps only the original 11
     assert {s.id for s in new} <= ids
     lead_data = [p["id"] for p in hub.providers_for("lead_data")]
     assert {s.id for s in new} <= set(lead_data) and lead_data[:7] == ["apollo", "hunter", "firecrawl", "google_places", "contact_scraper", "sales_navigator", "email_verifier"]
     assert len(lead_data) == len(set(lead_data))                                           # no card twice
     c = app_client(tmp_path)
     c.put("/api/integrations/snov", json={"mode": "api", "values": {"client_id": "id-123456", "client_secret": "sec-987654"}})
-    shown = next(i for i in c.get("/api/integrations").json() if i["id"] == "snov")
+    assert len(c.get("/api/integrations").json()) == len(integrations.CATALOGUE)       # Setup > Connections is unchanged
+    shown = c.put("/api/integrations/snov", json={"mode": "api", "values": {"client_id": "id-123456", "client_secret": "sec-987654"}}).json()
     assert shown["values"]["client_secret"].startswith("••••") and shown["values"]["client_id"].startswith("••••") and shown["status"] == "configured"
     channels = c.get("/api/channels").json()["channels"]
     cards = next(ch for ch in channels if ch["id"] == "lead_data")["providers"]

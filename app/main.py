@@ -320,7 +320,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         merged = {**existing, **{k: v for k, v in body.values.items() if v and not str(v).startswith("••••")}}
         # keep hub data (other providers, last test, tokens) stored next to mode / values
         store.write("integrations", {**saved, integration_id: {**saved.get(integration_id, {}), "mode": body.mode, "values": merged}})
-        return next(i for i in integrations.describe(store.read("integrations")) if i["id"] == integration_id)
+        return next(i for i in integrations.describe(store.read("integrations"), all_cards=True) if i["id"] == integration_id)
 
     @app.get("/api/stories")
     def list_stories():

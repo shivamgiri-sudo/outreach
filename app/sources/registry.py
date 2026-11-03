@@ -72,7 +72,8 @@ def describe(saved: dict) -> list:
         out.append({"id": s.id, "title": s.title, "group": s.group, "capabilities": list(s.caps), "why": s.why, "keyless": s.keyless,
                     "connected": c["connected"], "reason": c["reason"], "free": s.free, "cost": s.cost, "cost_note": s.cost_note,
                     "rate_per_min": s.rate_per_min, "free_note": s.free_note, "terms": s.terms, "docs_url": s.docs_url, "steps": s.steps,
-                    "status_note": s.honest_status, "legacy": s.legacy, "fields": [{k: v for k, v in f.items() if k != "secret"} | {"secret": bool(f.get("secret"))} for f in s.fields],
+                    "status_note": s.honest_status, "legacy": s.legacy, "discovers": s.discover is not None, "enriches": bool(s.find_people or s.find_email),
+                    "verifies": s.verify is not None, "takes_identifiers": any(f["key"] == "slugs" for f in s.fields), "fields": [{k: v for k, v in f.items() if k != "secret"} | {"secret": bool(f.get("secret"))} for f in s.fields],
                     "input_note": s.input_note})
     return out
 
