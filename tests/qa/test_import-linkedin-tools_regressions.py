@@ -195,3 +195,23 @@ def test_headline_is_a_fallback_title_never_over_the_real_one():
     by_name = {l["contact_name"]: l for l in leads}
     assert by_name["Anjali Iyer"]["title"] == "VP HR" and by_name["Anjali Iyer"]["seniority"] == "vp"
     assert by_name["Rohit Das"]["title"] == "HR Generalist"
+
+
+@pytest.mark.parametrize("url", ["https://www.linkedin.com/in/ravi-kumar-qa008", "http://in.linkedin.com/company/x",
+                                 "https://LINKEDIN.COM./sales/lead/ACwAAQA00008xQa", "https://linkedin.com/jobs/view/1"])
+def test_the_page_reader_never_fetches_linkedin(monkeypatch, tmp_path, url):
+    """PRD §4 / non-goals: no automated LinkedIn scraping. /api/scrape/extract used to request linkedin.com/robots.txt
+    and the page itself; it now refuses before any network call."""
+    from fastapi.testclient import TestClient
+    from app import scraper
+    from app.main import create_app
+
+    def no_network(*args, **kwargs):
+        raise AssertionError(f"network call attempted: {args[:1]}")
+    monkeypatch.setattr(scraper, "guarded_request", no_network)
+    with pytest.raises(PermissionError, match="LinkedIn pages are never fetched"):
+        scraper.fetch_page(url)
+    client = TestClient(create_app(data_file=tmp_path / "d.json"))
+    r = client.post("/api/scrape/extract", json={"url": url, "company": "Acme Retail", "add_leads": True})
+    assert r.status_code == 400 and "LinkedIn" in r.json()["detail"]
+    assert client.get("/api/leads").json() == []
