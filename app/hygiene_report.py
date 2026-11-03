@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from .lead_merge import FUZZY_COMPANY_MIN, STAGE_RANK, completeness, lead_domain
 from .lead_model import event
 from .places import city_key, clean_city, clean_country, clean_state, is_indian_place, size_bucket, state_for_city
-from .standardise import (clean_company, clean_email, clean_person_name, clean_title, company_key, company_similarity,
+from .standardise import (clean_company, clean_email, clean_person_name, clean_title, company_key, key_similarity,
                           department_of, email_alias_key, host_of, is_free_mail, is_role_email, names_compatible,
                           parse_phone, person_key, seniority_of, website_domain)
 
@@ -96,24 +96,25 @@ def duplicate_clusters(leads: list) -> list:
 
 
 def _company_pairs(leads: list, clusters: _Clusters, by_company: dict) -> None:
-    clash = lambda a, b: lead_domain(a) and lead_domain(b) and lead_domain(a) != lead_domain(b)
+    keys = [company_key(lead.get("company")) for lead in leads]
+    domains = [lead_domain(lead) for lead in leads]
+    cities = [city_key(lead.get("city")) for lead in leads]
+    clash = lambda i, j: domains[i] and domains[j] and domains[i] != domains[j]
     for members in by_company.values():
         for x, i in enumerate(members):
             for j in members[x + 1:]:
-                ci, cj = city_key(leads[i].get("city")), city_key(leads[j].get("city"))
-                if not clash(leads[i], leads[j]) and (not ci or not cj or ci == cj):
-                    clusters.join(i, j, "same company name" + (" and city" if ci and cj else ""))
+                if not clash(i, j) and (not cities[i] or not cities[j] or cities[i] == cities[j]):
+                    clusters.join(i, j, "same company name" + (" and city" if cities[i] and cities[j] else ""))
     blocks = {}
-    for i, lead in enumerate(leads):
-        key, city = company_key(lead.get("company")), city_key(lead.get("city"))
-        if key and city:
-            blocks.setdefault((city, key[:3]), []).append(i)
+    for i in range(len(leads)):
+        if keys[i] and cities[i]:
+            blocks.setdefault((cities[i], keys[i][:3]), []).append(i)
     for members in blocks.values():
         for x, i in enumerate(members):
             for j in members[x + 1:]:
-                if company_key(leads[i]["company"]) == company_key(leads[j]["company"]) or clash(leads[i], leads[j]):
+                if keys[i] == keys[j] or clash(i, j):
                     continue
-                score = company_similarity(leads[i]["company"], leads[j]["company"])
+                score = key_similarity(keys[i], keys[j], FUZZY_COMPANY_MIN)
                 if score >= FUZZY_COMPANY_MIN:
                     clusters.join(i, j, f"similar company name in the same city ({round(score * 100)}%)")
 

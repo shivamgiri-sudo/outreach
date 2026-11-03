@@ -148,22 +148,26 @@ def company_key(name) -> str:
     return re.sub(r"\s+", " ", _KEY_NOISE.sub(" ", base)).strip()
 
 
-def company_similarity(a, b) -> float:
-    """Token-set similarity (difflib). A subset only scores 1.0 when the extra words are generic ('Acme Technologies')."""
+def key_similarity(ka: str, kb: str, floor: float = 0.0) -> float:
+    """Token-set similarity of two company keys (difflib). A subset only scores 0.95 when the extra words are generic
+    ('Acme Technologies'). With a floor, pairs that cannot reach it are dropped early using difflib's cheap bounds."""
     from difflib import SequenceMatcher
-    ka, kb = company_key(a), company_key(b)
     if not ka or not kb:
         return 0.0
     if ka == kb:
         return 1.0
     ta, tb = set(ka.split()), set(kb.split())
     common = sorted(ta & tb)
-    s1 = " ".join(common + sorted(ta - tb))
-    s2 = " ".join(common + sorted(tb - ta))
-    score = SequenceMatcher(None, s1, s2).ratio()
-    if common and ((ta - tb) <= GENERIC_COMPANY_WORDS and (tb - ta) <= GENERIC_COMPANY_WORDS):
-        score = max(score, 0.95)
-    return round(score, 3)
+    generic = bool(common) and (ta - tb) <= GENERIC_COMPANY_WORDS and (tb - ta) <= GENERIC_COMPANY_WORDS
+    matcher = SequenceMatcher(None, " ".join(common + sorted(ta - tb)), " ".join(common + sorted(tb - ta)))
+    if floor and not generic and (matcher.real_quick_ratio() < floor or matcher.quick_ratio() < floor):
+        return 0.0
+    score = matcher.ratio()
+    return round(max(score, 0.95) if generic else score, 3)
+
+
+def company_similarity(a, b, floor: float = 0.0) -> float:
+    return key_similarity(company_key(a), company_key(b), floor)
 
 
 # ---------------------------------------------------------------- titles

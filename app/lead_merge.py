@@ -11,8 +11,8 @@ from typing import Optional
 from .hygiene import dedupe_key as basic_dedupe_key, is_role_address
 from .lead_model import event
 from .places import city_key, clean_city, size_bucket
-from .standardise import (company_key, company_similarity, email_alias_key, email_domain, is_free_mail, is_role_email,
-                          names_compatible, parse_phone, person_key, registrable_domain, host_of)
+from .standardise import (company_key, company_similarity, email_alias_key, email_domain, host_of, is_free_mail,
+                          is_role_email, key_similarity, names_compatible, parse_phone, person_key, registrable_domain)
 
 FUZZY_COMPANY_MIN = 0.92
 COMPANY_FIELDS = ("company", "company_legal", "website", "domain", "company_linkedin_url", "sector",
@@ -73,6 +73,7 @@ class LeadIndex:
         self.leads = leads
         self.email, self.alias, self.phone, self.domain_name, self.domain = {}, {}, {}, {}, {}
         self.company, self.blocks, self.keys = {}, {}, set()
+        self.ckey, self.ldomain = {}, {}
         for i in range(len(leads)):
             self.add(i)
 
@@ -83,7 +84,8 @@ class LeadIndex:
 
     def add(self, i: int) -> None:
         lead = self.leads[i]
-        domain = lead_domain(lead)
+        domain = self.ldomain[i] = lead_domain(lead)
+        key = self.ckey[i] = company_key(lead.get("company"))
         self.keys.add(lead.get("dedupe_key"))
         for who, person in self._people(lead):
             emails = [person.get("email")] + (list(lead.get("emails") or []) if who == "primary" else [])
@@ -98,7 +100,6 @@ class LeadIndex:
                 self.domain_name.setdefault((domain, name), (i, who))
         if domain:
             self.domain.setdefault(domain, i)
-        key = company_key(lead.get("company"))
         if key:
             self.company.setdefault(key, [])
             if i not in self.company[key]:
@@ -149,7 +150,7 @@ class LeadIndex:
         key, city = company_key(rec.get("company")), city_key(rec.get("city"))
         if not key:
             return None
-        clash = lambda i: domain and lead_domain(self.leads[i]) and lead_domain(self.leads[i]) != domain
+        clash = lambda i: domain and self.ldomain[i] and self.ldomain[i] != domain
         for i in self.company.get(key, []):
             other_city = city_key(self.leads[i].get("city"))
             if clash(i) or (city and other_city and city != other_city):
@@ -157,7 +158,7 @@ class LeadIndex:
             return i, "company", "same company name and city" if city and other_city else "same company name"
         if city:
             for i in self.blocks.get((city, key[:3]), []):
-                score = company_similarity(rec["company"], self.leads[i].get("company"))
+                score = key_similarity(key, self.ckey[i], FUZZY_COMPANY_MIN)
                 if score >= FUZZY_COMPANY_MIN and not clash(i):
                     return i, "company", f"similar company name in the same city ({round(score * 100)}%)"
         return None
