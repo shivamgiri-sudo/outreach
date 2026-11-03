@@ -74,7 +74,7 @@ export default function Workflows() {
           ) : <input style={{ marginTop: 6 }} value={form.aValue} onChange={(e) => set({ aValue: e.target.value })} placeholder="Text" />}
           <div className="row" style={{ marginTop: 12 }}>
             <button className="btn" onClick={add}>Add rule</button>
-            <button className="btn ghost" onClick={async () => { await api.starterWorkflows(); setMessage("Suggested rules added."); load(); }}>Add suggested rules</button>
+            <button className="btn ghost" onClick={() => api.starterWorkflows().then(() => { setMessage("Suggested rules added."); load(); }, (e) => setMessage(e.message))}>Add suggested rules</button>
           </div>
         </div>
 
