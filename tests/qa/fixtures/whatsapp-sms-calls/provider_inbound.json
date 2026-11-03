@@ -1,0 +1,71 @@
+{
+  "_sources": {
+    "gupshup": "https://docs.gupshup.io/docs/inbound-messages and https://docs.gupshup.io/docs/types-of-payloads",
+    "interakt": "https://interakt.shop/resource-center/how-to-send-whatsapp-templates-using-apis-webhooks",
+    "wati": "https://support.wati.io/en/articles/11463225-how-to-track-template-message-delivery-and-message-status-using-wati-webhooks",
+    "aisensy": "https://aisensy.com/docs/api-docs/api-reference-docs/ (inbound shape least certain, see PRD 9.8)",
+    "twilio_sms": "https://www.twilio.com/docs/messaging/guides/webhook-request",
+    "msg91": "https://control.msg91.com/apidoc/textsms/send-sms-flow.php (inbound/long-code shape least certain, see PRD 9.8)"
+  },
+  "_note": "Fictional numbers (90000 1xxxx) and ids only.",
+  "gupshup_text": {
+    "app": "BMIOutreach", "timestamp": 1793693400000, "version": 2, "type": "message",
+    "payload": {"id": "gs-qa-001", "source": "919000010021", "type": "text",
+                "payload": {"text": "Haan, details bhejiye"},
+                "sender": {"phone": "919000010021", "name": "Kavya", "country_code": "91", "dial_code": "9000010021"}}
+  },
+  "gupshup_quick_reply_stop": {
+    "app": "BMIOutreach", "timestamp": 1793693460000, "version": 2, "type": "message",
+    "payload": {"id": "gs-qa-002", "source": "919000010022", "type": "quick_reply",
+                "payload": {"text": "STOP", "type": "button"},
+                "sender": {"phone": "919000010022", "name": "Faizan", "country_code": "91", "dial_code": "9000010022"},
+                "context": {"id": "wamid.QA.OUT.022", "gsId": "gs-out-022"}}
+  },
+  "gupshup_message_event": {
+    "app": "BMIOutreach", "timestamp": 1793693520000, "version": 2, "type": "message-event",
+    "payload": {"id": "gs-out-022", "type": "delivered", "destination": "919000010022", "payload": {"ts": 1793693520}}
+  },
+  "interakt_text": {
+    "version": "1.0", "timestamp": "2026-11-03T08:12:00.000000", "type": "message_received",
+    "data": {"customer": {"id": "cust-qa-1", "channel_phone_number": "919000010023", "phone_number": "9000010023",
+                          "country_code": "+91", "traits": {"name": "Sneha"}},
+             "message": {"id": "ik-qa-001", "chat_message_type": "CustomerMessage", "message_status": "Sent",
+                         "received_at_utc": "2026-11-03T08:12:00.123000", "message_content_type": "Text",
+                         "is_template_message": false, "message": "Nahi chahiye, thanks"}}
+  },
+  "wati_text": {
+    "id": "wati-qa-row-1", "created": "2026-11-03T08:14:00.0947797Z", "whatsappMessageId": "wamid.QA.WATI.001",
+    "conversationId": "conv-wati-1", "ticketId": "t-1", "text": "Yes interested, call me after 4", "type": "text",
+    "data": null, "timestamp": "1793693640", "owner": false, "eventType": "message", "statusString": "Received",
+    "waId": "919000010024", "senderName": "Vikram", "listReply": null, "buttonReply": null, "replyContextId": null
+  },
+  "wati_button_stop": {
+    "id": "wati-qa-row-2", "created": "2026-11-03T08:15:00.0000000Z", "whatsappMessageId": "wamid.QA.WATI.002",
+    "conversationId": "conv-wati-2", "type": "button", "timestamp": "1793693700", "owner": false,
+    "eventType": "message", "statusString": "Received", "waId": "919000010025", "senderName": "Ananya",
+    "buttonReply": {"id": "btn_stop", "title": "Stop promotions"}, "replyContextId": "wamid.QA.OUT.025"
+  },
+  "wati_list_reply": {
+    "id": "wati-qa-row-3", "whatsappMessageId": "wamid.QA.WATI.003", "type": "interactive",
+    "timestamp": "1793693760", "owner": false, "eventType": "message", "statusString": "Received",
+    "waId": "919000010026", "listReply": {"id": "row_later", "title": "Not now, next month"}
+  },
+  "wati_sent_by_us": {
+    "id": "wati-qa-row-4", "whatsappMessageId": "wamid.QA.WATI.004", "text": "Hi Deepak, this is Priya",
+    "type": "text", "timestamp": "1793693800", "owner": true, "eventType": "templateMessageSent_v2", "waId": "919000010027"
+  },
+  "aisensy_text": {
+    "topic": "message.sender.user",
+    "data": {"message": {"id": "ais-qa-001", "phone_number": "919000010028", "message_type": "TEXT",
+                         "message_content": {"text": "mat bhejo ab"}, "sender": "USER"}}
+  },
+  "twilio_sms_form": {
+    "MessageSid": "SMQA0000000000000000000000000001", "AccountSid": "ACQA000000000000000000000000000000",
+    "From": "+919000010029", "To": "+14155550100", "Body": "STOPALL", "NumMedia": "0", "NumSegments": "1",
+    "FromCountry": "IN"
+  },
+  "msg91_inbound": {
+    "requestId": "msg91-qa-001", "sender": "919000010030", "message": "BMIHRS band karo", "keyword": "BMIHRS",
+    "inNumber": "919000000000"
+  }
+}
