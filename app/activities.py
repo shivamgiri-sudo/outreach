@@ -196,7 +196,16 @@ def lead_activity(store, lead: dict) -> list:
             continue                       # the captured message already shows this reply in full
         items.append({"at": e["at"], "type": e["kind"], "direction": "in" if e["kind"] == "reply" else "none",
                       "title": e["kind"].replace("_", " ").capitalize(), "body": e["text"], "status": ""})
-    return sorted(items, key=lambda i: i.get("at") or "", reverse=True)
+    return sorted(items, key=_when, reverse=True)
+
+
+def _when(item: dict) -> datetime:
+    """Sort key in real time: stamps arrive with different offsets (UTC, IST from providers, Z)."""
+    try:
+        when = datetime.fromisoformat((item.get("at") or "").replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
 
 
 def task_buckets(tasks: list, now: datetime) -> dict:
