@@ -287,3 +287,14 @@ def test_places_leads_keep_the_office_phone_as_business(tmp_path):
     delta = by_company(c, "Delta Call Services")
     assert delta["phone"] == "+919822233344" and delta["phone_type"] == "business" and delta["domain"] == "delta-calls.in"
     assert delta["phone_source"] == "google_places:https://maps.google.com/?cid=1" and delta.get("consent") is None
+
+
+def test_pasted_pages_keep_only_their_job_data(tmp_path):
+    c = client(tmp_path, FakeIO())
+    big = "<html><body>" + "x" * 50_000 + ZETA_JOBS + "</body></html>"
+    camp = create(c, sources={"careers_html": [{"url": "https://zeta-foods.in/careers", "html": big},
+                                               {"url": "https://plain.example/careers", "html": "<p>We are hiring!</p>"}]})
+    stored = camp["sources"]["careers_html"]
+    assert len(stored[0]["html"]) < 2_000 and "Zeta Foods" in stored[0]["html"] and stored[1]["html"] == ""
+    report = run(c, camp["id"])
+    assert report["new"] == 1 and any("plain.example" in e["message"] and "no job listings" in e["message"] for e in report["errors"])

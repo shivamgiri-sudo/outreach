@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from . import campaigns
 from .campaign_sources import SIZE_BUCKETS
 from .hygiene import safe_http_url
+from .jobs import JSONLD_RE
 from .routes_outreach import resolve_now
 
 MAX_ITEMS = 20
@@ -48,6 +49,12 @@ class Target(BaseModel):
 class PastedPage(BaseModel):
     url: str = Field(default="", max_length=2000)
     html: str = Field(default="", max_length=MAX_HTML_CHARS)
+
+    @field_validator("html")
+    @classmethod
+    def keep_job_data(cls, value):
+        """Only the page's JSON-LD blocks are read, so only they are stored (keeps the data file small)."""
+        return "\n".join(f'<script type="application/ld+json">{block}</script>' for block in JSONLD_RE.findall(value))
 
 
 class Sources(BaseModel):

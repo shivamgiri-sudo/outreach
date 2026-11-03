@@ -196,6 +196,8 @@ def careers_postings(urls: list, pasted: list, fetch) -> dict:
             continue
         if html.strip():
             pages.append((url, html))
+        else:
+            errors.append(f"{url or 'Pasted page'}: no job listings found in the pasted HTML (no JobPosting data).")
     found = []
     for url, html in pages:
         postings = parse_job_postings(html, url)
