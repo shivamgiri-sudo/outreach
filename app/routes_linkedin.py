@@ -84,6 +84,9 @@ def make_router(store) -> APIRouter:
         settings = store.read("settings")
         if body.key == "case_study_yes" and not settings.get("case_study_url"):
             raise HTTPException(400, "Add the real case-study link under LinkedIn settings first.")
+        gaps = [k for k in li.BRANCH_NEEDS.get(body.key, ()) if not getattr(body, k).strip()]
+        if gaps:
+            raise HTTPException(400, f"Fill in {' and '.join(g.replace('_', ' ') for g in gaps)} first.")
         values = body.model_dump(exclude={"key"})
         return {"text": li.render_branch(body.key, lead, settings, **values)}
 

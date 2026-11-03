@@ -66,6 +66,9 @@ BRANCHES = {
                       "Looking forward to the conversation.",
 }
 
+# Values a person must type before a branch reply can be written (an empty slot would read "Would  or  work?").
+BRANCH_NEEDS = {"meeting_yes": ("option_1", "option_2"), "slot_confirmed": ("date", "time")}
+
 # Persona hooks (Personalisation tab): matched on the person's title. HR / talent titles are checked before the
 # generic founder/director one, so "HR Director" gets the CHRO hook.
 PERSONAS = [
