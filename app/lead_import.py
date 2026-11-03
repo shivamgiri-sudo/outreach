@@ -56,18 +56,24 @@ def read_table(csv_text: Optional[str] = None, rows: Optional[list] = None) -> t
         table = [(n, {h: clean_text(r.get(h)) for h in headers}) for n, r in enumerate(rows, start=2)]
     else:
         text = (csv_text or "").lstrip("﻿")
+        if "\x00" in text[:4000]:
+            raise ValueError("This file looks like UTF-16 (Excel 'Unicode Text'). Save it as 'CSV UTF-8' and try again.")
         first = text.split("\n", 1)[0]
         delimiter = max((",", ";", "\t"), key=lambda d: (first.count(d), d == ","))
         try:
             reader = csv.reader(io.StringIO(text), delimiter=delimiter)
-            header = next(reader, [])
+            header, body = next(reader, []), list(reader)
+            blank = [i for i, h in enumerate(header) if not h.strip()]
+            start = 2
+            if body and len(blank) * 2 >= len(header) and _label_row(body[0], blank):
+                header, body, start = body[0], body[1:], 3     # merged group titles above the real column names
             seen, headers = {}, []
             for i, name in enumerate(h.strip().lstrip("﻿") for h in header):
                 name = name or f"Column {i + 1}"
                 seen[name] = seen.get(name, 0) + 1
                 headers.append(name if seen[name] == 1 else f"{name} ({seen[name]})")
             table = [(n, {h: (cells[i] if i < len(cells) else "") for i, h in enumerate(headers)})
-                     for n, cells in enumerate(reader, start=2)]
+                     for n, cells in enumerate(body, start=start)]
         except csv.Error as exc:
             raise ValueError(f"Could not read the CSV ({exc}).") from exc
     table = [(n, r) for n, r in table if any(str(v or "").strip() for v in r.values())]
@@ -76,6 +82,12 @@ def read_table(csv_text: Optional[str] = None, rows: Optional[list] = None) -> t
     if len(table) > MAX_ROWS:
         raise ValueError(f"That file has {len(table)} rows; import at most {MAX_ROWS} at a time.")
     return headers, table
+
+
+def _label_row(cells: list, blank: list) -> bool:
+    """A row of column names: it fills every gap of the row above, with no emails, links or numbers."""
+    return all(i < len(cells) and cells[i].strip() for i in blank) and all(
+        "@" not in c and "//" not in c and sum(ch.isdigit() for ch in c) <= 2 for c in cells)
 
 
 def _values(row: dict, columns: list, field: str) -> list:
@@ -177,7 +189,8 @@ def lead_from_record(rec: dict, source: str, import_id: str, at: str, taken: set
         "website": rec["website"], "domain": rec["domain"] or None, "country": rec["country"], "source": source,
         "stage": STATUS_STAGE.get(rec["lead_status"].lower(), (0, "new"))[1], "consent": None,
         "engagement": {"opens": 0, "clicks": 0, "replies": 0},
-        "timeline": [event("created", f"Imported from {source}{detail}"), *[event("note", n) for n in rec["notes"]]],
+        "timeline": [event("created", f"Imported from {source}{detail}"), *[event("note", n) for n in rec["notes"]],
+                     *([event("note", f"Lead status in {source}: {rec['lead_status']}")] if rec["lead_status"] else [])],
         "created_at": at, "open_roles": rec["open_roles"], "company_size": rec["company_size"],
         "max_job_age_days": rec["max_job_age_days"], "repost_count": 0,
         **{k: rec[k] for k in OPTIONAL_KEYS if rec.get(k)},
@@ -268,7 +281,8 @@ def _place(leads, index, rec, n, source, import_id, at, created, touched, out, w
     i, who, reason = hit
     before = leads[i]
     merged, info = merge_record(before, rec, who, source, import_id, at, index.keys)
-    notes = [t for t in rec["notes"] if t not in {e.get("text") for e in merged["timeline"]}]
+    status = [f"Lead status in {source}: {rec['lead_status']}"] if rec.get("lead_status") else []   # stage is never changed
+    notes = [t for t in [*rec["notes"], *status] if t not in {e.get("text") for e in merged["timeline"]}]
     if notes:
         merged = {**merged, "timeline": [*merged["timeline"], *[event("note", t) for t in notes]]}
         info["changed"] = True
