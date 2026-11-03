@@ -237,3 +237,14 @@ def test_whatsapp_send_passes_only_the_declared_parameters(tmp_path):
     finally:
         wa.send_whatsapp = real
     assert len(seen["params"]) == 2 and seen["name"] == "nudge_not_published"
+
+
+def test_crm_closed_statuses_never_promote_a_lead_but_are_kept_as_a_note(tmp_path):
+    c = TestClient(create_app(data_file=tmp_path / "d.json"))
+    csv_text = ("First Name,Last Name,Email,Company,Lead Status\n"
+                "Asha,Rao,asha@won.example,Won Co,Closed Won\nBunty,Singh,b@cust.example,Cust Co,Customer\n")
+    assert c.post("/api/import/commit", json={"csv": csv_text}).status_code == 200
+    leads = {l["company"]: l for l in c.get("/api/leads").json()}
+    assert leads["Won Co"]["stage"] == "new" and leads["Cust Co"]["stage"] == "new"          # never auto-promoted to customer
+    assert any("Closed Won" in t["text"] for t in leads["Won Co"]["timeline"])               # the CRM status is not lost
+    assert any("Customer" in t["text"] for t in leads["Cust Co"]["timeline"])
