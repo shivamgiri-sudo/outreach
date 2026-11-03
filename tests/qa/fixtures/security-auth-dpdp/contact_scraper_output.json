@@ -1,0 +1,420 @@
+{
+ "results": [
+  {
+   "domain": "kaveri-foods.example",
+   "title": "Kaveri Foods",
+   "emails": [
+    {
+     "email": "careers@kaveri-foods.example",
+     "sources": [
+      "https://kaveri-foods.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "+91 90000 01500"
+   ],
+   "error": null
+  },
+  {
+   "domain": "vayu-fintech.example",
+   "title": "Vayu Fintech",
+   "emails": [
+    {
+     "email": "careers@vayu-fintech.example",
+     "sources": [
+      "https://vayu-fintech.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "09000001501"
+   ],
+   "error": null
+  },
+  {
+   "domain": "tarang-logistics.example",
+   "title": "Tarang Logistics",
+   "emails": [
+    {
+     "email": "careers@tarang-logistics.example",
+     "sources": [
+      "https://tarang-logistics.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "90000-01502"
+   ],
+   "error": null
+  },
+  {
+   "domain": "indus-retail.example",
+   "title": "Indus Retail",
+   "emails": [
+    {
+     "email": "careers@indus-retail.example",
+     "sources": [
+      "https://indus-retail.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "919000001503"
+   ],
+   "error": null
+  },
+  {
+   "domain": "cobalt-fintech.example",
+   "title": "Cobalt Fintech",
+   "emails": [
+    {
+     "email": "careers@cobalt-fintech.example",
+     "sources": [
+      "https://cobalt-fintech.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "+91 90000 01504"
+   ],
+   "error": null
+  },
+  {
+   "domain": "vista-foods.example",
+   "title": "Vista Foods",
+   "emails": [
+    {
+     "email": "careers@vista-foods.example",
+     "sources": [
+      "https://vista-foods.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "09000001505"
+   ],
+   "error": null
+  },
+  {
+   "domain": "pragati-motors.example",
+   "title": "Pragati Motors",
+   "emails": [
+    {
+     "email": "careers@pragati-motors.example",
+     "sources": [
+      "https://pragati-motors.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "90000-01506"
+   ],
+   "error": null
+  },
+  {
+   "domain": "prakash-fintech.example",
+   "title": "Prakash Fintech",
+   "emails": [
+    {
+     "email": "careers@prakash-fintech.example",
+     "sources": [
+      "https://prakash-fintech.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "919000001507"
+   ],
+   "error": null
+  },
+  {
+   "domain": "orbit-logistics.example",
+   "title": "Orbit Logistics",
+   "emails": [
+    {
+     "email": "careers@orbit-logistics.example",
+     "sources": [
+      "https://orbit-logistics.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "+91 90000 01508"
+   ],
+   "error": null
+  },
+  {
+   "domain": "monsoon-fintech.example",
+   "title": "Monsoon Fintech",
+   "emails": [
+    {
+     "email": "careers@monsoon-fintech.example",
+     "sources": [
+      "https://monsoon-fintech.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "09000001509"
+   ],
+   "error": null
+  },
+  {
+   "domain": "quartz-fintech.example",
+   "title": "Quartz Fintech",
+   "emails": [
+    {
+     "email": "careers@quartz-fintech.example",
+     "sources": [
+      "https://quartz-fintech.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "90000-01510"
+   ],
+   "error": null
+  },
+  {
+   "domain": "ganga-bpo.example",
+   "title": "Ganga BPO Services",
+   "emails": [
+    {
+     "email": "careers@ganga-bpo.example",
+     "sources": [
+      "https://ganga-bpo.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "919000001511"
+   ],
+   "error": null
+  },
+  {
+   "domain": "kaveri-motors.example",
+   "title": "Kaveri Motors",
+   "emails": [
+    {
+     "email": "careers@kaveri-motors.example",
+     "sources": [
+      "https://kaveri-motors.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "+91 90000 01512"
+   ],
+   "error": null
+  },
+  {
+   "domain": "prakash-health.example",
+   "title": "Prakash Healthcare",
+   "emails": [
+    {
+     "email": "careers@prakash-health.example",
+     "sources": [
+      "https://prakash-health.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "09000001513"
+   ],
+   "error": null
+  },
+  {
+   "domain": "sarvam-retail.example",
+   "title": "Sarvam Retail",
+   "emails": [
+    {
+     "email": "careers@sarvam-retail.example",
+     "sources": [
+      "https://sarvam-retail.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "90000-01514"
+   ],
+   "error": null
+  },
+  {
+   "domain": "prakash-staffing.example",
+   "title": "Prakash Staffing",
+   "emails": [
+    {
+     "email": "careers@prakash-staffing.example",
+     "sources": [
+      "https://prakash-staffing.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "919000001515"
+   ],
+   "error": null
+  },
+  {
+   "domain": "quartz-logistics.example",
+   "title": "Quartz Logistics",
+   "emails": [
+    {
+     "email": "careers@quartz-logistics.example",
+     "sources": [
+      "https://quartz-logistics.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "+91 90000 01516"
+   ],
+   "error": null
+  },
+  {
+   "domain": "quartz-foods.example",
+   "title": "Quartz Foods",
+   "emails": [
+    {
+     "email": "careers@quartz-foods.example",
+     "sources": [
+      "https://quartz-foods.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "09000001517"
+   ],
+   "error": null
+  },
+  {
+   "domain": "sarvam-foods.example",
+   "title": "Sarvam Foods",
+   "emails": [
+    {
+     "email": "careers@sarvam-foods.example",
+     "sources": [
+      "https://sarvam-foods.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "90000-01518"
+   ],
+   "error": null
+  },
+  {
+   "domain": "orbit-staffing.example",
+   "title": "Orbit Staffing",
+   "emails": [
+    {
+     "email": "careers@orbit-staffing.example",
+     "sources": [
+      "https://orbit-staffing.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "919000001519"
+   ],
+   "error": null
+  },
+  {
+   "domain": "vista-retail.example",
+   "title": "Vista Retail",
+   "emails": [
+    {
+     "email": "careers@vista-retail.example",
+     "sources": [
+      "https://vista-retail.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "+91 90000 01520"
+   ],
+   "error": null
+  },
+  {
+   "domain": "lotus-foods.example",
+   "title": "Lotus Foods",
+   "emails": [
+    {
+     "email": "careers@lotus-foods.example",
+     "sources": [
+      "https://lotus-foods.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "09000001521"
+   ],
+   "error": null
+  },
+  {
+   "domain": "pragati-logistics.example",
+   "title": "Pragati Logistics",
+   "emails": [
+    {
+     "email": "careers@pragati-logistics.example",
+     "sources": [
+      "https://pragati-logistics.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "90000-01522"
+   ],
+   "error": null
+  },
+  {
+   "domain": "prakash-foods.example",
+   "title": "Prakash Foods",
+   "emails": [
+    {
+     "email": "careers@prakash-foods.example",
+     "sources": [
+      "https://prakash-foods.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "919000001523"
+   ],
+   "error": null
+  },
+  {
+   "domain": "himalaya-logistics.example",
+   "title": "Himalaya Logistics",
+   "emails": [
+    {
+     "email": "careers@himalaya-logistics.example",
+     "sources": [
+      "https://himalaya-logistics.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "+91 90000 01524"
+   ],
+   "error": null
+  },
+  {
+   "domain": "zentrix-logistics.example",
+   "title": "Zentrix Logistics",
+   "emails": [
+    {
+     "email": "kavya.iyer@zentrix-logistics.example",
+     "sources": [
+      "https://www.zentrix-logistics.example/contact"
+     ]
+    }
+   ],
+   "phones": [
+    "+91 90000 10042"
+   ],
+   "error": null
+  }
+ ]
+}
