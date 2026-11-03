@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import GoLive from "./GoLive.jsx";
+import BackupRestore from "./BackupRestore.jsx";
 
 const STATUS = { configured: ["ok", "Connected"], incomplete: ["warn", "Missing details"], not_configured: ["", "Not set up"] };
 
@@ -138,8 +139,10 @@ export default function Setup({ onSetupChanged, go, tab: initialTab }) {
       <div className="tabs" role="tablist" aria-label="Setup sections">
         <button role="tab" aria-selected={tab === "checklist"} className={tab === "checklist" ? "on" : ""} onClick={() => setTab("checklist")}>Go-live checklist</button>
         <button role="tab" aria-selected={tab === "connections"} className={tab === "connections" ? "on" : ""} onClick={() => setTab("connections")}>Connections</button>
+        <button role="tab" aria-selected={tab === "backup"} className={tab === "backup" ? "on" : ""} onClick={() => setTab("backup")}>Backup &amp; restore</button>
       </div>
       {tab === "checklist" && <GoLive embedded go={(page) => (page === "setup" ? setTab("connections") : go?.(page))} />}
+      {tab === "backup" && <BackupRestore />}
       {tab === "connections" && (
         <>
           <div className="tip" style={{ marginBottom: 16 }}>
