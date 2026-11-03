@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from urllib.parse import urlparse
 
+from .auth import PRIVATE_SETTINGS
 from .growth_core import public_base_url
 from .inbound import _rates, apply_reply, suppress as _suppress_email
 from .scraper import extract_contacts, fetch_page
@@ -19,7 +20,7 @@ BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
 IGNORE_BUSINESS_HOURS = os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"  # local testing only
 # Only tests may set the clock; otherwise a caller could skip business hours or the daily cap.
 ALLOW_NOW_OVERRIDE = os.environ.get("OUTREACH_TEST_MODE") == "1"
-HIDDEN_SETTINGS = ("server_secret",)
+HIDDEN_SETTINGS = PRIVATE_SETTINGS          # the server secret and password hashes never leave the server
 NOT_PUBLIC_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0", "::1")
 CAP_LIMITS = {"daily_cap": (1, 500), "per_run_cap": (1, 50)}
 

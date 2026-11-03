@@ -10,7 +10,7 @@ import threading
 import time
 from pathlib import Path
 
-EMPTY = {"leads": [], "integrations": {}, "stories": [], "templates": [], "tasks": [], "outbox": [], "settings": {}, "suppressed": [], "jobs": [], "partners": [], "whatsapp_outbox": [], "workflows": [], "inbox": [], "delivery_events": [], "activities": [], "notifications": [], "transactional_outbox": []}
+EMPTY = {"leads": [], "integrations": {}, "stories": [], "templates": [], "tasks": [], "outbox": [], "settings": {}, "suppressed": [], "jobs": [], "partners": [], "whatsapp_outbox": [], "workflows": [], "inbox": [], "delivery_events": [], "activities": [], "notifications": [], "transactional_outbox": [], "revoked_tokens": [], "consent_ledger": [], "suppressed_hashes": []}
 BACKUPS_KEPT = 5
 BACKUP_EVERY_SECONDS = 60
 # Flush every save to disk so a power cut can't lose it. Tests switch this off for speed.

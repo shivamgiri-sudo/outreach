@@ -82,9 +82,10 @@ def test_login_locks_out_after_repeated_failures(tmp_path):
 
 
 def test_expired_token_rejected(tmp_path):
-    from app.auth import make_token
+    from app.auth import ADMIN_SUBJECT, issue_token, subject_principal
     c = TestClient(create_app(data_file=tmp_path / "a.json", admin_password="s3cret-pass"))
-    old = make_token("s3cret-pass", now=T0 - timedelta(days=2))
+    store = c.app.state.store
+    old = issue_token(store, subject_principal(store, "s3cret-pass", ADMIN_SUBJECT), now=T0.timestamp() - 2 * 86400)
     assert c.get("/api/leads", headers={"Authorization": f"Bearer {old}"}).status_code == 401
 
 
