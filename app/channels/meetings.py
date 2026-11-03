@@ -249,6 +249,10 @@ def attach_booking(store, pid: str, booking: dict) -> dict:
         label = ist_label(start)
     except ValueError:
         start, label = None, "time not given"
+    try:
+        end = parse_time(booking.get("end")).isoformat()     # '...Z' is unreadable to fromisoformat on Python 3.10
+    except ValueError:
+        end = ""
 
     def change(l: dict) -> dict:
         meetings = list(l.get("meetings") or [])
@@ -258,7 +262,7 @@ def attach_booking(store, pid: str, booking: dict) -> dict:
                 meetings[index] = {**meetings[index], "status": "cancelled"}
             return {**l, "meetings": meetings, "timeline": [*l["timeline"], _event("meeting", f"Meeting cancelled by the lead ({pid})")]}
         record = {"provider": pid, "title": booking.get("title") or "Booked meeting", "start": start.isoformat() if start else "",
-                  "end": booking.get("end", ""), "join_url": booking.get("join_url", ""), "status": "scheduled", "external_id": ext,
+                  "end": end, "join_url": booking.get("join_url", ""), "status": "scheduled", "external_id": ext,
                   "attendee_email": normalise_email((booking.get("emails") or [""])[0]) or ""}
         if index is None:
             meetings.append({"id": uuid.uuid4().hex[:12], "created_at": now_utc().isoformat(timespec="seconds"), **record})
