@@ -91,6 +91,10 @@ _SECONDARY = {
     "alternate email": ("email", 0.85), "alt email": ("email", 0.85), "additional email": ("email", 0.85),
     "company address": ("address", 0.9), "hr contact": ("contact_name", 0.9),
     "headline": ("title", 0.7),
+    "company / account": ("company", 1.0), "contact li profile url": ("linkedin_url", 1.0),
+    "company li profile url": ("company_linkedin_url", 1.0), "company staff count": ("company_size", 1.0),
+    "company staff count range": ("company_size", 0.95), "organization - address": ("address", 0.9),
+    "country code": ("country", 0.9),
 }
 _FILLERS = frozenset({"no", "of", "number", "num", "nos", "the", "a", "s"})
 # Columns every export carries that are not lead data; named here so fuzzy matching never grabs them.
@@ -108,6 +112,7 @@ KNOWN_EXTRA = (
     "past experience company name", "past experience company url", "past experience company title", "company2",
     "company url2", "job title2", "job location2", "middle name", "sales profile", "recruiter profile", "school url",
     "profile image url", "search account profile name", "search account profile id", "last state",
+    "salutation", "ZoomInfo Contact ID", "ZoomInfo Company ID", "ZoomInfo Contact Profile URL",
 )
 
 
@@ -134,7 +139,8 @@ for _name, _value in _SECONDARY.items():
 
 # keyword rules: (words that must appear, words that must not, field)
 _STATUS_WORDS = {"status", "verified", "verification", "type", "confidence", "score", "count", "date", "owner", "quality",
-                 "sent", "open", "opened", "bounced", "catch", "valid", "source", "code"}
+                 "sent", "open", "opened", "bounced", "catch", "valid", "source", "code", "validation", "grade", "ai",
+                 "opt", "unsubscribed", "domain", "marketing"}
 KEYWORD_RULES = (
     ({"linkedin", "company"}, set(), "company_linkedin_url"), ({"linkedin"}, set(), "linkedin_url"),
     ({"email"}, _STATUS_WORDS, "email"), ({"mail"}, _STATUS_WORDS, "email"),
@@ -203,6 +209,27 @@ FORMATS = (
     _fmt("snov", "Snov.io export", "snov", ["Social URL", "Prospect status", "Snov"],
          ["First name", "Last name", "Full name", "Position", "Company name", "Company URL", "Email", "Email status",
           "Industry", "Location", "Country"]),
+    _fmt("seamless", "Seamless.AI export", "seamless",
+         ["Email 1 Validation", "Email 1 Total AI", "Contact Phone 1", "Company Phone 1", "Contact LI Profile URL",
+          "Company LI Profile Url", "Company Staff Count", "Company Staff Count Range", "Contact Country"],
+         ["First Name", "Last Name", "Title", "Company", "Email 1", "Website", "Industry"]),
+    _fmt("rocketreach", "RocketReach export", "rocketreach", ["Email Grade", "Country Code", "Work Phone", "Employer"],
+         ["Name", "Title", "Company", "Company Domain", "Email", "Personal Email", "Mobile Phone", "LinkedIn", "Location"]),
+    _fmt("hubspot", "HubSpot contacts export", "hubspot",
+         ["Record ID", "Phone Number", "Mobile Phone Number", "Website URL", "State/Region", "Country/Region",
+          "Lifecycle Stage", "Unsubscribed from all email", "Marketing contact status", "Associated Company"],
+         ["First Name", "Last Name", "Email", "Job Title", "Company Name", "City", "Lead Status", "Contact owner"]),
+    _fmt("salesforce", "Salesforce contact / lead report", "salesforce",
+         ["Company / Account", "Account Name", "Mailing City", "Mailing State/Province", "Mailing Country",
+          "State/Province", "Lead Owner", "Email Opt Out", "Do Not Call", "Salutation"],
+         ["First Name", "Last Name", "Title", "Email", "Phone", "Mobile", "Lead Source", "Lead Status", "Contact Owner"]),
+    _fmt("zoho_crm", "Zoho CRM leads export", "zoho_crm",
+         ["Record Id", "Lead Owner", "Email Opt Out", "Secondary Email", "Created Time", "Skype ID", "Zip Code"],
+         ["Company", "First Name", "Last Name", "Title", "Email", "Phone", "Mobile", "Lead Source", "Lead Status"]),
+    _fmt("pipedrive", "Pipedrive people export", "pipedrive",
+         ["Person - Name", "Person - Email - Work", "Person - Phone - Work", "Person - Phone - Mobile",
+          "Person - Organization", "Person - Job title", "Person - Owner", "Organization - Name"],
+         ["Person - Label", "Organization - Address"]),
     _fmt("job_board", "Job board export (Naukri / Indeed / Shine / Apna)", "job_board",
          ["Posted On", "Date Posted", "Openings", "Job Link", "Job URL", "Experience", "Salary", "Skills", "Key Skills",
           "Job ID", "Vacancies", "Job Description", "Apply Link"],

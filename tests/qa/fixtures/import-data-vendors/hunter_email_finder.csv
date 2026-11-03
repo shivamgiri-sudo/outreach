@@ -1,0 +1,11 @@
+First name,Last name,Domain name,Email address,Confidence score,Verification status
+Sunil,Patil,nilgiri.example,sunil.patil@nilgiri.example,91,valid
+Pooja,Chawla,deccan.example,pooja.chawla@deccan.example,91,accept_all
+Imran,Khan,konkan-hr.example,imran.khan@konkan-hr.example,91,valid
+Neha,Joshi,malabar.example,neha.joshi@malabar.example,91,valid
+Arjun,Kumar,narmada.example,arjun.kumar@narmada.example,91,accept_all
+Kavya,Gupta,shivalik.example,,,
+Rohit,Das,thar-hr.example,rohit.das@thar-hr.example,91,valid
+Sneha,Iyer,vindhya.example,sneha.iyer@vindhya.example,91,accept_all
+Vikram,Reddy,yamuna.example,vikram.reddy@yamuna.example,91,valid
+Priya,Shetty,zanskar.example,priya.shetty@zanskar.example,91,valid
