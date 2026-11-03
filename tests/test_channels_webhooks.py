@@ -253,3 +253,24 @@ def test_imap_test_and_poll_endpoints(tmp_path):
     test = c.post("/api/channels/inbound_email/imap/test", json={}).json()
     assert test["ok"] is True and "1 unread" in test["message"]
     assert c.post("/api/channels/inbound_email/imap/poll").json()["processed"] == 1 and seen.items[0]["raw_id"] == "7"
+
+
+def test_basic_auth_form_of_the_address_works_and_bad_headers_do_not_crash(tmp_path):
+    c, url, secret, inbound, _ = setup(tmp_path, "inbound_email", "postmark_inbound")
+    hook = c.get("/api/channels/webhooks?channel=inbound_email&provider=postmark_inbound").json()["webhooks"][0]
+    assert hook["basic_auth_url"] == f"http://hook:{secret}@localhost:8000/api/webhooks/inbound_email/postmark_inbound"
+    basic = base64.b64encode(f"hook:{secret}".encode()).decode()
+    path = url.split("?")[0]
+    assert c.post(path, json={"From": "a@b.in", "TextBody": "hi"}, headers={"Authorization": f"Basic {basic}"}).status_code == 200
+    assert c.post(path, content=b"{}", headers={"Content-Type": "application/json", "Content-Length": "2", "X-Webhook-Secret": "x"}).status_code == 401
+    meta = c.get("/api/channels/webhooks?channel=whatsapp&provider=meta_cloud").json()["webhooks"][0]
+    assert meta["basic_auth_url"] == ""      # signature-based providers do not need it
+
+
+def test_gate_tolerates_a_malformed_content_length():
+    import asyncio
+    from types import SimpleNamespace
+    from app.channels.webhooks import gate_allows
+    request = SimpleNamespace(url=SimpleNamespace(path="/api/webhooks/inbound_email/postmark_inbound"), method="POST",
+                              headers={"content-length": "abc"}, query_params={})
+    assert asyncio.run(gate_allows(None, request)) is False

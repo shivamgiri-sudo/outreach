@@ -77,6 +77,8 @@ def make_router(store, transport, resolver=None, present=None) -> APIRouter:
     @router.get("/api/meetings/availability")
     def availability(start: str, end: str):
         begin, finish = _time(start, "start"), _time(end, "end")
+        if not (begin and finish) or finish <= begin:
+            raise HTTPException(400, "Give a start and an end time (end after start).")
         try:
             return {"busy": free_busy(store, begin, finish, transport)}
         except PermissionError:

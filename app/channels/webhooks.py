@@ -115,7 +115,10 @@ async def gate_allows(store, request) -> bool:
     path, method = request.url.path, request.method
     match = WEBHOOK_PATH.match(path)
     if match and method in ("GET", "POST") and (match.group(1), match.group(2)) in webhook_pairs():
-        if int(request.headers.get("content-length") or 0) > MAX_BODY_BYTES:
+        try:
+            if int(request.headers.get("content-length") or 0) > MAX_BODY_BYTES:
+                return False
+        except ValueError:
             return False
         body = await request.body() if method == "POST" else b""
         return len(body) <= MAX_BODY_BYTES and verify(store, match.group(1), match.group(2), method, request.headers,

@@ -249,3 +249,9 @@ def test_booking_link_prefill(tmp_path):
     assert out == {"kind": "link", "provider": "booking_link", "url": "https://book.example.in/priya?n=Asha%20Rao&e=asha%40acme-retail.in"}
     test = c.post("/api/channels/calendar/booking_link/test", json={}).json()
     assert test["ok"] is True and "Test%20Lead" in test["message"]
+
+
+def test_availability_needs_a_start_and_end(tmp_path):
+    c = make_client(tmp_path)
+    assert c.get("/api/meetings/availability", params={"start": "", "end": ""}).status_code == 400
+    assert c.get("/api/meetings/availability", params={"start": "2026-11-05T18:00:00+05:30", "end": "2026-11-05T09:00:00+05:30"}).status_code == 400

@@ -4,6 +4,7 @@ Also mounts the webhook + OAuth routes (app/channels/routes_hooks.py) and the me
 (app/channels/routes_meetings.py). External calls use the injected transport, SMTP and IMAP factories.
 """
 from typing import Optional, Union
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -60,6 +61,11 @@ def make_router(store, transport=request, smtp_factory=None, imap_factory=None, 
     def webhook_url(channel: str, provider: str) -> str:
         return f"{base()}/api/webhooks/{channel}/{provider}?token={config.webhook_token(store, channel, provider)}"
 
+    def basic_auth_url(url: str, token: str) -> str:
+        """Same address with the secret as a basic-auth password: it travels in a header, so server logs never show it."""
+        parts = urlparse(url)
+        return parts._replace(netloc=f"hook:{token}@{parts.netloc}", query="").geturl()
+
     def described(channel: str, provider: str) -> dict:
         return next(p for c in channels_view() if c["id"] == channel for p in c["providers"] if p["id"] == provider)
 
@@ -87,8 +93,10 @@ def make_router(store, transport=request, smtp_factory=None, imap_factory=None, 
         for ch, pid in pairs:
             prov = get_provider(ch, pid)
             token = config.webhook_token(store, ch, pid)
+            url = f"{base()}/api/webhooks/{ch}/{pid}?token={token}"
             out.append({"channel": ch, "channel_title": get_channel(ch)["title"], "provider": pid, "title": prov["title"],
-                        "url": f"{base()}/api/webhooks/{ch}/{pid}?token={token}", "secret": token,
+                        "url": url, "secret": token,
+                        "basic_auth_url": basic_auth_url(url, token) if prov["webhook"]["auth"] == "token" else "",
                         "auth": prov["webhook"]["auth"], "where": prov["webhook"]["where"], "events": prov["webhook"]["events"],
                         "saved": config.is_saved(ch, config.entry_of(store.read("integrations"), ch), pid)})
         return {"public_base_url": base(), "webhooks": out}

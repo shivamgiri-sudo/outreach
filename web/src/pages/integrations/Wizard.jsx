@@ -173,6 +173,13 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
               <>
                 <CopyRow label={urlLabel} value={hook.url} testid="webhook-url" />
                 {secretLabel && <CopyRow label={secretLabel} value={hook.secret} testid="webhook-secret" />}
+                {hook.basic_auth_url && (
+                  <details className="field-help">
+                    <summary>Provider accepts a username and password in the address?</summary>
+                    <p>Use this form instead: the secret then travels as a password and never shows up in server logs.</p>
+                    <CopyRow value={hook.basic_auth_url} />
+                  </details>
+                )}
                 {provider.webhook.auth === "calendly" && <p className="field-help">The Test step registers this with Calendly for you.</p>}
                 {provider.webhook.auth === "svix" && <p className="field-help">Then copy Resend's signing secret (whsec_…) into step 2 so every call is signature-checked.</p>}
                 <p className="field-help">The address contains a secret code: treat it like a password. It only works once this card is saved.</p>
