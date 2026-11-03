@@ -30,3 +30,21 @@ def test_readiness_never_counts_a_plain_http_address_as_public(tmp_path):
     assert any("https" in b for b in blockers(c))
     c.put("/api/settings", json={"public_base_url": "https://outreach.hirewise-outreach.example"})
     assert item(c, "public_url")["status"] == "done"
+
+
+# ---------- legacy /api/integrations: only offered modes ----------
+def legacy(c, integration_id):
+    return next(i for i in c.get("/api/integrations").json() if i["id"] == integration_id)
+
+
+def test_legacy_save_refuses_a_mode_the_integration_does_not_offer(tmp_path):
+    """Regression: PUT /api/integrations/sending_domain {mode: manual} ticked the checklist's 'sending domain' row
+    although no sender was connected (sending_domain only offers 'api')."""
+    c = make(tmp_path)
+    r = c.put("/api/integrations/sending_domain", json={"mode": "manual", "values": {}})
+    assert r.status_code == 400
+    assert item(c, "sending_domain")["status"] == "todo" and legacy(c, "sending_domain")["status"] == "not_configured"
+    assert c.put("/api/integrations/sales_navigator", json={"mode": "manual", "values": {}}).status_code == 200
+    assert c.put("/api/integrations/sending_domain", json={"mode": "bogus", "values": {}}).status_code == 400
+
+

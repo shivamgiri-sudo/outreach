@@ -314,6 +314,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     def save_integration(integration_id: str, body: IntegrationBody):
         if integration_id not in integrations.known_ids():
             raise HTTPException(404, "Unknown integration")
+        if body.mode not in next(i for i in integrations.CATALOGUE if i["id"] == integration_id)["modes"]:
+            raise HTTPException(400, "This connection does not offer that mode")
         saved = store.read("integrations")
         existing = saved.get(integration_id, {}).get("values", {})
         merged = {**existing, **{k: v for k, v in body.values.items() if v and not str(v).startswith("••••")}}
