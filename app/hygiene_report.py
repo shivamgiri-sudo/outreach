@@ -207,7 +207,7 @@ def standardise_changes(lead: dict) -> dict:
         put("country", country)
     if state:
         put("state", state)
-    if lead.get("company_size"):
+    if lead.get("company_size") and not lead.get("company_size_bucket"):     # an import's '1,000+' bucket is kept
         put("company_size_bucket", size_bucket(lead["company_size"]))
     return changes
 

@@ -155,6 +155,11 @@ def test_standardise_existing_leads_previews_then_applies(app, client):
     assert client.post("/api/hygiene/standardise", json={"dry_run": True}).json()["changed"] == 0
 
 
+def test_standardise_keeps_a_size_bucket_the_import_already_set(app, client):
+    seed(app, lead("b9", company="Beta Labs", company_size=1000, company_size_bucket="1000+"))
+    assert client.post("/api/hygiene/standardise", json={"dry_run": True}).json()["changed"] == 0
+
+
 def test_resolving_conflicts(app, client):
     app.state.store.update("suppressed", lambda rows: [*rows, "blocked@acme.example"])
     conflicts = [{"id": "c1", "field": "title", "kept": "Founder", "incoming": "HR Head", "source": "lusha"},
