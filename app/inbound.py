@@ -186,6 +186,10 @@ def process_inbound_message(store, msg: dict, ai_transport=None) -> dict:
         return {"matched": False, "duplicate": True}
     channel = msg.get("channel") or "email"
     lead_id, matched_by = _match_lead(store, msg)
+    if not lead_id and channel == "whatsapp":
+        from .inbound_leads import capture_whatsapp         # optional: an unknown sender's first message becomes a lead
+        lead_id = capture_whatsapp(store, msg)
+        matched_by = "whatsapp_click" if lead_id else None
     if not lead_id and channel == "email" and not _looks_like_reply(msg):
         # A shared mailbox also gets newsletters, alerts and login codes: not ours to store or act on.
         return {"matched": False, "ignored": "not a reply to our outreach"}

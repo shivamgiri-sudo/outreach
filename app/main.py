@@ -57,6 +57,9 @@ from .routes_channels import make_router as make_channels_router
 from .channels.http import request as channel_request
 from .channels.poller import start_imap_poller
 from .channels.webhooks import gate_allows
+from . import capture_connectors, inbound_auth, source_names, source_stats
+from .routes_inbound import make_router as make_inbound_router, run_sheet_syncs
+from .routes_capture import make_router as make_capture_router
 from .routes_import import make_router as make_import_router
 from .routes_exports import make_router as make_exports_router
 from .lead_import import quick_rows
@@ -138,7 +141,7 @@ def _is_local(request) -> bool:
 def _present(lead: dict) -> dict:
     scored = score_lead({**lead, "consent_yes": bool(lead.get("consent"))})
     activation = lead.get("activation")
-    return {**lead, "score": scored["score"], "band": scored["band"], "signals": scored["signals"],
+    return {**lead, "source_id": lead.get("source_id") or source_names.source_id(lead.get("source")), "score": scored["score"], "band": scored["band"], "signals": scored["signals"],
             "suggestion": suggest_next(lead["stage"], scored["band"]),
             "nudge": next_nudge(activation, datetime.now(timezone.utc)) if activation else None}
 
@@ -146,7 +149,8 @@ def _present(lead: dict) -> dict:
 def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_password: Optional[str] = None,
                email_transport=post_json, ai_transport=post_json, apollo_transport=post_json,
                channel_transport=None, smtp_factory=None, imap_factory=None, resolver=None,
-               inbound_processor=None, delivery_processor=None, campaign_transports=None) -> FastAPI:
+               inbound_processor=None, delivery_processor=None, campaign_transports=None,
+               capture_graph_transport=None, capture_sheet_fetcher=None) -> FastAPI:
     password = admin_password if admin_password is not None else os.environ.get("OUTREACH_ADMIN_PASSWORD", "")
     limiter = auth.LoginLimiter()
     docs = os.environ.get("OUTREACH_ENABLE_DOCS") == "1"
@@ -157,6 +161,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     store = Store(data_file)
     app.state.store = store
     ensure_cutover(store)                     # signed unsubscribe links start now; older unsigned ones get 60 days
+    source_names.backfill(store)              # adds source_id next to source on older leads (idempotent, never rewrites source)
 
     @app.middleware("http")
     async def require_login(request: Request, call_next):
@@ -166,7 +171,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                          and hmac.compare_digest(request.headers.get("x-webhook-secret", "").encode("utf-8", "replace"),
                                                  webhook_secret(store, routes_growth.WEBHOOK_SECRET).encode("utf-8")))
                      # Integrations hub: only the exact webhook / OAuth-callback routes, and only when their secret checks out.
-                     or (path.startswith(("/api/webhooks/", "/api/oauth/")) and await gate_allows(store, request)))
+                     or (path.startswith(("/api/webhooks/", "/api/oauth/")) and await gate_allows(store, request))
+                     # Lead capture: only the exact public capture addresses, and only when the token / signature / key checks out.
+                     or (path.startswith("/api/inbound/") and await inbound_auth.gate_allows(store, request)))
         if open_path:
             return await call_next(request)
         token = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
@@ -221,13 +228,16 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
 
     @app.get("/api/dashboard")
     def dashboard():
-        leads = [_present(lead) for lead in store.read("leads")]
+        leads = source_stats.real([_present(lead) for lead in store.read("leads")])     # labelled test leads are not counted
         by_stage = {s: 0 for s in ALL_STAGES}
         for lead in leads:
             by_stage[lead["stage"]] += 1
         setup = integrations.describe(store.read("integrations"))
         return {
             "total_leads": len(leads),
+            "by_source": source_stats.by_source(leads),
+            **source_stats.inbound_counts(leads),
+            "inbound_connectors": sum(1 for c in capture_connectors.all_connectors(store) if c.get("enabled", True)),
             "hot": sum(1 for lead in leads if lead["band"] == "hot"),
             "by_stage": by_stage,
             "funnel": [{"stage": s, "count": by_stage[s]} for s in STAGES],
@@ -382,6 +392,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,
                                             BASE_URL, _present, inbound_processor, delivery_processor, transactional_sender))
     app.include_router(make_import_router(store))
+    app.include_router(make_inbound_router(store, BASE_URL, capture_graph_transport, capture_sheet_fetcher))
+    app.include_router(make_capture_router(store, BASE_URL))
     app.include_router(make_exports_router(store, _present))
     # Campaigns: Apollo / Google Places / Firecrawl POSTs, Hunter / verifier GETs, careers pages and the crawler.
     campaign_io = {"post": apollo_transport, "get": get_json, "fetch": fetcher, **(campaign_transports or {})}
@@ -389,7 +401,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_find_leads_router(store, campaign_io, transactional_sender))
     app.include_router(make_sources_router(store, campaign_io))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
-        start_background(store, email_sender, campaign_runner=lambda now: run_due_campaigns(
+        start_background(store, email_sender, capture_runner=lambda: run_sheet_syncs(store, capture_sheet_fetcher),
+                         campaign_runner=lambda now: run_due_campaigns(
             store, now, campaign_io, campaign_notify, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"))
         start_imap_poller(store, imap_factory)
     return app

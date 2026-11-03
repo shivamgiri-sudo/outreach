@@ -43,7 +43,7 @@ def reminder_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
     return {**run_reminders(store, now, sender, BASE_URL), "digest": bool(run_digest(store, now, sender))}
 
 
-def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVAL_SECONDS, campaign_runner=None) -> threading.Event:
+def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVAL_SECONDS, campaign_runner=None, capture_runner=None) -> threading.Event:
     """Reminders and flow steps every minute; due sequence emails, time rules and daily campaigns every `interval_seconds`."""
     stop = threading.Event()
 
@@ -61,6 +61,11 @@ def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVA
                 print(f"flow tick failed: {exc}")
             if waited >= interval_seconds:
                 waited = 0
+                if capture_runner is not None:
+                    try:
+                        capture_runner()               # lead capture: new rows of published Google Sheets
+                    except Exception as exc:
+                        print(f"lead capture sync failed: {exc}")
                 try:
                     tick(store, sender=sender, campaign_runner=campaign_runner)
                 except Exception as exc:
