@@ -228,3 +228,25 @@ td.pick, th:first-child { width: 36px; }
   .copy-row { flex-wrap: wrap; }
   .copy-row code { flex-basis: 100%; }
 }
+
+/* Tasks, activity trail and reminders bell */
+.task-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.task-list li { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 4px; }
+.task-list li.overdue { border-color: var(--hot); background: color-mix(in srgb, var(--hot) 6%, transparent); }
+.task-list .row { gap: 6px; flex-wrap: wrap; }
+.trail { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.trail-item { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; }
+.trail-item.in .trail-body { border-left: 3px solid var(--brand); padding-left: 8px; }
+.trail-icon { width: 26px; height: 26px; border-radius: 50%; background: var(--brand-soft, #eef); display: grid; place-items: center; font-size: 13px; }
+.trail-body { min-width: 0; }
+.trail-text { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+button.link { background: none; border: 0; padding: 0; color: var(--brand); cursor: pointer; font: inherit; }
+button.link:hover { text-decoration: underline; }
+.chip.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+.brand { position: relative; }
+.bell-wrap { margin-left: auto; position: relative; }
+.bell { background: none; border: 0; cursor: pointer; color: inherit; position: relative; padding: 4px; }
+.bell .badge-dot { position: absolute; top: -2px; right: -4px; }
+.bell-panel { position: absolute; z-index: 30; right: 0; top: 32px; width: min(320px, 86vw); background: var(--card, #fff); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.15); color: var(--text, inherit); }
+.bell-item { padding: 6px 0; border-bottom: 1px solid var(--line); }

@@ -17,6 +17,7 @@ import Setup from "./pages/Setup.jsx";
 import DataSources from "./pages/DataSources.jsx";
 import Integrations from "./pages/Integrations.jsx";
 import Meetings from "./pages/Meetings.jsx";
+import Tasks from "./pages/Tasks.jsx";
 
 // [id, label, component, icon]
 const PAGES = [
@@ -29,6 +30,7 @@ const PAGES = [
   ["outbox", "Outbox & sending", Outbox, "send"],
   ["calls", "Priya's call desk", CallDesk, "phone"],
   ["meetings", "Meetings", Meetings, "calendar"],
+  ["tasks", "Tasks & follow-ups", Tasks, "tasks"],
   ["templates", "Sequences & templates", Templates, "mail"],
   ["stories", "Success stories", Stories, "star"],
   ["prompts", "Prompt generator", PromptGenerator, "wand"],
@@ -39,7 +41,7 @@ const PAGES = [
 const GROUPS = [
   ["Overview", ["dashboard"]],
   ["Pipeline", ["leads", "sources", "insights", "growth"]],
-  ["Outreach", ["outbox", "workflows", "templates", "calls", "meetings"]],
+  ["Outreach", ["tasks", "outbox", "workflows", "templates", "calls", "meetings"]],
   ["Library", ["stories", "prompts"]],
   ["Admin", ["setup", "integrations"]],
 ];
@@ -51,6 +53,36 @@ function pageFromHash() {
   const id = window.location.hash.replace(/^#\/?/, "").split(/[/?]/)[0];
   const resolved = ALIASES[id] || id;
   return BY_ID[resolved] ? resolved : "dashboard";
+}
+
+// Reminders bell: unread task and meeting reminders, checked every minute.
+function Bell({ onOpen }) {
+  const [items, setItems] = useState([]);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const load = () => api.notifications(true).then(setItems).catch(() => {});
+    load();
+    const timer = setInterval(load, 60000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <div className="bell-wrap">
+      <button className="bell" aria-label={`Reminders: ${items.length} unread`} aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Icon name="bell" size={18} />{items.length > 0 && <span className="badge-dot">{items.length}</span>}
+      </button>
+      {open && (
+        <div className="bell-panel" role="dialog" aria-label="Reminders">
+          {items.length === 0 ? <p className="sub">No new reminders.</p> : items.slice(0, 8).map((n) => (
+            <div key={n.id} className="bell-item"><b>{n.title}</b>{n.text && <div className="sub">{n.text.slice(0, 120)}</div>}</div>
+          ))}
+          <div className="row" style={{ marginTop: 8 }}>
+            <button className="btn ghost" onClick={() => { setOpen(false); onOpen(); }}>Open tasks</button>
+            {items.length > 0 && <button className="btn ghost" onClick={() => api.markNotificationsRead().then(() => setItems([]))}>Mark all read</button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Ctrl/Cmd + K: jump to any page or lead by typing.
@@ -137,7 +169,8 @@ export default function App() {
   return (
     <div className="layout">
       <nav className="side" aria-label="Main">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">O</span><h1>Outreach OS</h1></div>
+        <div className="brand"><span className="brand-mark" aria-hidden="true">O</span><h1>Outreach OS</h1>
+          <Bell onOpen={() => go("tasks")} /></div>
         <button className="search-trigger" onClick={() => setSearching(true)} aria-label="Quick search (Ctrl K)">
           <Icon name="wand" size={16} /><span>Search…</span><kbd>Ctrl K</kbd>
         </button>

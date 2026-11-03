@@ -100,9 +100,10 @@ def make_router(store, transactional_sender=None) -> APIRouter:
             if owner and t.get("owner") != owner:
                 continue
             lead = leads.get(t.get("lead_id")) or {}
-            if lead.get("stage") == "unsubscribed" and t.get("kind") not in ("review",):
+            # Automatic tasks for a lead who unsubscribed are dropped; anything a person added stays, labelled.
+            if lead.get("stage") == "unsubscribed" and t.get("source") not in ("person", "activity") and t.get("kind") != "review":
                 continue
-            rows.append({**t, "company": lead.get("company") or lead.get("domain") or ""})
+            rows.append({**t, "company": lead.get("company") or lead.get("domain") or "", "lead_stage": lead.get("stage")})
         buckets = task_buckets(rows, now_utc())
         done = sorted((t for t in rows if t.get("status") == "done"), key=lambda t: t.get("done_at") or "", reverse=True)[:50]
         return {**buckets, "done": done, "team": team(store),

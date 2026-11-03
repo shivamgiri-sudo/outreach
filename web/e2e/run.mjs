@@ -711,6 +711,39 @@ await step("Meetings: lead panel gives a prefilled booking link; Meetings page o
   await expectText("Upcoming demos and calls");
 });
 
+await step("Activity: log a call with a follow-up; it shows in the full activity with its time", async () => {
+  await nav("Leads");
+  await page.locator("tr.click", { hasText: "Beta Logistics" }).click();
+  await page.getByRole("button", { name: "Log a call / meeting / note" }).click();
+  await page.getByLabel("Outcome").selectOption("call_back");
+  await page.getByLabel("Notes (what was said, next steps)").fill("Asked to call back on Thursday about 5 roles");
+  await page.getByLabel("Follow up on (IST, optional)").fill("2030-01-03T11:00");
+  await page.getByLabel("Follow-up task").fill("Call Sam back about 5 roles");
+  await page.locator("form.inline-form", { hasText: "What happened?" }).getByRole("button", { name: "Save", exact: true }).click();
+  await expectText("a follow-up task was created");
+  await page.locator(".trail-item", { hasText: "Asked to call back on Thursday" }).first().waitFor();
+  await page.locator(".task-list li", { hasText: "Follow up" }).first().waitFor();
+  const filters = page.getByRole("tablist", { name: "Filter activity" });
+  await filters.getByRole("tab", { name: "Calls" }).click();
+  await page.locator(".trail-item", { hasText: "Asked to call back on Thursday" }).first().waitFor();
+  await filters.getByRole("tab", { name: "All", exact: true }).click();
+  await page.keyboard.press("Escape");
+});
+await step("Tasks: the follow-up is listed with its owner time; it can be completed", async () => {
+  await nav("Tasks & follow-ups");
+  await expectText("Everything that needs doing");
+  const row = page.locator(".task-list li", { hasText: "Call Sam back about 5 roles" }).first();
+  await row.waitFor();
+  await row.getByRole("button", { name: "Done" }).click();
+  await expectText("Marked done");
+  await page.locator(".card", { hasText: "Done recently" }).getByText("Call Sam back about 5 roles").waitFor();
+});
+await step("Reminders bell opens and lists reminders", async () => {
+  await page.getByRole("button", { name: /Reminders:/ }).click();
+  await page.getByRole("dialog", { name: "Reminders" }).waitFor();
+  await page.getByRole("button", { name: /Reminders:/ }).click();
+});
+
 // ---------- Mobile layout ----------
 await step("Mobile width: no horizontal page scroll on Leads", async () => {
   await page.setViewportSize({ width: 390, height: 800 });
