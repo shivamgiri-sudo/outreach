@@ -120,7 +120,7 @@ def clean_country(raw) -> str:
 
 
 def is_indian_place(city: str = "", state: str = "") -> bool:
-    return clean_city(city) in CITY_STATE or clean_state(state) in STATES
+    return clean_city(city) in CITY_STATE or clean_city(city) == "Delhi NCR" or clean_state(state) in STATES
 
 
 def parse_location(raw) -> dict:

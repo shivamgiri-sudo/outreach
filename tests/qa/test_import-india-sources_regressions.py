@@ -111,3 +111,10 @@ def test_delhi_ncr_listing_matches_the_same_company_in_gurugram_or_noida():
     _, other, _ = _import("Company Name,Contact Person,Email ID,City\n"
                           "Kesari Staffing,Dolly Exampur,dolly@kesari-blr.example,Bangalore\n", leads)
     assert other["summary"]["create"] == 1 and len(leads) == 2   # outside NCR is still a different branch
+
+
+def test_delhi_ncr_location_counts_as_india():
+    """'Delhi NCR' (the commonest Naukri/Shine location) left country empty, losing the India fit points."""
+    leads, _, _ = _import("Company Name,Job Title,Location,Posted On,Job Link\n"
+                          "Toran Hospitality,Steward,Delhi NCR,2 days ago,https://www.shine.com/j-1\n")
+    assert leads[0]["country"] == "IN" and leads[0]["city"] == "Delhi NCR"
