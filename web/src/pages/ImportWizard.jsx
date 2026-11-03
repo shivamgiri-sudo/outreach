@@ -217,7 +217,7 @@ export default function ImportWizard({ onClose, onDone }) {
             Any export works: Apollo, Sales Navigator, Lusha, ZoomInfo, Hunter, job boards, IndiaMART, Google Maps, the team sheet or your own columns.
             Duplicates are found and merged; nothing is saved until the last step.
           </p>
-          <label htmlFor="import-file">Upload a CSV file</label>
+          <label htmlFor="import-file">Upload a CSV file (save Excel sheets as CSV first)</label>
           <input id="import-file" type="file" accept=".csv,.tsv,.txt,text/csv" onChange={(e) => readFile(e.target.files[0])} />
           {fileName && <small className="sub-inline">Loaded {fileName}</small>}
           <label htmlFor="import-paste">Or paste the rows (first row = column names; copying from Excel or Google Sheets works)</label>

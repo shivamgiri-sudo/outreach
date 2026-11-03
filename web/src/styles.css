@@ -190,7 +190,7 @@ td.pick, th:first-child { width: 36px; }
 .wizard-steps li { flex: 1 1 130px; margin: 0; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-weight: 600; font-size: 13px; }
 .wizard-steps li.on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); }
 .wizard-steps li.done { color: var(--ok); }
-.map-table td, .stack-table td { vertical-align: top; overflow-wrap: anywhere; }
+.map-table td, .stack-table td { vertical-align: top; overflow-wrap: break-word; }
 .map-table select { min-width: 180px; }
 .samples { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .kpi-row { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin: 12px 0; }
