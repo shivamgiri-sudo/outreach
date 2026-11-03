@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<!-- Fictional company. Follows the structure of Google's JobPosting structured-data example (hiringOrganization with
+     sameAs + logo, identifier PropertyValue, Place/PostalAddress, MonetaryAmount salary), written by a hand-made
+     template that pastes the description straight in, so the JSON string holds raw line breaks and a tab. -->
+<html>
+<head>
+<meta charset="utf-8">
+<title>Banyan Logistics - Careers</title>
+<script type="application/ld+json">
+{
+  "@context" : "https://schema.org/",
+  "@type" : "JobPosting",
+  "title" : "Warehouse Supervisor",
+  "description" : "Banyan Logistics is hiring a warehouse supervisor.
+Shift: 9 AM - 6 PM
+	Salary as per industry standards",
+  "identifier": {"@type": "PropertyValue", "name": "Banyan Logistics", "value": "BL-WH-0193"},
+  "datePosted" : "2026-08-20",
+  "validThrough" : "2026-12-01T00:00",
+  "employmentType" : "FULL_TIME",
+  "hiringOrganization" : {"@type" : "Organization", "name" : "Banyan Logistics", "sameAs" : "https://banyan-logistics.example", "logo" : "https://banyan-logistics.example/logo.png"},
+  "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "streetAddress": "Plot 7, MIDC Chakan", "addressLocality": "Pune", "addressRegion": "MH", "postalCode": "410501", "addressCountry": "IN"}},
+  "baseSalary": {"@type": "MonetaryAmount", "currency": "INR", "value": {"@type": "QuantitativeValue", "value": 28000, "unitText": "MONTH"}}
+}
+</script>
+</head>
+<body><h1>Careers at Banyan Logistics</h1></body>
+</html>

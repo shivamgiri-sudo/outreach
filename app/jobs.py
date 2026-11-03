@@ -11,10 +11,20 @@ JOB_BOARD_DOMAINS = (
     "naukri.com", "indeed.com", "indeed.co.in", "foundit.in", "monsterindia.com", "linkedin.com", "apna.co",
     "shine.com", "workindia.in", "internshala.com", "freshersworld.com", "quikr.com", "glassdoor.com", "timesjobs.com",
 )
+# Hosts many employers share (hosted job pages, social profiles): never one company's domain.
+SHARED_HOSTS = (
+    "lever.co", "myworkdayjobs.com", "greenhouse.io", "smartrecruiters.com", "workable.com", "ashbyhq.com",
+    "zohorecruit.com", "zohorecruit.in", "freshteam.com", "keka.com", "darwinbox.in", "recruitee.com",
+    "facebook.com", "instagram.com", "twitter.com", "x.com", "youtube.com",
+)
 
 
 def is_job_board(domain: Optional[str]) -> bool:
     return bool(domain) and any(domain == b or domain.endswith("." + b) for b in JOB_BOARD_DOMAINS)
+
+
+def _shared(domain: Optional[str]) -> bool:
+    return is_job_board(domain) or any(domain == h or domain.endswith("." + h) for h in SHARED_HOSTS)
 
 
 def _walk(node):
@@ -44,7 +54,7 @@ def parse_job_postings(html: str, url: str) -> list:
     postings = []
     for block in JSONLD_RE.findall(html):
         try:
-            data = json.loads(block)
+            data = json.loads(block, strict=False)      # hand-written templates leave raw line breaks in strings
         except ValueError:
             continue
         for node in filter(_is_posting, _walk(data)):
@@ -78,8 +88,10 @@ def job_key(job: dict, domain: str) -> str:
 
 def job_domain(job: dict, page_url: str) -> str:
     """Company website domain: from the posting itself, else the page host unless it is a job board."""
-    own = company_domain(job.get("company_site"))
-    if own:
-        return own
+    sites = job.get("company_site")
+    for site in sites if isinstance(sites, list) else [sites]:       # sameAs may be a list of profiles
+        own = company_domain(site if isinstance(site, str) else "")
+        if own and not _shared(own):
+            return own
     host = company_domain(page_url)
-    return "" if is_job_board(host) else (host or "")
+    return "" if not host or _shared(host) else host

@@ -1,0 +1,87 @@
+"""Regression tests for bugs found by the campaigns & sources QA pass (inline fictional data, fake transports only)."""
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pytest
+
+from app import campaign_pipeline as pipe
+from app import campaign_sources as src
+from app.http_util import HttpStatusError
+from app.jobs import job_domain, parse_job_postings
+from app.store import Store
+from tests.campaign_fakes import FakeIO, client, connect, create, run
+
+NOW = datetime(2026, 11, 3, 5, 0, tzinfo=timezone.utc)
+
+
+def posting_page(company: str, title: str, same_as=None) -> str:
+    org = {"@type": "Organization", "name": company, **({"sameAs": same_as} if same_as is not None else {})}
+    node = {"@context": "https://schema.org", "@type": "JobPosting", "title": title, "datePosted": "2026-10-20",
+            "hiringOrganization": org, "jobLocation": {"@type": "Place", "address": {"addressLocality": "Pune"}}}
+    return f'<script type="application/ld+json">{json.dumps(node)}</script>'
+
+
+# ---------- careers pages: shared hosts and messy JSON-LD ----------
+def test_companies_on_a_shared_ats_host_or_linkedin_sameas_are_not_merged(tmp_path):
+    """Two employers on jobs.lever.co (or both with a LinkedIn sameAs) used to share one job key and collapse into one."""
+    pages = [("https://jobs.lever.co/alpha-example/1", posting_page("Alpha Care", "Telecaller")),
+             ("https://jobs.lever.co/beta-example/2", posting_page("Beta Diagnostics", "Telecaller")),
+             ("", posting_page("Gamma Motors", "Telecaller", "https://www.linkedin.com/company/gamma-example")),
+             ("", posting_page("Delta Textiles", "Telecaller", "https://www.linkedin.com/company/delta-example"))]
+    found = [(p, url) for url, html in pages for p in parse_job_postings(html, url)]
+    rows = pipe.careers_rows(Store(tmp_path / "s.json"), found, NOW, dry_run=True)
+    assert sorted(r["company"] for r in rows) == ["Alpha Care", "Beta Diagnostics", "Delta Textiles", "Gamma Motors"]
+    assert all(r["domain"] == "" and r["open_roles"] == 1 for r in rows)
+    workday = parse_job_postings(posting_page("IN02 Sigma Fintech", "Telecaller", ""), "")[0]
+    assert job_domain(workday, "https://sigma.wd5.myworkdayjobs.com/External/job/1") == ""
+
+
+def test_sameas_list_and_raw_line_breaks_in_json_ld():
+    listed = parse_job_postings(posting_page("Lotus Hospitality", "Front Office Executive",
+                                             ["https://www.facebook.com/lotus-example", "https://lotus-hospitality.example"]), "")
+    assert job_domain(listed[0], "") == "lotus-hospitality.example"            # was: AttributeError on a list
+    raw = ('<script type="application/ld+json">{"@type": "JobPosting", "title": "Warehouse Supervisor",\n'
+           '"description": "Line one.\nLine two\twith a tab", "hiringOrganization": {"name": "Banyan Logistics"}}</script>')
+    assert [p["title"] for p in parse_job_postings(raw, "https://banyan.example/careers")] == ["Warehouse Supervisor"]
+
+
+# ---------- email verifier outage ----------
+def test_verifier_outage_is_not_a_risky_verdict():
+    """NeverBounce returns HTTP 200 + status temp_unavail in an outage; it was stored as 'risky' and blocked the lead for good."""
+    nb = {"provider": "neverbounce", "api_key": "nk", "supported": True}
+    zb = {"provider": "zerobounce", "api_key": "zk", "supported": True}
+    temp = {"status": "temp_unavail", "message": "A temporary service interruption occurred", "execution_time": 12}
+    with pytest.raises(OSError):
+        src.verify_email("meera@gamma-care.example", nb, lambda url, headers: temp)
+    with pytest.raises(OSError):
+        src.verify_email("meera@gamma-care.example", zb, lambda url, headers: {})
+    assert src.verify_email("meera@gamma-care.example", nb, lambda url, headers: {"status": "success", "result": "catchall"}) == "risky"
+
+
+# ---------- Apollo job postings refused ----------
+def test_job_postings_refused_keeps_the_companies_already_found():
+    """Organization Search succeeded (credit spent); a 403 on job postings threw every company away."""
+    orgs = [{"id": f"org{i}", "name": f"Hiring Co {i} Pvt. Ltd.", "primary_domain": f"hiring-co-{i}.example"} for i in range(5)]
+    io = FakeIO(post={"mixed_companies/search": {"organizations": orgs}}, get={"/job_postings": PermissionError("HTTP 403")})
+    out = src.apollo_hiring({"roles_hiring": ["telecaller"]}, "k", io.post, io.get, 25, NOW)
+    assert [r["company"] for r in out["rows"]] == [o["name"] for o in orgs]
+    assert out["failed_lookups"] == 5 and len(io.urls("/job_postings")) == 1      # stops asking after the refusal
+
+
+# ---------- Google Places quota hit part-way ----------
+def test_places_quota_midway_keeps_the_searches_already_paid_for(tmp_path):
+    """A 429 on the 3rd search discarded the first two searches' results (already billed by Google)."""
+    def reply(body):
+        if "Gurugram" in body["textQuery"]:
+            raise HttpStatusError(429, "RESOURCE_EXHAUSTED")
+        city = body["textQuery"].split(" in ")[1]
+        return {"places": [{"id": f"{city}{i}", "displayName": {"text": f"{city} Call Centre {i}"},
+                            "websiteUri": f"https://{city.lower()}-cc-{i}.example", "businessStatus": "OPERATIONAL"} for i in range(3)]}
+    io = FakeIO(post={"places:searchText": reply})
+    c = client(tmp_path, io)
+    connect(c, "google_places", {"api_key": "gk"})
+    camp = create(c, target={"industries": ["BPO"], "cities": ["Pune", "Nagpur", "Gurugram"]}, sources={"google_places": True})
+    report = run(c, camp["id"])
+    assert report["sources"]["google_places"] == {"found": 6, "requests": 2} and report["new"] == 6
+    assert any(e["source"] == "Google Places" and "429" in e["message"] for e in report["errors"])

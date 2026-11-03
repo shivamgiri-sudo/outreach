@@ -154,20 +154,22 @@ def apollo_hiring(target: dict, key: str, post, get, max_results: int, now: date
     except PermissionError as exc:
         raise KeyRejected("Apollo rejected the API key. Check it under Integrations > Lead data.") from exc
     orgs = [o for o in (reply.get("organizations") or []) + (reply.get("accounts") or []) if isinstance(o, dict)][:max_results]
-    rows, requests, failed = [], 1, 0
+    rows, requests, failed, refused = [], 1, 0, False
     for org in orgs:
         row = map_apollo_org(org)
         if not (row["company"] or row["domain"]):
             continue
-        if row["apollo_org_id"]:
+        if row["apollo_org_id"] and refused:
+            failed += 1
+        elif row["apollo_org_id"]:
             try:
                 requests += 1
                 listed = get(APOLLO_JOB_POSTINGS_URL.format(org_id=urllib.parse.quote(row["apollo_org_id"], safe="")), _apollo_headers(key))
                 postings = listed.get("organization_job_postings") or listed.get("job_postings") or []
                 if postings:
                     row.update(hiring_signals(postings, roles, now))
-            except PermissionError as exc:
-                raise KeyRejected("Apollo refused the job postings lookup for this key.") from exc
+            except PermissionError:         # job postings not in the plan: keep the companies already paid for
+                refused, failed = True, failed + 1
             except (OSError, ValueError):
                 failed += 1
         rows.append(row)
@@ -245,7 +247,10 @@ def google_places(target: dict, key: str, post, max_results: int) -> dict:
         except OSError as exc:
             if _places_key_problem(exc):
                 raise KeyRejected("Google says the Places API key is not valid.") from exc
-            raise
+            if not requests:
+                raise
+            return {"rows": [r for r in rows if r["company"]][:max_results], "requests": requests,      # keep paid results
+                    "error": f"Stopped after {requests} search(es): {str(exc)[:200]}"}
         requests += 1
         for place in reply.get("places") or []:
             if isinstance(place, dict) and place.get("businessStatus") != "CLOSED_PERMANENTLY":
@@ -299,6 +304,8 @@ def verify_email(email: str, config: dict, get) -> str:
         if reply.get("status") in ("auth_failure", "general_failure", "throttle_triggered"):
             raise KeyRejected(f"NeverBounce: {str(reply.get('message') or reply['status'])[:120]}")
         status = str(reply.get("result") or "").lower()
+    if not status:                      # outage (NeverBounce temp_unavail) or empty reply: no verdict on the address
+        raise OSError(f"{config['provider']}: no result ({str(reply.get('message') or reply.get('status') or 'empty reply')[:120]})")
     if status == "valid":
         return "valid"
     return "invalid" if status in VERIFIER_BAD else "risky"
