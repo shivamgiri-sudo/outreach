@@ -219,6 +219,10 @@ def merge_record(lead: dict, rec: dict, who, source: str, import_id: str, at: st
     if who == "company" and has_person(rec) and person_less:
         who = "primary"
     _fill(lead, rec, COMPANY_FIELDS, source, info, True, import_id, at)
+    for field in ("open_roles", "max_job_age_days"):           # hiring signals: keep the larger (oldest posting)
+        if (rec.get(field) or 0) > (lead.get(field) or 0):
+            lead[field] = rec[field]
+            info["filled"].append(field)
     if "domain" in info["filled"] and rec.get("website_guess"):
         lead["website_guess"] = True
     if who == "primary":

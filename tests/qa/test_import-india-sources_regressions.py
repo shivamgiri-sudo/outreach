@@ -80,3 +80,21 @@ def test_job_age_reads_posted_prefix_datetimes_and_excel_serials():
     assert job_age_days("46316", TODAY) == 13
     assert job_age_days("2026-10-20T05:00:00.000Z", TODAY) == 14
     assert job_age_days("30", TODAY) == 0                       # a bare small number is not a date
+
+
+def test_hiring_signals_keep_the_oldest_posting_and_most_openings():
+    """Several postings of one company: the first row's job age and openings were kept, so a 30-day-old posting
+    after a 3-day-old one never raised hiring pain (PRD: 'oldest posting'). Re-importing a week later did not age it."""
+    csv1 = ("Company Name,Job Title,Location,Posted On,No. of Openings,Job Link\n"
+            "Amla Foods Pvt Ltd,Telecaller,Bangalore,3 days ago,2,https://www.naukri.com/j-1\n"
+            "AMLA FOODS PVT. LTD.,Picker,Bengaluru,30+ days ago,6,https://www.naukri.com/j-2\n"
+            "Amla Foods,Driver,Bengaluru(Whitefield),1 week ago,1,https://www.naukri.com/j-3\n")
+    leads, result, _ = _import(csv1)
+    assert len(leads) == 1 and result["summary"]["duplicates_in_file"] == 2
+    assert leads[0]["max_job_age_days"] == 30 and leads[0]["open_roles"] == 6
+    assert len(leads[0]["job_links"]) == 3
+    later = csv1.replace("3 days ago", "10 days ago").replace("30+ days ago", "37 days ago")
+    _, again, _ = _import(later, leads, today=date(2026, 11, 10))
+    assert leads[0]["max_job_age_days"] == 37 and again["summary"]["merge"] == 1
+    _, same, _ = _import(later, leads, today=date(2026, 11, 10))
+    assert same["summary"]["unchanged"] == 3                     # idempotent: the same file again changes nothing
