@@ -4,6 +4,7 @@ import Icon from "./icons.jsx";
 import { stageLabel } from "./labels.js";
 import Login from "./pages/Login.jsx";
 import Workflows from "./pages/Workflows.jsx";
+import FlowBuilder from "./pages/FlowBuilder.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Leads from "./pages/Leads.jsx";
 import Templates from "./pages/Templates.jsx";
@@ -31,7 +32,8 @@ const PAGES = [
   ["sources", "Data sources", DataSources, "chart"],
   ["insights", "Insights", Insights, "chart"],
   ["growth", "Free experience", Growth, "gift"],
-  ["workflows", "Workflows", Workflows, "workflow"],
+  ["flows", "Flow builder", FlowBuilder, "workflow"],
+  ["workflows", "Simple rules", Workflows, "rules"],
   ["outbox", "Outbox & sending", Outbox, "send"],
   ["calls", "Priya's call desk", CallDesk, "phone"],
   ["meetings", "Meetings", Meetings, "calendar"],
@@ -47,7 +49,7 @@ const PAGES = [
 const GROUPS = [
   ["Overview", ["dashboard"]],
   ["Pipeline", ["leads", "campaigns", "hygiene", "sources", "insights", "growth"]],
-  ["Outreach", ["tasks", "outbox", "linkedin", "workflows", "templates", "calls", "meetings"]],
+  ["Outreach", ["tasks", "outbox", "linkedin", "flows", "workflows", "templates", "calls", "meetings"]],
   ["Library", ["stories", "prompts"]],
   ["Admin", ["setup", "integrations"]],
 ];

@@ -221,7 +221,7 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
   5. hot leads not yet contacted.
 
   Each item opens the lead, and tasks can be marked done.
-- **Workflows:** "when X happens, do Y".
+- **Simple rules** (the page was called Workflows): "when X happens, do Y". For several steps, waits and branches, see 5.11.
   - Triggers: reply label, stage change, activation event, no reply for N days.
   - Actions: WhatsApp template, task, stage change, note.
   - Each rule runs once per lead.
@@ -299,6 +299,51 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
 - **API:** `GET/POST /api/campaigns`, `GET/PUT/DELETE /api/campaigns/{id}` (PUT changes only what it is given),
   `POST /api/campaigns/{id}/run` `{dry_run}`, `POST …/pause`, `POST …/resume`, `GET …/runs`, `GET …/leads`,
   `GET /api/campaign-sources`.
+
+### 5.11 Flow builder (Outreach → Flow builder)
+- **What it is:** a mind-map style editor (like N8N) where a non-technical owner draws a communication flow:
+  a trigger, then checks, waits and actions across email, WhatsApp, SMS, LinkedIn tasks, calls, meetings, stages and webhooks.
+  Data: `flows` (nodes + edges, status draft / active / paused, version) and `flow_runs` (one run per lead per flow).
+- **Steps:**
+  - Triggers: added by hand (lead panel or the flow's Enrol box), new lead added (filters: source, campaign, tag, city,
+    country; only leads added after activation), reply (interested, not interested, question, not now, wrong person, any),
+    stage changed, meeting booked, product activity, no reply for N days after an email (cold stages only).
+  - Logic: If / else on lead fields (score, band, stage, city, country, title, persona, open roles, source, campaign, tag,
+    has email / phone / consent / meeting / replied; is, is not, more / less than, contains, is one of, is filled in);
+    A/B split (sticky per lead, recorded on the run); Wait (days / hours, optionally until Mon–Fri 09:00–18:00 IST);
+    Wait for a reply (up to N days, a path per reply label, "any reply" and "no reply").
+  - Actions: email, WhatsApp template, SMS, LinkedIn task (start the LinkedIn sequence, or one task with a message),
+    call task (next call slot), meeting link (booking link + task with a booking-link calendar, else a task), set stage,
+    add tag, notify a person, webhook (POST JSON), stop. Actions that can be refused have an "if refused" path; without
+    one the run stops with a timeline note.
+- **Rules nobody can draw around:**
+  - Email goes through the sequence engine's composer, sender and outbox: practice mode until "Send for real", daily cap
+    and warm-up shared with the sequence, a few sends per tick, one email per company domain per day, Mon–Fri 9–18 IST,
+    provider pause, postal-address rule, no unfilled placeholder, signed unsubscribe link, idempotency key and Message-ID,
+    and the sequence's send lock. Every flow email must contain `{{unsub_link}}`.
+  - WhatsApp uses `whatsapp.send` (recorded consent, templates only, 24-hour rule). SMS needs recorded consent and is
+    practice until SMS is connected and switched on. Stage changes obey `can_move`; closed leads stay closed.
+    Webhooks need a public https address (SSRF guard, no redirects) and send contact details only when ticked.
+  - Unsubscribed, disqualified, bounced or suppressed leads are never started and running ones stop before the next step.
+    A reply stops the run unless the flow is waiting for it ("Stop on reply", on by default); cold flows also stop for
+    warm leads. A lead is never enrolled twice in the same flow.
+  - Each step is claimed on the run before it acts and recorded after: two ticks never repeat it, and a crash leaves the
+    run marked for a person to check. Loops must contain a real wait (checked on save); runs stop after 200 steps.
+  - Editing an active flow's steps makes a new version; leads already in it finish on their version. An active flow
+    can only be saved complete; pause it to keep a draft. Only owners can change flows; callers can read them and stop runs.
+- **Engine:** the autorun minute loop (`OUTREACH_AUTORUN=1`) picks up polled triggers and advances due runs, writing
+  nothing when nothing is due. Replies, stage changes and product events start flows through the same hook as Simple rules.
+- **Editor:** SVG canvas (pan, zoom, grid snap, drag to connect, select a connection to delete it), palette (click or drag),
+  plain-English settings with placeholder chips, problems shown on the step in red, undo / redo (Ctrl+Z / Ctrl+Y),
+  auto-layout, Save, Validate, Simulate on a lead (no writes; path highlighted and listed), Activate / Pause, Enrol and
+  "Leads in this flow". Keyboard: Tab to a step, arrows move it, Enter edits, Delete removes. A List view shows the flow
+  as nested steps (default on phones). The lead panel's Flows section lists the lead's runs with Stop and Start.
+- **Templates:** Cold email 4-step (the sequence's four emails on day 0, 3, 7, 14), Yes → WhatsApp + Priya call,
+  LinkedIn + email combo. `POST /api/flows/templates/{key}` makes a draft copy.
+- **API:** `GET/POST /api/flows`, `GET/PUT/DELETE /api/flows/{id}`, `GET /api/flows/catalog`, `GET /api/flows/templates`,
+  `POST /api/flows/templates/{key}`, `POST /api/flows/{id}/validate|activate|pause|enroll|simulate`,
+  `GET /api/flows/{id}/runs`, `GET /api/leads/{id}/flows`, `POST /api/flow-runs/{id}/stop`, `POST /api/flows/tick`
+  (`now` honoured only with `OUTREACH_TEST_MODE=1`).
 
 ## 6. Out of scope (on purpose)
 - Automated LinkedIn scraping, auto-connecting or auto-messaging, and applying to job posts to pitch employers.
@@ -406,6 +451,8 @@ Tests:
 - `npm run e2e`: 74 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
 - `pytest -q`: 467 backend tests.
 - `pytest -q`: 539 backend tests.
+- `pytest -q`: 847 backend tests (99 for the flow builder).
+- `npm run e2e`: 99 browser steps (6 for the flow builder).
 - `npm run e2e`: 82 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
 - `node e2e/tour.mjs`: every page at three screen sizes.
 - `node e2e/auth.mjs`: 9 login checks (API started with `OUTREACH_ADMIN_PASSWORD=e2e-password`).

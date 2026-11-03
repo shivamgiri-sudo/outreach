@@ -25,7 +25,7 @@ OWNER_ROUTES = {
     ("GET", "/api/leads/{lead_id}/export"), ("POST", "/api/leads/{lead_id}/erase"),
 }
 OWNER_PREFIXES = ("/api/users", "/api/compliance", "/api/backup")    # any method
-OWNER_WRITE_PREFIXES = ("/api/integrations", "/api/channels", "/api/workflows")   # anything but GET
+OWNER_WRITE_PREFIXES = ("/api/integrations", "/api/channels", "/api/workflows", "/api/flows")   # anything but GET
 READ_METHODS = ("GET", "HEAD", "OPTIONS")
 
 

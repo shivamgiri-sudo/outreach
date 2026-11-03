@@ -5,7 +5,7 @@ Lead management and outreach for BookMyInterview. Indian employers first, intern
 - Import and enrich leads.
 - Send a short, honest email sequence.
 - Let people try the first role free and track who uses it.
-- Run your own rules ("when X happens, do Y").
+- Run your own rules ("when X happens, do Y"), or draw whole flows in the **Flow builder**.
 - Hand warm leads to WhatsApp and Priya's call desk (PD dialling only).
 
 Email, WhatsApp and SMS stay in practice mode ("dry_run") until providers are connected on the **Integrations** page.
@@ -39,6 +39,14 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
   - The campaign never sends: the sequence engine does, with practice mode, caps, warm-up and business hours.
   - Priya (or the campaign's caller) gets an update after every run, and a morning summary at 09:30 IST on weekdays.
   - "Run every weekday automatically" runs it once a day with `OUTREACH_AUTORUN=1`.
+- **Flow builder** (Outreach → Flow builder): draw a flow like a mind map: a trigger (added by hand, new lead, reply,
+  stage change, meeting booked, product activity, no reply for N days), then If / A-B split / Wait / Wait for a reply, then
+  email, WhatsApp, SMS, LinkedIn task, call task, meeting link, stage, tag, notify, webhook or stop.
+  - Three starter templates (the cold email sequence, yes → WhatsApp + Priya call, LinkedIn + email). Simulate on a lead
+    before activating; nothing is saved or sent.
+  - Every message keeps the app's rules: practice mode, caps, warm-up, business hours, one email per company a day,
+    consent before WhatsApp and SMS, the do-not-contact list, stop on reply. Editing an active flow makes a new version.
+  - Steps run every minute with `OUTREACH_AUTORUN=1`. Only owners can change flows. "Simple rules" is the old Workflows page.
 - **Data sources:**
   - Run several providers on the same Indian leads and compare coverage and cost before keeping one. Providers: own website crawler, Hunter, Firecrawl, Apollo.
   - Import the JSON output of the open-source website contact scraper.
@@ -138,6 +146,7 @@ Caddy's `reverse_proxy` sends `X-Forwarded-For` and `X-Forwarded-Proto`; the app
     .venv\Scripts\python -m pytest -q          # 436 backend tests
     .venv\Scripts\python -m pytest -q          # 467 backend tests
     .venv\Scripts\python -m pytest -q          # 539 backend tests
+    .venv\Scripts\python -m pytest -q          # 847 backend tests (99 flow builder)
 
 Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a throwaway file and
 `OUTREACH_IGNORE_BUSINESS_HOURS=1`, then the UI):
@@ -145,6 +154,7 @@ Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a thro
     cd web && npm run e2e                      # 75 steps; HEADED=1 shows the browser
     cd web && npm run e2e                      # 74 steps; HEADED=1 shows the browser; E2E_UI / E2E_API change the addresses
     cd web && npm run e2e                      # 82 steps; HEADED=1 shows the browser
+    cd web && npm run e2e                      # 99 steps (6 flow builder)
     node e2e/tour.mjs                          # every page at desktop, tablet and phone width
     # with the API started using OUTREACH_ADMIN_PASSWORD=e2e-password:
     node e2e/auth.mjs                          # 9 login steps
