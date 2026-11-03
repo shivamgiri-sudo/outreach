@@ -27,6 +27,16 @@ def tick(store, now: Optional[datetime] = None, sender=None, campaign_runner=Non
     return out
 
 
+def flow_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
+    """Flow builder: start leads on polled triggers and run every due flow step (emails keep every sending rule)."""
+    from .flow_engine import Context, tick as run_flows
+    now = now or datetime.now(timezone.utc)
+    ctx = Context(sender=sender or make_email_sender(store, base_url=BASE_URL), base_url=public_base_url(store, BASE_URL),
+                  notify_sender=make_transactional_sender(store),
+                  ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1")
+    return run_flows(store, now, ctx)
+
+
 def reminder_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
     now = now or datetime.now(timezone.utc)
     sender = sender or make_transactional_sender(store)
@@ -34,7 +44,7 @@ def reminder_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
 
 
 def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVAL_SECONDS, campaign_runner=None) -> threading.Event:
-    """Reminders every minute; due sequence emails, time rules and daily campaigns every `interval_seconds`."""
+    """Reminders and flow steps every minute; due sequence emails, time rules and daily campaigns every `interval_seconds`."""
     stop = threading.Event()
 
     def loop():
@@ -45,6 +55,10 @@ def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVA
                 reminder_tick(store)
             except Exception as exc:  # keep the timer alive; the next tick retries
                 print(f"reminder tick failed: {exc}")
+            try:
+                flow_tick(store, sender=sender)
+            except Exception as exc:
+                print(f"flow tick failed: {exc}")
             if waited >= interval_seconds:
                 waited = 0
                 try:

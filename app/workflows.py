@@ -107,7 +107,17 @@ def fire(store, trigger_type: str, value, lead_id: str, now: Optional[datetime] 
         lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
         if lead and _run_rule(store, rule, lead, now):
             ran += 1
+    _start_flows(store, trigger_type, value, lead_id, now)
     return ran
+
+
+def _start_flows(store, trigger_type: str, value, lead_id: str, now: datetime) -> None:
+    """The same events also start flow-builder flows (app/flow_engine.py); the minute tick then runs their steps."""
+    from .flow_engine import on_event
+    try:
+        on_event(store, trigger_type, value, lead_id, now)
+    except Exception as exc:  # a flow problem must never break the reply / stage handling that called us
+        print(f"flow trigger failed: {exc}")
 
 
 COLD_STAGES = ("new", "verified", "enriched", "contacted", "engaged")
