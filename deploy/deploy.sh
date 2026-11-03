@@ -12,6 +12,6 @@ scp -i "$KEY" -o StrictHostKeyChecking=accept-new /tmp/outreach-release.tgz "$TA
 ssh -i "$KEY" "$TARGET" "sudo mkdir -p /opt/outreach/app && sudo tar -xzf /tmp/outreach-release.tgz -C /opt/outreach/app && \
   (test -x /opt/outreach/app/.venv/bin/uvicorn || sudo bash /opt/outreach/app/deploy/setup_server.sh '$HOST') && \
   sudo /opt/outreach/app/.venv/bin/pip install -q -r /opt/outreach/app/requirements.txt && \
-  sudo chown -R outreach:outreach /opt/outreach && sudo systemctl restart outreach && sleep 2 && \
-  curl -fsS http://127.0.0.1:8000/api/auth/status"
+  sudo chown -R outreach:outreach /opt/outreach && sudo systemctl restart outreach && \
+  for i in \$(seq 1 30); do curl -fsS http://127.0.0.1:8000/api/auth/status && exit 0; sleep 1; done; exit 1"
 echo; echo "Deployed. Open https://$HOST"
