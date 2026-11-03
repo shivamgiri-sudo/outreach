@@ -1,0 +1,6 @@
+Email address,Type,Confidence score,Number of sources,Pattern,First name,Last name,Department,Position,Twitter handle,LinkedIn URL,Phone number,Verification status,Last verification date,Domain name,Organization
+vikram.kulkarni@banyan.example,personal,97,4,{first}.{last},Vikram,Kulkarni,hr,HR Manager,,https://www.linkedin.com/in/vikram-kulkarni-qa010,,valid,2026-10-28,banyan.example,Banyan Retail Pvt. Ltd.
+hr@banyan.example,generic,92,11,,,,,,,,,accept_all,2026-10-28,banyan.example,Banyan Retail Pvt. Ltd.
+careers@banyan.example,generic,88,6,,,,,,,,,valid,2026-10-27,banyan.example,Banyan Retail Pvt. Ltd.
+tushar.menon@banyan.example,personal,64,1,{first}.{last},Tushar,Menon,management,Director,,,,invalid,2026-10-26,banyan.example,Banyan Retail Pvt. Ltd.
+swati.joshi@banyan.example,personal,81,2,{first}.{last},Swati,Joshi,hr,HR Executive,,,+91 90002 20010,valid,2026-10-27,banyan.example,Banyan Retail Pvt. Ltd.

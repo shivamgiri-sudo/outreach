@@ -1,0 +1,12 @@
+Person - Name,Person - Email - Work,Person - Email - Other,Person - Phone - Work,Person - Phone - Mobile,Person - Organization,Person - Job title,Person - Label,Person - Owner,Organization - Address
+Priya Joshi,priya.joshi@udaan.example,,080 4100 1035,+91 90000 10035,Udaan Services Ltd,VP People,Warm,QA Owner,"35 MG Road, Noida, Uttar Pradesh 411035"
+Manpreet Kumar,manpreet.kumar@vistara-hr.example,,080 4100 1036,09000010036,Vistara Pvt. Ltd.,Founder & CEO,Cold,QA Owner,"36 MG Road, Hyderabad, Telangana 411036"
+Farah Gupta,farah.gupta@saffron.example,,080 4100 1037,9000010037,Saffron Private Limited,HR Executive,Warm,QA Owner,"37 MG Road, Chennai, Tamil Nadu 411037"
+Deepak Das,deepak.das@lotus.example,,080 4100 1038,91-90000-10038,Lotus Technologies Pvt Ltd,Sr. Manager - TA,Cold,QA Owner,"38 MG Road, Mumbai, Maharashtra 411038"
+Lakshmi Iyer,lakshmi.iyer@indigo.example,,080 4100 1039,+919000010039,Indigo Solutions LLP,Chief People Officer,Warm,QA Owner,"39 MG Road, Ahmedabad, Gujarat 411039"
+Gaurav Reddy,gaurav.reddy@banyan-hr.example,,080 4100 1040,+91 90000 10040,Banyan Retail Pvt. Ltd.,HR Manager,Cold,QA Owner,"40 MG Road, Bengaluru, Karnataka 411040"
+Swati Shetty,swati.shetty@chakra.example,,080 4100 1041,09000010041,Chakra Services Ltd,Talent Acquisition Lead,Warm,QA Owner,"41 MG Road, Pune, Maharashtra 411041"
+Harish Nair,harish.nair@garuda.example,,080 4100 1042,9000010042,Garuda Pvt. Ltd.,Head - Human Resources,Cold,QA Owner,"42 MG Road, Gurugram, Haryana 411042"
+Meera Menon,meera.menon@tulsi.example,,080 4100 1043,91-90000-10043,Tulsi Private Limited,HR Business Partner,Warm,QA Owner,"43 MG Road, Noida, Uttar Pradesh 411043"
+Tushar Sharma,tushar.sharma@monsoon-hr.example,,080 4100 1044,+919000010044,Monsoon Technologies Pvt Ltd,Recruitment Manager,Cold,QA Owner,"44 MG Road, Hyderabad, Telangana 411044"
+Bhavesh Thakkar,,,,+91 90003 30001,Kesari Udyog,Proprietor,,QA Owner,Ahmedabad
