@@ -303,7 +303,7 @@ def describe(saved: dict, legacy_items: list, settings: dict) -> list:
     out = []
     for ch in CHANNELS:
         if ch["kind"] == "legacy":
-            provs = [{**p, "fields": legacy_by_id[p["id"]]["fields"], "values": legacy_by_id[p["id"]]["values"],
+            provs = [{**p, "values": legacy_by_id[p["id"]]["values"],
                       "mode": legacy_by_id[p["id"]]["mode"], "status": legacy_by_id[p["id"]]["status"],
                       "last_test": None, "active": False, "saved": legacy_by_id[p["id"]]["status"] != "not_configured"}
                      for p in providers_for(ch["id"])]

@@ -51,7 +51,8 @@ LEGACY_PROVIDER_ALIASES = {"gupshup": "gupshup", "interakt": "interakt", "wati":
 
 def _legacy_provider(item: dict, channel_id: str) -> dict:
     return {"id": item["id"], "channel": channel_id, "title": item["title"], "why": item["why"],
-            "docs_url": LEGACY_DOCS[item["id"]], "fields": item["fields"], "steps": item["steps"],
+            "docs_url": LEGACY_DOCS[item["id"]], "steps": item["steps"],
+            "fields": [{"required": False, "secret": False, "placeholder": "", "help": "", "kind": "text", **f} for f in item["fields"]],
             "test": "Uses the connector's own Test button (same as Setup → Connections).",
             "capabilities": ["lead_data"] if channel_id == "lead_data" else ["ai"], "recommended": item["id"] in LEGACY_RECOMMENDED,
             "cost_note": "", "webhook": None, "oauth": False, "link_based": False, "custom": False,

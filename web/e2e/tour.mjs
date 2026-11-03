@@ -7,7 +7,7 @@ const UI = "http://localhost:5173";
 const SHOTS = process.env.SHOT_DIR || "tour-shots";
 fs.mkdirSync(SHOTS, { recursive: true });
 const PAGES = ["Dashboard", "Leads", "Data sources", "Insights", "Free experience", "Workflows", "Outbox & sending",
-  "Priya's call desk", "Sequences & templates", "Success stories", "Prompt generator", "Setup"];
+  "Priya's call desk", "Meetings", "Sequences & templates", "Success stories", "Prompt generator", "Setup", "Integrations"];
 const SIZES = [["desktop", 1440, 900], ["tablet", 820, 1100], ["phone", 390, 844]];
 
 const browser = await chromium.launch(process.env.HEADED ? { headless: false, slowMo: 300 } : {});

@@ -669,6 +669,50 @@ await step("Apollo export downloads a CSV", async () => {
   if (!t.startsWith("company,contact_name,title,domain,city,lead_id")) throw new Error("bad header");
 });
 
+// ---------- Integrations hub (no real provider is called: booking links need no network) ----------
+await step("Integrations: every channel tab opens and Resend is recommended", async () => {
+  await nav("Integrations");
+  for (const tab of ["inbound_email", "email_events", "whatsapp", "sms", "calls", "calendar", "custom", "email_send"]) {
+    await page.getByTestId(`tab-${tab}`).click();     // test ids: the visible name gains "connected" once set up
+  }
+  await page.getByTestId("prov-email_send-resend").getByText("Recommended").waitFor();
+});
+await step("Integrations: booking-link wizard saves, tests and becomes active", async () => {
+  await page.getByTestId("tab-calendar").click();
+  await page.getByTestId("prov-calendar-booking_link").getByRole("button", { name: "Set up" }).click();
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByLabel("Booking link *").fill("https://bookings.example.in/priya?name={name}&email={email}");
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByTestId("run-test").click();
+  await page.getByTestId("test-result").getByText("Works").waitFor();
+  await shot("11-integrations-wizard");
+  await page.keyboard.press("Escape");
+  await page.getByTestId("prov-calendar-booking_link").getByText("Active").waitFor();
+});
+await step("Integrations: custom connector preview escapes JSON and hides secret headers", async () => {
+  await page.getByTestId("tab-sms").click();
+  await page.getByTestId("prov-sms-custom_http").getByRole("button", { name: "Set up" }).click();
+  await page.getByRole("button", { name: "2. Your details" }).click();
+  await page.getByLabel("Body template").fill('{"to": "{{phone}}", "message": "{{text}}"}');
+  await page.getByRole("button", { name: "+ Add header" }).click();
+  await page.getByLabel("Header 1 name").fill("Authorization");
+  await page.getByLabel("Header 1 value").fill("Bearer abc");
+  await page.getByRole("checkbox", { name: "secret" }).check();
+  const preview = await page.getByTestId("custom-preview").textContent();
+  if (!preview.includes('\\"test\\"') || !preview.includes("Authorization: ••••")) throw new Error(preview);
+  await page.keyboard.press("Escape");
+});
+await step("Meetings: lead panel gives a prefilled booking link; Meetings page opens", async () => {
+  await nav("Leads");
+  await page.locator("tr.click").first().click();
+  await page.getByTestId("lead-meetings").getByRole("button", { name: /Book a meeting/ }).click();
+  await page.getByRole("button", { name: "Get booking link" }).click();
+  await page.getByTestId("lead-meetings").getByText("Send this link to the lead").waitFor();
+  await page.keyboard.press("Escape");
+  await nav("Meetings");
+  await expectText("Upcoming demos and calls");
+});
+
 // ---------- Mobile layout ----------
 await step("Mobile width: no horizontal page scroll on Leads", async () => {
   await page.setViewportSize({ width: 390, height: 800 });
