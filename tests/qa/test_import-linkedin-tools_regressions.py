@@ -215,3 +215,15 @@ def test_the_page_reader_never_fetches_linkedin(monkeypatch, tmp_path, url):
     r = client.post("/api/scrape/extract", json={"url": url, "company": "Acme Retail", "add_leads": True})
     assert r.status_code == 400 and "LinkedIn" in r.json()["detail"]
     assert client.get("/api/leads").json() == []
+
+
+@pytest.mark.parametrize("header, key", [
+    ("First name,Last name,Title,Company,LinkedIn,Work email,Direct email,Phone 1,Phone 2,Location,Company website",
+     "kaspr"),
+    ("VisitTime,Profile,SalesProfile,Picture,Degree,First Name,Middle Name,Last Name,Title,Company,CompanyProfile,"
+     "CompanyWebsite,Location,Industry,Email,Phone", "dux_soup"),
+    ("Phone 1,Phone 2,Email 1,Email 2,First Name,Last Name,Job Title,Company Name,Company Domain", "lusha"),
+])
+def test_kaspr_and_dux_soup_files_are_named_for_what_they_are(header, key):
+    """Kaspr files were labelled 'Lusha export' (source 'lusha' on every lead) and Dux-Soup files were unrecognised."""
+    assert detect_format(header.split(","))["key"] == key
