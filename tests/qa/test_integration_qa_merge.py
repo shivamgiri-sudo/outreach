@@ -147,3 +147,20 @@ def test_public_addresses_are_still_accepted(tmp_path, host):
     store.update("settings", lambda s: {**s, "public_base_url": f"https://{host}"})
     assert not any("public https web address" in m for m in live_blockers(store, "https://" + host))
     assert _public_url_ok(f"https://{host}")
+
+
+def test_a_whatsapp_stop_unsubscribes_every_lead_that_shares_the_phone(tmp_path):
+    _, store = app_with_leads(tmp_path)
+    first = store.read("leads")[0]
+    twin = {**first, "id": "twin0001", "company": "Twin Co", "email": "twin@twin.example", "dedupe_key": "twin-co", "timeline": []}
+    stranger = {**first, "id": "other001", "company": "Other Co", "email": "o@other.example", "dedupe_key": "other-co",
+                "phone": "+919000099999", "phones": [], "timeline": []}
+    first_phone = first.get("phone")
+    assert first_phone
+    store.update("leads", lambda rows: [*rows, twin, stranger])
+    out = process_inbound_message(store, {"channel": "whatsapp", "provider": "meta", "from_phone": first_phone, "text": "STOP",
+                                          "message_id": "wamid.1"})
+    assert out["matched"] and out["label"] == "unsubscribe"
+    stages = {l["id"]: l["stage"] for l in store.read("leads")}
+    assert stages[first["id"]] == "unsubscribed" and stages["twin0001"] == "unsubscribed"
+    assert stages["other001"] != "unsubscribed"

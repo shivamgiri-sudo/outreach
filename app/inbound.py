@@ -171,6 +171,14 @@ def _match_lead(store, msg: dict) -> tuple:
     return None, None
 
 
+def _leads_sharing_phone(store, raw_phone, skip_id: str) -> list:
+    phone = normalise_phone(raw_phone)
+    if not phone:
+        return []
+    return [l["id"] for l in store.read("leads") if l["id"] != skip_id and l["stage"] != "unsubscribed"
+            and phone in {l.get("phone"), *(normalise_phone(p) for p in l.get("phones") or [])}]
+
+
 def process_inbound_message(store, msg: dict, ai_transport=None) -> dict:
     """Store an inbound message (once, by message id) and act on it if it belongs to a lead."""
     message_id = (msg.get("message_id") or msg.get("raw_id") or "").strip()
@@ -189,6 +197,10 @@ def process_inbound_message(store, msg: dict, ai_transport=None) -> dict:
     result = apply_reply(store, lead_id, text, channel, ai_transport, source=msg.get("provider") or "inbound",
                          received_at=msg.get("received_at"), message_id=message_id) if lead_id else None
     row["label"] = (result or {}).get("label")
+    if result and result.get("label") == "unsubscribe" and channel in ("whatsapp", "sms"):
+        for other in _leads_sharing_phone(store, msg.get("from_phone"), lead_id):       # a number's STOP covers everybody on it
+            apply_reply(store, other, text, channel, ai_transport, source=msg.get("provider") or "inbound",
+                        received_at=msg.get("received_at"))
     store.update("inbox", lambda rows: [*rows, row])
     if not lead_id:
         add_task(store, None, "unmatched_reply", f"From {row['from']}: {row['text'][:500]}", source=f"{channel} inbound")
