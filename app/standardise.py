@@ -337,7 +337,7 @@ def _national(national: str) -> Optional[tuple]:
 
 def parse_phone(part: str) -> tuple:
     """One number -> ((e164, type) or None, problem or None). Types: mobile, landline, intl."""
-    text = _EXTENSION.sub("", clean_text(part))
+    text = _EXTENSION.sub("", clean_text(part)).lstrip("'")    # Excel/Apollo text prefix: '+91 80 4000 1500
     digits = re.sub(r"\D", "", text)
     if not digits:
         return None, ("invalid_phone" if text else None)

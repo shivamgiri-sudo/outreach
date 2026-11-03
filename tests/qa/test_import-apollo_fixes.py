@@ -101,3 +101,20 @@ def test_quick_paste_leaves_out_locked_apollo_emails(client):
     leads = client.get("/api/leads").json()
     assert all(lead["email"] is None for lead in leads)
     assert sorted(lead["company"] for lead in leads) == ["Metro Mart", "Royal Caterers", "Shree Ganesh Traders"]
+
+
+# ---- 3. Apollo's "'+91 80 ..." text prefix turned Bengaluru landlines into "mobiles" (WhatsApp candidates)
+def test_apostrophe_prefixed_landlines_stay_landlines():
+    from app.standardise import parse_phone
+    assert parse_phone("'+91 80 4000 1500") == (("+918040001500", "landline"), None)
+    assert parse_phone("'080-4000 1500") == (("+918040001500", "landline"), None)
+    assert parse_phone("'+91 90000 20001") == (("+919000020001", "mobile"), None)
+
+
+def test_an_apollo_row_prefers_the_real_mobile_over_an_apostrophe_landline(client):
+    csv = ("First Name,Last Name,Company Name,Email,Work Direct Phone,Mobile Phone,Corporate Phone\n"
+           "Ravi,Kumar,Acme Retail Pvt. Ltd.,ravi@acmeretail.example,'+91 80 4000 1500,,'+91 80 4000 1000\n"
+           "Pooja,Pillai,Nimbus Logistics,pooja@nimbus.example,'+91 80 4000 1600,'+91 90000 20002,\n")
+    rows = preview(client, csv, source="apollo")["rows"]
+    assert (rows[0]["phone"], rows[0]["phone_type"]) == ("+918040001500", "landline")
+    assert (rows[1]["phone"], rows[1]["phone_type"]) == ("+919000020002", "mobile")
