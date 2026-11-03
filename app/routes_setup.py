@@ -32,8 +32,9 @@ def _hub_ready(store, channel_id: str) -> bool:
 
 
 def _public_url_ok(url: str) -> bool:
-    host = urlparse(url).hostname or ""
-    return bool(host) and host not in LOCAL_HOSTS and not host.startswith("192.168.") and not host.startswith("10.")
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    return parsed.scheme == "https" and bool(host) and host not in LOCAL_HOSTS and not host.startswith("192.168.") and not host.startswith("10.")
 
 
 def make_router(store, email_transport=post_json, ai_transport=post_json, apollo_transport=post_json,
