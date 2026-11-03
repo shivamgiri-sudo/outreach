@@ -103,6 +103,10 @@ KNOWN_EXTRA = (
     "management level", "keywords", "technologies", "annual revenue", "total funding", "latest funding",
     "position level", "next follow up date", "demo date and time", "contact confidence", "sales navigator url",
     "sales navigator profile url", "job title hierarchy level", "job function", "fits 50 400", "opening hours",
+    # LinkedIn tools: previous jobs, middle names and Sales Navigator-only links are not the current lead
+    "past experience company name", "past experience company url", "past experience company title", "company2",
+    "company url2", "job title2", "job location2", "middle name", "sales profile", "recruiter profile", "school url",
+    "profile image url", "search account profile name", "search account profile id", "last state",
 )
 
 
@@ -300,7 +304,7 @@ def map_columns(headers: list, sample_rows: list, fmt: dict, saved: dict = None,
         else:
             field, conf = _fuzzy_field(loose)
             how = "similar name" if field else ""
-        if how not in ("you chose", "saved mapping"):
+        if how not in ("you chose", "saved mapping", "extra column, not lead data"):
             sniffed = sniff_values(samples)
             if sniffed == "words" and field in ("phone", "email"):
                 person = {"contact", "person", "name"} & set(loose.split())
