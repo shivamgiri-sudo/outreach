@@ -162,8 +162,13 @@ def cancel(store, meeting_id: str, transport=request, resolver=None, sender=None
         return {"meeting": meeting, "message": "Already cancelled."}
     message = "Cancelled."
     if meeting["provider"] in REMOTE_CANCEL and meeting.get("external_id"):
-        cancel_event(store, meeting["provider"], meeting["external_id"], transport, resolver)
-        message = "Cancelled, and the invite was withdrawn in the calendar."
+        try:
+            cancel_event(store, meeting["provider"], meeting["external_id"], transport, resolver)
+            message = "Cancelled, and the invite was withdrawn in the calendar."
+        except OSError as exc:
+            if getattr(exc, "code", None) not in (404, 410):    # 404/410: already deleted in the calendar itself
+                raise
+            message = "Cancelled. It was already removed from the calendar."
     else:
         message = "Marked as cancelled here. Also cancel it in your calendar tool."
 
