@@ -26,6 +26,7 @@ OVERDUE_AFTER = timedelta(hours=1)
 MEETING_LEAD_REMINDERS = (("24h", timedelta(hours=24)), ("1h", timedelta(hours=1)))
 MEETING_OWNER_REMINDER = ("owner_15m", timedelta(minutes=15))
 CLOSED_FOR_REMINDERS = ("unsubscribed",)
+LATE_24H_GRACE = timedelta(hours=1)       # a "24h" reminder more than this after its moment is not sent (meeting booked inside 24h)
 NO_SHOW_AFTER = timedelta(minutes=30)
 NO_SHOW_WINDOW = timedelta(days=7)       # older meetings left "scheduled" are not raised all at once
 
@@ -82,13 +83,22 @@ def _task_reminders(store, now: datetime, sender) -> int:
     return sent
 
 
-def _meeting_email(store, lead: dict, meeting: dict, which: str, base_url: str = "") -> dict:
+def _when_phrase(start: str, which: str, now: datetime = None) -> str:
+    """'in about an hour' for the 1h reminder; otherwise the day by IST calendar date. Never 'tomorrow' for a same-day call."""
+    if which != "24h":
+        return "in about an hour"
+    begins = datetime.fromisoformat(start).astimezone(IST)
+    days = (begins.date() - (now or datetime.now(IST)).astimezone(IST).date()).days
+    return "later today" if days <= 0 else "tomorrow" if days == 1 else f"on {begins.strftime('%a %d %b')}"
+
+
+def _meeting_email(store, lead: dict, meeting: dict, which: str, base_url: str = "", now: datetime = None) -> dict:
     when = ist_text(meeting["start"])
     company = lead.get("company") or "your team"
     to = meeting.get("attendee_email") or lead.get("email")
     person = next((o for o in lead.get("other_contacts") or [] if isinstance(o, dict) and o.get("email") == to), lead)
     lines = [f"Hi {(person.get('contact_name') or '').split(' ')[0] or 'there'},", "",
-             f"A reminder of our call {'tomorrow' if which == '24h' else 'in about an hour'}: {meeting.get('title') or 'BookMyInterview.ai demo — ' + company}",
+             f"A reminder of our call {_when_phrase(meeting['start'], which, now)}: {meeting.get('title') or 'BookMyInterview.ai demo — ' + company}",
              f"When: {when}"]
     if meeting.get("join_url"):
         lines.append(f"Join: {meeting['join_url']}")
@@ -115,7 +125,8 @@ def _meeting_reminders(store, now: datetime, sender, base_url: str) -> int:
             due = []
             for label, before in MEETING_LEAD_REMINDERS:
                 # only the nearest reminder that's due (no 24h reminder when the meeting is already an hour away)
-                if label not in done and now >= start - before and not (label == "24h" and start - now <= timedelta(hours=2)):
+                if label not in done and now >= start - before and not (
+                        label == "24h" and (start - now <= timedelta(hours=2) or now - (start - before) > LATE_24H_GRACE)):
                     due.append(label)
             owner_label, owner_before = MEETING_OWNER_REMINDER
             if owner_label not in done and now >= start - owner_before:
@@ -126,7 +137,7 @@ def _meeting_reminders(store, now: datetime, sender, base_url: str) -> int:
                            meeting.get("join_url", ""), lead["id"], kind="meeting_soon", sender=sender)
                 elif (to := meeting.get("attendee_email") or lead.get("email")) and not is_blocked(store, to) \
                         and lead["stage"] not in CLOSED_FOR_REMINDERS:
-                    message = _meeting_email(store, lead, meeting, label, base_url)
+                    message = _meeting_email(store, lead, meeting, label, base_url, now)
                     result = sender(message) if (live and sender) else {"status": "dry_run"}
                     _log_transactional(store, message["to"], message["subject"], message["body"], "meeting_reminder", lead["id"], result)
                 sent += 1

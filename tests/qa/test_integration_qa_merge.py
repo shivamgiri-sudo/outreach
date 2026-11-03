@@ -164,3 +164,23 @@ def test_a_whatsapp_stop_unsubscribes_every_lead_that_shares_the_phone(tmp_path)
     stages = {l["id"]: l["stage"] for l in store.read("leads")}
     assert stages[first["id"]] == "unsubscribed" and stages["twin0001"] == "unsubscribed"
     assert stages["other001"] != "unsubscribed"
+
+
+def test_same_day_meeting_gets_no_24h_reminder_and_never_says_tomorrow(tmp_path):
+    from datetime import timedelta
+    from app.reminders import _when_phrase, run_reminders
+    _, store = app_with_leads(tmp_path)
+    lead = store.read("leads")[0]
+    now = datetime(2026, 11, 20, 4, 30, tzinfo=timezone.utc)                        # Fri 10:00 IST
+    start = now + timedelta(hours=5)                                                 # booked 5 hours ahead: same day
+    store.update_lead(lead["id"], lambda l: {**l, "meetings": [{"id": "m1", "status": "scheduled", "start": start.isoformat(),
+                                                                   "title": "Demo", "attendee_email": lead["email"], "reminders_sent": []}]})
+    store.update("settings", lambda s: {**s, "live_sending": True})
+    sent = []
+    run_reminders(store, now, lambda m: sent.append(m) or {"status": "sent"})
+    assert [m for m in sent if m["kind"] == "meeting_reminder"] == []              # no "24h" mail for a call inside 24h
+    run_reminders(store, start - timedelta(minutes=50), lambda m: sent.append(m) or {"status": "sent"})
+    mails = [m for m in sent if m["kind"] == "meeting_reminder"]
+    assert len(mails) == 1 and "tomorrow" not in mails[0]["body"] and "in about an hour" in mails[0]["body"]
+    assert _when_phrase(start.isoformat(), "24h", now) == "later today"
+    assert _when_phrase((now + timedelta(hours=24)).isoformat(), "24h", now) == "tomorrow"
