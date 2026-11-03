@@ -60,6 +60,9 @@ def _task_reminders(store, now: datetime, sender) -> int:
     for task in store.read("tasks"):
         if task.get("status", "open") != "open" or task.get("done") or not task.get("due_at") or not task.get("id"):
             continue
+        if ((leads.get(task.get("lead_id")) or {}).get("stage") in CLOSED_FOR_REMINDERS
+                and task.get("source") not in ("person", "activity") and task.get("kind") not in ("review", "erasure_request")):
+            continue                       # automatic tasks of an unsubscribed lead are dropped (as on the task board)
         due = datetime.fromisoformat(task["due_at"])
         done = set(task.get("reminded") or [])
         company = (leads.get(task.get("lead_id")) or {}).get("company") or ""
