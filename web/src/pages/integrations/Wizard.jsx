@@ -124,6 +124,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
             <p>{provider.why}</p>
             <ol className="steps">{provider.steps.map((s) => <li key={s}>{s}</li>)}</ol>
             {provider.cost_note && <p className="field-help">Cost: {provider.cost_note}</p>}
+            {provider.terms && <p className="field-help" data-testid="source-terms">Terms: {provider.terms}</p>}
             <a className="btn ghost" href={provider.docs_url} target="_blank" rel="noreferrer">Open provider dashboard / docs ↗</a>
           </section>
         )}

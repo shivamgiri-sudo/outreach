@@ -1033,6 +1033,37 @@ await step("Flow builder: on a phone the flow opens as a list of steps with no s
   if (overflow) throw new Error("flow editor scrolls sideways on a phone");
 });
 
+// ---------- Lead sources (no real provider is called: the free test needs no network without a company identifier) ----------
+await step("Sources: Integrations > Lead data lists the new source cards with steps and terms", async () => {
+  await nav("Integrations");
+  await page.getByTestId("tab-lead_data").click();
+  for (const id of ["greenhouse", "lever", "adzuna", "brave_search", "osm_overpass", "snov", "kickbox", "bouncer"]) {
+    await page.getByTestId(`prov-lead_data-${id}`).waitFor({ timeout: 5000 });
+  }
+  const cards = await page.locator('[data-testid^="prov-lead_data-"]').count();
+  if (cards < 30) throw new Error(`only ${cards} Lead data cards`);
+  await page.getByTestId("prov-lead_data-greenhouse").getByRole("button", { name: /Set up|Open/ }).click();
+  await page.getByTestId("source-terms").waitFor();
+  await expectText("Find a company's identifier");
+  await shot("12-sources-lead-data");
+  await page.keyboard.press("Escape");
+});
+await step("Sources: a free source saves and its Test connection shows a result", async () => {
+  await page.getByTestId("prov-lead_data-greenhouse").getByRole("button", { name: /Set up|Open/ }).click();
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByTestId("run-test").click();
+  await page.getByTestId("test-result").getByText("needs no key").waitFor({ timeout: 8000 });
+  await page.keyboard.press("Escape");
+  await page.getByTestId("prov-lead_data-kickbox").getByRole("button", { name: "Set up" }).click();
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByLabel("API key *").fill("live_not_a_real_key");
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByTestId("run-test").click();
+  await page.getByTestId("test-result").getByText("no free key check").waitFor({ timeout: 8000 });
+  await page.keyboard.press("Escape");
+});
+
 // ---------- Mobile layout ----------
 await step("Mobile width: no horizontal page scroll on Leads", async () => {
   await page.setViewportSize({ width: 390, height: 800 });

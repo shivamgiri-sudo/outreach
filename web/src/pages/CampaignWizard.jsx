@@ -15,9 +15,9 @@ const EARLY = ["new", "verified", "enriched"];
 export const EMPTY_CAMPAIGN = {
   name: "",
   target: { industries: [], cities: [], roles_hiring: [], company_size_buckets: [], keywords: [] },
-  sources: { careers_pages: [], careers_html: [], apollo_search: false, apollo_hiring: false, google_places: false, csv_import_ids: [], max_results: 25 },
-  enrich: { crawler: true, hunter: false, firecrawl: false, apollo_match: false },
-  rules: { min_score: 40, require_business_email: true, skip_role_addresses: false, max_new_leads_per_run: 50, auto_enrol: false, caller: "" },
+  sources: { careers_pages: [], careers_html: [], apollo_search: false, apollo_hiring: false, google_places: false, csv_import_ids: [], max_results: 25, extra: [], extra_params: {} },
+  enrich: { crawler: true, hunter: false, firecrawl: false, apollo_match: false, extra: [], extra_params: {} },
+  rules: { credit_cap: 100, min_score: 40, require_business_email: true, skip_role_addresses: false, max_new_leads_per_run: 50, auto_enrol: false, caller: "" },
 };
 
 function Chips({ label, field, values, onChange }) {
@@ -54,6 +54,32 @@ function Check({ checked, onChange, children, hint }) {
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ marginTop: 4 }} />
       <span style={{ minWidth: 0 }}>{children}{hint && <small className="sub" style={{ display: "block", margin: 0 }}>{hint}</small>}</span>
     </label>
+  );
+}
+
+function MoreSources({ items, picked, onPick, params, onParams, go, kind }) {
+  if (!items.length) return null;
+  const toggle = (id, on) => onPick(on ? [...picked, id] : picked.filter((x) => x !== id));
+  return (
+    <div data-testid={`more-${kind}`}>
+      {items.map((src) => (
+        <div key={src.id}>
+          <Check checked={picked.includes(src.id)} onChange={(v) => toggle(src.id, v)}
+            hint={`${src.why} ${src.free ? "Free." : src.cost_note}`}>
+            <b>{src.title}</b> {src.keyless || src.connected ? <span className="pill ok">{src.keyless ? "No key needed" : "Connected"}</span>
+              : <span className="row" style={{ gap: 6 }}><span className="pill warn">Not connected</span>
+                <button type="button" className="linkish" onClick={() => go("integrations")}>Set up in Integrations</button></span>}
+          </Check>
+          {kind === "discover" && src.takes_identifiers && picked.includes(src.id) && (
+            <div style={{ marginLeft: 26 }}>
+              <label htmlFor={`ids-${src.id}`}>Company identifiers for {src.title} (one per line)</label>
+              <textarea id={`ids-${src.id}`} rows={3} placeholder="acme-hr" value={(params[src.id] || {}).slugs ?? ""}
+                onChange={(e) => onParams({ ...params, [src.id]: { slugs: e.target.value } })} />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -98,7 +124,7 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
   const body = () => {
     const pasted = paste.html.trim() ? [...c.sources.careers_html, { url: paste.url.trim(), html: paste.html }] : c.sources.careers_html;
     return { ...c, name: c.name.trim(), sources: { ...c.sources, careers_pages: pages, careers_html: pasted, max_results: Number(c.sources.max_results) || 25 },
-      rules: { ...c.rules, max_new_leads_per_run: Number(c.rules.max_new_leads_per_run) || 50, min_score: Number(c.rules.min_score) } };
+      rules: { ...c.rules, max_new_leads_per_run: Number(c.rules.max_new_leads_per_run) || 50, min_score: Number(c.rules.min_score), credit_cap: Number(c.rules.credit_cap ?? 100) } };
   };
   const save = async () => {
     if (!c.name.trim()) { setStep(0); throw new Error("Give the campaign a name first."); }
@@ -120,9 +146,13 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
     } catch (e) { setError(e.message); }
     setBusy("");
   };
+  const [catalog, setCatalog] = useState([]);
+  useEffect(() => { api.sources().then((d) => setCatalog(d.sources)).catch(() => {}); }, []);
+  const found = catalog.filter((x) => x.discovers && !x.legacy);
+  const enrichers = catalog.filter((x) => (x.enriches || x.verifies) && x.id !== "apollo");
   const s = c.sources, r = c.rules, t = c.target;
   const pageCount = pages.length + s.careers_html.length + (paste.html.trim() ? 1 : 0);
-  const anySource = s.apollo_search || s.apollo_hiring || s.google_places || pageCount > 0 || s.csv_import_ids.length > 0;
+  const anySource = s.apollo_search || s.apollo_hiring || s.google_places || (s.extra || []).length > 0 || pageCount > 0 || s.csv_import_ids.length > 0;
 
   return (
     <div>
@@ -179,6 +209,10 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
           <Check checked={s.google_places} onChange={(v) => set("sources", "google_places", v)} hint="Businesses by type and city, with website and office phone. Google bills each search.">
             <b>Google Places</b> <Ready state={status?.google_places} go={go} />
           </Check>
+          <h3 style={{ margin: "14px 0 0" }}>More sources (free ones first)</h3>
+          <small className="sub-inline">Public job-board feeds, official job and search APIs, open data, and your own keys. Each is lawful: no LinkedIn, no job-board scraping.</small>
+          <MoreSources kind="discover" items={[...found].sort((a, b) => Number(!a.free) - Number(!b.free))} picked={s.extra || []} go={go}
+            onPick={(v) => set("sources", "extra", v)} params={s.extra_params || {}} onParams={(v) => set("sources", "extra_params", v)} />
           <label htmlFor="camp-max">Most results per paid search, per run</label>
           <input id="camp-max" type="number" min="1" max="100" style={{ maxWidth: 140 }} value={s.max_results} onChange={(e) => set("sources", "max_results", e.target.value)} />
           <label>Leads you already imported (optional)</label>
@@ -194,6 +228,12 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
             <Check checked={c.enrich.hunter} onChange={(v) => set("enrich", "hunter", v)} hint="One search per company that still has no email.">Hunter <Ready state={status?.hunter} go={go} /></Check>
             <Check checked={c.enrich.firecrawl} onChange={(v) => set("enrich", "firecrawl", v)} hint="For websites that need JavaScript. A few page credits per company.">Firecrawl <Ready state={status?.firecrawl} go={go} /></Check>
             <Check checked={c.enrich.apollo_match} onChange={(v) => set("enrich", "apollo_match", v)} hint="Reveals the work email of people found in Apollo. About one credit per person.">Apollo email lookup <Ready state={status?.apollo} go={go} /></Check>
+            <h4 style={{ margin: "14px 0 0" }}>More ways to find and check emails</h4>
+            <small className="sub-inline">Tried free first, then your paid keys, cheapest first; it stops at the first verified email.</small>
+            <MoreSources kind="enrich" items={[...enrichers].sort((a, b) => Number(!a.free) - Number(!b.free))} picked={c.enrich.extra || []} go={go}
+              onPick={(v) => set("enrich", "extra", v)} params={{}} onParams={() => {}} />
+            <label htmlFor="camp-credits">Most credits to spend per run</label>
+            <input id="camp-credits" type="number" min="0" max="5000" style={{ maxWidth: 140 }} value={r.credit_cap ?? 100} onChange={(e) => set("rules", "credit_cap", e.target.value)} />
             <p className="sub" style={{ margin: "10px 0 0" }}>Only empty fields are filled, and each value keeps where it came from. Email check: {status?.email_verifier?.connected ? "your email verifier is used." : "format and business domain only (connect ZeroBounce or NeverBounce for a real check)."}</p>
           </div>
           <div className="card">
@@ -217,7 +257,7 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
           <h3 style={{ marginTop: 0 }}>{c.name || "Unnamed campaign"}</h3>
           <ul className="steps">
             <li>Target: {[t.industries.join(", "), t.cities.join(", "), t.roles_hiring.length ? `hiring ${t.roles_hiring.join(", ")}` : "", t.company_size_buckets.length ? `${t.company_size_buckets.join(", ")} employees` : ""].filter(Boolean).join(" · ") || "anyone (add targeting for better results)"}</li>
-            <li>Sources: {[pageCount ? `${pageCount} careers page(s)` : "", s.apollo_search && "Apollo people", s.apollo_hiring && "Apollo hiring companies", s.google_places && "Google Places", s.csv_import_ids.length ? `${s.csv_import_ids.length} imported lead(s)` : ""].filter(Boolean).join(", ") || "none yet"}</li>
+            <li>Sources: {[pageCount ? `${pageCount} careers page(s)` : "", s.apollo_search && "Apollo people", s.apollo_hiring && "Apollo hiring companies", s.google_places && "Google Places", (s.extra || []).length ? `${s.extra.length} more source(s)` : "", s.csv_import_ids.length ? `${s.csv_import_ids.length} imported lead(s)` : ""].filter(Boolean).join(", ") || "none yet"}</li>
             <li>Ready for email: score {r.min_score}+{r.require_business_email ? ", business email" : ""}{r.skip_role_addresses ? ", no shared mailboxes" : ""}; up to {r.max_new_leads_per_run} new leads a run.</li>
             <li>{r.auto_enrol ? "Qualifying leads start the email sequence (sending rules still apply)." : "Nobody is emailed automatically; you start the sequence yourself."} {r.caller || "The caller"} gets an update after each run.</li>
           </ul>
