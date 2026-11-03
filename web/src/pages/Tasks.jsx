@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
+import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 
 const BUCKETS = [["overdue", "Overdue"], ["today", "Today"], ["upcoming", "Upcoming"], ["no_date", "No due time"], ["done", "Done recently"]];
 const withIst = (local) => (local ? `${local}:00+05:30` : null);
@@ -44,6 +45,7 @@ function TeamSettings({ onSaved }) {
 export default function Tasks() {
   const [board, setBoard] = useState(null);
   const [owner, setOwner] = useState("");
+  const [bucket, setBucket] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [lead, setLead] = useState(null);
@@ -82,6 +84,13 @@ export default function Tasks() {
         <select id="owner-filter" value={owner} onChange={(e) => setOwner(e.target.value)}>
           <option value="">Everyone</option>{(board?.team || []).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
         </select>
+        <span className="dl-group">
+          <select aria-label="Tasks to download" value={bucket} onChange={(e) => setBucket(e.target.value)}>
+            <option value="">All tasks</option>{BUCKETS.map(([key, label]) => <option key={key} value={key}>{key === "done" ? "Done" : label}</option>)}
+          </select>
+          <DownloadButton path={exportPath("tasks", { owner, bucket })} label="Download CSV" testId="download-tasks"
+            title={`${owner ? `${owner}'s` : "Everyone's"} tasks${bucket ? ` (${bucket.replace("_", " ")})` : ""}, with due times in IST`} />
+        </span>
       </div>
       {board && BUCKETS.map(([key, label]) => (
         <div key={key} className="card" style={{ marginBottom: 12 }}>

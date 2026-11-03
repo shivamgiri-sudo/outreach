@@ -5,6 +5,7 @@ import { istLabel } from "../time.js";
 import CampaignWizard from "./CampaignWizard.jsx";
 import { PreviewTable, RunReport, StatusPill } from "./CampaignReport.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
+import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 
 function lastRunText(run) {
   if (!run) return "Not run yet";
@@ -57,7 +58,10 @@ function CampaignDetail({ id, go, onBack, onEdit }) {
       {error && <div className="tip error" role="alert" style={{ marginTop: 12 }}>{error}</div>}
       {result && <><RunReport report={result} />{result.dry_run && <PreviewTable rows={result.preview} />}</>}
 
-      <h3>Leads from this campaign ({leads.length})</h3>
+      <div className="row dl-head">
+        <h3>Leads from this campaign ({leads.length})</h3>
+        <DownloadButton path={exportPath("campaign_leads", { campaign_id: id })} label="Download leads" disabled={leads.length === 0} testId="download-campaign-leads" />
+      </div>
       <div className="card table-card">
         {leads.length === 0 ? <p className="empty">No leads yet. Run the campaign to find some.</p> : (
           <table className="leads-table" data-testid="campaign-leads">
@@ -78,7 +82,11 @@ function CampaignDetail({ id, go, onBack, onEdit }) {
         )}
       </div>
 
-      <h3>Runs</h3>
+      <div className="row dl-head">
+        <h3>Runs</h3>
+        <DownloadButton path={exportPath("campaign_runs", { campaign_id: id })} label="Download run report" disabled={runs.length === 0}
+          title="Every run's numbers and problems, one row per run" testId="download-campaign-runs" />
+      </div>
       <div className="card">
         {runs.length === 0 ? <p className="sub" style={{ margin: 0 }}>No runs yet.</p> : runs.map((r) => (
           <details key={r.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
