@@ -239,6 +239,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             raise HTTPException(400, str(exc)) from exc
         stats = {}
         erased = set(store.read("suppressed_hashes"))
+        blocked = set(store.read("suppressed"))
 
         def merge_in(leads: list) -> list:
             seen = {lead["dedupe_key"] for lead in leads}
@@ -247,8 +248,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                 lead = _build_lead(row, body.source)
                 if lead is None:
                     rejected += 1
-                elif lead_hashes(lead) & erased:
-                    suppressed += 1                  # this person asked for their data to be erased
+                elif lead_hashes(lead) & erased or lead.get("email") in blocked:
+                    suppressed += 1                  # erased on request, or on the do-not-contact list
                 elif lead["dedupe_key"] in seen:
                     duplicates += 1
                 elif (target := _contactless_match(leads, lead)) is not None:
