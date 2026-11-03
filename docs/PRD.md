@@ -271,6 +271,8 @@ docs/PRD.md               this document
    - SSRF hardening on redirects in the scraper.
    - Integrations hub:
      - Webhook rate limiting is out of scope.
+     - A webhook address carries its secret as `?token=`, which server access logs record. Use the basic-auth form of the address where the provider accepts it, or run uvicorn with `--no-access-log`.
+     - SMTP and IMAP server names are not SSRF-checked, so a local mail relay keeps working.
      - The SSRF check resolves the name before connecting but does not pin the IP, so DNS rebinding is still possible.
      - OAuth state is signed and expires after 10 minutes but is not single-use.
      - OAuth tokens are stored in plain text like other keys.
@@ -293,7 +295,7 @@ cd web && npm install && npm run dev        # http://localhost:5173
 ```
 
 Tests:
-- `pytest -q`: 375 backend tests.
+- `pytest -q`: 378 backend tests.
 - `npm run e2e`: 75 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
 - `node e2e/tour.mjs`: every page at three screen sizes.
 - `node e2e/auth.mjs`: login checks.

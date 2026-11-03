@@ -76,7 +76,7 @@ Optional environment variables:
 - `OUTREACH_IGNORE_BUSINESS_HOURS=1` and `OUTREACH_TEST_MODE=1`: local testing only.
 
 ## Test
-    .venv\Scripts\python -m pytest -q          # 375 backend tests
+    .venv\Scripts\python -m pytest -q          # 378 backend tests
 
 Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a throwaway file and
 `OUTREACH_IGNORE_BUSINESS_HOURS=1`, then the UI):
