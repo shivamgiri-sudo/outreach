@@ -167,6 +167,8 @@ def _gz(obj) -> bytes:
     (_gz({"format": "outreach-os-backup", "version": 1}), "no data"),
     (_gz({"format": "outreach-os-backup", "version": 1, "data": {"leads": {"a": 1}}}), "wrong shape"),
     (_gz({"format": "outreach-os-backup", "version": 1, "data": {"leads": [{"company": "x"}]}}), "no id"),
+    (_gz({"format": "outreach-os-backup", "version": 1, "data": {"leads": [{"id": "a", "stage": "new", "timeline": "x"}]}}), "history"),
+    (_gz({"format": "outreach-os-backup", "version": 1, "data": {"leads": [{"id": "a", "timeline": []}]}}), "stage"),
     (json.dumps([1, 2]).encode(), "not an Outreach OS backup"),
 ])
 def test_bad_or_foreign_files_are_refused(seeded, raw, words):

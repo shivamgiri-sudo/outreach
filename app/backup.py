@@ -172,8 +172,9 @@ def validate(payload) -> dict:
     wrong = [key for key, empty in EMPTY.items() if key in data and not isinstance(data[key], type(empty))]
     if wrong:
         raise BackupError(f"The backup is damaged: {', '.join(wrong)} has the wrong shape.")
-    if any(not isinstance(lead, dict) or not isinstance(lead.get("id"), str) for lead in data.get("leads", [])):
-        raise BackupError("The backup is damaged: some leads have no id.")
+    if any(not isinstance(lead, dict) or not isinstance(lead.get("id"), str) or not isinstance(lead.get("stage"), str)
+           or not isinstance(lead.get("timeline", []), list) for lead in data.get("leads", [])):
+        raise BackupError("The backup is damaged: some leads have no id, stage or history.")
     return payload
 
 

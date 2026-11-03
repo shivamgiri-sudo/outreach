@@ -165,9 +165,9 @@ def _campaign(store, params: dict) -> dict:
 
 
 def campaign_leads_rows(store, params: dict, present) -> list:
-    _campaign(store, params)
+    campaign = _campaign(store, params)
     checks = {l["id"]: l.get("campaign_check") or {} for l in store.read("leads")}
-    rows = leads_rows(store, {"campaign_id": params["campaign_id"]}, present)
+    rows = leads_rows(store, {"campaign_id": campaign["id"]}, present)
     return [{**r, "ready_for_email": bool(checks.get(r["id"], {}).get("qualified")),
              "not_ready_because": checks.get(r["id"], {}).get("reasons") or []} for r in rows]
 
