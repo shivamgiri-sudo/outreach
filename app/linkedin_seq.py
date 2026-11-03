@@ -66,12 +66,13 @@ BRANCHES = {
                       "Looking forward to the conversation.",
 }
 
-# Persona hooks (Personalisation tab): matched on the person's title.
+# Values a person must type before a branch reply can be written (an empty slot would read "Would  or  work?").
+BRANCH_NEEDS = {"meeting_yes": ("option_1", "option_2"), "slot_confirmed": ("date", "time")}
+
+# Persona hooks (Personalisation tab): matched on the person's title. HR / talent titles are checked before the
+# generic founder/director one, so "HR Director" gets the CHRO hook.
 PERSONAS = [
-    ("ceo_founder", r"\b(ceo|founder|co-?founder|managing director|md|owner|proprietor|director)\b",
-     "Something I've been thinking about lately: how often do business plans get held back simply because the right people "
-     "aren't available when they're needed?"),
-    ("chro", r"\b(chro|chief people|hr director|director.{0,10}hr|vp.{0,10}(hr|people)|head of hr|hr head|people head)\b",
+    ("chro", r"\b(chro|chief people|hr director|director.{0,10}hr|vp.{0,10}(hr|people)|head of hr|hr head|people head|human resources)\b",
      "Something I've been thinking about lately: does the pressure to close positions on time ever make it harder to maintain "
      "hiring quality?"),
     ("ta_head", r"\b(talent acquisition|\bta\b|head of talent|talent lead|sourcing)\b",
@@ -80,6 +81,9 @@ PERSONAS = [
     ("recruitment_head", r"\b(recruit|hiring manager|staffing)\w*",
      "Something I've been thinking about lately: how much recruiter time is lost when candidates don't attend or don't meet "
      "role requirements?"),
+    ("ceo_founder", r"\b(ceo|founder|co-?founder|managing director|md|owner|proprietor|director)\b",
+     "Something I've been thinking about lately: how often do business plans get held back simply because the right people "
+     "aren't available when they're needed?"),
     ("business_head", r"\b(business head|head of (sales|operations|business)|bu head|vp|general manager|gm)\b",
      "Something I've been thinking about lately: when a critical role stays open, how much pressure does that put on the "
      "existing team?"),

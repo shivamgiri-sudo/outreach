@@ -62,13 +62,13 @@ ACRONYMS = {"BPO", "KPO", "IT", "ITES", "HR", "AI", "CRM", "ERP", "SAP", "MIS", 
             "NBFC", "HDFC", "ICICI", "KPMG", "TCS", "SBI", "LIC", "CA", "CS", "GST", "US", "UK", "EV", "BDE", "BDM",
             "CSE", "CSR", "KYC", "SEO", "DSA", "AR", "AP", "RM"}
 _COMMON_SHORT = {"THE", "AND", "OF", "FOR", "NEW", "ONE", "TOP", "BIG", "SUN", "CO", "OPS", "AT", "IN", "ON", "TO"}
-_COMPANY_SUFFIX = re.compile(r"[\s,.\-]*\(?\b(pvt|private|ltd|limited|llp|india|inc|incorporated)\b\.?\)?[\s,.]*$", re.I)
-_HONORIFICS = {"mr", "mrs", "ms", "miss", "dr", "shri", "sri", "smt", "kumari"}
+_COMPANY_SUFFIX = re.compile(r"[\s,.\-]*\(?\b(pvt|private|ltd|limited|llp|opc|pte|p\W{0,3}ltd|india|inc|incorporated)\b\.?\)?[\s,.]*$", re.I)
+_HONORIFICS = {"mr", "mrs", "ms", "miss", "dr", "shri", "sri", "smt", "kumari", "km", "sh", "prof", "er", "ca", "adv", "capt"}
 _GENERIC_NAMES = {"hr", "team", "admin", "hiring", "recruiter", "recruitment", "careers", "info", "sir", "madam",
                   "manager", "contact", "support"}
 _ROLE_ABBREVIATIONS = ((r"\bsr\b\.?", "Senior"), (r"\bjr\b\.?", "Junior"), (r"\basst\b\.?", "Assistant"),
                        (r"\bmgr\b\.?", "Manager"))
-_ROLE_NOISE = re.compile(r"\b(urgent(ly)?|walk[- ]?in|immediate joiners?|wanted|required|vacancy|openings?)\b", re.I)
+_ROLE_NOISE = re.compile(r"\b(urgent(ly)?|walk[- ]?in|immediate joiners?|wanted|required|vacancy|openings?|hiring(\s+for)?|work from home|wfh)\b", re.I)
 _ROLE_JUNK = {"na", "n/a", "none", "nil", "various", "multiple", "test", "tbd", "role", "roles", "job", "jobs"}
 
 
@@ -109,12 +109,13 @@ def clean_company(name) -> str:
 
 def clean_first_name(contact_name) -> str:
     """First name without honorifics, title-cased. Empty when it is not a real name."""
-    words = [w.strip(".,;:") for w in str(contact_name or "").split()]
+    raw = str(contact_name or "")
+    words = [w.strip(".,;:") for w in re.split(r"\s+" if "@" in raw else r"[\s.]+", raw)]   # "Dr.MEENA" too
     words = [w for w in words if w and w.lower() not in _HONORIFICS]
     if not words:
         return ""
     first = words[0]
-    if len(first) < 2 or re.search(r"[@\d]", first) or first.lower() in _GENERIC_NAMES:
+    if len(first) < 2 or re.search(r"[@\d{}]", first) or first.lower() in _GENERIC_NAMES:
         return ""
     return _title_word(first)
 
@@ -123,7 +124,7 @@ def _shorten(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
     cut = text[:limit + 1].rsplit(" ", 1)[0]
-    return cut.rstrip(" -|/,&")
+    return re.sub(r"\s+(and|or)$", "", cut.rstrip(" -|/,&"))
 
 
 def clean_role(role) -> str:
@@ -134,7 +135,7 @@ def clean_role(role) -> str:
     caps = _is_all_caps(text)
     for pattern, full in _ROLE_ABBREVIATIONS:
         text = re.sub(pattern, full, text, flags=re.I)
-    text = re.sub(r"\s+", " ", text).strip(" -|/,:;.&")
+    text = re.sub(r"\s+", " ", text).strip(" -|/,:;.&!")
     if "@" in text or "http" in text.lower() or len(re.sub(r"[^A-Za-z]", "", text)) < 2 or text.lower() in _ROLE_JUNK:
         return ""
     words = [w if _is_acronym(w, caps) else w.lower() for w in text.split(" ")]
@@ -153,7 +154,7 @@ def render(text: str, variables: dict) -> tuple:
 
     def sub(match):
         key = match.group(1)
-        if variables.get(key):
+        if variables.get(key) and not re.search(r"\{\{|\}\}", str(variables[key])):   # a leftover {{x}} in the data
             return str(variables[key])
         missing.append(key)
         return match.group(0)

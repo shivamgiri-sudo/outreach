@@ -67,7 +67,7 @@ CLASSIFY_SYSTEM = "\n".join([
     UNTRUSTED_RULE,
     "Return only JSON like {\"label\": \"...\"} with exactly one label from: " + ", ".join(AI_LABELS) + ".",
 ])
-_TAG = re.compile(r"</?\s*lead_(message|facts)\s*>", re.I)
+_TAG = re.compile(r"<\s*[/\\]?\s*lead_(message|facts)\b[^>]*>", re.I)
 
 
 def _llm_config(store) -> dict:
