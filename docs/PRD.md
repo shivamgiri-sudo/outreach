@@ -50,6 +50,7 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
 3. **Closed leads stay closed.**
    - Unsubscribed, disqualified and customer leads are never moved back by an automatic reply.
 4. **Every message has an unsubscribe.**
+   - The link is signed (`/u/<lead id>.<signature>`), so nobody can unsubscribe a person whose email they never saw. Unsigned links in emails sent before signing started keep working for 60 days after that email.
    - Opening the link asks for one click, so email link-scanners can't unsubscribe people.
    - Unsubscribes and bounces go to a suppression list that is always checked.
 5. **Compliant sources only.**
@@ -57,9 +58,18 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
    - No automated LinkedIn scraping or messaging; LinkedIn drafts are sent by a person.
    - No anti-bot bypassing.
 6. **Cold email from a separate domain**, never the main bookmyinterview.ai domain, with a warm-up ramp.
-7. **India's DPDP Act** guides data handling: lawful purpose, opt-out in every message, deletion on request (roadmap).
+7. **India's DPDP Act** guides data handling:
+   - Lawful purpose, an opt-out in every message, and an optional privacy notice link in every email footer.
+   - On request, everything held on a person can be exported or erased. After erasure only a hash of their email and
+     phone is kept, so they are never imported or contacted again.
+   - Every consent given or withdrawn is written to an append-only consent ledger.
+   - Cold leads past the retention period are listed for review; nothing is deleted automatically.
 8. **Practice mode by default.**
    - Nothing leaves the computer until a provider is connected AND "Send for real" is switched on.
+9. **Secure by default.**
+   - Each person signs in with their own login and gets only what their role allows.
+   - Saved keys are encrypted at rest when a server key is set.
+   - The server never fetches private or internal network addresses.
 
 ## 5. Scope — features and requirements
 
@@ -160,6 +170,9 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
   - Booking-page providers (Cal.com, Calendly, any booking link) give a link prefilled with the lead's name and email instead.
   - Cal.com and Calendly booking webhooks attach the booking to the lead whose email (or other contact's email) matches, with a "Meeting booked" timeline event. Consent is never changed by a booking.
   - Times are entered and shown in IST, with a heads-up outside Mon–Sat 09:00–18:00. A Meetings page lists upcoming meetings with join links.
+  - **Calendar invites:** Google and Microsoft email the lead themselves. Zoom, a custom calendar API and a plain booking link used with a fixed time don't, so the app emails an `.ics` invite (UTC times, organizer = your sending mailbox, the join link). "Send our own invite" adds one for Google or Microsoft too. Cancelling sends the matching cancellation. With "Send for real" off the invite is kept as a practice row.
+  - Reminders (24 h and 1 h to the lead, 15 min to the owner) carry the join link and never fire for cancelled or done meetings.
+  - **No-show check:** 30 minutes after a meeting ends without being marked done, the owner gets one task: "Mark the meeting done or follow up".
 - **Call desk:**
   - Shows leads who said yes, with a click-to-call link built from your dialler's URL template (`{phone}`).
   - The script has an English and a Hinglish opener and an honest "proof" line (beta, no case studies yet).
@@ -204,10 +217,19 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
   - **Reply capture:** IMAP mailbox check (every 5 minutes with `OUTREACH_AUTORUN=1`, or "Check now"), Resend / SendGrid Inbound Parse / Postmark inbound webhooks, custom webhook.
   - **Bounces and complaints:** Resend, SendGrid and Postmark event webhooks, normalised and handed to `process_delivery_event` (app/inbound.py).
   - Webhooks are open without login only when their per-provider secret (or the provider's signature) checks out. OAuth callbacks are open only with a valid signed `state`.
-- **Login:**
-  - Login uses a single admin password (`OUTREACH_ADMIN_PASSWORD`), with signed tokens that expire after 12 hours.
-  - Login lockout is per caller.
+- **Login and roles:**
+  - The admin password (`OUTREACH_ADMIN_PASSWORD`) signs in as owner. Owners can add team logins (email and password, at least 10 characters) on the Setup page.
+  - Roles: **owner** (everything), **caller** (leads, calls, meetings, tasks; no settings, integrations, campaign rules, live switches, sending runs or CSV exports), **viewer** (read only).
+  - Tokens are signed with a random per-install secret (never shown by any API), last 12 hours and renew themselves after 6. Signing out revokes the session. Changing a password signs out that person's old sessions.
   - **Without a password the API only answers on this computer**, and requests through a proxy or tunnel are refused.
+- **Abuse limits and headers:**
+  - Per-address rate limits: login 5 a minute (plus a lockout after 5 wrong passwords), unsubscribe pages 30, demo pages 60, webhooks and activation events 120.
+  - Behind the local proxy (Caddy on 127.0.0.1) the real address comes from the last `X-Forwarded-For` hop; nobody else can set it.
+  - Every response gets `nosniff`, a referrer policy, no framing and a Content-Security-Policy; HSTS when the request came in over HTTPS. The demo page's one script runs with a per-request nonce.
+  - The API docs (`/docs`, `/openapi.json`) are off unless `OUTREACH_ENABLE_DOCS=1`.
+- **Saved keys:** with `OUTREACH_SECRET_KEY` set, API keys, passwords, OAuth tokens, webhook secrets and the server secret are encrypted in `store.json` (older plain values and backups are converted at start-up). Without it Setup shows "Set OUTREACH_SECRET_KEY to encrypt saved keys".
+- **Fetching addresses:** the website crawler, Firecrawl, the custom connector and provider calls all go through one SSRF guard: public addresses only (metadata and private ranges refused), the checked IP is the one connected to, redirects are re-checked hop by hop (API calls never follow them), and errors only say "Couldn't fetch that page." A self-hosted service on a private address (e.g. Firecrawl on `localhost:3002`) needs `OUTREACH_ALLOW_PRIVATE_HOSTS` on the server.
+- **DPDP (owner only):** `GET /api/leads/{id}/export`, `POST /api/leads/{id}/erase` (`{"confirm": true}`), `GET /api/compliance/retention`, `GET /api/compliance/consent-ledger`. A reply asking to delete their data withdraws consent and creates an "Erasure request" task. Both actions are also on the lead panel.
 - **Quick search:** Ctrl+K jumps to any page or lead. Page addresses survive refresh and the back button.
 
 ## 6. Out of scope (on purpose)
@@ -222,6 +244,11 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
 web/  React 18 + Vite, plain CSS (styles.css), Playwright browser tests (web/e2e)
 app/  FastAPI
   main.py                 app factory, login middleware, lead/stage/consent/notes routes, router wiring
+  auth.py routes_auth.py  tokens (server secret, renewal, revocation), users and roles, the role guard
+  web_security.py         real client address, rate limits, security headers
+  unsubscribe.py          signed unsubscribe links and the 60-day grace for older ones
+  privacy.py routes_compliance.py   hashed suppression, consent ledger, export / erase / retention
+  secretbox.py            encryption of saved keys in store.json
   store.py                JSON-file store: atomic saves (temp file + rename), locked update(), patch_leads()
   lead_model.py hygiene.py scoring.py stages.py suggest.py
   sequences.py            copy, variable cleaning, variants, due-step logic, business hours
@@ -236,7 +263,8 @@ app/  FastAPI
     registry.py catalog_*.py   channels and providers: fields, steps, docs links, webhook needs
     config.py                  saved provider settings, masking, active provider, test results, tokens
     email_send.py whatsapp_send.py sms_send.py calls.py calendar.py oauth.py   provider adapters
-    custom_http.py netguard.py http.py   custom connector, SSRF guard, no-redirect HTTP transport
+    custom_http.py netguard.py http.py   custom connector, the one SSRF guard (pinned IPs), no-redirect HTTP transport
+    invites.py                 .ics meeting invites and cancellations
     inbound_parse.py imap_poll.py webhooks.py meetings.py   inbound normalisation, IMAP, verification, meetings
     routes_hooks.py routes_meetings.py testers.py poller.py
 tests/                    pytest (fake transports for every external API; fake SMTP and IMAP clients)
@@ -244,12 +272,12 @@ docs/PRD.md               this document
 ```
 
 - **External calls go through injected transports** (`email_transport`, `ai_transport`, `apollo_transport`, `fetcher`, provider `get`/`post`). Tests never touch the network.
-- **Data:** one JSON file (`data/store.json`, git-ignored). Collections: leads, integrations, stories, templates, tasks, outbox, settings, suppressed, jobs, partners, whatsapp_outbox, workflows, provider_runs.
+- **Data:** one JSON file (`data/store.json`, git-ignored). Collections: leads, integrations, stories, templates, tasks, outbox, settings, suppressed, suppressed_hashes, consent_ledger, revoked_tokens, jobs, partners, whatsapp_outbox, transactional_outbox, workflows, provider_runs.
 - **Hub settings** live in `integrations`, one entry per channel (`sending_domain`, `inbound_email`, `email_events`, `whatsapp`, `sms`, `telephony`, `calendar`):
   `{mode, values: {provider, ...active provider's fields}, providers: {<id>: {values, last_test{ok,message,at}, tokens, state}}, webhook_tokens: {<id>: secret}}`.
   - `values` mirrors the active provider, so older code keeps reading it.
   - OAuth tokens and webhook secrets are never returned by any API. Provider secrets come back as ••••last4, and saving a masked value keeps the real one.
-- **Settings added:** `server_secret` (signs OAuth state; never returned), `live_whatsapp`, `live_sms`.
+- **Settings added:** `server_secret` (signs login tokens, unsubscribe links and OAuth state; never returned), `users` (team logins, scrypt hashes; never returned), `live_whatsapp`, `live_sms`, `privacy_url`, `retention_days_cold`, `unsub_signed_since`.
 
 ### Lead record (main fields)
 `id, company, domain, website, contact_name, title, email, email_is_role, phone, phones, role, city, country, company_size, open_roles, source, stage, consent{text,at,source}, sequence{enrolled_at, sent_days, last_sent_at, stopped, in_flight, blocked, failed_attempts}, engagement{replies,…}, activation{step, usage,…}, demo_token, referral_code, linkedin_url, other_contacts[], technologies[], company_socials{}, meetings[{id, provider, title, start, end, join_url, status, created_at, external_id, attendee_email}], timeline[{at, kind, text}]`
@@ -266,18 +294,15 @@ docs/PRD.md               this document
 2. **Inbound email:** IMAP polling and Resend / SendGrid / Postmark webhooks are built and hand messages and bounce events to app/inbound.py. Left to do: matching and suppression in app/inbound.py (core branch), and a circuit breaker above 2% bounces.
 3. **Real database:** SQLite or MongoDB, with pagination and indexes. The JSON store suits one small team.
 4. **Security:**
-   - Encrypt saved provider keys.
-   - Users and roles instead of one password, a set-password flow inside the app, and token revocation.
-   - SSRF hardening on redirects in the scraper.
+   - Rate limits and revoked tokens live in memory / the JSON file, which suits one server with one worker. Several workers would each keep their own limits.
    - Integrations hub:
-     - Webhook rate limiting is out of scope.
      - A webhook address carries its secret as `?token=`, which server access logs record. Use the basic-auth form of the address where the provider accepts it, or run uvicorn with `--no-access-log`.
      - SMTP and IMAP server names are not SSRF-checked, so a local mail relay keeps working.
-     - The SSRF check resolves the name before connecting but does not pin the IP, so DNS rebinding is still possible.
      - OAuth state is signed and expires after 10 minutes but is not single-use.
-     - OAuth tokens are stored in plain text like other keys.
      - SendGrid's signed event webhook (ECDSA) and Twilio's request signature are not checked; those providers use the secret in the webhook address instead.
-5. **DPDP:** a consent ledger (channel, purpose, notice version, withdrawal), data export and deletion endpoints, and phone suppression.
+   - The custom HTTP email connector can't carry attachments, so it sends meeting invites as text only.
+   - The web UI's own headers (CSP, HSTS) come from the proxy that serves `web/dist` (Caddy), not from the API.
+5. **DPDP:** the consent ledger does not yet record purpose or notice version; WhatsApp/SMS "STOP" unsubscribes the lead but phone numbers are only kept on the do-not-contact list after an erasure.
 6. **Scoring v2:** separate fit and intent, time decay, negative signals, and weights editable in settings.
 7. **Duplicates:** fuzzy company matching, eTLD+1 domains, Gmail alias normalisation, and conflict logs.
 8. **Live verification:** one live test each for Resend, Anthropic, Apollo, Hunter and Firecrawl, and for every Integrations hub provider. All request and response formats are coded from public documentation and tested with fakes only.
@@ -295,10 +320,10 @@ cd web && npm install && npm run dev        # http://localhost:5173
 ```
 
 Tests:
-- `pytest -q`: 378 backend tests.
-- `npm run e2e`: 75 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
+- `pytest -q`: 539 backend tests.
+- `npm run e2e`: 82 browser steps, run against a throwaway `OUTREACH_DATA_FILE` with `OUTREACH_IGNORE_BUSINESS_HOURS=1`.
 - `node e2e/tour.mjs`: every page at three screen sizes.
-- `node e2e/auth.mjs`: login checks.
+- `node e2e/auth.mjs`: 9 login checks (API started with `OUTREACH_ADMIN_PASSWORD=e2e-password`).
 
 Contribution rules:
 - Write the test first, using fake transports.
