@@ -5,6 +5,7 @@ from .channels.http import request
 from .channels.security import server_secret
 from .channels.whatsapp_send import send_whatsapp
 from .growth_core import ensure_demo
+from .privacy import is_blocked
 from .sequence_runner import NO_EMAIL_STAGES, get_settings
 from .sequences import lead_variables, render
 
@@ -72,6 +73,8 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
         raise WhatsAppError("No recorded consent. Ask for their yes first.")
     if not lead.get("phone"):
         raise WhatsAppError("This lead has no phone number")
+    if is_blocked(store, lead.get("email"), lead.get("phone")):
+        raise WhatsAppError("This contact is on the do-not-contact list.")
     if template == "custom":
         if not within_session_window(lead, now):
             raise WhatsAppError("Free text is only allowed within 24 hours of their last WhatsApp message. Use a template.")

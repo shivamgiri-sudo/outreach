@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 from .activities import caller_name, iso, team
 from .growth_core import public_base_url
+from .privacy import is_blocked
 from .sequences import IST, identity_footer
 
 TASK_LEAD = timedelta(minutes=15)
@@ -89,7 +90,6 @@ def _meeting_email(store, lead: dict, meeting: dict, which: str) -> dict:
 
 def _meeting_reminders(store, now: datetime, sender, base_url: str) -> int:
     sent = 0
-    suppressed = set(store.read("suppressed"))
     live = bool(store.read("settings").get("live_sending"))
     for lead in store.read("leads"):
         for meeting in lead.get("meetings") or []:
@@ -111,7 +111,7 @@ def _meeting_reminders(store, now: datetime, sender, base_url: str) -> int:
                 if label == owner_label:
                     notify(store, meeting.get("owner") or caller_name(store), f"Meeting at {ist_text(meeting['start'])} — {lead.get('company', '')}",
                            meeting.get("join_url", ""), lead["id"], kind="meeting_soon", sender=sender)
-                elif lead.get("email") and lead.get("email") not in suppressed and lead["stage"] not in CLOSED_FOR_REMINDERS:
+                elif lead.get("email") and not is_blocked(store, lead["email"]) and lead["stage"] not in CLOSED_FOR_REMINDERS:
                     message = _meeting_email(store, lead, meeting, label)
                     result = sender(message) if (live and sender) else {"status": "dry_run"}
                     _log_transactional(store, message["to"], message["subject"], message["body"], "meeting_reminder", lead["id"], result)

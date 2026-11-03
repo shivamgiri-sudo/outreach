@@ -22,6 +22,7 @@ TASK_TITLES = {
     "review": "Check a reply", "question": "Answer a question", "wrong_person": "Find the right contact",
     "other": "Read a reply", "pilot": "Run a free pilot", "workflow": "Follow up", "unmatched_reply": "Match a reply to a lead",
     "call": "Call them", "follow_up": "Follow up", "meeting": "Prepare for the meeting",
+    "erasure_request": "Erasure request", "meeting_follow_up": "Mark the meeting done or follow up",
 }
 
 

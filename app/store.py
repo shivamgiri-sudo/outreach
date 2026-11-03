@@ -11,6 +11,7 @@ import threading
 import time
 from pathlib import Path
 
+from .privacy import guard_leads
 from .secretbox import SecretBox
 
 EMPTY = {"leads": [], "integrations": {}, "stories": [], "templates": [], "tasks": [], "outbox": [], "settings": {}, "suppressed": [], "jobs": [], "partners": [], "whatsapp_outbox": [], "workflows": [], "inbox": [], "delivery_events": [], "activities": [], "notifications": [], "transactional_outbox": [], "revoked_tokens": [], "consent_ledger": [], "suppressed_hashes": []}
@@ -93,16 +94,22 @@ class Store:
         with self._lock:
             return json.loads(json.dumps(self._data[key]))
 
+    def _guard(self, key: str, value):
+        """Leads of people whose data was erased can never come back (app/privacy.py), whatever path saves them."""
+        if key == "leads" and self._data.get("suppressed_hashes"):
+            return guard_leads(self._data["leads"], value, set(self._data["suppressed_hashes"]))
+        return value
+
     def write(self, key: str, value) -> None:
         with self._lock:
-            self._data[key] = value
+            self._data[key] = self._guard(key, value)
             self._save()
 
     def update(self, key: str, change):
         """Replace a collection with change(current) atomically; `change` must not call the store."""
         with self._lock:
             current = json.loads(json.dumps(self._data[key]))
-            self._data[key] = change(current)
+            self._data[key] = self._guard(key, change(current))
             self._save()
             return json.loads(json.dumps(self._data[key]))
 
@@ -123,8 +130,10 @@ class Store:
                     result["lead"] = lead
                 out.append(lead)
             return out
-        self.update("leads", apply)
-        return result.get("lead")
+        saved = self.update("leads", apply)
+        if "lead" not in result:
+            return None
+        return next((lead for lead in saved if lead["id"] == lead_id), result["lead"])
 
     def add_leads(self, new_leads: list) -> list:
         """Append leads whose dedupe key is not already taken, atomically. Returns the leads actually added."""
@@ -137,8 +146,8 @@ class Store:
                     seen.add(lead.get("dedupe_key"))
                     added.append(lead)
             return [*leads, *added]
-        self.update("leads", apply)
-        return added
+        saved = {lead["id"] for lead in self.update("leads", apply)}
+        return [lead for lead in added if lead["id"] in saved]        # an erased person is never added back
 
     def patch_leads(self, patches: dict) -> None:
         """Apply small changes to leads by id on top of their latest saved state.

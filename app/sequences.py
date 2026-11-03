@@ -203,9 +203,12 @@ def due_steps(enrolled_at: datetime, sent_days: list, now: datetime, sequence=DE
 
 
 def identity_footer(settings: dict) -> str:
-    """Who is writing and from where: company name and postal address, required by anti-spam rules for live sending."""
+    """Who is writing and from where: company name and postal address, required by anti-spam rules for live sending.
+    The privacy notice link (settings.privacy_url, DPDP) follows on its own line when it is set."""
     parts = [str(settings.get(k, "")).strip() for k in ("sender_company", "sender_address")]
-    return " · ".join(p for p in parts if p)
+    identity = " · ".join(p for p in parts if p)
+    privacy = str(settings.get("privacy_url") or "").strip()
+    return "\n".join(p for p in (identity, f"Privacy notice: {privacy}" if privacy else "") if p)
 
 
 def in_business_hours(now: datetime) -> bool:

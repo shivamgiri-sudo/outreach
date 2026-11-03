@@ -38,6 +38,8 @@ from .routes_insights import make_router as make_insights_router
 from .routes_today import make_router as make_today_router
 from .routes_providers import make_router as make_providers_router
 from .routes_activities import make_router as make_activities_router
+from .routes_compliance import make_router as make_compliance_router
+from .privacy import lead_hashes, record_consent as ledger_consent
 from .activities import close_call_tasks, on_became_interested
 from .routes_whatsapp import make_router as make_whatsapp_router
 from .routes_growth import make_router as make_growth_router
@@ -225,14 +227,17 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     def import_leads(body: ImportBody):
         rows = list(csv.DictReader(io.StringIO(body.csv)))
         stats = {}
+        erased = set(store.read("suppressed_hashes"))
 
         def merge_in(leads: list) -> list:
             seen = {lead["dedupe_key"] for lead in leads}
-            created = duplicates = rejected = merged = 0
+            created = duplicates = rejected = merged = suppressed = 0
             for row in rows:
                 lead = _build_lead(row, body.source)
                 if lead is None:
                     rejected += 1
+                elif lead_hashes(lead) & erased:
+                    suppressed += 1                  # this person asked for their data to be erased
                 elif lead["dedupe_key"] in seen:
                     duplicates += 1
                 elif (target := _contactless_match(leads, lead)) is not None:
@@ -243,7 +248,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                     seen.add(lead["dedupe_key"])
                     leads.append(lead)
                     created += 1
-            stats.update(created=created, duplicates=duplicates, rejected=rejected, merged=merged)
+            stats.update(created=created, duplicates=duplicates, rejected=rejected, merged=merged, **({"suppressed": suppressed} if suppressed else {}))
             return leads
         store.update("leads", merge_in)
         return stats
@@ -263,6 +268,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             raise HTTPException(400, f"Cannot move from {refused['from']} to {body.stage}")
         if body.stage == "interested":
             on_became_interested(store, lead_id, "Moved to Interested")
+        if body.stage == "unsubscribed":
+            ledger_consent(store, lead_id, "withdrawn", "any", "", "moved to Unsubscribed by a person")
         fire(store, "stage_change", body.stage, lead_id)
         return _present(next(l for l in store.read("leads") if l["id"] == lead_id))
 
@@ -271,11 +278,13 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         text = body.text.strip()
         if len(text) < 3:
             raise HTTPException(400, "Write what they said and how (for example: 'Yes on a call with Priya, 3 Nov').")
-        return change_lead(lead_id, lambda lead: {
+        saved = change_lead(lead_id, lambda lead: {
             **lead, "consent": {"text": text[:500], "at": _now(), "source": body.source or "recorded by a person",
                                 "channel": body.channel or "any"},
             "consent_withdrawn_at": None,
             "timeline": [*lead["timeline"], _event("consent", f"Said yes: {text[:500]}")]})
+        ledger_consent(store, lead_id, "given", body.channel or "any", text, body.source or "recorded by a person")
+        return saved
 
     @app.post("/api/leads/{lead_id}/note")
     def add_note(lead_id: str, body: NoteBody):
@@ -325,6 +334,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_today_router(store, _present))
     app.include_router(make_providers_router(store, fetcher))
     app.include_router(make_activities_router(store))
+    app.include_router(make_compliance_router(store))
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,
                                             BASE_URL, _present, inbound_processor, delivery_processor))
     if os.environ.get("OUTREACH_AUTORUN") == "1":

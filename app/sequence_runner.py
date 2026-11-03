@@ -19,6 +19,7 @@ from . import sequences
 from .channels.security import server_secret
 from .growth_core import ensure_demo, get_offer, offer_line
 from .hygiene import business_domain
+from .privacy import is_blocked
 from .senders import email_ready
 from .sequences import DEFAULT_DAILY_CAP, IST, due_steps, in_business_hours, lead_variables, render
 
@@ -158,6 +159,8 @@ def _message_domain(store) -> str:
 
 def _claim(store, lead_id: str, day: int, now: datetime, email: str) -> bool:
     """Mark the send as in progress on the latest saved lead, but only if it may still be emailed right now."""
+    if is_blocked(store, email):                 # unsubscribed, bounced, or erased on request (hashed list)
+        return False
     suppressed = set(store.read("suppressed"))
     claimed = {}
 

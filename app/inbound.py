@@ -16,6 +16,7 @@ from typing import Optional
 from .activities import add_task, on_became_interested
 from .ai import ai_classify
 from .hygiene import normalise_email, normalise_phone
+from .privacy import asks_for_erasure, record_consent
 from .replies import classify_reply, strip_quoted
 from .workflows import fire
 
@@ -78,6 +79,9 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
     """Read a reply and act on it, on the latest saved copy of the lead. Returns None when the lead doesn't exist."""
     clean = strip_quoted(text) or (text or "").strip()
     label, ai_label = classify_reply(clean), None
+    erasure = asks_for_erasure(clean)
+    if erasure and label not in ("unsubscribe", "bounce", "auto_reply"):
+        label = "unsubscribe"                      # "delete my data" also withdraws consent (DPDP)
     if label == "other" and ai_transport is not None:
         ai_label = ai_classify(store, clean, ai_transport)
         if ai_label and ai_label != "interested":
@@ -88,7 +92,8 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
         changes, effect = reply_effect(lead, label, clean, channel)
         if ai_label == "interested":
             effect = "review"
-        outcome.update(effect=effect, email=lead.get("email"))
+        outcome.update(effect=effect, email=lead.get("email"), was_unsubscribed=lead["stage"] == "unsubscribed",
+                       consent_given=bool(changes.get("consent")))
         extra = {"whatsapp_last_inbound_at": _now()} if channel == "whatsapp" else {}
         return {**lead, **changes, **extra,
                 "timeline": [*lead["timeline"], _event("reply", f"[{label}] ({channel}, {source}) {clean[:TEXT_KEPT]}")]}
@@ -98,6 +103,13 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
     effect = outcome["effect"]
     if label in ("unsubscribe", "bounce") and channel == "email":
         suppress(store, outcome["email"])
+    if label == "unsubscribe" and not outcome["was_unsubscribed"]:
+        record_consent(store, lead_id, "withdrawn", channel, clean, f"{channel} reply ({source})")
+    if outcome["consent_given"]:
+        record_consent(store, lead_id, "given", channel, clean, f"{channel} reply ({source})")
+    if erasure:
+        add_task(store, lead_id, "erasure_request", clean[:TEXT_KEPT], due_at=datetime.now(timezone.utc) + timedelta(hours=24),
+                 priority="high", title="Erasure request", source=f"{channel} reply", dedupe_open=True)
     if effect == "review" or label in ("question", "wrong_person", "other"):
         add_task(store, lead_id, label if effect != "review" else "review", clean[:TEXT_KEPT],
                  due_at=datetime.now(timezone.utc) + timedelta(hours=2), priority="high" if effect == "review" else "normal",
@@ -184,6 +196,9 @@ def process_delivery_event(store, event: dict, now: Optional[datetime] = None) -
     reason = "bounced" if kind == "bounce" else "complained"
     for lead in store.read("leads"):
         if email and lead.get("email") == email:
+            if kind == "complaint" and lead["stage"] != "unsubscribed":
+                record_consent(store, lead["id"], "withdrawn", "email", "", "spam complaint reported by the email provider")
+
             def change(l, kind=kind, reason=reason):
                 seq = l.get("sequence")
                 stage = l["stage"]

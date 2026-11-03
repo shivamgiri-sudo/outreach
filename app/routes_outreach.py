@@ -14,6 +14,7 @@ from .auth import PRIVATE_SETTINGS
 from .growth_core import public_base_url
 from .inbound import _rates, apply_reply, suppress as _suppress_email
 from .scraper import extract_contacts, fetch_page
+from .privacy import record_consent
 from .senders import email_ready
 from .unsubscribe import legacy_allowed, log_legacy_use, parse as parse_unsub
 from .sequence_runner import NO_EMAIL_STAGES, clear_practice, get_settings, resume_lead, run_due, sending_paused
@@ -24,7 +25,7 @@ IGNORE_BUSINESS_HOURS = os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1" 
 ALLOW_NOW_OVERRIDE = os.environ.get("OUTREACH_TEST_MODE") == "1"
 HIDDEN_SETTINGS = PRIVATE_SETTINGS          # the server secret and password hashes never leave the server
 NOT_PUBLIC_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0", "::1")
-CAP_LIMITS = {"daily_cap": (1, 500), "per_run_cap": (1, 50)}
+CAP_LIMITS = {"daily_cap": (1, 500), "per_run_cap": (1, 50), "retention_days_cold": (30, 3650)}
 
 
 class RunBody(BaseModel):
@@ -46,6 +47,8 @@ class SettingsBody(BaseModel):
     per_run_cap: Optional[int] = None
     sender_company: Optional[str] = None
     sender_address: Optional[str] = None
+    retention_days_cold: Optional[int] = None
+    privacy_url: Optional[str] = None
 
 
 class ScrapeBody(BaseModel):
@@ -125,6 +128,11 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
             del changes["webhook_secret"]
         if "public_base_url" in changes:
             changes["public_base_url"] = changes["public_base_url"].strip().rstrip("/")
+        if "privacy_url" in changes:
+            changes["privacy_url"] = changes["privacy_url"].strip()
+            parsed = urlparse(changes["privacy_url"])
+            if changes["privacy_url"] and (parsed.scheme != "https" or not parsed.hostname or len(changes["privacy_url"]) > 500):
+                raise HTTPException(400, "The privacy notice link must be a full https:// address.")
         for key, (low, high) in CAP_LIMITS.items():
             if key in changes and not low <= changes[key] <= high:
                 raise HTTPException(400, f"{key.replace('_', ' ').capitalize()} must be between {low} and {high}.")
@@ -246,8 +254,11 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
             return {**lead, "stage": "unsubscribed", "consent": None, "consent_withdrawn_at": _now_iso(),
                     "timeline": with_event(lead, "unsubscribe", how),
                     **({"sequence": {**seq, "stopped": "unsubscribed"}} if seq else {})}
+        was = next((l["stage"] for l in store.read("leads") if l["id"] == lead_id), None)
         lead = store.update_lead(lead_id, unsubscribe_lead)
         _suppress(store, lead.get("email"))
+        if was != "unsubscribed":
+            record_consent(store, lead_id, "withdrawn", "email", "", how.lower())
         return "<p style='font-family:sans-serif'>You are unsubscribed and will not hear from us again.</p>"
 
     @router.post("/api/scrape/extract")
