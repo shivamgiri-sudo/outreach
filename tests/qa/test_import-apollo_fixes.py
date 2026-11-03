@@ -160,3 +160,17 @@ def test_shared_phone_still_merges_the_same_company_written_differently(client):
         "csv": "First Name,Last Name,Company Name,Email,Corporate Phone\nRavi,Kumar,Acme Retail,ravi@acmeretail.example,"
                "'+91 80 4000 1000\n", "source": "apollo"}).json()
     assert r["summary"]["create"] == 0 and r["summary"]["merge"] == 1
+
+
+# ---- 7. re-pasting the same export created duplicates of rows that had been merged into a company lead
+def test_quick_paste_twice_creates_no_duplicates_of_merged_rows(client):
+    csv = ("First Name,Last Name,Company Name,Email,Mobile Phone,Website\n"
+           "Hemant,Desai,Indus Textiles,,,http://www.industex.example\n"
+           "Priya,Shah,Indus Textiles,priya@industex.example,,\n"
+           "Omkar,Jadhav,Spark Electricals,,'+91 90000 30001,\n"
+           "Nisha,Rao,Spark Electricals,nisha@sparkelec.example,,\n")
+    first = client.post("/api/leads/import", json={"csv": csv, "source": "apollo"}).json()
+    assert first["created"] == 2 and first["merged"] == 2
+    again = client.post("/api/leads/import", json={"csv": csv, "source": "apollo"}).json()
+    assert again["created"] == 0 and again["duplicates"] == 4
+    assert len(client.get("/api/leads").json()) == 2
