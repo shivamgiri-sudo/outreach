@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "./api.js";
+import { api, isOwner } from "./api.js";
 
 // "/api/export/leads.csv?stage=new" from a dataset name and filters (empty filters are left out).
 export function exportPath(dataset, params = {}, format = "csv") {
@@ -24,6 +24,7 @@ export function saveBlob(blob, filename) {
 export default function DownloadButton({ path, body, filename = "download.csv", label = "Download CSV", className = "btn ghost", title, disabled, testId, onDone }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  if (!isOwner()) return null;                       // downloads are owner-only (the server refuses callers and viewers)
   const run = async () => {
     setBusy(true); setError("");
     try {
