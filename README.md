@@ -87,6 +87,17 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
   - Rate limits on login, unsubscribe, demo and webhook addresses; security headers on every response; API docs off by default.
   - Every address the server fetches is checked against private and internal networks, and the connection is pinned to the checked IP.
   - Saved keys are encrypted at rest when `OUTREACH_SECRET_KEY` is set.
+- **Downloads and backup:**
+  - Every list has a download button (CSV that opens in Excel with Indian names and ₹ intact, or JSON): leads, emails,
+    replies, WhatsApp, reminders, tasks, a lead's full activity, campaign leads and runs, meetings, duplicates, insights,
+    the LinkedIn queue. Times come in IST plus the raw value; cells can't run as spreadsheet formulas; no keys ever.
+  - **Setup → Backup & restore:** one `.json.gz` with everything (keys left out unless you ask), and a restore that
+    shows what would change first, keeps the old file and leaves sending off. `scripts/backup.py` does the same on a
+    server. Moving to your own server or a laptop: [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
+- **Compliance:**
+  - Consent is recorded before WhatsApp. Every message has an unsubscribe.
+  - Opening the unsubscribe link asks for a click, so email link-scanners can't unsubscribe people.
+  - There is a suppression list, robots.txt is respected, and no LinkedIn scraping or automation.
 
 ## Run
     .venv\Scripts\python -m uvicorn app.main:app --port 8000

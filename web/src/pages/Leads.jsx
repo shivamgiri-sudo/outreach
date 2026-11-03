@@ -3,6 +3,7 @@ import { api, isOwner } from "../api.js";
 import { BAND_LABELS, STAGE_LABELS, STAGE_ORDER, sourceLabel, stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import ImportWizard from "./ImportWizard.jsx";
+import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
 const SOURCES = ["apollo", "sales_navigator", "job_board", "web_scraper", "manual"];
@@ -18,13 +19,6 @@ function matches(lead, query, stage, band) {
   const q = query.trim().toLowerCase();
   const text = [lead.company, lead.domain, lead.contact_name, lead.email, lead.phone, lead.role].join(" ").toLowerCase();
   return (!q || text.includes(q)) && (!stage || lead.stage === stage) && (!band || lead.band === band);
-}
-
-function toCsv(rows) {
-  const cols = ["company", "contact_name", "title", "email", "phone", "website", "stage", "score", "source"];
-  // A leading = + - @ would run as a formula in Excel/Sheets; prefix it with ' so it stays plain text.
-  const cell = (v) => { const t = String(v ?? ""); return `"${(/^[=+\-@\t\r]/.test(t) ? "'" + t : t).replace(/"/g, '""')}"`; };
-  return [cols.join(","), ...rows.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\n");
 }
 
 // A plain link can't send the login token, so fetch the file with it and save it.
@@ -149,12 +143,7 @@ export default function Leads({ focusLead, go }) {
     setPicked([]); setBusy(""); load();
   };
 
-  const bulkExport = () => {
-    const blob = new Blob([toCsv(leads.filter((l) => picked.includes(l.id)))], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = "leads.csv"; a.click();
-    URL.revokeObjectURL(a.href);
-  };
+  const filtered = Boolean(query.trim() || stage || band);
 
   const header = (key, label) => (
     <th aria-sort={sort === key ? (key === "score" ? "descending" : "ascending") : "none"}>
@@ -250,13 +239,18 @@ export default function Leads({ focusLead, go }) {
             {Object.entries(BAND_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <span className="sub" style={{ margin: 0 }}>Showing {shown.length} of {leads.length}</span>
+          <span className="dl-group">
+            <DownloadButton path={exportPath("leads")} label="Download all" title="Every lead as a CSV that opens in Excel" testId="download-leads-all" />
+            {filtered && <DownloadButton path={exportPath("leads", { q: query.trim(), stage, band })} label={`Download these ${shown.length}`}
+              title="Only the leads that match the search and filters" testId="download-leads-shown" />}
+          </span>
         </div>
       )}
       {picked.length > 0 && (
         <div className="bulkbar" role="region" aria-label="Actions for selected leads">
           <b>{picked.length} selected</b>
           <button className="btn" disabled={busy === "enroll"} onClick={bulkEnroll}>{busy === "enroll" ? "Starting…" : "Start email sequence"}</button>
-          {isOwner() && <button className="btn ghost" onClick={bulkExport}>Download CSV</button>}
+          {isOwner() && <DownloadButton path={exportPath("leads")} body={{ ids: picked }} label="Download CSV" testId="download-leads-picked" />}
           <button className="btn ghost" onClick={() => setPicked([])}>Clear</button>
         </div>
       )}

@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import { copyText } from "../clipboard.js";
 import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
+import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 
 const PERSONA = { ceo_founder: "CEO / Founder", chro: "CHRO / HR Director", ta_head: "Head of TA", recruitment_head: "Recruitment Head",
   business_head: "Business Head", general: "General" };
@@ -72,7 +73,11 @@ export default function LinkedInQueue() {
       <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />
       {q && !q.case_study_set && <p className="sub">Step 4 (case study) is skipped until you add a real case-study link in the settings above.</p>}
 
-      <h3>To send today {q && <span className="pill">{q.due.length}</span>}</h3>
+      <div className="row dl-head">
+        <h3>To send today {q && <span className="pill">{q.due.length}</span>}</h3>
+        <DownloadButton path={exportPath("linkedin_queue")} label="Download today's list" testId="download-linkedin"
+          title="Messages to send, people waiting to accept and suggestions, with the ready-to-paste text" />
+      </div>
       {q && q.due.length === 0 && <p className="empty">Nothing due. Start some people from the suggestions below.</p>}
       {q && q.due.map((d) => (
         <div className="card" key={d.task_id} style={{ marginBottom: 10 }}>
