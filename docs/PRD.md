@@ -375,6 +375,38 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
     the person confirmed.
   - `GET /api/extension/queue`: today's due steps with a verified http(s) profile link.
 
+### 5.13 Find & enrich leads (one click) and the LinkedIn tool bridge
+- **What it is:** a "Find & enrich leads" card on the Dashboard and the Leads page opens a drawer. The owner chooses *Find new
+  decision makers*, *Fill in contacts for leads I already have* or *Both*, cities (default Noida, Delhi, Gurgaon), titles (default
+  HR Head, Talent Acquisition, Founder) and limits (new leads, existing leads, provider credits), sees an estimate, previews, then runs.
+- **Sources (PRD §4 applies):** provider APIs the owner connected (Apollo people search, organisation lookup and email reveal,
+  Hunter, Firecrawl, Google Places), company websites through the robots.txt-respecting crawler, careers-page JSON-LD. LinkedIn,
+  Naukri and Indeed pages are never fetched and nothing bypasses anti-bot protection.
+- **Find new:** runs the saved campaign "One-click: find & enrich" (created once, reused and updated each run, never set to run by
+  itself, never starts the email sequence), so dedupe, suppression, closed stages, enrich, verify and qualify are exactly those of 5.10.
+- **Fill in:** early-stage leads with no email and not in the sequence, those with a website first (best score first), then
+  company-name-only ones. Per lead, cheapest first: the site's public contact pages; Apollo (organisation lookup, people search
+  by domain for the titles, one email reveal; a name-only lead gets its website from Apollo's organisation search when the name
+  matches); Hunter then Firecrawl only if there is still no email. Only empty fields are filled, each value keeps its source in
+  `provenance`, extra people go to `other_contacts`, suppressed, erased and other leads' emails are never used, closed leads
+  are never touched. A lead checked in the last 14 days is skipped so repeat clicks do not pay twice.
+- **Credits:** `max_credits` (default 40, cap 500) covers Apollo, Hunter, Firecrawl and the email verifier. The estimate shows the
+  most a run could use; the run stops at the limit and says how many leads were left (a lead cut short stays unstamped). In *Both*,
+  finding gets half the limit. Credit counts are estimates (one per Apollo / Hunter call), not read from the provider.
+- **Run:** a background thread, one at a time (a second start answers 409), progress `{status, done, total, found, enriched,
+  credits, errors}` polled every 2 seconds. If the app restarts mid-run the run is marked *interrupted*; running again carries on
+  with leads not yet checked. Preview saves no leads and no campaign and makes no lookups for existing leads. Real runs are owner-only.
+- **API:** `POST /api/find-leads` `{mode, cities, titles, industries, careers_pages, max_new (25, max 100), max_enrich (30, max 100),
+  max_credits, dry_run}`, `POST /api/find-leads/estimate`, `GET /api/find-leads`, `GET /api/find-leads/{run_id}`. Data: `find_runs`.
+- **LinkedIn tool bridge:** download "linkedin_tool" (`GET|POST /api/export/linkedin_tool.csv`, owner only): firstName, lastName,
+  companyName, title, profileUrl (http(s) only), message1 (connection note, 300 characters at most) and message2 to message5 (the
+  sequence's later messages written for that person; the case-study message only once a real link is set, so message5 is
+  empty otherwise). Unsubscribed, disqualified and suppressed people are left out. `POST /api/linkedin/results` `{csv}` reads
+  a tool's results file (a profile-link column and a status column), matches leads by profile link and marks *accepted* or
+  *replied* through the same functions as the buttons; it reports matched, unmatched and rows it left alone. The LinkedIn page
+  says plainly that automating LinkedIn is against LinkedIn's terms, at the owner's own risk, ideally on a separate account.
+  The app never connects to LinkedIn.
+
 ## 6. Out of scope (on purpose)
 - Automated LinkedIn scraping, auto-connecting or auto-messaging, and applying to job posts to pitch employers.
 - Bypassing anti-bot protection or rotating proxies to avoid blocks.
@@ -401,6 +433,8 @@ app/  FastAPI
   whatsapp.py workflows.py activation.py capacity.py demo.py growth_core.py
   jobs.py scraper.py enrich.py providers.py sheet_import.py apollo.py
   campaigns.py campaign_pipeline.py campaign_sources.py   campaigns (5.10): run, pipeline steps, discovery adapters
+  find_leads.py find_enrich.py routes_find_leads.py   one-click find & enrich (5.13): background run, per-lead enrichment, routes
+  linkedin_bridge.py      LinkedIn tool export and results import (5.13)
   digest.py               the caller's 09:30 IST weekday summary
   routes_*.py             outreach, growth, jobs, enrich, providers, whatsapp, workflows, insights, setup, today, channels, campaigns
   inbound.py              STUB in this branch: process_inbound_message / process_delivery_event (core branch implements)

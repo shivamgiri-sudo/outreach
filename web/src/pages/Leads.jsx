@@ -5,6 +5,7 @@ import { BAND_LABELS, STAGE_LABELS, STAGE_ORDER, sourceLabel, stageLabel } from 
 import LeadDrawer from "./LeadDrawer.jsx";
 import ImportWizard from "./ImportWizard.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import FindLeadsDrawer, { FindLeadsCard, takePendingLeadIds } from "./FindLeads.jsx";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
 const SOURCES = ["apollo", "sales_navigator", "job_board", "web_scraper", "manual"];
@@ -16,10 +17,10 @@ const SORTS = {
   stage: (a, b) => STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage),
 };
 
-function matches(lead, query, stage, band) {
+function matches(lead, query, stage, band, onlyIds) {
   const q = query.trim().toLowerCase();
   const text = [lead.company, lead.domain, lead.contact_name, lead.email, lead.phone, lead.role].join(" ").toLowerCase();
-  return (!q || text.includes(q)) && (!stage || lead.stage === stage) && (!band || lead.band === band);
+  return (!q || text.includes(q)) && (!stage || lead.stage === stage) && (!band || lead.band === band) && (!onlyIds || onlyIds.includes(lead.id));
 }
 
 // A plain link can't send the login token, so fetch the file with it and save it.
@@ -39,6 +40,8 @@ export default function Leads({ focusLead, go }) {
   const [sort, setSort] = useState("score");
   const [picked, setPicked] = useState([]);
   const [busy, setBusy] = useState("");
+  const [finding, setFinding] = useState(false);
+  const [onlyIds, setOnlyIds] = useState(() => takePendingLeadIds());
   useEffect(() => { if (focusLead) setOpen(focusLead); }, [focusLead]);
   const [showImport, setShowImport] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
@@ -131,7 +134,7 @@ export default function Leads({ focusLead, go }) {
 
   const readFile = (file) => file && file.text().then(setCsv);
 
-  const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band)).sort(SORTS[sort]), [leads, query, stage, band, sort]);
+  const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds)).sort(SORTS[sort]), [leads, query, stage, band, sort, onlyIds]);
   const togglePick = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const allPicked = shown.length > 0 && shown.every((l) => picked.includes(l.id));
 
@@ -144,7 +147,7 @@ export default function Leads({ focusLead, go }) {
     setPicked([]); setBusy(""); load();
   };
 
-  const filtered = Boolean(query.trim() || stage || band);
+  const filtered = Boolean(query.trim() || stage || band || onlyIds);
 
   const header = (key, label) => (
     <th aria-sort={sort === key ? (key === "score" ? "descending" : "ascending") : "none"}>
@@ -163,6 +166,13 @@ export default function Leads({ focusLead, go }) {
           <button className="btn" onClick={() => { setShowWizard(!showWizard); setShowImport(false); }}>Import leads</button>
         </div>
       </div>
+      <FindLeadsCard onOpen={() => setFinding(true)} />
+      {onlyIds && (
+        <div className="tip" role="status" style={{ marginBottom: 12 }}>
+          Showing the {onlyIds.length} lead(s) from your last Find &amp; enrich. <button className="linkish" onClick={() => setOnlyIds(null)}>Show all leads</button>
+        </div>
+      )}
+      {finding && <FindLeadsDrawer go={go} onClose={() => { setFinding(false); load(); }} onOpenLeads={(ids) => { setOnlyIds(ids); setQuery(""); setStage(""); setBand(""); }} />}
       {showWizard && <ImportWizard onClose={() => { setShowWizard(false); load(); }} onDone={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message} <button className="linkish" aria-label="Dismiss message" onClick={() => setMessage("")}>✕</button></div>}
 
@@ -242,7 +252,7 @@ export default function Leads({ focusLead, go }) {
           <span className="sub" style={{ margin: 0 }}>Showing {shown.length} of {leads.length}</span>
           <span className="dl-group">
             <DownloadButton path={exportPath("leads")} label="Download all" title="Every lead as a CSV that opens in Excel" testId="download-leads-all" />
-            {filtered && <DownloadButton path={exportPath("leads", { q: query.trim(), stage, band })} label={`Download these ${shown.length}`}
+            {filtered && <DownloadButton path={exportPath("leads", { q: query.trim(), stage, band })} body={onlyIds ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
               title="Only the leads that match the search and filters" testId="download-leads-shown" />}
           </span>
         </div>
@@ -260,7 +270,7 @@ export default function Leads({ focusLead, go }) {
         {leads.length === 0 ? (
           <div className="empty"><EmptyArt name="leads" /><p>No leads yet. Click “Import leads” to add your first list.</p></div>
         ) : shown.length === 0 ? (
-          <p className="empty">No leads match. <button className="linkish" onClick={() => { setQuery(""); setStage(""); setBand(""); }}>Clear the filters</button></p>
+          <p className="empty">No leads match. <button className="linkish" onClick={() => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); }}>Clear the filters</button></p>
         ) : (
           <table className="leads-table">
             <thead><tr>

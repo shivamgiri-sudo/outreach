@@ -1063,6 +1063,53 @@ await step("LinkedIn: Chrome assistant pairing token is created, shown once, wor
   const after = await page.request.get(`${API}/api/extension/queue`, { headers });
   if (after.status() !== 401) throw new Error(`revoked token answered ${after.status()}, expected 401`);
 });
+// ---------- Find & enrich leads, LinkedIn tool bridge ----------
+await step("Find & enrich: the card opens a drawer; Apollo not connected is explained; Preview lists what it would do and saves nothing", async () => {
+  // Earlier steps saved a fake Apollo key; switch it off so no step here can reach the real Apollo API.
+  const off = await page.request.put(`${API}/api/integrations/apollo`, { data: { mode: "manual", values: {} } });
+  if (!off.ok()) throw new Error("could not switch Apollo off");
+  await nav("Dashboard");
+  await page.getByTestId("find-card").waitFor();
+  const before = await (await page.request.get(`${API}/api/leads`)).json();
+  await page.getByTestId("find-card").getByRole("button", { name: "Find & enrich leads" }).click();
+  const drawer = page.getByTestId("find-drawer");
+  await drawer.waitFor();
+  await drawer.getByText("Fill in contacts for leads I already have").waitFor();
+  await drawer.getByText("Apollo: not connected").waitFor();
+  await drawer.getByRole("button", { name: "Connect Apollo, Hunter or Google Places in Integrations" }).waitFor();
+  for (const city of ["Noida", "Delhi", "Gurgaon"]) await drawer.getByRole("button", { name: `Remove ${city}` }).waitFor();
+  await drawer.getByTestId("find-estimate").waitFor();
+  await drawer.getByText("Fill in contacts for leads I already have").click();
+  await drawer.getByRole("button", { name: "Preview" }).click();
+  await drawer.getByTestId("find-preview-table").waitFor({ timeout: 30000 });
+  await drawer.getByText("Read the website's public contact pages").first().waitFor();
+  await drawer.getByText("Preview: nothing was saved").waitFor();
+  const after = await (await page.request.get(`${API}/api/leads`)).json();
+  if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error("the preview changed leads");
+  await shot("17-find-preview");
+});
+await step("Find & enrich: Run now shows progress, then a report that names what could not be read", async () => {
+  const drawer = page.getByTestId("find-drawer");
+  await drawer.getByRole("button", { name: "Run now" }).click();
+  await drawer.getByTestId("find-report").waitFor({ timeout: 60000 });
+  await drawer.getByRole("heading", { name: "Done" }).waitFor();
+  await drawer.getByText("What didn't work").waitFor();
+  const report = await drawer.getByTestId("find-report").innerText();
+  if (!/could not be read|no website/i.test(report)) throw new Error(`report does not explain the problem: ${report.slice(0, 200)}`);
+  await shot("18-find-report");
+  await closeDrawer();
+});
+await step("LinkedIn tool: the export button downloads a CSV with the tool's columns; the results import reports what it could not match", async () => {
+  await nav("LinkedIn outreach");
+  await page.getByText("Automating LinkedIn is against LinkedIn's terms").waitFor();
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Export list for a LinkedIn tool" }).click()]);
+  if (!/^outreach-linkedin-tool-\d{4}-\d{2}-\d{2}\.csv$/.test(download.suggestedFilename())) throw new Error(`file name: ${download.suggestedFilename()}`);
+  const body = fs.readFileSync(await download.path(), "utf8");
+  if (!body.replace(/^\uFEFF/, "").startsWith("firstName,lastName,companyName,title,profileUrl,message1,message2,message3,message4,message5")) throw new Error(`columns: ${body.slice(0, 120)}`);
+  await page.getByTestId("import-linkedin-results").waitFor();
+  await page.locator("input[type=file]").setInputFiles({ name: "results.csv", mimeType: "text/csv", buffer: Buffer.from("profileUrl,status\nhttps://www.linkedin.com/in/nobody-here,connected\n") });
+  await page.getByTestId("linkedin-results").getByText("1 not found in your leads").waitFor();
+});
 
 // ---------- Mobile layout ----------
 await step("Mobile width: no horizontal page scroll on Leads", async () => {

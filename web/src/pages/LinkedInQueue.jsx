@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { useEffect, useRef, useState } from "react";
+import { api, isOwner } from "../api.js";
 import { copyText } from "../clipboard.js";
 import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
@@ -24,6 +24,45 @@ function Settings({ cfg, onSave }) {
         <input value={form.case_study_url} placeholder="https://…" onChange={(e) => setForm({ ...form, case_study_url: e.target.value })} /></label>
       <button className="btn" style={{ marginTop: 8 }} onClick={() => onSave({ ...form, linkedin_daily_connections: Number(form.linkedin_daily_connections) })}>Save</button>
     </details>
+  );
+}
+
+// Hand-off to a third-party LinkedIn tool (Waalaxy, Dux-Soup, PhantomBuster...): export the list, import its results.
+function ToolBridge({ onDone }) {
+  const file = useRef(null);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const pick = async (f) => {
+    if (!f) return;
+    setError(""); setResult(null);
+    try { setResult(await api.linkedinResults(await f.text())); onDone(); } catch (e) { setError(e.message); }
+    if (file.current) file.current.value = "";
+  };
+  return (
+    <section className="card" style={{ marginBottom: 14 }} aria-labelledby="li-tool-title">
+      <h3 id="li-tool-title" style={{ marginTop: 0 }}>Use a LinkedIn tool</h3>
+      <p className="sub" style={{ marginTop: 0 }}>Export the people who have a LinkedIn link, with the connection note and follow-up messages already written, and load the file into a
+        tool such as Waalaxy, Dux-Soup or PhantomBuster. When it has run, import its results file here to mark who accepted or replied.</p>
+      <div className="row">
+        {isOwner() && <DownloadButton path={exportPath("linkedin_tool")} label="Export list for a LinkedIn tool" testId="download-linkedin-tool"
+          title="CSV: firstName, lastName, companyName, title, profileUrl, message1 to message5" />}
+        <button type="button" className="btn ghost" data-testid="import-linkedin-results" onClick={() => file.current?.click()}>Import its results</button>
+        <input ref={file} type="file" accept=".csv,text/csv" hidden aria-label="Results file from the LinkedIn tool" onChange={(e) => pick(e.target.files?.[0])} />
+      </div>
+      <div className="tip" style={{ marginTop: 10 }} role="note">
+        Automating LinkedIn is against LinkedIn's terms and can get an account restricted. If you use a tool, that is your own decision and risk;
+        use a separate LinkedIn account, not the one you rely on. This app never connects to LinkedIn itself.
+      </div>
+      {error && <div className="tip error" role="alert" style={{ marginTop: 10 }}>{error}</div>}
+      {result && (
+        <div className="tip" role="status" style={{ marginTop: 10 }} data-testid="linkedin-results">
+          Read {result.rows} row(s): {result.matched} matched, {result.accepted} marked accepted, {result.replied} marked replied,
+          {" "}{result.unmatched} not found in your leads.
+          {result.problems.map((p) => <div key={p}>{p}</div>)}
+          {result.unmatched_links.length > 0 && <details><summary>Links not found</summary>{result.unmatched_links.map((u) => <div key={u} style={{ overflowWrap: "anywhere" }}>{u}</div>)}</details>}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -110,6 +149,7 @@ export default function LinkedInQueue() {
         they accept the connection, and any reply stops the sequence.</p>
       {error && <ErrorState message="The LinkedIn queue could not load." detail={error} onRetry={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
+      <ToolBridge onDone={load} />
       <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />
       <ChromeAssistant onMessage={setMessage} />
       {q && !q.case_study_set && <p className="sub">Step 4 (case study) is skipped until you add a real case-study link in the settings above.</p>}

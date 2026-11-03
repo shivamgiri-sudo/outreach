@@ -48,6 +48,7 @@ from .routes_growth import make_router as make_growth_router
 from .routes_jobs import make_router as make_jobs_router
 from .routes_campaigns import make_router as make_campaigns_router
 from .campaigns import run_due_campaigns
+from .routes_find_leads import make_router as make_find_leads_router
 from .providers import get_json
 from .senders import make_transactional_sender
 from .routes_channels import make_router as make_channels_router
@@ -374,6 +375,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     # Campaigns: Apollo / Google Places / Firecrawl POSTs, Hunter / verifier GETs, careers pages and the crawler.
     campaign_io = {"post": apollo_transport, "get": get_json, "fetch": fetcher, **(campaign_transports or {})}
     app.include_router(make_campaigns_router(store, campaign_io, _present, transactional_sender))
+    app.include_router(make_find_leads_router(store, campaign_io, transactional_sender))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender, campaign_runner=lambda now: run_due_campaigns(
             store, now, campaign_io, campaign_notify, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"))

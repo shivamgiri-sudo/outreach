@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from . import linkedin_seq as li
+from . import linkedin_bridge, linkedin_seq as li
 
 
 class SentBody(BaseModel):
@@ -21,6 +21,10 @@ class BranchBody(BaseModel):
     option_2: str = ""
     date: str = ""
     time: str = ""
+
+
+class ResultsBody(BaseModel):
+    csv: str = Field(max_length=linkedin_bridge.MAX_RESULT_CHARS)
 
 
 class SettingsBody(BaseModel):
@@ -89,6 +93,14 @@ def make_router(store) -> APIRouter:
             raise HTTPException(400, f"Fill in {' and '.join(g.replace('_', ' ') for g in gaps)} first.")
         values = body.model_dump(exclude={"key"})
         return {"text": li.render_branch(body.key, lead, settings, **values)}
+
+    @router.post("/api/linkedin/results")
+    def import_results(body: ResultsBody):
+        """The results file of a third-party LinkedIn tool: mark accepted / replied leads, matched by profile link."""
+        try:
+            return linkedin_bridge.import_results(store, body.csv)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from None
 
     @router.get("/api/linkedin/settings")
     def get_settings():

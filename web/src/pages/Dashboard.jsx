@@ -4,6 +4,7 @@ import Icon from "../icons.jsx";
 import { ErrorState } from "../states.jsx";
 import { STAGE_LABELS } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
+import FindLeadsDrawer, { FindLeadsCard, setPendingLeadIds } from "./FindLeads.jsx";
 
 const KIND_ICON = { problem: "flame", task: "mail", call: "phone", nudge: "gift", start: "send" };
 
@@ -44,6 +45,7 @@ export default function Dashboard({ go }) {
   const [today, setToday] = useState(null);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(null);
+  const [finding, setFinding] = useState(false);
 
   const load = () => {
     setError("");
@@ -70,6 +72,8 @@ export default function Dashboard({ go }) {
         </div>
         <div className="hero-orb" aria-hidden="true" />
       </section>
+
+      <FindLeadsCard onOpen={() => setFinding(true)} />
 
       {data.setup_done < data.setup_total && (
         <div className="tip" style={{ margin: "16px 0" }}>
@@ -111,6 +115,8 @@ export default function Dashboard({ go }) {
           ))}
         </div>
       </div>
+      {finding && <FindLeadsDrawer go={go} onClose={() => { setFinding(false); load(); }}
+        onOpenLeads={(ids) => { setPendingLeadIds(ids); go("leads"); }} />}
       {open && <LeadDrawer id={open} onClose={() => { setOpen(null); load(); }} />}
     </>
   );

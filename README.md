@@ -39,6 +39,12 @@ Real email also needs **Send for real** ticked on the Outbox page. WhatsApp and 
   - The campaign never sends: the sequence engine does, with practice mode, caps, warm-up and business hours.
   - Priya (or the campaign's caller) gets an update after every run, and a morning summary at 09:30 IST on weekdays.
   - "Run every weekday automatically" runs it once a day with `OUTREACH_AUTORUN=1`.
+- **Find & enrich leads** (card on the Dashboard and Leads): one click to search for HR, talent and founder contacts at new
+  companies and to fill in the emails, phones and decision makers of leads you already have, using only the providers you
+  connected, company websites (robots.txt respected) and careers pages. Preview first, an estimate of provider credits and a
+  credit limit, a live progress bar, a plain-English report, "Open these leads" and "Start the email sequence" for the qualified
+  ones. LinkedIn (**LinkedIn outreach** page): "Export list for a LinkedIn tool" (CSV for Waalaxy, Dux-Soup, PhantomBuster) and
+  "Import its results" to mark accepted and replied. Automating LinkedIn is at your own risk; use a separate account.
 - **Flow builder** (Outreach → Flow builder): draw a flow like a mind map: a trigger (added by hand, new lead, reply,
   stage change, meeting booked, product activity, no reply for N days), then If / A-B split / Wait / Wait for a reply, then
   email, WhatsApp, SMS, LinkedIn task, call task, meeting link, stage, tag, notify, webhook or stop.

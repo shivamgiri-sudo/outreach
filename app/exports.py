@@ -11,7 +11,7 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 
-from . import linkedin_seq
+from . import linkedin_bridge, linkedin_seq
 from .activities import ensure_task_ids, lead_activity, now_utc, task_buckets
 from .channels.meetings import all_meetings, parse_time
 from .hygiene import csv_safe
@@ -24,7 +24,7 @@ MAX_IDS = 20000
 ROWS_PER_CHUNK = 500
 # Lists with people's personal data are owner-only; callers keep their working lists (DPDP: least access).
 TEAM_DATASETS = {"tasks", "activity", "linkedin_queue", "meetings"}
-OWNER_ONLY = {"leads", "outbox", "inbox", "whatsapp", "transactional", "campaign_leads", "campaign_runs",
+OWNER_ONLY = {"leads", "linkedin_tool", "outbox", "inbox", "whatsapp", "transactional", "campaign_leads", "campaign_runs",
               "duplicates", "insights", "suppressed"}
 STATUS_LABEL = {"dry_run": "practice", "provider_error": "provider problem"}
 STATUS_FILTER = {"sent": ("sent",), "practice": ("dry_run",), "failed": ("failed", "provider_error")}
@@ -310,6 +310,11 @@ def linkedin_rows(store, params: dict, present) -> list:
             + [{**s, "section": "suggested"} for s in q["suggestions"]])
 
 
+def linkedin_tool_rows(store, params: dict, present) -> list:
+    """People with a LinkedIn link and their sequence messages, in the columns third-party LinkedIn tools import."""
+    return linkedin_bridge.tool_rows(store, params)
+
+
 def suppressed_rows(store, params: dict, present) -> list:
     by_email = {}
     for lead in store.read("leads"):
@@ -352,6 +357,7 @@ DATASETS = {
     "insights": (insights_rows, ["section", "item", "metric", "value"], ()),
     "linkedin_queue": (linkedin_rows, cols("section", "lead_id", "company", "name", "title", "linkedin_url", "step", "persona",
                                            "@due_at", "@since", "message", "task_id"), ()),
+    "linkedin_tool": (linkedin_tool_rows, linkedin_bridge.TOOL_COLUMNS, ("ids", "campaign_id")),
     "suppressed": (suppressed_rows, ["value", "type", "lead_id", "company"], ()),
 }
 
