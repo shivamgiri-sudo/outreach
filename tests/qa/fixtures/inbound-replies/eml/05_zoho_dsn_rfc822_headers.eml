@@ -1,0 +1,37 @@
+From: MAILER-DAEMON@mx.zoho.example (Mail Delivery System)
+To: priya@mail.outreach.example
+Subject: Undelivered Mail Returned to Sender
+Date: Tue, 3 Nov 2026 11:05:02 +0530
+Message-ID: <20261103053502.8F1A2@mx.zoho.example>
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type=delivery-status; boundary="8F1A2.1762147502/mx.zoho.example"
+
+--8F1A2.1762147502/mx.zoho.example
+Content-Description: Notification
+Content-Type: text/plain; charset=us-ascii
+
+This is the mail system at host mx.zoho.example.
+
+I'm sorry to have to inform you that your message could not
+be delivered to one or more recipients.
+
+<hr@balaji-auto.example>: host mx.zoho.example said: 550 5.1.1 User does not exist - hr@balaji-auto.example
+
+--8F1A2.1762147502/mx.zoho.example
+Content-Description: Delivery report
+Content-Type: message/delivery-status
+
+Final-Recipient: rfc822; hr@balaji-auto.example
+Action: failed
+Status: 5.1.1
+
+--8F1A2.1762147502/mx.zoho.example
+Content-Description: Undelivered Message Headers
+Content-Type: text/rfc822-headers
+
+From: Priya Sharma <priya@mail.outreach.example>
+To: hr@balaji-auto.example
+Subject: Hiring at Balaji Auto
+Message-ID: {{OUR_MSGID}}
+
+--8F1A2.1762147502/mx.zoho.example--

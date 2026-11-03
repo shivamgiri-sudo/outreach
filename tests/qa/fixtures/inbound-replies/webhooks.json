@@ -1,0 +1,106 @@
+{
+  "_about": "Provider webhook payloads shaped after each provider's public docs (sources in docs/qa/inbound-replies.md). Fictional data. {{OUR_MSGID}} is replaced with a Message-ID from our outbox, {{PROVIDER_ID}} with the provider id we stored for the send.",
+  "resend_received": {
+    "type": "email.received",
+    "created_at": "2026-11-04T06:12:11.000Z",
+    "data": {
+      "email_id": "56761188-7520-42d8-8898-ff6fc54ce618",
+      "created_at": "2026-11-04T06:12:10.000Z",
+      "from": "Rakesh Verma <rakesh.verma@quickserve.example>",
+      "to": ["replies@reply.outreach.example"],
+      "cc": [], "bcc": [],
+      "received_for": ["replies@reply.outreach.example"],
+      "message_id": "<CAres3nd-in-1@mail.gmail.example>",
+      "subject": "Re: Customer Support Associate hiring at Quickserve",
+      "attachments": []
+    }
+  },
+  "resend_bounced_permanent": {
+    "type": "email.bounced",
+    "created_at": "2026-11-03T05:01:00.000Z",
+    "data": {
+      "email_id": "{{PROVIDER_ID}}", "message_id": "{{OUR_MSGID}}", "created_at": "2026-11-03T05:00:00.000Z",
+      "from": "Priya <hello@mail.outreach.example>", "to": ["talent@sunrise-pharma.example"],
+      "subject": "Hiring at Sunrise Pharma",
+      "bounce": {"type": "Permanent", "subType": "General", "message": "The recipient's email address does not exist.",
+                 "diagnosticCode": ["smtp; 550 5.1.1 user unknown"]}
+    }
+  },
+  "resend_bounced_temporary": {
+    "type": "email.bounced",
+    "created_at": "2026-11-03T05:01:00.000Z",
+    "data": {
+      "email_id": "{{PROVIDER_ID}}", "created_at": "2026-11-03T05:00:00.000Z",
+      "from": "Priya <hello@mail.outreach.example>", "to": ["meena.pillai@kaveri-textiles.example"],
+      "subject": "Hiring at Kaveri Textiles",
+      "bounce": {"type": "Temporary", "subType": "MailboxFull", "message": "Mailbox full",
+                 "diagnosticCode": ["smtp; 452 4.2.2 mailbox full"]}
+    }
+  },
+  "resend_complained": {
+    "type": "email.complained",
+    "created_at": "2026-11-03T06:00:00.000Z",
+    "data": {"email_id": "{{PROVIDER_ID}}", "created_at": "2026-11-03T05:00:00.000Z",
+             "from": "Priya <hello@mail.outreach.example>", "to": ["hr@balaji-auto.example"], "subject": "Hiring at Balaji Auto"}
+  },
+  "sendgrid_events": [
+    {"email": "kavita.hr@gmail.example", "timestamp": 1762146000, "smtp-id": "<14c5d75ce93.dfd.64b469@ismtpd-555>",
+     "event": "processed", "category": ["cold"], "sg_event_id": "rbtnWrG1DVDGGGFHFyun0A==", "sg_message_id": "14c5d75ce93.dfd.64b469.filter0001.16648.5515E0B88.0"},
+    {"email": "kavita.hr@gmail.example", "timestamp": 1762146060, "event": "bounce", "type": "bounce", "status": "5.1.1",
+     "reason": "550 5.1.1 The email account that you tried to reach does not exist.", "bounce_classification": "Invalid Address",
+     "sg_event_id": "6g4ZI7SA-xmRDv57GoPIPw==", "sg_message_id": "14c5d75ce93.dfd.64b469.filter0001.16648.5515E0B88.0"},
+    {"email": "rakesh.verma@quickserve.example", "timestamp": 1762146070, "event": "bounce", "type": "blocked", "status": "5.7.1",
+     "reason": "550 5.7.1 Message rejected due to local policy", "bounce_classification": "Reputation",
+     "sg_event_id": "blk-1", "sg_message_id": "aa11.filter0001.1.0"},
+    {"email": "meena.pillai@kaveri-textiles.example", "timestamp": 1762146080, "event": "deferred", "attempt": "3",
+     "response": "452 4.2.2 mailbox full", "sg_event_id": "def-1", "sg_message_id": "bb22.filter0001.1.0"},
+    {"email": "hr@balaji-auto.example", "timestamp": 1762146090, "event": "spamreport", "sg_event_id": "spam-1", "sg_message_id": "cc33.filter0001.1.0"},
+    {"email": "zoe.dsouza@cafebahar.example", "timestamp": 1762146095, "event": "delivered", "response": "250 OK", "sg_event_id": "dl-1",
+     "sg_message_id": "dd44.filter0001.1.0"},
+    {"email": "zoe.dsouza@cafebahar.example", "timestamp": 1762146099, "event": "open", "sg_event_id": "op-1", "sg_message_id": "dd44.filter0001.1.0"}
+  ],
+  "postmark_inbound": {
+    "FromName": "Meena Pillai",
+    "MessageStream": "inbound",
+    "From": "meena.pillai@kaveri-textiles.example",
+    "FromFull": {"Email": "Meena.Pillai@Kaveri-Textiles.example", "Name": "Meena Pillai", "MailboxHash": ""},
+    "To": "\"Priya\" <replies+ld7@reply.outreach.example>",
+    "ToFull": [{"Email": "replies+ld7@reply.outreach.example", "Name": "Priya", "MailboxHash": "ld7"}],
+    "Cc": "", "CcFull": [], "Bcc": "", "BccFull": [],
+    "OriginalRecipient": "replies+ld7@reply.outreach.example",
+    "Subject": "RE: Hiring at Kaveri Textiles",
+    "MessageID": "73e6d360-66eb-11e1-8e72-a8904824019b",
+    "ReplyTo": "", "MailboxHash": "ld7",
+    "Date": "Wed, 4 Nov 2026 12:01:07 +0530",
+    "TextBody": "Abhi nahi, after Diwali please. Budget approval pending.\r\n\r\nThanks & Regards\r\nMeena Pillai | Kaveri Textiles\r\n\r\n________________________________\r\nFrom: Priya Sharma <priya@mail.outreach.example>\r\nSent: Tuesday, November 3, 2026 10:02 AM\r\n\r\nNot relevant? Unsubscribe: https://outreach.example/u/ld7.k2f9",
+    "HtmlBody": "<p>Abhi nahi, after Diwali please.</p>",
+    "StrippedTextReply": "Abhi nahi, after Diwali please. Budget approval pending.",
+    "Tag": "",
+    "Headers": [
+      {"Name": "X-Spam-Status", "Value": "No"},
+      {"Name": "Message-ID", "Value": "<PN2PR01MB9999.meena@kaveri-textiles.example>"},
+      {"Name": "In-Reply-To", "Value": "{{OUR_MSGID}}"},
+      {"Name": "References", "Value": "{{OUR_MSGID}}"}
+    ],
+    "Attachments": []
+  },
+  "postmark_bounce_hard": {
+    "RecordType": "Bounce", "MessageStream": "outbound", "ID": 4323372036854775807, "Type": "HardBounce", "TypeCode": 1,
+    "Name": "Hard bounce", "Tag": "cold", "MessageID": "{{PROVIDER_ID}}", "Metadata": {}, "ServerID": 23,
+    "Description": "The server was unable to deliver your message (ex: unknown user, mailbox not found).",
+    "Details": "smtp;550 5.1.1 The email account that you tried to reach does not exist.",
+    "Email": "Talent@Sunrise-Pharma.example", "From": "hello@mail.outreach.example", "BouncedAt": "2026-11-03T10:31:00+05:30",
+    "DumpAvailable": true, "Inactive": true, "CanActivate": true, "Subject": "Hiring at Sunrise Pharma", "Content": ""
+  },
+  "postmark_bounce_soft": {
+    "RecordType": "Bounce", "MessageStream": "outbound", "ID": 4323372036854775808, "Type": "SoftBounce", "TypeCode": 4096,
+    "Name": "Soft bounce/Undeliverable", "MessageID": "soft-1", "Description": "Mailbox full",
+    "Details": "smtp;452 4.2.2 mailbox full", "Email": "meena.pillai@kaveri-textiles.example", "From": "hello@mail.outreach.example",
+    "BouncedAt": "2026-11-03T10:32:00+05:30", "DumpAvailable": false, "Inactive": false, "CanActivate": true, "Subject": "Hiring at Kaveri Textiles"
+  },
+  "postmark_spam": {
+    "RecordType": "SpamComplaint", "MessageStream": "outbound", "ID": 42, "Type": "SpamComplaint", "TypeCode": 512,
+    "Name": "Spam complaint", "MessageID": "spam-pm-1", "Details": "", "Email": "hr@balaji-auto.example",
+    "From": "hello@mail.outreach.example", "BouncedAt": "2026-11-03T11:00:00+05:30", "Subject": "Hiring at Balaji Auto"
+  }
+}

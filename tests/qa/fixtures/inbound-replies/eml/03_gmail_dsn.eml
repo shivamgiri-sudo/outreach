@@ -1,0 +1,44 @@
+Return-Path: <>
+From: Mail Delivery Subsystem <mailer-daemon@googlemail.example>
+To: priya@mail.outreach.example
+Auto-Submitted: auto-replied
+Subject: Delivery Status Notification (Failure)
+References: {{OUR_MSGID}}
+In-Reply-To: {{OUR_MSGID}}
+X-Failed-Recipients: kavita.hr@gmail.example
+Message-ID: <6560a1f2.050a0220.dsn.9f1e@mx.google.example>
+Date: Tue, 3 Nov 2026 04:33:10 -0800 (PST)
+MIME-Version: 1.0
+Content-Type: multipart/report; boundary="00000000000011dsn"; report-type=delivery-status
+
+--00000000000011dsn
+Content-Type: text/plain; charset="UTF-8"
+
+** Address not found **
+
+Your message wasn't delivered to kavita.hr@gmail.example because the address couldn't be found, or is unable to receive mail.
+
+The response from the remote server was:
+550 5.1.1 The email account that you tried to reach does not exist. Please try double-checking the recipient's email address for typos or unnecessary spaces.
+
+--00000000000011dsn
+Content-Type: message/delivery-status
+
+Reporting-MTA: dns; googlemail.example
+
+Final-Recipient: rfc822; kavita.hr@gmail.example
+Action: failed
+Status: 5.1.1
+Diagnostic-Code: smtp; 550-5.1.1 The email account that you tried to reach does not exist.
+
+--00000000000011dsn
+Content-Type: message/rfc822
+
+Message-ID: {{OUR_MSGID}}
+From: Priya Sharma <priya@mail.outreach.example>
+To: kavita.hr@gmail.example
+Subject: Hiring at Kavita Garments
+
+Hi Kavita, ...
+
+--00000000000011dsn--

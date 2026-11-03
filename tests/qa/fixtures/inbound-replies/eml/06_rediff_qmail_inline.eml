@@ -1,0 +1,20 @@
+From: MAILER-DAEMON@rediffmail.example
+To: priya@mail.outreach.example
+Subject: failure notice
+Date: 3 Nov 2026 05:20:11 -0000
+Message-ID: <qmail-17621.rediff@rediffmail.example>
+Content-Type: text/plain; charset=us-ascii
+
+Hi. This is the qmail-send program at rediffmail.example.
+I'm afraid I wasn't able to deliver your message to the following addresses.
+This is a permanent error; I've given up. Sorry it didn't work out.
+
+<ankit_rao1990@rediffmail.example>:
+Sorry, no mailbox here by that name. (#5.1.1)
+
+--- Below this line is a copy of the message.
+
+Message-ID: {{OUR_MSGID}}
+From: Priya Sharma <priya@mail.outreach.example>
+To: ankit_rao1990@rediffmail.example
+Subject: Hiring at Rao Electricals
