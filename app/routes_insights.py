@@ -6,6 +6,8 @@ from fastapi import APIRouter
 TOP_LEADS = 10
 INTERESTED_STAGES = ("interested", "whatsapp_active", "call_done", "trial", "customer", "advocate")
 CUSTOMER_STAGES = ("customer", "advocate")
+CLOSED_STAGES = ("unsubscribed", "disqualified")            # never a "top lead" to chase
+NOT_SENT = ("failed", "provider_error")                     # outbox rows for attempts that never went out
 
 
 def _pct(part: int, whole: int) -> float:
@@ -15,7 +17,7 @@ def _pct(part: int, whole: int) -> float:
 def build_insights(store, present) -> dict:
     """The numbers on the Insights page (also used by its download)."""
     leads = [present(lead) for lead in store.read("leads")]
-    outbox = store.read("outbox")
+    outbox = [m for m in store.read("outbox") if m.get("status") not in NOT_SENT]
     replied = [lead for lead in leads if lead["engagement"]["replies"] > 0]
     interested = [lead for lead in leads if lead["stage"] in INTERESTED_STAGES]
     emailed_ids = {m["lead_id"] for m in outbox}
@@ -39,15 +41,17 @@ def build_insights(store, present) -> dict:
             "emailed_leads": len(emailed_ids),
             "reply_rate": _pct(len(replied_after_email), len(emailed_ids)),
             "interested": len(interested),
-            "interested_rate": _pct(len(interested), len(emailed_ids)) if emailed_ids else 0.0,
+            "interested_rate": _pct(sum(1 for lead in interested if lead["id"] in emailed_ids), len(emailed_ids)),
             "unsubscribed": sum(1 for lead in leads if lead["stage"] == "unsubscribed"),
-            "unsubscribe_rate": _pct(sum(1 for lead in leads if lead["stage"] == "unsubscribed"), len(emailed_ids)),
+            "unsubscribe_rate": _pct(sum(1 for lead in leads if lead["stage"] == "unsubscribed" and lead["id"] in emailed_ids),
+                                     len(emailed_ids)),
         },
         "by_source": [{"source": name, **row} for name, row in sorted(by_source.items(), key=lambda kv: -kv[1]["leads"])],
         "by_sector": [{"sector": name, "leads": n} for name, n in by_sector.most_common()],
         "by_band": {band: sum(1 for lead in leads if lead["band"] == band) for band in ("hot", "warm", "cold")},
         "top_leads": [{"id": lead["id"], "company": lead["company"], "score": lead["score"], "stage": lead["stage"]}
-                      for lead in sorted(leads, key=lambda x: -x["score"])[:TOP_LEADS]],
+                      for lead in sorted((x for x in leads if x["stage"] not in CLOSED_STAGES),
+                                         key=lambda x: -x["score"])[:TOP_LEADS]],
     }
 
 
