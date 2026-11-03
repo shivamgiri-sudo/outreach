@@ -93,6 +93,24 @@ def person_key(name) -> str:
     return " ".join(sorted(t for t in tokens if len(t) > 1 or len(tokens) == 1))
 
 
+def names_compatible(a, b) -> bool:
+    """'Ravi K', 'R Kumar' and 'Ravi' can all be 'Ravi Kumar'; 'Anita Rao' cannot. Unknown names are compatible."""
+    ta = re.sub(r"[^a-z ]+", " ", clean_person_name(a).lower()).split()
+    tb = re.sub(r"[^a-z ]+", " ", clean_person_name(b).lower()).split()
+    if not ta or not tb:
+        return True
+    short, long_ = sorted((ta, tb), key=len)
+    used = set()
+    for token in short:
+        hit = next((j for j, other in enumerate(long_) if j not in used and (
+            other == token or (len(token) == 1 and other.startswith(token)) or (len(other) == 1 and token.startswith(other)))),
+            None)
+        if hit is None:
+            return False
+        used.add(hit)
+    return True
+
+
 # ---------------------------------------------------------------- companies
 _MS_PREFIX = re.compile(r"^m\s*/\s*s\.?\s+", re.IGNORECASE)
 _LEGAL_SUFFIX = re.compile(

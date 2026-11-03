@@ -7,7 +7,8 @@ from app.places import (clean_city, clean_country, clean_state, job_age_days, pa
                         parse_count, parse_location, size_bucket, state_for_city)
 from app.standardise import (clean_company, clean_email, clean_person_name, clean_text, clean_title, combine_name,
                              company_similarity, department_of, email_alias_key, is_free_mail, is_role_email,
-                             linkedin_url, parse_phones, person_key, registrable_domain, seniority_of, website_domain)
+                             linkedin_url, names_compatible, parse_phones, person_key, registrable_domain, seniority_of,
+                             website_domain)
 
 
 # ---- names
@@ -24,6 +25,12 @@ def test_first_and_last_name_combine_and_compare_in_any_order():
     assert combine_name("ravi", "KUMAR") == "Ravi Kumar"
     assert combine_name("Ravi", "Kumar", full="Dr. Ravi Kumar") == "Ravi Kumar"
     assert person_key("KUMAR, Ravi") == person_key("ravi kumar")
+
+
+def test_names_with_initials_are_compatible_but_different_people_are_not():
+    assert names_compatible("Ravi K", "Ravi Kumar") and names_compatible("R. Kumar", "RAVI KUMAR")
+    assert names_compatible("Ravi", "Ravi Kumar") and names_compatible("", "Anita Rao")
+    assert not names_compatible("Anita Rao", "Ravi Kumar") and not names_compatible("Ravi Shah", "Ravi Kumar")
 
 
 def test_clean_text_drops_placeholders_and_invisible_characters():

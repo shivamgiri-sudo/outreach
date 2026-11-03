@@ -12,7 +12,7 @@ from .hygiene import dedupe_key as basic_dedupe_key, is_role_address
 from .lead_model import event
 from .places import city_key, clean_city, size_bucket
 from .standardise import (company_key, company_similarity, email_alias_key, email_domain, is_free_mail, is_role_email,
-                          parse_phone, person_key, registrable_domain, host_of)
+                          names_compatible, parse_phone, person_key, registrable_domain, host_of)
 
 FUZZY_COMPANY_MIN = 0.92
 COMPANY_FIELDS = ("company", "company_legal", "website", "domain", "company_linkedin_url", "sector",
@@ -32,7 +32,7 @@ def _same(field: str, a, b) -> bool:
     if field == "company":
         return company_similarity(a, b) >= FUZZY_COMPANY_MIN
     if field == "contact_name":
-        return person_key(a) == person_key(b)
+        return names_compatible(a, b)
     if field == "email":
         return email_alias_key(a) == email_alias_key(b)
     if field == "city":
@@ -116,8 +116,7 @@ class LeadIndex:
     def _check_person(self, i: int, who, rec: dict, reason: str, strong: bool) -> tuple:
         """A shared phone or a role inbox with a different name is the same company, not the same person."""
         person = self._person_of(i, who)
-        names_differ = rec.get("contact_name") and person.get("contact_name") and \
-            person_key(rec["contact_name"]) != person_key(person["contact_name"])
+        names_differ = not names_compatible(rec.get("contact_name"), person.get("contact_name"))
         if names_differ and not strong:
             return i, "company", f"{reason} (different person)"
         return i, who, reason
@@ -237,8 +236,8 @@ def merge_record(lead: dict, rec: dict, who, source: str, import_id: str, at: st
         lead["other_contacts"] = contacts
     elif has_person(rec):
         contacts = list(lead.get("other_contacts") or [])
-        known = {person_key(c.get("contact_name")) for c in contacts} | {person_key(lead.get("contact_name"))}
-        if person_key(rec.get("contact_name")) not in known or not rec.get("contact_name"):
+        people = [c.get("contact_name") for c in contacts] + [lead.get("contact_name")]
+        if not rec.get("contact_name") or not any(p and names_compatible(rec["contact_name"], p) for p in people):
             contacts.append(contact_entry(rec, source, at))
             info["added_contact"] = rec.get("contact_name") or rec.get("email") or "a contact"
         lead["other_contacts"] = contacts
@@ -302,8 +301,7 @@ def merge_leads(keep: dict, others: list, at: str, taken: Optional[set] = None) 
         source = f"{other.get('source') or 'lead'} (lead {other['id']})"
         rec = {**other, "emails": other.get("emails") or ([other["email"]] if other.get("email") else []),
                "phones": other.get("phones") or ([other["phone"]] if other.get("phone") else [])}
-        same_person = not other.get("contact_name") or not lead.get("contact_name") or \
-            person_key(other.get("contact_name")) == person_key(lead.get("contact_name"))
+        same_person = names_compatible(other.get("contact_name"), lead.get("contact_name"))
         lead, info = merge_record(lead, rec, "primary" if same_person else "company", source, "", at, taken)
         if info["changed"]:
             lead = {**lead, "timeline": lead["timeline"][:-1]}   # replaced by one summary event below
@@ -312,6 +310,9 @@ def merge_leads(keep: dict, others: list, at: str, taken: Optional[set] = None) 
             if person_key(person.get("contact_name")) not in known | {person_key(lead.get("contact_name"))}:
                 lead["other_contacts"] = [*(lead.get("other_contacts") or []), person]
         lead["timeline"] += list(other.get("timeline") or [])
+        phones = _union(lead.get("phones") or ([lead["phone"]] if lead.get("phone") else []), rec["phones"])
+        if phones:
+            lead["phones"] = phones
         carried = [c for c in other.get("merge_conflicts") or [] if c not in (lead.get("merge_conflicts") or [])]
         if carried:
             lead["merge_conflicts"] = [*(lead.get("merge_conflicts") or []), *carried]
