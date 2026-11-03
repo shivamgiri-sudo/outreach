@@ -90,6 +90,8 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
     body, missing = render(raw, variables)
     if missing:
         raise WhatsAppError(f"This message needs details the lead doesn't have yet: {', '.join(missing)}")
+    if template == "custom" and OPT_OUT.lower() not in body.lower():
+        body = f"{body} {OPT_OUT}"           # free text carries the opt-out line too, like every template
     # Real delivery through the WhatsApp provider chosen on the Integrations page (dry_run until connected and
     # "WhatsApp for real" is on). Approved templates receive their variables in this order:
     # {{1}} first name, {{2}} sender, {{3}} company, {{4}} demo link.
