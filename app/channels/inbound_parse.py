@@ -32,7 +32,8 @@ def _iso(value) -> str:
         pass
     text = str(value).strip()
     try:
-        return datetime.fromisoformat(text.replace("Z", "+00:00")).isoformat(timespec="seconds")
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        return (parsed.astimezone(timezone.utc) if parsed.tzinfo else parsed).isoformat(timespec="seconds")
     except ValueError:
         pass
     try:
