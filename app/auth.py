@@ -36,7 +36,7 @@ LOCKOUT_SECONDS = 60
 MAX_TRACKED_CALLERS = 10_000
 SCRYPT = {"n": 2 ** 14, "r": 8, "p": 1}
 # settings keys no API may return (secrets and password hashes)
-PRIVATE_SETTINGS = ("server_secret", "users")
+PRIVATE_SETTINGS = ("server_secret", "users", "extension_tokens")
 
 
 def _now(now: Optional[float] = None) -> float:
