@@ -185,7 +185,7 @@ def test_linkedin_urls_are_rebuilt_as_https_linkedin_links_only(client):
     got = by_company(client)
     # since qa/import-linkedin-tools the link must START with the LinkedIn address: junk before it means no link at all
     assert not got["Gokul Dairy"].get("linkedin_url")
-    assert got["Gokul Dairy"]["company_linkedin_url"] == "https://www.linkedin.com/company/gokul"
+    assert not got["Gokul Dairy"].get("company_linkedin_url")          # ftp:// is not a web link either
     assert not got["Hari Om Transport"].get("linkedin_url")
     assert got["Hari Om Transport"]["company_linkedin_url"] == "https://www.linkedin.com/company/hari-om"
 
