@@ -115,6 +115,9 @@ def make_router(store, email_transport=post_json, ai_transport=post_json, apollo
             {"id": "live_sending", "title": "Switch on real sending", "status": "done" if settings.get("live_sending") else "todo",
              "detail": "A deliberate last step: tick 'Send for real' on the Outbox page.", "page": "outbox", "required": False},
             row("login", "Turn on login", bool(auth_required()), "Set OUTREACH_ADMIN_PASSWORD before sharing the app.", "setup"),
+            row("secret_key", "Encrypt saved keys", bool(getattr(store, "secrets_encrypted", False)) and not getattr(store, "secret_errors", 0),
+                "Saved keys are encrypted but OUTREACH_SECRET_KEY is missing or wrong, so they can't be used. Set the right key "
+                "and restart." if getattr(store, "secret_errors", 0) else "Set OUTREACH_SECRET_KEY to encrypt saved keys.", "setup"),
             row("webhook", "Let the product report activity", bool(webhook_secret(store, default_webhook_secret)),
                 "A secret the BookMyInterview product sends with each event.", "setup"),
             row("ai_writer", "Connect the AI writer", bool(_llm_config(store)), "Gives tailored reply drafts.", "setup"),

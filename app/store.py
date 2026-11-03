@@ -2,6 +2,7 @@
 
 Saves go to a temporary file first and are swapped in with one rename, so a crash can never leave a half-written
 file. `update` changes a collection while holding the lock, so two changes at once cannot overwrite each other.
+Saved keys are encrypted on disk when OUTREACH_SECRET_KEY is set (app/secretbox.py); in memory they are plain.
 """
 import json
 import os
@@ -9,6 +10,8 @@ import shutil
 import threading
 import time
 from pathlib import Path
+
+from .secretbox import SecretBox
 
 EMPTY = {"leads": [], "integrations": {}, "stories": [], "templates": [], "tasks": [], "outbox": [], "settings": {}, "suppressed": [], "jobs": [], "partners": [], "whatsapp_outbox": [], "workflows": [], "inbox": [], "delivery_events": [], "activities": [], "notifications": [], "transactional_outbox": [], "revoked_tokens": [], "consent_ledger": [], "suppressed_hashes": []}
 BACKUPS_KEPT = 5
@@ -18,18 +21,46 @@ FSYNC = os.environ.get("OUTREACH_FSYNC", "1") != "0"
 
 
 class Store:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, box: SecretBox = None):
         self._path = Path(path)
         self._lock = threading.RLock()
+        self._box = box or SecretBox()
         self._data = self._load()
+        if self._box.enabled and self._box.plain_secrets(self._data) and self._path.exists():
+            with self._lock:
+                self._save()                  # migrate: encrypt keys that were saved in plain text
+            self._seal_backups()
+
+    @property
+    def secrets_encrypted(self) -> bool:
+        return self._box.enabled
+
+    @property
+    def secret_errors(self) -> int:
+        """Encrypted keys that could not be opened (OUTREACH_SECRET_KEY missing or wrong)."""
+        return self._box.failures
 
     def _load(self) -> dict:
         if not self._path.exists():
             return json.loads(json.dumps(EMPTY))
         try:
-            return {**EMPTY, **json.loads(self._path.read_text(encoding="utf-8"))}
+            return self._box.unseal({**EMPTY, **json.loads(self._path.read_text(encoding="utf-8"))})
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"Data file {self._path} is corrupt ({exc}). Restore it from a backup; it was not overwritten.") from exc
+
+    def _seal_backups(self) -> None:
+        """Re-write older backups with their keys encrypted too, so no plain copy is left behind."""
+        for n in range(1, BACKUPS_KEPT + 1):
+            backup = self._path.with_name(f"{self._path.name}.{n}")
+            try:
+                data = json.loads(backup.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            temp = backup.with_name(backup.name + ".tmp")
+            fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(json.dumps(self._box.seal(self._box.unseal(data)), ensure_ascii=False, indent=1))
+            os.replace(temp, backup)
 
     def _save(self) -> None:
         """Write to a private temp file, flush it to disk, keep the previous version as a backup, then swap in."""
@@ -37,7 +68,7 @@ class Store:
         temp = self._path.with_name(self._path.name + ".tmp")
         fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(json.dumps(self._data, ensure_ascii=False, indent=1))
+            handle.write(json.dumps(self._box.seal(self._data), ensure_ascii=False, indent=1))
             handle.flush()
             if FSYNC:
                 os.fsync(handle.fileno())
