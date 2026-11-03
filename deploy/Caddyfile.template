@@ -9,14 +9,18 @@ __HOST__ {
 	}
 	# API docs are never public
 	@docs path /docs* /redoc* /openapi.json
-	respond @docs 404
-	# The app's own endpoints
-	@api path /api/* /u/* /demo/*
-	reverse_proxy @api 127.0.0.1:8000 {
-		header_up X-Forwarded-For {remote_host}
+	handle @docs {
+		respond 404
 	}
-	# The web app (built files)
-	root * /opt/outreach/app/web/dist
-	try_files {path} /index.html
-	file_server
+	# The app's own endpoints go to the single uvicorn worker
+	@api path /api/* /u/* /demo/*
+	handle @api {
+		reverse_proxy 127.0.0.1:8000
+	}
+	# Everything else is the built web app
+	handle {
+		root * /opt/outreach/app/web/dist
+		try_files {path} /index.html
+		file_server
+	}
 }
