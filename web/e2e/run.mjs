@@ -854,6 +854,49 @@ await step("Campaigns: open the campaign's leads, the lead panel shows where it 
   if (overflow) throw new Error("campaign page scrolls sideways on a phone");
 });
 
+// ---------- Downloads and backup ----------
+const downloadFrom = async (locator) => {
+  const [download] = await Promise.all([page.waitForEvent("download", { timeout: 15000 }), locator.click()]);
+  return { name: download.suggestedFilename(), path: await download.path(), text: fs.readFileSync(await download.path(), "utf-8") };
+};
+await step("Downloads: Leads 'Download all' saves a CSV with the header row", async () => {
+  await nav("Leads");
+  const file = await downloadFrom(page.getByTestId("download-leads-all"));
+  if (!/^outreach-leads-\d{4}-\d{2}-\d{2}\.csv$/.test(file.name)) throw new Error(`file name ${file.name}`);
+  if (!file.text.startsWith("﻿id,company,contact_name,title,")) throw new Error(`header: ${file.text.slice(0, 80)}`);
+  for (const column of ["score", "band", "consent", "consent_at_ist", "sequence_status", "owner", "linkedin_status"]) {
+    if (!file.text.split("\r\n")[0].split(",").includes(column)) throw new Error(`no ${column} column`);
+  }
+  if (!file.text.includes("Acme Retail")) throw new Error("Acme Retail is not in the file");
+});
+await step("Downloads: Outbox 'Replies' saves the replies received", async () => {
+  await nav("Outbox");
+  const file = await downloadFrom(page.getByTestId("download-inbox"));
+  if (!/^outreach-inbox-\d{4}-\d{2}-\d{2}\.csv$/.test(file.name)) throw new Error(`file name ${file.name}`);
+  if (!file.text.startsWith("﻿received_at_ist,received_at,channel,from,subject,text,label,matched,lead_id")) throw new Error(`header: ${file.text.slice(0, 80)}`);
+  const inbox = await (await fetch(`${API}/api/inbox`)).json();
+  if (inbox.length === 0 && file.text.trim().split("\r\n").length !== 1) throw new Error("rows in the file but no replies captured");
+  for (const m of inbox) if (m.from && !file.text.includes(m.from)) throw new Error(`reply from ${m.from} missing`);
+});
+await step("Backup: Setup downloads a backup and the restore dry run shows the counts", async () => {
+  await nav("Setup");
+  await page.getByRole("tab", { name: "Backup & restore" }).click();
+  const file = await downloadFrom(page.getByTestId("download-backup"));
+  if (!/^outreach-backup-\d{4}-\d{2}-\d{2}-\d{4}-IST\.json\.gz$/.test(file.name)) throw new Error(`file name ${file.name}`);
+  await page.locator("#restore-file").setInputFiles(file.path);
+  await page.getByRole("button", { name: "Check this file" }).click();
+  const plan = page.getByTestId("restore-plan");
+  await plan.getByText("Nothing has been changed yet").waitFor();
+  await plan.getByText("Real sending (email, WhatsApp and SMS) is OFF after a restore").waitFor();
+  const leads = await (await fetch(`${API}/api/leads`)).json();
+  const cells = await page.getByTestId("restore-summary").locator("tr", { hasText: "Leads" }).first().locator("td").allInnerTexts();
+  if (cells[1] !== String(leads.length) || cells[2] !== String(leads.length)) throw new Error(`leads row ${cells.join(" | ")}, expected ${leads.length}`);
+  await shot("14-backup-dry-run");
+  await plan.getByRole("button", { name: "Cancel" }).click();
+  const after = await (await fetch(`${API}/api/leads`)).json();
+  if (after.length !== leads.length) throw new Error("the dry run changed the data");
+});
+
 // ---------- Mobile layout ----------
 await step("Mobile width: no horizontal page scroll on Leads", async () => {
   await page.setViewportSize({ width: 390, height: 800 });
