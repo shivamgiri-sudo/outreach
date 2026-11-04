@@ -493,3 +493,5 @@ td small { color: var(--muted); overflow-wrap: anywhere; }
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
 .side .theme-toggle { margin-top: 8px; }
+.gw > .card:has(table) { grid-column: 1 / -1; }
+.card table th { white-space: nowrap; }
