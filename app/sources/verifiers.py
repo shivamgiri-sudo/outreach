@@ -82,6 +82,61 @@ def _bouncer_test(ctx):
     return {"ok": True, "message": f"Bouncer accepted the key (credit check, free). Credits: {r.get('credits', '?')}."}
 
 
+# ---------- Emailable ----------
+def _emailable(ctx, email):
+    r = ctx.cached(f"v:{email}", lambda: {k: v for k, v in ctx.get("https://api.emailable.com/v1/verify", params={
+        "email": email, "api_key": ctx.values.get("api_key", "")}).items() if k in ("state", "reason", "message")}, cost=1)
+    if r.get("message") and not r.get("state"):
+        raise old.KeyRejected(f"Emailable: {str(r['message'])[:100]}")
+    status = {"deliverable": "valid", "undeliverable": "invalid", "risky": "risky"}.get(r.get("state"), "unknown")
+    return verdict("emailable", status, r.get("reason"), 1)
+
+
+def _emailable_test(ctx):
+    r = ctx.get("https://api.emailable.com/v1/account", params={"api_key": ctx.values.get("api_key", "")})
+    if r.get("message") and "available_credits" not in r:
+        return {"ok": False, "message": f"Emailable: {str(r['message'])[:100]}"}
+    return {"ok": True, "message": f"Emailable accepted the key (account check, free). Credits: {r.get('available_credits', '?')}."}
+
+
+# ---------- Abstract (Email Reputation) ----------
+def _abstract(ctx, email):
+    def fetch():
+        r = ctx.get("https://emailreputation.abstractapi.com/v1/", params={"api_key": ctx.values.get("api_key", ""), "email": email})
+        if isinstance(r.get("error"), dict):
+            raise old.KeyRejected(f"Abstract: {str(r['error'].get('message') or r['error'])[:100]}")
+        deliver = r.get("email_deliverability") or {}
+        return {"status": deliver.get("status"), "reason": deliver.get("status_detail"), "catchall": bool((deliver.get("is_catchall_email") or {}).get("value")
+                if isinstance(deliver.get("is_catchall_email"), dict) else deliver.get("is_catchall_email"))}
+    r = ctx.cached(f"v:{email}", fetch, cost=1)
+    status = {"deliverable": "valid", "undeliverable": "invalid"}.get(str(r.get("status")).lower(), "unknown")
+    if status == "valid" and r.get("catchall"):
+        status = "risky"
+    return verdict("abstract", status, r.get("reason"), 1)
+
+
+def _abstract_test(ctx):
+    return {"ok": False, "message": "Abstract has no free key check. The key is saved but not verified: the first real verification (1 credit) confirms it."}
+
+
+# ---------- Reoon ----------
+def _reoon(ctx, email):
+    r = ctx.cached(f"v:{email}", lambda: {k: v for k, v in ctx.get("https://emailverifier.reoon.com/api/v1/verify", params={
+        "email": email, "key": ctx.values.get("api_key", ""), "mode": "quick"}).items() if k in ("status", "reason")}, cost=1)
+    if str(r.get("status")).lower() == "error":
+        raise old.KeyRejected(f"Reoon: {str(r.get('reason') or 'request refused')[:100]}")
+    status = {"safe": "valid", "valid": "valid", "invalid": "invalid", "disabled": "invalid", "disposable": "invalid", "spamtrap": "invalid",
+              "catch_all": "risky", "role_account": "risky", "inbox_full": "risky"}.get(str(r.get("status")).lower(), "unknown")
+    return verdict("reoon", status, r.get("reason") or r.get("status"), 1)
+
+
+def _reoon_test(ctx):
+    r = ctx.get("https://emailverifier.reoon.com/api/v1/check-account-balance/", params={"key": ctx.values.get("api_key", "")})
+    if r.get("status") == "error" or "remaining_daily_credits" not in r:
+        return {"ok": False, "message": f"Reoon: {str(r.get('reason') or 'the key was not accepted')[:100]}"}
+    return {"ok": True, "message": f"Reoon accepted the key (balance check, free). Daily credits left: {r.get('remaining_daily_credits')}."}
+
+
 def _spec(sid, title, docs, verify, test, steps, free_note, terms, legacy=False):
     return SourceSpec(sid, title, ("verify_email",), "Email verification", f"Checks that an address can receive mail before you send (uses your {title} account).",
                       docs, terms, steps, fields=[] if legacy else KEY, cost=1, cost_note="1 credit per address (see their pricing page).", rate_per_min=60,
@@ -105,4 +160,13 @@ SPECS = [
     _spec("bouncer", "Bouncer", "https://docs.usebouncer.com/", _bouncer, _bouncer_test,
           ["Sign up at usebouncer.com (see their site for the free credits).", "Open API in your account and create a key.", "Paste it here and save."],
           "Bouncer lists free credits on signup; check their site.", "Official API with your key; follow Bouncer's terms."),
+    _spec("emailable", "Emailable", "https://emailable.com/docs/api/", _emailable, _emailable_test,
+          ["Sign up at emailable.com (250 free credits at signup, as their site lists).", "Open API in your account and copy a key.", "Paste it here and save."],
+          "Emailable lists 250 free credits at signup (one time); check their site.", "Official API with your key; follow Emailable's terms."),
+    _spec("abstract", "Abstract Email Reputation", "https://docs.abstractapi.com/email-reputation", _abstract, _abstract_test,
+          ["Sign up at abstractapi.com and add the Email Reputation API.", "Copy the API key shown for it.", "Paste it here and save."],
+          "Abstract lists a free plan of about 100 checks a month; check their site.", "Official API with your key; follow Abstract's terms."),
+    _spec("reoon", "Reoon", "https://www.reoon.com/articles/api-documentation-of-reoon-email-verifier/", _reoon, _reoon_test,
+          ["Sign up at reoon.com (a free daily allowance is listed on their site).", "Open API and copy your key.", "Paste it here and save."],
+          "Reoon lists a free daily allowance; check their site.", "Official API with your key; follow Reoon's terms."),
 ]
