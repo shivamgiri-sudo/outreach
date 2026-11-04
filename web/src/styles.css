@@ -472,3 +472,5 @@ td small { color: var(--muted); overflow-wrap: anywhere; }
 .bell-item { overflow-wrap: anywhere; }
 @media (max-width: 1000px) { .bell-panel { left: 88px; width: min(380px, calc(100vw - 100px)); } }
 @media (max-width: 760px) { .bell-panel { left: 8px; right: 8px; width: auto; top: 54px; } }
+.side { z-index: 40; }
+.tabs.scroll { flex-wrap: wrap; overflow: visible; row-gap: 0; }
