@@ -70,7 +70,7 @@ def smtp_connect(host: str, helo: str, timeout: int = CONNECT_TIMEOUT):
 
 def classify_reply(code: int, text: str) -> str:
     """Map one RCPT TO reply to confirmed / rejected / unknown_blocked / unknown_temporary / error."""
-    text = text or ""
+    text = text.decode("utf-8", "replace") if isinstance(text, bytes) else (text or "")
     if code in (250, 251):
         return "confirmed"
     if 400 <= code < 500:

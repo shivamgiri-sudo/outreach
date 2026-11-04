@@ -192,3 +192,9 @@ def test_probe_live_stops_a_lead_at_its_first_confirmed_mailbox():
     assert [c["status"] for c in results[0]["checks"]] == ["rejected", "confirmed"] and results[1]["checks"][0]["status"] == "unknown_blocked"
     assert counts == {"rejected": 1, "confirmed": 1, "unknown_blocked": 1}
     assert world.connects == 3
+
+
+def test_replies_as_bytes_from_a_real_smtplib_are_classified():
+    assert sp.classify_reply(550, b"5.1.1 <x@y.com>: Recipient address rejected: User unknown") == "rejected"
+    assert sp.classify_reply(550, b"5.7.1 Service unavailable; client host blocked using Spamhaus") == "unknown_blocked"
+    assert sp.classify_reply(250, b"2.1.5 OK") == "confirmed" and sp.classify_reply(451, b"4.7.1 try later") == "unknown_temporary"
