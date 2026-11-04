@@ -198,3 +198,48 @@ def test_replies_as_bytes_from_a_real_smtplib_are_classified():
     assert sp.classify_reply(550, b"5.1.1 <x@y.com>: Recipient address rejected: User unknown") == "rejected"
     assert sp.classify_reply(550, b"5.7.1 Service unavailable; client host blocked using Spamhaus") == "unknown_blocked"
     assert sp.classify_reply(250, b"2.1.5 OK") == "confirmed" and sp.classify_reply(451, b"4.7.1 try later") == "unknown_temporary"
+
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize("code,text,expected", [
+    (550, "zen.mimecast.org Listed by PBL, see https://check.spamhaus.org/query/ip/1.2.3.4. - blocked", "unknown_blocked"),
+    (550, "Service permanently unavailable. Client host [1.2.3.4] blocked using Trend Micro Email Reputation", "unknown_blocked"),
+    (550, "5.7.1 Service unavailable, Client host [1.2.3.4] blocked using Spamhaus", "unknown_blocked"),
+    (550, "5.7.1 Command rejected", "unknown_blocked"),
+    (550, "Rejected", "unknown_blocked"),
+    (554, "5.7.1 sender not allowed", "unknown_blocked"),
+    (550, "5.1.1 The email account that you tried to reach does not exist.", "rejected"),
+    (550, "5.1.1 <x@y.com>: Recipient address rejected: User unknown in virtual mailbox table", "rejected"),
+    (550, "No such user here", "rejected"),
+    (553, "Mailbox unavailable", "rejected"),
+    (451, "4.7.1 greylisted", "unknown_temporary"),
+    (250, "2.1.5 OK", "confirmed"),
+])
+def test_rejected_needs_evidence_the_mailbox_is_missing_a_blocklist_refusal_is_not_a_no(code, text, expected):
+    assert sp.classify_reply(code, text) == expected
+
+
+def test_provider_from_the_mx_host_and_ipv4_first_connect():
+    assert sp.provider_of("aspmx.l.google.com") == "google" and sp.provider_of("x-com.mail.protection.outlook.com") == "microsoft"
+    assert sp.provider_of("us-smtp-inbound-1.mimecast.com") == "mimecast" and sp.provider_of("mail.example.org") == "other"
+    world = WORLD()
+    assert prober(world).check("real@plain.com")["provider"] == "other"
+
+
+def test_second_mx_is_tried_only_when_the_first_cannot_be_reached():
+    tried = []
+
+    def connect(host, helo, timeout=10):
+        tried.append(host)
+        if host == "mx1.two.com":
+            raise OSError("timed out")
+        return FakeServer(good)
+    p = sp.Prober("mail.mydomain.com", "verify@mydomain.com", None, resolve=lambda d: [(10, "mx1.two.com"), (20, "mx2.two.com")],
+                  connect=connect, sleep=lambda s: None)
+    assert p.check("real@two.com")["status"] == "confirmed" and tried == ["mx1.two.com", "mx2.two.com"]
+    tried.clear()
+    p2 = sp.Prober("mail.mydomain.com", "verify@mydomain.com", None, resolve=lambda d: [(10, "mx1.ok.com"), (20, "mx2.ok.com")],
+                   connect=connect, sleep=lambda s: None)
+    assert p2.check("ghost@ok.com")["status"] == "rejected" and tried == ["mx1.ok.com"]       # a real answer never moves on

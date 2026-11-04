@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from app import smtp_probe  # noqa: E402
 
-OUT_COLUMNS = ["status", "smtp_code", "smtp_message", "mx_host", "is_catch_all", "checked_at"]
+OUT_COLUMNS = ["status", "smtp_code", "smtp_message", "mx_host", "provider", "is_catch_all", "checked_at"]
 CACHE_DAYS = 7
 
 

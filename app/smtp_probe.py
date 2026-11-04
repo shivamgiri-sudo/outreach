@@ -22,8 +22,16 @@ from datetime import datetime, timezone
 from typing import Callable, Optional
 
 SYNTAX = re.compile(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@([A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+)$")
-POLICY_WORDS = re.compile(r"(5\.7\.\d|access denied|blocked|blacklist|blocklist|spamhaus|reputation|policy|not permitted|"
-                          r"refused|rejected due to|banned|ptr|reverse dns|rdns|service unavailable)", re.I)
+# Our address, IP or behaviour was refused. Says nothing about the mailbox.
+BLOCK_WORDS = re.compile(r"(5\.7\.\d|access denied|blocked|block ?list|black ?list|dnsbl|\brbl\b|spamhaus|\bzen\.|listed (?:by|in|at)|\bpbl\b|"
+                         r"reputation|client host|sender (?:ip|address|domain) (?:rejected|refused|not)|policy|not permitted|"
+                         r"banned|reverse dns|rdns|\bptr\b|service (?:permanently )?unavailable|too many|rate limit|connection refused|"
+                         r"command rejected|relay(?:ing)? denied|authentication required|greylist|try again)", re.I)
+# The server says this mailbox does not exist.
+UNKNOWN_USER = re.compile(r"(5\.1\.[1-3]|5\.1\.10|5\.2\.1|user unknown|unknown user|no such (?:user|recipient|mailbox|person)|"
+                          r"mailbox (?:not found|unavailable|does not exist|disabled)|recipient (?:not found|unknown|does not exist|address rejected: (?:user|mailbox|no))|"
+                          r"invalid (?:recipient|mailbox|address)|does not exist|account (?:disabled|does not exist|not found)|undeliverable address|"
+                          r"unrouteable address|no mailbox here)", re.I)
 MIN_GAP_SECONDS = 1.0
 CONNECT_TIMEOUT = 10
 MAX_PER_RUN = 500
@@ -63,25 +71,45 @@ def dns_mx(domain: str) -> Optional[list]:
 
 
 def smtp_connect(host: str, helo: str, timeout: int = CONNECT_TIMEOUT):
+    """Connect over IPv4 when the host has an address for it: receiving servers judge IPv6 senders much more harshly."""
     server = smtplib.SMTP(timeout=timeout, local_hostname=helo)
-    server.connect(host, 25)
+    try:
+        address = socket.getaddrinfo(host, 25, socket.AF_INET, socket.SOCK_STREAM)[0][4][0]
+    except (OSError, IndexError):
+        address = host
+    server.connect(address, 25)
     return server
 
 
 def classify_reply(code: int, text: str) -> str:
-    """Map one RCPT TO reply to confirmed / rejected / unknown_blocked / unknown_temporary / error."""
+    """Map one RCPT TO reply to confirmed / rejected / unknown_blocked / unknown_temporary / error.
+
+    `rejected` needs positive evidence that the mailbox does not exist (an unknown-user code or phrase). A refusal that talks
+    about blocklists, our IP, policy or rate limits is `unknown_blocked`, and so is an unexplained 5xx: it proves nothing."""
     text = text.decode("utf-8", "replace") if isinstance(text, bytes) else (text or "")
     if code in (250, 251):
         return "confirmed"
     if 400 <= code < 500:
         return "unknown_temporary"
-    if POLICY_WORDS.search(text) and code not in (550, 551, 553) or re.search(r"5\.7\.\d", text):
-        return "unknown_blocked"
-    if code in (550, 551, 553, 511):
-        return "rejected"
     if 500 <= code < 600:
+        if BLOCK_WORDS.search(text) and not re.search(r"5\.1\.1\b", text):
+            return "unknown_blocked"
+        if UNKNOWN_USER.search(text):
+            return "rejected"
         return "unknown_blocked"
     return "error"
+
+
+def provider_of(mx_host: str) -> str:
+    """Who runs this domain's mail, from its MX host. Gateways often hide the real mailbox behind a filter."""
+    host = (mx_host or "").lower()
+    for name, marks in (("google", ("google.com", "googlemail.com")), ("microsoft", ("protection.outlook.com", "outlook.com")),
+                        ("mimecast", ("mimecast",)), ("proofpoint", ("pphosted", "proofpoint")), ("zoho", ("zoho",)),
+                        ("barracuda", ("barracuda",)), ("trendmicro", ("trendmicro", "mailcontrol", "tmes")), ("hostinger", ("hostinger",)),
+                        ("godaddy", ("secureserver",))):
+        if any(m in host for m in marks):
+            return name
+    return "other"
 
 
 def random_local() -> str:
@@ -151,14 +179,18 @@ class Prober:
             return {**base, "status": "error", "smtp_message": str(exc)[:120]}
         if not mx:
             return {**base, "status": "no_mail_server"}
-        host = mx[0][1]
         self.count += 1
-        with self._host_lock(host):
-            self._pace()
-            return self._talk(base, email, domain, host)
+        result = None
+        for _priority, host in mx[:2]:                               # the best MX, then the next one if we cannot even connect
+            with self._host_lock(host):
+                self._pace()
+                result = self._talk(base, email, domain, host)
+            if result["status"] != "error" or "could not connect" not in result["smtp_message"]:
+                break
+        return result
 
     def _talk(self, base: dict, email: str, domain: str, host: str) -> dict:
-        base = {**base, "mx_host": host}
+        base = {**base, "mx_host": host, "provider": provider_of(host)}
         try:
             server = self.connect(host, self.helo)
         except (OSError, smtplib.SMTPException) as exc:

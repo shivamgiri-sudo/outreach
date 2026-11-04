@@ -119,6 +119,10 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
         if live and sequences.needs_postal_address(lead) and not cfg.get("sender_address"):
             counts["blocked"] += 1          # US/Canada law requires a postal address in the footer; none is set
             continue
+        if (lead.get("email_check") or {}).get("status") == "invalid":
+            counts["blocked"] += 1          # a mailbox check said this address does not exist: never send to it
+            _set_sequence(store, lead["id"], blocked="the email address failed a mailbox check")
+            continue
         last = seq.get(last_key)
         steps = due_steps(datetime.fromisoformat(seq["enrolled_at"]), seq.get(days_key, []), now,
                           last_sent_at=datetime.fromisoformat(last) if last else None)

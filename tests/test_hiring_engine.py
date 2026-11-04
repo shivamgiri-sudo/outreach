@@ -154,3 +154,41 @@ def test_recheck_reverifies_unconfirmed_guesses_only_when_asked(monkeypatch, tmp
     saved = {l["id"]: l for l in store.read("leads")}
     assert fake.asked == ["anita.desai@acme.in"] and saved["l1"]["email"] == "anita.desai@acme.in" and report["confirmed"] == 1
     assert not saved["l2"].get("email")                              # a rejected set is never retried
+
+
+def test_published_emails_that_look_wrong_are_labelled():
+    ok = {"contact_name": "Ravi Menon", "email": "ravi.menon@acme.in", "domain": "acme.in"}
+    assert he.email_notes(ok) == [] and he.trust(ok) == "published"
+    other = {"contact_name": "Jayita Sahar", "email": "ravinder.bisht1@puresoftware.com", "domain": "happiestminds.com"}
+    assert he.trust(other) == "published_mismatch" and "not the company's happiestminds.com" in he.email_notes(other)[0]
+    shared = {"contact_name": "Aradhana Minawala", "email": "careers@thecaistore.com", "domain": "thecaistore.com"}
+    assert he.trust(shared) == "published_doubtful" and he.email_notes(shared) == ["shared inbox, not the person"]
+    odd = {"contact_name": "Poornima Naveen", "email": "sudharsang@thoucentric.com", "domain": "thoucentric.com"}
+    assert he.trust(odd) == "published_doubtful" and "name does not appear" in he.email_notes(odd)[0]
+    assert he.trust({**ok, "email_check": {"status": "invalid"}}) == "invalid"
+    assert he.trust({**ok, "email_check": {"status": "valid"}}) == "confirmed"
+
+
+def test_verify_published_checks_busiest_hirers_first_and_marks_invalid(monkeypatch, tmp_path):
+    client, store, fake = run_with(monkeypatch, tmp_path, {"abe@acme.in": "valid", "bea@beta.in": "invalid"})
+    lead(store, id="l1", company="Acme", domain="acme.in", contact_name="Abe Cole", email="abe@acme.in", open_roles=9)
+    lead(store, id="l2", company="Beta", domain="beta.in", contact_name="Bea Cole", email="bea@beta.in", open_roles=4)
+    lead(store, id="l3", company="Gamma", domain="gamma.in", contact_name="Gus Cole", email="gus@gamma.in", open_roles=1)
+    report = he.run_engine(store, {}, NOW, check_published=2)
+    saved = {l["id"]: l for l in store.read("leads")}
+    assert fake.asked == ["abe@acme.in", "bea@beta.in"] and report["published_valid"] == 1 and report["published_invalid"] == 1
+    assert he.trust(saved["l1"]) == "confirmed" and he.trust(saved["l2"]) == "invalid" and "email_check" not in saved["l3"]
+
+
+def test_sequence_never_sends_to_an_address_a_check_called_invalid(tmp_path):
+    client, store = make_client(tmp_path)
+    r = client.post("/api/leads/import", json={"csv": "company,contact_name,email,role\nAcme,Abe Cole,abe@acme.in,Agent\nBeta,Bea Cole,bea@beta.in,Agent\n"})
+    assert r.status_code == 200, r.text
+    ids = {l["email"]: l["id"] for l in store.read("leads")}
+    store.update_lead(ids["bea@beta.in"], lambda l: {**l, "email_check": {"status": "invalid", "email": l["email"]}})
+    for lid in ids.values():
+        assert client.post(f"/api/leads/{lid}/enroll").status_code == 200
+    out = client.post("/api/sequences/run", json={"now": "2026-11-10T05:00:00+00:00"}).json()
+    sent_to = [m["to"] for m in client.get("/api/outbox").json()]
+    assert sent_to == ["abe@acme.in"] and out["blocked"] == 1
+    assert "failed a mailbox check" in next(l for l in store.read("leads") if l["email"] == "bea@beta.in")["sequence"]["blocked"]

@@ -26,6 +26,7 @@ class RunBody(BaseModel):
     max_leads: int = Field(default=50, ge=1, le=1000)
     max_credits: int = Field(default=30, ge=0, le=500)
     dry_run: bool = False
+    check_published: int = Field(default=0, ge=0, le=1000)     # also verify this many published, unchecked addresses
     recheck_guesses: bool = False          # also re-verify guesses that are still unconfirmed (uses paid checks)
 
 
@@ -34,12 +35,12 @@ def make_router(store, transports: dict) -> APIRouter:
 
     @router.post("/api/hiring-engine/run")
     def run(body: RunBody):
-        return he.run_engine(store, transports, datetime.now(timezone.utc), body.max_leads, body.max_credits, body.dry_run, body.recheck_guesses)
+        return he.run_engine(store, transports, datetime.now(timezone.utc), body.max_leads, body.max_credits, body.dry_run, body.recheck_guesses, body.check_published)
 
     @router.get("/api/hiring-engine/candidates")
-    def candidates(max_leads: int = 50):
+    def candidates(max_leads: int = 50, include_rejected: bool = False):
         """Guesses waiting for a mailbox check, for a checker running on another machine (tools/probe_live.py)."""
-        return he.candidates(store, max(1, min(max_leads, 500)))
+        return he.candidates(store, max(1, min(max_leads, 500)), include_rejected)
 
     @router.post("/api/hiring-engine/apply")
     def apply(body: ApplyBody):

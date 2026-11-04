@@ -55,6 +55,7 @@ def main(argv=None) -> int:
     ap.add_argument("--helo", required=True)
     ap.add_argument("--mail-from", required=True)
     ap.add_argument("--limit", type=int, default=50, help=f"addresses to probe (max {smtp_probe.MAX_PER_RUN})")
+    ap.add_argument("--again", action="store_true", help="also re-probe leads whose guesses were all rejected earlier")
     ap.add_argument("--dry", action="store_true", help="probe and print, but do not send the results back")
     ap.add_argument("--log", default="probe_live.log")
     args = ap.parse_args(argv)
@@ -66,7 +67,7 @@ def main(argv=None) -> int:
         return 2
     limit = min(args.limit, smtp_probe.MAX_PER_RUN)
     token = call(base, "/api/login", body={"email": email, "password": password})["token"]
-    wanted = call(base, f"/api/hiring-engine/candidates?max_leads={limit}", token)
+    wanted = call(base, f"/api/hiring-engine/candidates?max_leads={limit}&include_rejected={str(args.again).lower()}", token)
     print(f"{len(wanted)} leads have guesses waiting.")
     prober = smtp_probe.Prober(args.helo, args.mail_from, args.log, max_per_run=limit)
     results, counts = probe_all(wanted, prober, limit)

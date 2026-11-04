@@ -3,8 +3,8 @@ import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 
-const TRUST_PILL = { confirmed: "ok", published: "ok", guess_mx: "", guess_risky: "warn", guess_rejected: "warn", none: "" };
-const TRUST_SHORT = { confirmed: "Confirmed", published: "Published", guess_mx: "Guess", guess_risky: "Risky guess", guess_rejected: "Rejected", none: "No email" };
+const TRUST_PILL = { confirmed: "ok", published: "ok", published_doubtful: "warn", published_mismatch: "warn", invalid: "warn", guess_mx: "", guess_risky: "warn", guess_rejected: "warn", none: "" };
+const TRUST_SHORT = { confirmed: "Confirmed", published: "Published", published_doubtful: "Doubtful", published_mismatch: "Wrong company?", invalid: "Invalid", guess_mx: "Guess", guess_risky: "Risky guess", guess_rejected: "Rejected", none: "No email" };
 const STEPS = [
   ["1", "Hiring signal", "Open roles, how long they have been open and reposts, from the job sources."],
   ["2", "Who posted it", "Staffing firms and job boards are flagged as agencies, so you target the real employer."],
@@ -21,12 +21,13 @@ export default function HiringEngine() {
   const [maxLeads, setMaxLeads] = useState(50);
   const [maxCredits, setMaxCredits] = useState(30);
   const [recheck, setRecheck] = useState(false);
+  const [checkPublished, setCheckPublished] = useState(0);
   const load = () => { setError(""); api.hiringSummary().then(setData).catch((e) => setError(e.message)); };
   useEffect(() => { load(); }, []);
 
   const run = async (dry) => {
     setBusy(true); setReport(null);
-    try { setReport({ ...(await api.hiringRun({ max_leads: Number(maxLeads), max_credits: Number(maxCredits), dry_run: dry, recheck_guesses: recheck })), dry }); load(); }
+    try { setReport({ ...(await api.hiringRun({ max_leads: Number(maxLeads), max_credits: Number(maxCredits), dry_run: dry, recheck_guesses: recheck, check_published: Number(checkPublished) })), dry }); load(); }
     catch (e) { setError(e.message); }
     setBusy(false);
   };
@@ -46,6 +47,7 @@ export default function HiringEngine() {
           <p className="sub">Works on your busiest hirers first. Emails are only checked, never sent.</p>
           <div className="row">
             <div><label>Leads to check</label><input type="number" min="1" max="1000" value={maxLeads} onChange={(e) => setMaxLeads(e.target.value)} /></div>
+            <div><label>Also verify this many published emails</label><input type="number" min="0" max="1000" value={checkPublished} onChange={(e) => setCheckPublished(e.target.value)} /></div>
             <div><label>Most paid checks</label><input type="number" min="0" max="500" value={maxCredits} onChange={(e) => setMaxCredits(e.target.value)} /></div>
           </div>
           <label className="row" style={{ fontWeight: 400, margin: "8px 0 0" }}>
@@ -61,6 +63,7 @@ export default function HiringEngine() {
               {report.dry ? "Preview: " : ""}checked {report.checked} leads · {report.employers} employers, {report.agencies} agencies ·
               {" "}{report.guessed} addresses built · {report.confirmed} confirmed, {report.kept_as_guess} kept as guesses, {report.rejected} rejected
               {report.skipped_no_name_or_domain ? ` · ${report.skipped_no_name_or_domain} have no decision maker name yet (run Find & enrich first)` : ""}
+              {report.published_checked ? ` · ${report.published_checked} published emails checked: ${report.published_valid || 0} valid, ${report.published_invalid || 0} invalid, ${report.published_risky || 0} risky` : ""}
               {report.credits_used ? ` · ${report.credits_used} paid check(s) used` : ""}.
               {report.errors?.length > 0 && <><br />{report.errors.join(" ")}</>}
             </p>
@@ -89,7 +92,7 @@ export default function HiringEngine() {
                     <td>{r.open_roles}{r.oldest_open_role_days ? <><br /><small>oldest {r.oldest_open_role_days} days</small></> : null}</td>
                     <td><span className={`pill ${r.posted_by === "agency" ? "warn" : ""}`} title={r.posted_by_reason}>{r.posted_by}</span></td>
                     <td>{r.decision_maker || "—"}<br /><small>{r.title}</small></td>
-                    <td>{r.email || r.guessed_email || "—"}</td>
+                    <td>{r.email || r.guessed_email || "—"}{r.email_notes ? <><br /><small>{r.email_notes}</small></> : null}</td>
                     <td><span className={`pill ${TRUST_PILL[r.email_trust]}`} title={r.email_trust_detail}>{TRUST_SHORT[r.email_trust]}</span></td>
                   </tr>
                 ))}

@@ -44,6 +44,9 @@ VERIFY_STATUS = {"valid": "confirmed", "risky": "risky", "invalid": "rejected"}
 TRUST_LABELS = {
     "confirmed": "Confirmed: a verifier says this mailbox exists",
     "published": "Published: found on a company page or source, mailbox not checked",
+    "published_doubtful": "Published but doubtful: a shared inbox, or the name is not in the address",
+    "published_mismatch": "Published but at another company's domain: probably the wrong person",
+    "invalid": "Invalid: a verifier says this mailbox does not exist",
     "guess_risky": "Guess: the mailbox looks risky, do not rely on it",
     "guess_mx": "Guess: the company's mail server exists, the mailbox is unconfirmed",
     "guess_rejected": "No valid address: every guess was rejected",
@@ -118,12 +121,41 @@ def guess_emails(first: str, last: str, domain: str, preferred: Optional[str] = 
     return out[:limit]
 
 
+# ---------- does the address belong to this person and company? ----------
+def email_notes(lead: dict) -> list:
+    """Plain reasons a published address may be the wrong one (empty when it looks right)."""
+    from .standardise import registrable_domain
+    email = normalise_email(lead.get("email"))
+    if not email:
+        return []
+    notes = []
+    local, host = email.split("@", 1)
+    if is_role_address(email) or lead.get("email_is_role"):
+        notes.append("shared inbox, not the person")
+    site = valid_domain(lead.get("domain")) or ""
+    if site and registrable_domain(host) != registrable_domain(site):
+        notes.append(f"address is at {host}, not the company's {site}")
+    first, last = split_name(lead.get("contact_name"))
+    names = [_clean(first), _clean(last.split()[-1] if last else "")]
+    names = [n for n in names if len(n) >= 3]
+    if names and not is_role_address(email) and not any(n in _clean(local) for n in names):
+        notes.append("the name does not appear in the address")
+    return notes
+
+
 # ---------- trust ----------
 def trust(lead: dict) -> str:
     check = lead.get("email_check") or {}
     if lead.get("email"):
+        if check.get("status") == "invalid":
+            return "invalid"
         if check.get("status") == "valid":
             return "confirmed"
+        notes = email_notes(lead)
+        if any(n.startswith("address is at") for n in notes):
+            return "published_mismatch"
+        if notes:
+            return "published_doubtful"
         return "published"
     status = lead.get("email_guess_status")
     if lead.get("email_guess"):
@@ -139,7 +171,7 @@ def _verifier_run(store, transports: dict, max_credits: int, now):
     return waterfall.Run(store, campaign, transports, {}, [], specs, now)
 
 
-def candidates(store, max_leads: int = 50) -> list:
+def candidates(store, max_leads: int = 50, include_rejected: bool = False) -> list:
     """Leads that need an email guess checked: a named decision maker at a real employer's domain, no email yet.
     [{"lead_id", "company", "contact_name", "guesses": [{"email", "pattern", "basis"}]}]. Used by checkers that run elsewhere."""
     leads = [l for l in store.read("leads") if not l.get("is_test")]
@@ -150,7 +182,7 @@ def candidates(store, max_leads: int = 50) -> list:
             break
         if classify_poster(lead.get("company", ""), lead.get("domain") or "", lead.get("title") or "")["kind"] == "agency":
             continue
-        if lead.get("email") or lead.get("email_guess") or lead.get("email_guess_status") == "rejected":
+        if lead.get("email") or lead.get("email_guess") or (lead.get("email_guess_status") == "rejected" and not include_rejected):
             continue
         domain = valid_domain(lead.get("domain")) or ""
         first, last = split_name(lead.get("contact_name"))
@@ -198,8 +230,30 @@ def apply_checks(store, results: list) -> dict:
     return report
 
 
+def verify_published(store, run, limit: int, report: dict) -> None:
+    """Check published (never verified) addresses of the busiest hirers, personal addresses at the company's own domain first."""
+    todo = []
+    for lead in sorted(store.read("leads"), key=lambda l: (-(l.get("open_roles") or 0), -(l.get("max_job_age_days") or 0))):
+        if lead.get("is_test") or not lead.get("email") or (lead.get("email_check") or {}).get("status") in ("valid", "invalid"):
+            continue
+        if trust(lead) != "published" or classify_poster(lead.get("company", ""), lead.get("domain") or "")["kind"] == "agency":
+            continue
+        todo.append(lead)
+    patches = {}
+    for lead in todo[:limit]:
+        verdict = run.check(lead["email"])
+        status = verdict["status"]
+        if status not in ("valid", "invalid", "risky"):
+            continue
+        report["published_checked"] = report.get("published_checked", 0) + 1
+        report["published_" + status] = report.get("published_" + status, 0) + 1
+        patches[lead["id"]] = {"set": {"email_check": {**(lead.get("email_check") or {}), "email": lead["email"], "status": status,
+                                                         "provider": verdict.get("provider", ""), "syntax_ok": True}}}
+    store.patch_leads(patches)
+
+
 def run_engine(store, transports: dict, now, max_leads: int = 50, max_credits: int = 30, dry_run: bool = False,
-               recheck: bool = False) -> dict:
+               recheck: bool = False, check_published: int = 0) -> dict:
     """Classify the posters, then build and verify email guesses for decision makers who have no email."""
     leads = [l for l in store.read("leads") if not l.get("is_test")]
     report = {"checked": 0, "agencies": 0, "employers": 0, "guessed": 0, "confirmed": 0, "kept_as_guess": 0, "rejected": 0,
@@ -228,6 +282,8 @@ def run_engine(store, transports: dict, now, max_leads: int = 50, max_credits: i
         patches[lead["id"]] = {"set": changes}
     if not dry_run:
         store.patch_leads(patches)
+        if check_published:
+            verify_published(store, run, check_published, report)
         report["credits_used"] = run.ctx.budget.spent
         for sid, message in run.errors.items():
             if "Not connected" not in message:
@@ -262,7 +318,7 @@ def _verify_guesses(run, guesses: list, report: dict) -> dict:
 
 # ---------- step 5: the sheet ----------
 SHEET_COLUMNS = ["company", "website", "open_roles", "oldest_open_role_days", "posted_by", "posted_by_reason", "decision_maker",
-                 "title", "linkedin", "email", "guessed_email", "email_trust", "email_trust_detail", "phone", "source", "score"]
+                 "title", "linkedin", "email", "guessed_email", "email_trust", "email_trust_detail", "email_notes", "phone", "source", "score"]
 
 
 def sheet_rows(store) -> list:
@@ -275,7 +331,7 @@ def sheet_rows(store) -> list:
                      "posted_by": lead.get("poster_kind") or "not checked", "posted_by_reason": lead.get("poster_reason") or "",
                      "decision_maker": lead.get("contact_name"), "title": lead.get("title"), "linkedin": lead.get("linkedin_url"),
                      "email": lead.get("email") or "", "guessed_email": lead.get("email_guess") or "",
-                     "email_trust": level, "email_trust_detail": TRUST_LABELS[level],
+                     "email_trust": level, "email_trust_detail": TRUST_LABELS[level], "email_notes": "; ".join(email_notes(lead)),
                      "phone": lead.get("phone") or lead.get("company_phone") or "", "source": lead.get("source"),
                      "score": lead.get("score")})
     return rows
