@@ -13,7 +13,7 @@ function TodayList({ today, onOpen, onDone, go }) {
     <div className="card today">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h3 style={{ margin: 0 }}>Today</h3>
-        <span className="sub" style={{ margin: 0 }}>{today.summary}</span>
+        {today.items.length > 0 && <span className="sub" style={{ margin: 0 }}>{today.summary}</span>}
       </div>
       {today.items.length === 0 ? (
         <p className="empty">{today.summary}</p>

@@ -132,7 +132,7 @@ label { display: block; font-weight: 600; margin: 12px 0 4px; font-size: 13px; }
 pre, code { overflow-wrap: anywhere; max-width: 100%; }
 pre { white-space: pre-wrap; background: var(--bg); padding: 14px; border-radius: 12px; border: 1px solid var(--line); }
 .steps li { margin: 6px 0; overflow-wrap: anywhere; }
-.empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+.empty { text-align: center; color: var(--muted); padding: 28px 10px; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes slide { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -201,7 +201,7 @@ label > select, label > input, label > textarea { margin-top: 4px; font-weight: 
 .bulkbar { position: sticky; top: 8px; z-index: 2; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 14px; margin-bottom: 12px; border-radius: 14px; background: var(--brand-soft); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .table-card { padding: 0; overflow-x: auto; }
 .th-sort { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; }
-td.pick, th:first-child { width: 36px; }
+td.pick, .leads-table th:first-child { width: 36px; }
 
 /* ---------- today ---------- */
 .today { margin-top: 16px; }
@@ -495,3 +495,14 @@ td small { color: var(--muted); overflow-wrap: anywhere; }
 .side .theme-toggle { margin-top: 8px; }
 .gw > .card:has(table) { grid-column: 1 / -1; }
 .card table th { white-space: nowrap; }
+
+/* inline forms: fields share the row instead of stacking full width */
+.row > input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), .row > select { flex: 1 1 180px; width: auto; min-width: 0; }
+.row > .btn, .row > button { flex: none; }
+.grid:not(.g4) { align-items: start; }
+.card table td:first-child:not(.pick) { min-width: 120px; }
+@media (max-width: 640px) {
+  .find-card { align-items: stretch; }
+  .find-card > svg, .find-card > .find-icon, .find-card > span:first-child:not(.find-card-text) { display: none; }
+  .row > input:not([type="checkbox"]):not([type="radio"]), .row > select { flex-basis: 100%; }
+}
