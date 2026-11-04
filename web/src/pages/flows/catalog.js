@@ -63,6 +63,7 @@ export const IF_FIELDS = {
   open_roles: ["Open roles", "number"], source: ["Source", "text"], campaign_id: ["Campaign id", "text"], tag: ["Tag", "tags"],
   has_email: ["Has an email", "bool"], has_phone: ["Has a phone number", "bool"], has_consent: ["Has said yes (consent)", "bool"],
   has_meeting: ["Has a meeting", "bool"], has_replied: ["Has replied", "bool"],
+  linkedin_accepted: ["LinkedIn invite accepted", "bool"], linkedin_status: ["LinkedIn sequence status", "text"],
 };
 export const IF_OPS = {
   eq: "is", ne: "is not", gt: "is more than", lt: "is less than", contains: "contains", in: "is one of", exists: "is filled in",

@@ -107,7 +107,9 @@ def lead_facts(lead: dict) -> dict:
             "campaign_id": lead.get("campaign_id") or "", "tag": list(lead.get("tags") or []),
             "open_roles": lead.get("open_roles") or 0, "has_email": bool(lead.get("email")), "has_phone": bool(lead.get("phone")),
             "has_consent": bool(lead.get("consent")), "has_replied": replied,
-            "has_meeting": any(m.get("status") in ("scheduled", "done") for m in lead.get("meetings") or [])}
+            "has_meeting": any(m.get("status") in ("scheduled", "done") for m in lead.get("meetings") or []),
+            "linkedin_accepted": bool((lead.get("linkedin_seq") or {}).get("accepted_at")),
+            "linkedin_status": (lead.get("linkedin_seq") or {}).get("status") or "not_started"}
 
 
 def _items(value) -> list:

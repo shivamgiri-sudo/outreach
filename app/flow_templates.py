@@ -132,7 +132,29 @@ def _daily_followup_flow() -> dict:
             "nodes": nodes, "edges": [_edge("trigger", "call")]}
 
 
-TEMPLATES = {"cold_email": _cold_email_flow, "yes_whatsapp_call": _yes_flow, "linkedin_email": _linkedin_combo_flow,
+def _linkedin_then_email_flow() -> dict:
+    s = DEFAULT_SEQUENCE
+    nodes = [
+        {"id": "trigger", "type": "trigger.manual", "config": {"title": "Added by hand or in bulk"}, "x": 300, "y": 60},
+        {"id": "linkedin", "type": "linkedin_task", "config": {"mode": "start_sequence", "title": "Start LinkedIn sequence"}, "x": 300, "y": 190},
+        {"id": "wait", "type": "wait", "config": {"days": 6, "hours": 0, "business_hours": True, "title": "Give the invite 6 days"}, "x": 300, "y": 320},
+        {"id": "accepted", "type": "if", "config": {"field": "linkedin_accepted", "op": "eq", "value": "true", "title": "Did they accept?"}, "x": 300, "y": 450},
+        {"id": "stop", "type": "stop", "config": {"title": "LinkedIn is handling them"}, "x": 40, "y": 580},
+        {"id": "email1", "type": "email", "config": _email_config(s[0]), "x": 560, "y": 580},
+        {"id": "reply", "type": "wait_for_reply", "config": {"days": 4}, "x": 560, "y": 710},
+        {"id": "call", "type": "call_task", "config": {"note": "Said yes after LinkedIn went quiet and email 1. Call through PD only."}, "x": 300, "y": 840},
+        {"id": "email2", "type": "email", "config": _email_config(s[1]), "x": 800, "y": 840},
+    ]
+    edges = [_edge("trigger", "linkedin"), _edge("linkedin", "wait"), _edge("wait", "accepted"), _edge("accepted", "stop", "yes"),
+             _edge("accepted", "email1", "no"), _edge("email1", "reply"), _edge("reply", "call", "interested"),
+             _edge("reply", "email2", "timeout")]
+    return {"name": "LinkedIn first, email if ignored", "settings": {"stop_on_reply": True},
+            "description": "Starts the LinkedIn sequence. After 6 days, anyone who accepted stays on LinkedIn; anyone who did not gets "
+                           "email 1 and the usual follow-up. A yes goes to the caller.",
+            "nodes": nodes, "edges": edges}
+
+
+TEMPLATES = {"linkedin_then_email": _linkedin_then_email_flow, "cold_email": _cold_email_flow, "yes_whatsapp_call": _yes_flow, "linkedin_email": _linkedin_combo_flow,
              "ai_triage": _ai_triage_flow, "daily_followup": _daily_followup_flow}
 
 

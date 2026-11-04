@@ -46,3 +46,14 @@ def test_wrong_token_is_refused(tmp_path):
     hook = c.get(f"/api/flows/{fid}/webhook").json()
     r = c.post(f"/api/inbound/{hook['connector_id']}", headers={"Authorization": "Bearer nope"}, json={"email": "x@y.example"})
     assert r.status_code == 401
+
+
+def test_linkedin_accepted_condition_and_template(tmp_path):
+    from app.flow_actions import lead_facts
+    assert lead_facts({"linkedin_seq": {"accepted_at": "2026-11-03T05:00:00+00:00", "status": "messaging"}})["linkedin_accepted"] is True
+    quiet = lead_facts({"linkedin_seq": {"status": "waiting_for_acceptance"}})
+    assert quiet["linkedin_accepted"] is False and quiet["linkedin_status"] == "waiting_for_acceptance"
+    assert lead_facts({})["linkedin_status"] == "not_started"
+    c = make_client(tmp_path, csv=None)
+    flow = c.post("/api/flows/templates/linkedin_then_email")
+    assert flow.status_code == 200 and flow.json()["errors"] == [], flow.json().get("errors")
