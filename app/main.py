@@ -54,6 +54,7 @@ from .routes_find_leads import make_router as make_find_leads_router
 from .routes_hiring_engine import make_router as make_hiring_engine_router
 from .routes_reply_inbox import make_router as make_reply_inbox_router
 from .routes_icp import make_router as make_icp_router
+from .routes_mcp import make_router as make_mcp_router
 from .routes_signals import make_router as make_signals_router
 from .routes_linkedin_agent import make_router as make_linkedin_agent_router
 from .providers import get_json
@@ -416,6 +417,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_hiring_engine_router(store, campaign_io))
     app.include_router(make_reply_inbox_router(store))
     app.include_router(make_icp_router(store, ai_transport))
+    app.include_router(make_mcp_router(store))
     app.include_router(make_signals_router(store, signal_fetch, ai_transport))
     app.include_router(make_linkedin_agent_router(store, transactional_sender))
     app.include_router(make_sources_router(store, campaign_io))

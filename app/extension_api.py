@@ -31,6 +31,7 @@ ALLOWED = (                             # (method, path regex) an extension toke
     ("POST", re.compile(r"^/api/extension/leads/[^/]+/(sent|accepted|replied)$")),
     ("GET", re.compile(r"^/api/extension/agent$")),                  # the LinkedIn agent program on your computer
     ("POST", re.compile(r"^/api/extension/agent/event$")),
+    ("POST", re.compile(r"^/api/mcp$")),                              # Claude / MCP clients: read-only tools (see mcp_server)
 )
 GRACE = timedelta(hours=12)             # same "due" window as the web queue
 COMPANY_NOISE = re.compile(r"\b(pvt|private|ltd|limited|llp|inc|incorporated|co|corp|corporation|the)\b")
