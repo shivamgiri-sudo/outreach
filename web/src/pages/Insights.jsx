@@ -65,7 +65,7 @@ export default function Insights() {
         <div className="card stat"><b>{d.by_band.hot} / {d.by_band.warm} / {d.by_band.cold}</b><span>Hot / warm / cold</span></div>
       </div>
 
-      <div className="grid g2" style={{ marginTop: 14 }}>
+      <div className="grid gw" style={{ marginTop: 14 }}>
         <div className="card" style={{ padding: 0, overflowX: "auto" }}>
           <h3 style={{ margin: 16 }}>By lead source</h3>
           {d.by_source.length === 0 ? <p className="empty">No data yet.</p> : (

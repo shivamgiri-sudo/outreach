@@ -167,6 +167,12 @@ export default function Leads({ focusLead, go }) {
 
   const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly)).sort(SORTS[sort]),
     [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly]);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const pages = Math.max(1, Math.ceil(shown.length / pageSize));
+  const safePage = Math.min(page, pages - 1);
+  useEffect(() => { setPage(0); }, [query, stage, band, sort, onlyIds, srcFilter, inboundOnly, pageSize]);
+  const visible = shown.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const togglePick = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const allPicked = shown.length > 0 && shown.every((l) => picked.includes(l.id));
 
@@ -313,7 +319,7 @@ export default function Leads({ focusLead, go }) {
               {header("company", "Company")}<th>Contact</th>{header("stage", "Stage")}{header("score", "Score")}<th>Source</th><th>Next step</th>
             </tr></thead>
             <tbody>
-              {shown.map((l) => (
+              {visible.map((l) => (
                 <tr key={l.id} className="click" onClick={() => setOpen(l.id)}>
                   <td className="pick" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" aria-label={`Select ${l.company || l.domain || l.contact_name}`} checked={picked.includes(l.id)} onChange={() => togglePick(l.id)} />
@@ -331,6 +337,19 @@ export default function Leads({ focusLead, go }) {
               ))}
             </tbody>
           </table>
+        )}
+        {shown.length > pageSize && (
+          <div className="pager" role="navigation" aria-label="Pages of leads">
+            <span className="sub" style={{ margin: 0 }}>{safePage * pageSize + 1}–{Math.min(shown.length, (safePage + 1) * pageSize)} of {shown.length}</span>
+            <span className="row">
+              <button className="btn ghost" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>Previous</button>
+              <span>Page {safePage + 1} of {pages}</span>
+              <button className="btn ghost" disabled={safePage >= pages - 1} onClick={() => setPage(safePage + 1)}>Next</button>
+              <select aria-label="Leads per page" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+                {[25, 50, 100, 200].map((n) => <option key={n} value={n}>{n} per page</option>)}
+              </select>
+            </span>
+          </div>
         )}
       </div>
       {open && <LeadDrawer id={open} onClose={() => { setOpen(null); load(); }} />}
