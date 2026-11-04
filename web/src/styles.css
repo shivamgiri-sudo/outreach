@@ -46,7 +46,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .side button.on::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--cta); }
 .side button.signout { margin-top: 8px; border-top: 1px solid var(--line); border-radius: 0 0 12px 12px; }
 .badge-dot { margin-left: auto; background: var(--accent-solid); color: #fff; border-radius: 12px; font-size: 11px; padding: 1px 8px; font-weight: 700; }
-main { padding: var(--s7) var(--s7) var(--s8); max-width: 1280px; min-width: 0; }
+main { padding: var(--s7) var(--s7) var(--s8); min-width: 0; }
 
 /* ---------- headings ---------- */
 h2 { margin: 0 0 4px; font-size: 26px; font-weight: 800; letter-spacing: -.025em; }
