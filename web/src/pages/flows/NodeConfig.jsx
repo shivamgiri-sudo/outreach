@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../../api.js";
 import { STAGE_ORDER, stageLabel } from "../../labels.js";
 import {
   ACTIVATION_EVENTS, BRANCH_HEADINGS, EMAIL_PLACEHOLDERS, IF_FIELDS, IF_OPS, PERSONAS, REPLY_LABELS, REPLY_OUTPUTS,
@@ -31,7 +32,35 @@ function Chips({ names, onInsert }) {
 }
 
 // Plain-English settings for the selected step, its connections and its problems.
-export default function NodeConfig({ node, nodes, edges, catalog, problems, onChange, onConnect, onDelete, onDuplicate, panelRef }) {
+function WebhookBox({ flowId }) {
+  const [hook, setHook] = useState(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    let alive = true;
+    api.flowWebhook(flowId).then((h) => alive && setHook(h)).catch((e) => alive && setErr(e.message || "Could not make the address."));
+    return () => { alive = false; };
+  }, [flowId]);
+  if (err) return <p className="field-help" role="alert">{err}</p>;
+  if (!hook) return <p className="field-help">Making the address…</p>;
+  const url = hook.urls?.capture || "";
+  const curl = `curl -X POST '${url}' -H 'Authorization: Bearer ${hook.token}' -H 'Content-Type: application/json' -d '{"name":"Asha Rao","email":"asha@example.com","company":"Example Co","phone":"98100 12345"}'`;
+  const copy = (text) => { try { navigator.clipboard?.writeText(text); } catch { /* the text is selectable anyway */ } };
+  return (
+    <fieldset className="fb-fieldset">
+      <legend>Address for other tools</legend>
+      <label>Post to<input readOnly value={url} onFocus={(e) => e.target.select()} /></label>
+      <label>Token (send as a Bearer token)<input readOnly value={hook.token || ""} onFocus={(e) => e.target.select()} /></label>
+      <div className="row"><button type="button" className="btn" onClick={() => copy(url)}>Copy address</button>
+        <button type="button" className="btn" onClick={() => copy(curl)}>Copy test command</button></div>
+      <span className="field-help">
+        {hook.active ? `Live. ${hook.counters?.total || 0} lead(s) received so far.` : "Turn the flow on and the address starts working."}
+        {" "}A lead needs an e-mail or phone number. A person already in your list is updated, not started again.
+      </span>
+    </fieldset>
+  );
+}
+
+export default function NodeConfig({ flowId, node, nodes, edges, catalog, problems, onChange, onConnect, onDelete, onDuplicate, panelRef }) {
   const c = node.config || {};
   const lastText = useRef({ key: null, el: null });
   const team = catalog?.team?.length ? catalog.team : [catalog?.caller || "Priya"];
@@ -82,6 +111,7 @@ export default function NodeConfig({ node, nodes, edges, catalog, problems, onCh
   const listOf = (key) => (Array.isArray(c[key]) ? c[key] : []);
   const setRow = (i, patch) => set("values", listOf("values").map((row, j) => (j === i ? { ...row, ...patch } : row)));
   const fields = {
+    "trigger.webhook": () => <WebhookBox flowId={flowId} />,
     "trigger.schedule": () => (<>
       {select("when", "How often", [["daily", "Every day"], ["weekdays", "Every weekday (Mon–Fri)"], ["weekly", "Once a week"]])}
       {c.when === "weekly" && select("weekday", "Day", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d, i) => [String(i), d]))}

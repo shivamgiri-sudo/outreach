@@ -101,6 +101,8 @@ export const TYPES = {
   stop: ["action", "Stop", "stop", [], {}, "Ends the flow for this lead."],
   "trigger.schedule": ["trigger", "On a schedule", "clock", ["next"], { when: "weekdays", hour: 10, limit: 30 },
     "Runs by itself at the hour you pick (India time) and starts matching leads that are not in the flow yet, up to a limit."],
+  "trigger.webhook": ["trigger", "Webhook received", "globe", ["next"], {},
+    "Another tool (a form, Zapier, Make, n8n, your own code) posts a lead to this flow's address and the flow starts for that lead. The address appears when you open this step."],
   ai: ["action", "Ask Claude", "sparkles", ["next", "error"], { mode: "draft", prompt: "", save_as: "answer", options: [] },
     "Claude writes a draft, picks one of your options, or pulls out a detail. The answer is saved under a name you can use as {{name}} in later steps."],
   set_vars: ["action", "Set fields", "sliders", ["next"], { values: [{ name: "pitch", value: "" }] },
@@ -171,6 +173,7 @@ export function summaryOf(node, caller = "Priya") {
     case "notify": return `To ${c.to || caller}: ${c.message || "…"}`;
     case "webhook": return `POST to ${host(c.url)}`;
     case "trigger.schedule": return `${{ daily: "Every day", weekdays: "Every weekday", weekly: "Every week" }[c.when] || "Pick when"} at ${String(c.hour ?? 10).padStart(2, "0")}:00 IST`;
+    case "trigger.webhook": return "A tool posts a lead to this flow's address";
     case "ai": return `${{ draft: "Writes a draft", classify: "Picks: " + (c.options || []).join(", "), extract: "Pulls out a detail" }[c.mode] || "Pick what Claude does"} → {{${c.save_as || "?"}}}`;
     case "set_vars": return (c.values || []).map((v) => v.name).filter(Boolean).join(", ") || "No fields yet";
     case "switch": return `On ${c.field?.startsWith("var:") ? c.field.slice(4) : IF_FIELDS[c.field]?.[0] || "?"}`;

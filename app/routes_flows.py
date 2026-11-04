@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from . import routes_outreach
+from . import capture_connectors, routes_outreach
 from .activation import EVENT_STEP
 from .activities import caller_name, team
 from .flow_engine import Context, enroll, flow_stats, present_run, stop_run, tick
@@ -167,12 +167,34 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
             errors = validate_flow(flow, _team_names(store))
         return {"ok": not errors, "errors": errors}
 
+    def webhook_connector(flow: dict, make: bool) -> Optional[dict]:
+        """The capture address that starts this flow. One per flow, made on first use and kept."""
+        found = next((c for c in capture_connectors.all_connectors(store) if c.get("enroll_flow_id") == flow["id"]), None)
+        if found is None and make:
+            found = capture_connectors.create(store, {"type": "generic", "name": f"Flow: {flow['name']}"[:80],
+                                                      "enroll_flow_id": flow["id"]})
+        return found
+
+    @router.get("/api/flows/{flow_id}/webhook")
+    def flow_webhook(flow_id: str):
+        """The address (and token) other tools post leads to, to start this flow. Only for flows with a webhook trigger."""
+        flow = find(flow_id)
+        if not any(n["type"] == "trigger.webhook" for n in flow["nodes"]):
+            raise HTTPException(400, "This flow does not start from a webhook.")
+        connector = webhook_connector(flow, make=True)
+        view = capture_connectors.public_view(store, connector, public_base_url(store, BASE_URL), reveal=True)
+        return {"connector_id": connector["id"], "enabled": connector.get("enabled", True), "urls": view.get("urls"),
+                "token": view.get("token"), "last_capture_at": connector.get("last_capture_at"),
+                "counters": connector.get("counters") or {}, "active": flow["status"] == "active"}
+
     @router.post("/api/flows/{flow_id}/activate")
     def activate(flow_id: str):
         flow = find(flow_id)
         errors = validate_flow(flow, _team_names(store))
         if errors:
             raise HTTPException(400, "Fix these first: " + " ".join(e["message"] for e in errors[:3]))
+        if any(n["type"] == "trigger.webhook" for n in flow["nodes"]):
+            webhook_connector(flow, make=True)
         versions = {**flow.get("versions", {}), str(flow["version"]): graph_of(flow)}
         return present(save({**flow, "status": "active", "activated_at": now_iso(), "versions": versions, "updated_at": now_iso()}))
 

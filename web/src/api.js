@@ -189,6 +189,7 @@ export const api = {
   pauseFlow: (id) => request(`/api/flows/${id}/pause`, { method: "POST" }),
   enrollFlow: (id, leadIds) => request(`/api/flows/${id}/enroll`, { method: "POST", body: { lead_ids: leadIds } }),
   simulateFlow: (id, leadId, assumeReply = "timeout") => request(`/api/flows/${id}/simulate`, { method: "POST", body: { lead_id: leadId, assume_reply: assumeReply } }),
+  flowWebhook: (id) => request(`/api/flows/${id}/webhook`),
   flowRuns: (id) => request(`/api/flows/${id}/runs`),
   leadFlows: (id) => request(`/api/leads/${id}/flows`),
   stopFlowRun: (id) => request(`/api/flow-runs/${id}/stop`, { method: "POST" }),

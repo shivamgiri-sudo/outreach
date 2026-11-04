@@ -254,7 +254,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
         </div>
         <div className="fb-side">
           {selectedNode ? (
-            <NodeConfig key={selectedNode.id} node={selectedNode} nodes={graph.nodes} edges={graph.edges} catalog={catalog}
+            <NodeConfig key={selectedNode.id} flowId={flowId} node={selectedNode} nodes={graph.nodes} edges={graph.edges} catalog={catalog}
               problems={problems[selectedNode.id] || []} onChange={updateConfig} panelRef={config}
               onConnect={(label, to) => (to ? connect(selectedNode.id, label, to) : unlink(selectedNode.id, label))}
               onDelete={() => deleteNode(selectedNode.id)} onDuplicate={() => duplicate(selectedNode.id)} />

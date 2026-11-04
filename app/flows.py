@@ -64,6 +64,7 @@ NODE_TYPES = {
     "stop": ("action", "Stop", ()),
     # n8n-style additions: a schedule trigger, an AI step, variables, a multi-way switch, a generic HTTP call and sticky notes
     "trigger.schedule": ("trigger", "On a schedule", ("next",)),
+    "trigger.webhook": ("trigger", "Webhook received", ("next",)),
     "ai": ("action", "Ask Claude", ("next", "error")),
     "set_vars": ("action", "Set fields", ("next",)),
     "switch": ("logic", "Switch", ("c1", "c2", "c3", "c4", "other")),
@@ -210,6 +211,8 @@ def _var_errors(name, what: str) -> list:
 
 def _new_step_errors(t: str, c: dict) -> list:
     out = []
+    if t == "trigger.webhook":
+        return out                      # nothing to set: the address is made when the flow is turned on
     if t == "trigger.schedule":
         if c.get("when") not in SCHEDULE_WHEN:
             out.append("Pick how often it runs: every day, every weekday or once a week.")
@@ -270,7 +273,7 @@ def config_errors(node: dict, team_names=None, extra_vars=()) -> list:
     """Plain-English problems with one step's settings."""
     t, c = node["type"], node.get("config") or {}
     out = []
-    if t in ("trigger.schedule", "ai", "set_vars", "switch", "http", "note"):
+    if t in ("trigger.schedule", "trigger.webhook", "ai", "set_vars", "switch", "http", "note"):
         if len(str(c.get("title") or "")) > MAX_TITLE:
             out.append(f"Keep the step name under {MAX_TITLE} characters.")
         return out + _new_step_errors(t, c) + (

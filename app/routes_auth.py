@@ -19,7 +19,7 @@ LOCAL_OWNER = {"sub": "local", "email": "", "name": "This computer", "role": "ow
 ANYONE = {("POST", "/api/logout")}
 OWNER_ROUTES = {
     ("PUT", "/api/settings"), ("PUT", "/api/offer"), ("PUT", "/api/team"),
-    ("GET", "/api/channels/webhooks"), ("GET", "/api/oauth/{provider}/start"),
+    ("GET", "/api/channels/webhooks"), ("GET", "/api/flows/{flow_id}/webhook"), ("GET", "/api/oauth/{provider}/start"),
     ("POST", "/api/sequences/run"), ("POST", "/api/sending/resume"), ("POST", "/api/sequences/resume-failed"),
     ("POST", "/api/practice/clear"), ("GET", "/api/enrich/apollo-export"),
     ("GET", "/api/leads/{lead_id}/export"), ("POST", "/api/leads/{lead_id}/erase"),
