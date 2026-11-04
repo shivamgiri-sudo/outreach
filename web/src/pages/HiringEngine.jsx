@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
+import IcpCard from "./IcpCard.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 
 const TRUST_PILL = { confirmed: "ok", published: "ok", published_doubtful: "warn", published_mismatch: "warn", invalid: "warn", guess_mx: "", guess_risky: "warn", guess_rejected: "warn", none: "" };
@@ -36,6 +37,7 @@ export default function HiringEngine() {
     <>
       <h2>Hiring engine</h2>
       <p className="sub">One pass that turns a company's hiring signal into the right person and an email, and says honestly how far each result can be trusted.</p>
+      <IcpCard />
       {error && <ErrorState message="The hiring engine could not load." detail={error} onRetry={load} />}
       <div className="grid gw" style={{ marginBottom: 14 }}>
         <div className="card">

@@ -20,6 +20,7 @@ from . import sequences
 from .channels.security import server_secret
 from .growth_core import ensure_demo, get_offer, offer_line
 from .hygiene import business_domain
+from .icp import gate_reason as icp_gate_reason, get_icp
 from .privacy import is_blocked
 from .senders import email_ready
 from .sequences import DEFAULT_DAILY_CAP, IST, due_steps, in_business_hours, lead_variables, render
@@ -105,6 +106,7 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
     domains_today = {business_domain(m["to"]) for m in todays} - {None}
     counts = {"sent": 0, "failed": 0, "needs_check": 0, "blocked": 0, "mode": "live" if live else "practice"}
 
+    icp_rules = get_icp(store)
     for lead in sorted(store.read("leads"), key=lambda l: (l.get("sequence") or {}).get("enrolled_at", "")):
         seq = lead.get("sequence")
         if not seq or seq["stopped"] or lead["stage"] in NO_EMAIL_STAGES + WARM_STAGES or not lead.get("email"):
@@ -122,6 +124,12 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
         if (lead.get("email_check") or {}).get("status") == "invalid":
             counts["blocked"] += 1          # a mailbox check said this address does not exist: never send to it
             _set_sequence(store, lead["id"], blocked="the email address failed a mailbox check")
+            continue
+        held = icp_gate_reason(lead, icp_rules)
+        if held:
+            counts["blocked"] += 1          # outside the ideal-customer score the owner set: held, never deleted
+            if seq.get("blocked") != held:
+                _set_sequence(store, lead["id"], blocked=held)
             continue
         last = seq.get(last_key)
         steps = due_steps(datetime.fromisoformat(seq["enrolled_at"]), seq.get(days_key, []), now,
