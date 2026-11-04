@@ -1,6 +1,6 @@
 """Starter flows built from the logic the app already has, so a team can start from something that works.
 
-1. Cold email 4-step: the built-in sequence's four emails (day 0, 3, 7, 14), stopping on any reply.
+1. Cold email 6-step: the built-in sequence's six emails (Day 1, 4, 8, 12, 16, 21), stopping on any reply.
 2. Yes -> WhatsApp + Priya call: WhatsApp only with recorded consent, a call task, a nudge if no meeting in 2 days.
 3. LinkedIn + email combo: a LinkedIn task first (a person sends it), then email; a yes goes to Priya.
 `POST /api/flows/templates/{key}` saves a draft copy that can be edited freely.
@@ -36,11 +36,15 @@ def _cold_email_flow() -> dict:
         ("email2", "email", _email_config(s[1])),
         ("wait2", "wait", {"days": 4, "hours": 0, "business_hours": True}),
         ("email3", "email", _email_config(s[2])),
-        ("wait3", "wait", {"days": 7, "hours": 0, "business_hours": True}),
+        ("wait3", "wait", {"days": 4, "hours": 0, "business_hours": True}),
         ("email4", "email", _email_config(s[3])),
+        ("wait4", "wait", {"days": 4, "hours": 0, "business_hours": True}),
+        ("email5", "email", _email_config(s[4])),
+        ("wait5", "wait", {"days": 5, "hours": 0, "business_hours": True}),
+        ("email6", "email", _email_config(s[5])),
     ])
-    return {"name": "Cold email 4-step", "settings": {"stop_on_reply": True},
-            "description": "The same four emails as the built-in sequence (day 0, 3, 7, 14). Stops as soon as they reply.",
+    return {"name": "Cold email 6-step", "settings": {"stop_on_reply": True},
+            "description": "The same six emails as the built-in executive sequence (Day 1, 4, 8, 12, 16, 21). Stops as soon as they reply.",
             "nodes": nodes, "edges": _chain([n["id"] for n in nodes])}
 
 

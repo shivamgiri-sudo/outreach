@@ -45,8 +45,8 @@ def test_render_fills_variables_and_flags_missing():
     assert missing == ["city"]
 
 
-def test_default_sequence_has_four_steps_with_unsubscribe():
-    assert [s["day"] for s in DEFAULT_SEQUENCE] == [0, 3, 7, 14]
+def test_default_sequence_has_six_steps_with_unsubscribe():
+    assert [s["day"] for s in DEFAULT_SEQUENCE] == [0, 3, 7, 11, 15, 20]
     assert all("{{unsub_link}}" in s["body"] for s in DEFAULT_SEQUENCE)
 
 

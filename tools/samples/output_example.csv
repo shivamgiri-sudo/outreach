@@ -1,0 +1,5 @@
+email,name,status,smtp_code,smtp_message,mx_host,is_catch_all,checked_at
+hr@example.com,Example HR,confirmed,250,2.1.5 OK,mx.example.com,False,2026-11-04T06:00:00+00:00
+nobody-here@example.com,Made up,rejected,550,5.1.1 User unknown,mx.example.com,,2026-11-04T06:00:01+00:00
+recruiter@no-such-domain-xyz123.invalid,No domain,no_mail_server,,,,,2026-11-04T06:00:01+00:00
+not-an-email,Bad,invalid_syntax,,,,,2026-11-04T06:00:01+00:00

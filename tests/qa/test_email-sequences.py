@@ -1,4 +1,4 @@
-"""QA: the 4-step cold email sequence end to end, over 30 days of time travel, for ~60 imported leads.
+"""QA: the 6-step cold email sequence end to end, over 30 days of time travel, for ~60 imported leads.
 
 Every provider is a fake (no network): Resend through the classic sending-domain card, and the Integrations-hub
 providers SendGrid, Postmark and SMTP. See docs/qa/email-sequences.md for the scenarios and the formats they copy.
@@ -174,7 +174,7 @@ def check_schedule(rows, daily_limit, per_run=5):
         assert count <= daily_limit(day), (day, count)
     for sends in per_lead.values():
         days = [d for _, d in sends]
-        assert days == [0, 3, 7, 14][:len(days)]                    # in order, never twice, never skipped
+        assert days == [0, 3, 7, 11, 15, 20][:len(days)]                    # in order, never twice, never skipped
         for (a, da), (b, db) in zip(sends, sends[1:]):
             assert b - a >= timedelta(days=db - da)                   # spaced from the email actually sent
     return per_day, per_lead
@@ -202,21 +202,21 @@ def test_runs_outside_hours_send_nothing(tmp_path):
     assert rig.outbox() == []
 
 
-# ---- practice: 30 days, all leads, no provider calls ----
-def test_practice_thirty_days_runs_the_whole_sequence_without_sending(tmp_path):
+# ---- practice: six weeks, all leads, no provider calls ----
+def test_practice_six_weeks_runs_the_whole_sequence_without_sending(tmp_path):
     rig = Rig(tmp_path, "sendgrid")
-    rig.simulate(0, 29)
+    rig.simulate(0, 42)
     rows = rig.outbox()
     assert rig.wire.calls == [] and {m["status"] for m in rows} == {"dry_run"}
     per_day, per_lead = check_schedule(rows, lambda day: 20)
     enrolled = {l["id"] for l in rig.store.read("leads") if l.get("sequence")}
     assert len(enrolled) == 60                                # 63 rows, 3 duplicates folded in
-    assert {lid: len(s) for lid, s in per_lead.items()} == {lid: 4 for lid in enrolled}   # practice ignores US/CA
+    assert {lid: len(s) for lid, s in per_lead.items()} == {lid: 6 for lid in enrolled}   # practice ignores US/CA
     assert max(per_day.values()) == 20                        # the daily cap was reached early on
     for lead in rig.store.read("leads"):
         seq = lead.get("sequence")
         if seq:
-            assert seq["sent_days"] == [] and seq["practice_days"] == [0, 3, 7, 14]
+            assert seq["sent_days"] == [] and seq["practice_days"] == [0, 3, 7, 11, 15, 20]
             assert lead["stage"] == "new"                     # practice never moves a lead to contacted
 
 
@@ -443,7 +443,7 @@ def test_provider_wide_errors_pause_then_resume_with_the_same_ids(tmp_path, pid,
 
 
 def test_retry_with_sample_link_repeats_the_same_body(tmp_path):
-    """Email 1 with the sample-screen link: the retry after a timeout must carry the same demo link."""
+    """The retry after a timeout must carry the same body (and message id) as the first attempt."""
     rig = Rig(tmp_path, "resend", live=True, email1_include_link=True)
     inject(rig, "timeout")
     t = at_ist(1, 10, 0)
@@ -451,7 +451,7 @@ def test_retry_with_sample_link_repeats_the_same_body(tmp_path):
     rig.run(t + timedelta(hours=1, minutes=1))
     wire = attempts(rig)
     again = next(a for a in wire[1:] if a["to"] == wire[0]["to"])
-    assert "/demo/" in wire[0]["text"] and again["text"] == wire[0]["text"]
+    assert "/demo/" not in wire[0]["text"] and again["text"] == wire[0]["text"]
     assert again["idem"] == wire[0]["idem"] and again["headers"]["Message-ID"] == wire[0]["headers"]["Message-ID"]
 
 
@@ -534,6 +534,8 @@ def test_message_ids_are_unique_per_step_and_mode(tmp_path):
 
 def test_resume_refuses_a_lead_stopped_by_unsubscribe(tmp_path):
     rig = Rig(tmp_path, "resend", live=True)
+    # signed links started before this test's simulated timeline (the app records the real clock, which is later than the fixed START date)
+    rig.store.update("settings", lambda st: {**st, "unsub_signed_since": "2026-11-02T00:00:00+00:00"})
     rig.run(at_ist(1, 10, 0))
     lid = rig.outbox("sent")[0]["lead_id"]
     token = unsub_path(rig.store, lid).rsplit("/", 1)[1]

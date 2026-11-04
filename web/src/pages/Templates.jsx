@@ -60,7 +60,7 @@ export default function Templates() {
     <>
       <h2>Sequences & templates</h2>
       <p className="sub">Short, human, no hard sell, no invented stories. Words in {"{{double braces}}"} are filled per lead ({"{{greeting}}"}, {"{{first_name}}"}, {"{{company}}"}, {"{{role}}"}, {"{{sender}}"}, {"{{offer_line}}"}, {"{{demo_link}}"}, {"{{unsub_link}}"}); [square brackets] you fill by hand. The email sequence stops on a reply. Cold emails carry no link except the unsubscribe link.</p>
-      <h3>Email sequence (4 steps, sent automatically)</h3>
+      <h3>Email sequence (6 steps, sent automatically)</h3>
       {sequence.map((t) => <Item key={t.name} t={t} />)}
       <h3>WhatsApp (only after a recorded yes)</h3>
       {whatsapp.map((t) => <Item key={t.name} t={t} />)}

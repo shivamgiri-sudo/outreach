@@ -338,7 +338,7 @@ Spreadsheets and ad-hoc emails don't scale. They don't remember who said what, a
   auto-layout, Save, Validate, Simulate on a lead (no writes; path highlighted and listed), Activate / Pause, Enrol and
   "Leads in this flow". Keyboard: Tab to a step, arrows move it, Enter edits, Delete removes. A List view shows the flow
   as nested steps (default on phones). The lead panel's Flows section lists the lead's runs with Stop and Start.
-- **Templates:** Cold email 4-step (the sequence's four emails on day 0, 3, 7, 14), Yes → WhatsApp + Priya call,
+- **Templates:** Cold email 6-step (the executive sequence's six emails on Day 1, 4, 8, 12, 16, 21), Yes → WhatsApp + Priya call,
   LinkedIn + email combo. `POST /api/flows/templates/{key}` makes a draft copy.
 - **API:** `GET/POST /api/flows`, `GET/PUT/DELETE /api/flows/{id}`, `GET /api/flows/catalog`, `GET /api/flows/templates`,
   `POST /api/flows/templates/{key}`, `POST /api/flows/{id}/validate|activate|pause|enroll|simulate`,

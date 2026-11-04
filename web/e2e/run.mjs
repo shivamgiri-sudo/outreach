@@ -216,7 +216,7 @@ await step("Drawer: reopen Acme for the sequence steps", async () => {
   await expectText("Stage: WhatsApp active");
 });
 await step("Drawer: start sequence, log note and reply", async () => {
-  await page.getByRole("button", { name: "Start 4-step email sequence" }).click();
+  await page.getByRole("button", { name: "Start 6-step email sequence" }).click();
   await expectText("Running — steps sent on day(s): none yet");
   await page.locator("textarea").last().fill("Spoke to Ravi on the phone");
   await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -242,7 +242,7 @@ await step("Outbox: save settings", async () => {
 await step("Outbox: run sequences sends a dry-run email with demo link and unsubscribe", async () => {
   await nav("Leads");
   await page.locator("tr.click", { hasText: "Beta Logistics" }).click();
-  await page.getByRole("button", { name: "Start 4-step email sequence" }).click();
+  await page.getByRole("button", { name: "Start 6-step email sequence" }).click();
   await expectText("Running");
   await page.getByRole("button", { name: "Close" }).click();
   await nav("Outbox");
@@ -276,7 +276,7 @@ await step("Call desk: interested lead listed, outcome can be logged", async () 
 await step("Templates: 4 email steps from the backend + other messages + copy", async () => {
   await nav("Sequences");
   await expectText("Email 1 — sample screen");
-  await expectText("Email 4 — permission close");
+  await expectText("Email 4 — process gap (Day 12)");
   await expectText("Nudge: demo not opened");
   await page.getByRole("button", { name: "Copy" }).first().click();
   await expectText("Copied");
@@ -960,7 +960,7 @@ await step("Flow builder: a flow from the Cold email template shows its 8 steps 
   await nav("Flow builder");
   await expectText("No flows yet");
   await page.getByRole("button", { name: "New from template" }).click();
-  await page.getByRole("button", { name: "Use template: Cold email 4-step" }).click();
+  await page.getByRole("button", { name: "Use template: Cold email 6-step" }).click();
   await page.getByTestId("flow-canvas").waitFor();
   await page.locator("g.fb-node").nth(7).waitFor();
   const [nodes, edges] = [await page.locator("g.fb-node").count(), await page.locator("g.fb-edge").count()];

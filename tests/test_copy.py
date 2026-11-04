@@ -91,7 +91,7 @@ def test_lead_variables_use_cleaners_and_expose_has_role():
 
 # ---------------- email sequence ----------------
 def test_sequence_shape_is_unchanged():
-    assert [s["day"] for s in DEFAULT_SEQUENCE] == [0, 3, 7, 14]
+    assert [s["day"] for s in DEFAULT_SEQUENCE] == [0, 3, 7, 11, 15, 20]
     assert all({"day", "name", "subject", "body"} <= set(s) for s in DEFAULT_SEQUENCE)
 
 
@@ -122,32 +122,25 @@ def render_step(step, variables):
 
 
 def test_pick_variant_for_role_and_no_role_leads():
-    with_role = lead_variables(LEAD, "Priya", "https://x.in", {"offer_line": "Free.", "demo_link": "https://x.in/demo/t"})
+    with_role = lead_variables(LEAD, "Priya", "https://x.in", {"offer_line": "Free."})
     subject, body = render_step(DEFAULT_SEQUENCE[0], with_role)
-    assert subject == "telecaller hiring at Acme Technologies"
-    assert body.startswith("Hi Ravi,") and "telecaller" in body and "Want me to send it?" in body and "beta" in body
-    assert "/demo/" not in body and "{{" not in body
-    no_role = lead_variables({"id": "L2", "company": "Beta", "contact_name": "", "role": ""}, "Priya", "https://x.in",
-                             {"offer_line": "Free.", "demo_link": "https://x.in/demo/t"})
+    assert subject == "Are you closing vacancies or compromising hiring?"
+    assert body.startswith("Hi Ravi,") and "Would you be interested in receiving a copy?" in body and "{{" not in body
+    no_role = lead_variables({"id": "L2", "company": "Beta", "contact_name": "", "role": ""}, "Priya", "https://x.in", {"offer_line": "Free."})
     for step in DEFAULT_SEQUENCE:
         subject, body = render_step(step, no_role)
-        assert "a few open roles" not in body and "open roles hiring" not in subject and "{{" not in body + subject
-        assert body.startswith("Hello,")
+        assert "{{" not in body + subject and body.startswith("Hello,") and "Unsubscribe: https://x.in/u/L2" in body
 
 
-def test_link_variant_only_when_setting_on_and_link_present():
-    base = lead_variables(LEAD, "Priya", "https://x.in", {"offer_line": "Free.", "demo_link": "https://x.in/demo/t"})
+def test_no_link_variant_exists_so_the_link_setting_changes_nothing():
+    base = lead_variables(LEAD, "Priya", "https://x.in", {"offer_line": "Free.", "demo_link": "https://x.in/demo/t", "include_link": True})
+    assert pick_variant(DEFAULT_SEQUENCE[0], base)["variant"] == "default"
     assert "/demo/t" not in render_step(DEFAULT_SEQUENCE[0], base)[1]
-    on = {**base, "include_link": True}
-    assert "/demo/t" in render_step(DEFAULT_SEQUENCE[0], on)[1]
-    assert pick_variant(DEFAULT_SEQUENCE[0], on)["variant"] == "with_link"
-    no_link = {**on, "demo_link": ""}
-    assert pick_variant(DEFAULT_SEQUENCE[0], no_link)["variant"] == "default"
-    assert "/demo/t" not in render_step(DEFAULT_SEQUENCE[1], on)[1]
 
 
-def test_permission_close_offers_sample_not_story():
-    assert '"sample"' in DEFAULT_SEQUENCE[3]["body"]
+def test_final_email_asks_for_a_brief_conversation_and_stays_polite():
+    body = DEFAULT_SEQUENCE[5]["body"]
+    assert "Would a brief conversation be worthwhile?" in body and "One final thought" in body
 
 
 # ---------------- WhatsApp ----------------

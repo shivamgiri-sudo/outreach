@@ -159,6 +159,8 @@ export const api = {
   login: (password, email = "") => request("/api/login", { method: "POST", body: { password, email } }),
   logout: () => request("/api/logout", { method: "POST" }),
   me: () => request("/api/me"),
+  hiringSummary: () => request("/api/hiring-engine/summary"),
+  hiringRun: (body) => request("/api/hiring-engine/run", { method: "POST", body }),
   users: () => request("/api/users"),
   addUser: (body) => request("/api/users", { method: "POST", body }),
   changeUser: (email, body) => request(`/api/users/${encodeURIComponent(email)}`, { method: "PUT", body }),

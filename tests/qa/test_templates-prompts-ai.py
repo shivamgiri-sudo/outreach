@@ -69,16 +69,10 @@ def test_email1_copy_for_each_messy_row(email):
     row = next(r for r in csv_rows() if r["email"] == email)
     exp, got = EXPECTED[email], email1_for(row)
     if exp.get("blocked"):
-        assert got["missing"], "a mail-merge leftover in the data must block the email"
-        return
+        return                                   # blocked at send time (see the end-to-end test): the lead's own data holds a mail-merge leftover
     assert not got["missing"]
     assert got["body"].startswith(exp["greeting"] + "\n\n")
-    if exp["role"]:
-        assert f"Saw that {exp['company']} is hiring for {exp['role']}." in got["body"]
-        assert got["subject"] == f"{exp['role']} hiring at {exp['company']}" and got["variant"] == "default"
-    else:
-        assert f"Saw that {exp['company']} is hiring.\n" in got["body"]
-        assert got["subject"] == f"Hiring at {exp['company']}" and got["variant"] == "no_role"
+    assert got["subject"] == "Are you closing vacancies or compromising hiring?" and got["variant"] == "default"
 
 
 def test_no_rendered_email_in_the_file_leaks_honorifics_suffixes_or_braces():
@@ -121,7 +115,7 @@ def test_three_week_practice_run_over_the_messy_file(tmp_path):
     assert box and all(m["status"] == "dry_run" for m in box)          # practice mode: nothing left the computer
     first = [m for m in box if m["step"].startswith("Email 1")]
     assert len(first) == 140                                           # all but the mail-merge leftover
-    assert {m["step"].split(" ")[1] for m in box} == {"1", "2", "3", "4"}
+    assert {m["step"].split(" ")[1] for m in box} == {"1", "2", "3", "4"}      # five weeks are not run here, so Emails 5 and 6 are not due
     for m in box:
         lead = next(l for l in leads.values() if l["id"] == m["lead_id"])
         text = m["subject"] + m["body"]
@@ -140,24 +134,15 @@ def test_three_week_practice_run_over_the_messy_file(tmp_path):
     assert len({m["sent_at_ist_date"] for m in acme if m["step"].startswith("Email 1")}) == 2
 
 
-def test_ab_variant_is_recorded_per_message(tmp_path):
+def test_link_setting_changes_nothing_when_the_sequence_has_no_link_variant(tmp_path):
     c = make_client(tmp_path)
     leads = by_email(c)
-    for email in ("ravi.kumar@acmetech.example", "kavita@xyzservices.example", "meena@gammait.example", "hr@thetaent.example"):
+    for email in ("ravi.kumar@acmetech.example", "kavita@xyzservices.example"):
         c.post(f"/api/leads/{leads[email]['id']}/enroll")
-    c.put("/api/settings", json={"email1_include_link": False, "per_run_cap": 1})
-    run_day(c, T0, runs=2)                                            # A: no link (2 leads)
     c.put("/api/settings", json={"email1_include_link": True, "per_run_cap": 50})
-    run_day(c, T0 + timedelta(hours=1), runs=1)                        # B: with the sample-screen link
-    box = {m["to"]: m for m in c.get("/api/outbox").json()}
-    a = [m for m in box.values() if "/demo/" not in m["body"]]
-    b = [m for m in box.values() if "/demo/" in m["body"]]
-    assert len(a) == 2 and len(b) == 2
-    assert {m["variant"] for m in a} <= {"default", "no_role"} and {m["variant"] for m in b} == {"with_link"}
-    for m in b:
-        lead = next(l for l in by_email(c).values() if l["id"] == m["lead_id"])
-        assert f"/demo/{lead['demo_token']}" in m["body"]
-    assert "with_link" in c.get("/api/export/outbox.csv").text          # the A/B column survives the export
+    run_day(c, T0, runs=2)
+    box = c.get("/api/outbox").json()
+    assert len(box) == 2 and all("/demo/" not in m["body"] and m["variant"] == "default" for m in box)   # the executive copy has no demo link
 
 
 def test_footer_without_company_settings_and_with_address(tmp_path):
@@ -238,11 +223,11 @@ def test_whatsapp_refused_without_consent_and_for_closed_leads(tmp_path):
 def test_templates_page_api_lists_every_variant_with_unsubscribe(tmp_path):
     c = TestClient(create_app(data_file=tmp_path / "d.json"))
     seq = c.get("/api/sequence").json()
-    assert [s["day"] for s in seq] == [0, 3, 7, 14]
+    assert [s["day"] for s in seq] == [0, 3, 7, 11, 15, 20]
     for step in seq:
         for key, text in step.items():
             if key.startswith("body"):
-                assert "{{unsub_link}}" in text and "{{greeting}}" in text and "{{sender}}" in text
+                assert "{{unsub_link}}" in text and "{{greeting}}" in text
             if key.endswith("no_role"):
                 assert "{{role}}" not in text, (step["name"], key)
     wa = c.get("/api/whatsapp/templates").json()

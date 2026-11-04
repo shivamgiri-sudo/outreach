@@ -3,3 +3,4 @@ uvicorn
 pydantic
 cryptography==46.0.7
 pymysql==1.1.1
+dnspython==2.7.0

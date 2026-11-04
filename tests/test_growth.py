@@ -170,13 +170,13 @@ def test_partners_crud(client):
 
 def test_sequence_endpoint_and_offer_terms_in_first_email(client):
     seq = client.get("/api/sequence").json()
-    assert "{{offer_line}}" in seq[0]["body"] and "{{demo_link}}" not in seq[0]["body"]
+    assert len(seq) == 6 and "{{demo_link}}" not in seq[0]["body"]       # the executive copy carries no free-offer line or demo link
     i = lid(client)
     client.post(f"/api/leads/{i}/enroll")
     client.post("/api/sequences/run", json={"now": "2026-11-10T05:00:00+00:00"})
     body = client.get("/api/outbox").json()[0]["body"]
     # cold emails carry no link except the unsubscribe link (the sample screen is offered, not linked)
-    assert "25 candidates" in body and "/demo/" not in body and "{{" not in body and "/u/" in body
+    assert "/demo/" not in body and "{{" not in body and "/u/" in body
 
 
 def test_demo_headline_has_no_awkward_text_without_role():

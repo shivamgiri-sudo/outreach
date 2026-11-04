@@ -10,49 +10,63 @@ INCLUDE_LINK_SETTING = "email1_include_link"
 ROLE_FALLBACK = "open roles"
 MAX_ROLE_CHARS = 40
 
-_SIGN_OFF = "\n\n— {{sender}}\n\nUnsubscribe: {{unsub_link}}"
-_EMAIL1_INTRO = ("BookMyInterview screens each applicant once (a short voice answer plus a few MCQs), and the best "
-                 "ones book their own interview slot. We're in beta. {{offer_line}}")
+# Executive outreach sequence supplied by the owner (BookMyInterview_Executive_Email_Sequence.docx): Day 1, 4, 8, 12, 16, 21.
+# `day` counts from the first send, so Day 1 is 0. The website link sits in the identity footer every email carries.
+_SIGN_OFF = "\n\nRegards,\nTeam BookMyInterview.ai\n\nNot relevant? Unsubscribe: {{unsub_link}}"
 
 DEFAULT_SEQUENCE = [
-    {"day": 0, "name": "Email 1 — sample screen",
-     "subject": "{{role}} hiring at {{company}}",
-     "subject_no_role": "Hiring at {{company}}",
-     "body": ("{{greeting}}\n\nSaw that {{company}} is hiring for {{role}}.\n\n" + _EMAIL1_INTRO +
-              "\n\nI can draft a sample screen for this role. Want me to send it?"
-              "\n\n— {{sender}}\n\nNot relevant? Unsubscribe: {{unsub_link}}"),
-     "body_no_role": ("{{greeting}}\n\nSaw that {{company}} is hiring.\n\n" + _EMAIL1_INTRO +
-                      "\n\nI can draft a sample screen for one of your openings. "
-                      "Want me to send it?\n\n— {{sender}}\n\nNot relevant? Unsubscribe: {{unsub_link}}"),
-     "body_with_link": ("{{greeting}}\n\nSaw that {{company}} is hiring for {{role}}.\n\n" + _EMAIL1_INTRO +
-                        "\n\nI drafted a sample screen for this role: {{demo_link}}"
-                        "\n\nWorth a look?\n\n— {{sender}}\n\nNot relevant? Unsubscribe: {{unsub_link}}"),
-     "body_with_link_no_role": ("{{greeting}}\n\nSaw that {{company}} is hiring.\n\n" + _EMAIL1_INTRO +
-                                "\n\nI drafted a sample screen for you: {{demo_link}}"
-                                "\n\nWorth a look?\n\n— {{sender}}\n\nNot relevant? Unsubscribe: {{unsub_link}}")},
-    {"day": 3, "name": "Email 2 — useful tip",
-     "subject": "A screening tip for {{role}}",
-     "subject_no_role": "A screening tip for high-volume hiring",
-     "body": ("{{greeting}}\n\nOne thing that helps with high-volume roles like {{role}}: before any call, ask every "
-              "applicant the same 3 short questions (one about the job, one situation, one on notice period and pay). "
-              "Then compare the answers side by side instead of reading CVs top to bottom. Weak fits show up fast."
-              "\n\nHappy to draft those 3 questions for your opening. Just reply." + _SIGN_OFF),
-     "body_no_role": ("{{greeting}}\n\nOne thing that helps with high-volume hiring: before any call, ask every "
-                      "applicant the same 3 short questions (one about the job, one situation, one on notice period "
-                      "and pay). Then compare the answers side by side instead of reading CVs top to bottom. "
-                      "Weak fits show up fast.\n\nHappy to draft those 3 questions for your opening. Just reply."
-                      + _SIGN_OFF)},
-    {"day": 7, "name": "Email 3 — right person?",
-     "subject": "Right person for hiring at {{company}}?",
-     "body": "{{greeting}}\n\nIf someone else handles hiring at {{company}}, could you point me to them? Thank you." + _SIGN_OFF},
-    {"day": 14, "name": "Email 4 — permission close",
-     "subject": "Should I stop writing?",
-     "body": ("{{greeting}}\n\nI don't want to clutter your inbox, so this is my last note. If hiring help isn't a "
-              "priority, no reply needed. If you'd like a sample screen drafted for {{role}}, reply \"sample\" and "
-              "I'll send it." + _SIGN_OFF),
-     "body_no_role": ("{{greeting}}\n\nI don't want to clutter your inbox, so this is my last note. If hiring help "
-                      "isn't a priority, no reply needed. If you'd like a sample screen drafted for one of your "
-                      "openings, reply \"sample\" and I'll send it." + _SIGN_OFF)},
+    {"day": 0, "name": "Email 1 — compromised hiring (Day 1)",
+     "subject": "Are you closing vacancies or compromising hiring?",
+     "body": ("{{greeting}}\n\nWhen hiring deadlines slip and the right candidates aren't available, organisations often end up "
+              "choosing between two difficult options: keep the position vacant or compromise on the quality of the hire.\n\n"
+              "Neither is good for business.\n\nThe pressure to fill critical positions can lead to rushed evaluations, relaxed "
+              "selection criteria and hiring decisions that may not reflect the actual requirements of the role.\n\n"
+              "A vacancy getting closed is a recruitment milestone. Getting the right person is a business outcome.\n\n"
+              "We've put together a case study exploring how technology can bring greater structure to candidate assessment "
+              "and interview management.\n\nWould you be interested in receiving a copy?" + _SIGN_OFF)},
+    {"day": 3, "name": "Email 2 — shortage of suitable candidates (Day 4)",
+     "subject": "100 applications. How many genuinely fit?",
+     "body": ("{{greeting}}\n\nThe challenge isn't always getting applications. It's finding candidates who genuinely meet the "
+              "requirements.\n\nRecruitment teams can spend hours reviewing resumes, screening profiles and coordinating "
+              "preliminary evaluations, yet struggle to identify enough suitable candidates for interviews.\n\n"
+              "The result? More time spent screening, fewer relevant candidates reaching hiring managers and continued pressure "
+              "to close vacancies.\n\nAre your recruiters spending more time filtering candidates than evaluating talent?" + _SIGN_OFF)},
+    {"day": 7, "name": "Email 3 — cost of delayed hiring (Day 8)",
+     "subject": "How much is delayed hiring costing your business?",
+     "body": ("{{greeting}}\n\nEvery unfilled position has a business consequence.\n\nExisting teams carry additional workloads. "
+              "Managers wait for critical resources. Projects and business priorities can lose momentum.\n\n"
+              "And when hiring takes longer than planned, the pressure to close positions often increases further.\n\n"
+              "The real challenge is not simply filling vacancies faster. It is improving the process without sacrificing "
+              "candidate suitability and hiring quality.\n\nIs meeting planned hiring timelines becoming increasingly "
+              "difficult for your organisation?" + _SIGN_OFF)},
+    {"day": 11, "name": "Email 4 — process gap (Day 12)",
+     "subject": "Is manual hiring slowing down better decisions?",
+     "body": ("{{greeting}}\n\nResume screening, preliminary assessments, candidate evaluations and interview scheduling are all "
+              "important stages of recruitment.\n\nBut when these activities involve disconnected tools and repetitive manual "
+              "coordination, the process becomes difficult to manage efficiently and consistently.\n\n"
+              "The opportunity is to bring more structure to candidate evaluation before valuable interviewer time is "
+              "invested.\n\nHas your organisation considered using technology to streamline these stages?" + _SIGN_OFF)},
+    {"day": 15, "name": "Email 5 — introducing BookMyInterview.ai (Day 16)",
+     "subject": "Technology for more informed hiring decisions",
+     "body": ("{{greeting}}\n\nThis is the problem BookMyInterview.ai is designed to address.\n\n"
+              "BookMyInterview.ai is a recruitment technology platform focused on candidate assessment and interview "
+              "management.\n\nIt brings together:\n"
+              "- Job description and resume parsing: assess candidate-role alignment.\n"
+              "- Role-specific tests: evaluate relevant skills and competencies.\n"
+              "- Audio and video assessments: support preliminary candidate evaluation.\n"
+              "- Candidate self-booking: simplify interview scheduling and coordination.\n\n"
+              "It isn't a recruitment agency or a job listing portal. It provides technology to help organisations structure "
+              "and manage their existing hiring processes.\n\nThe objective is to help recruitment teams evaluate candidates "
+              "more effectively, reduce repetitive coordination and make more informed hiring decisions.\n\n"
+              "Would you be open to a 20-minute walkthrough?" + _SIGN_OFF)},
+    {"day": 20, "name": "Email 6 — final follow-up (Day 21)",
+     "subject": "The real cost isn't just an unfilled position",
+     "body": ("{{greeting}}\n\nOne final thought before I close this conversation.\n\nAn unfilled position can delay business "
+              "priorities. An unsuitable shortlist can waste valuable interview time. And a compromised hiring decision can "
+              "create consequences long after the vacancy is closed.\n\nThe objective should not simply be to hire faster. "
+              "It should be to make better-informed hiring decisions within the required timelines.\n\n"
+              "If improving candidate evaluation and interview management is on your organisation's agenda, I'd be happy to "
+              "show you how BookMyInterview.ai approaches this.\n\nWould a brief conversation be worthwhile?" + _SIGN_OFF)},
 ]
 
 _VAR = re.compile(r"\{\{(\w+)\}\}")
@@ -190,8 +204,8 @@ def due_steps(enrolled_at: datetime, sent_days: list, now: datetime, sequence=DE
     """The single next unsent step that is due (never catches up in a burst).
 
     The first step is due once its day since enrolment has arrived. Each later step is spaced from the email
-    actually sent before it (day 3 comes 3 days after Email 1 went out, day 7 four days after that), so a lead
-    whose first email was delayed by a backlog still gets the intended 3/4/7-day rhythm.
+    actually sent before it (day 4 comes 3 days after Email 1 went out, day 8 four days after that), so a lead
+    whose first email was delayed by a backlog still gets the intended rhythm.
     """
     for index, step in enumerate(sequence):
         if step["day"] in sent_days:

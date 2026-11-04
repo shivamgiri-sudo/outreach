@@ -130,21 +130,21 @@ def test_templates_produce_valid_flows_that_activate(c, key):
 def test_cold_email_template_matches_the_sequence_timing(c):
     flow = c.post("/api/flows/templates/cold_email").json()
     types = [n["type"] for n in flow["nodes"]]
-    assert types.count("email") == 4
-    assert [n["config"]["days"] for n in flow["nodes"] if n["type"] == "wait"] == [3, 4, 7]
+    assert types.count("email") == 6
+    assert [n["config"]["days"] for n in flow["nodes"] if n["type"] == "wait"] == [3, 4, 4, 4, 5]
     assert flow["settings"]["stop_on_reply"] is True
     assert c.post("/api/flows/templates/nope").status_code == 404
 
 
-def test_cold_template_sends_four_emails_on_days_0_3_7_14(c):
+def test_cold_template_sends_six_emails_on_days_1_4_8_12_16_21(c):
     flow = c.post("/api/flows/templates/cold_email").json()
     c.post(f"/api/flows/{flow['id']}/activate")
     acme = lead(c)["id"]
     assert enroll(c, flow, acme)["enrolled"] == [acme]
-    for day in (0, 3, 7, 14):
+    for day in range(0, 24):                                  # a tick every day: waits count business days, weekends push a send to Monday
         tick(c, T0 + timedelta(days=day))
     sent = sorted((m for m in flow_outbox(c) if m["lead_id"] == acme), key=lambda m: m["sent_at"])
-    assert [m["sent_at"][:10] for m in sent] == ["2026-11-03", "2026-11-06", "2026-11-10", "2026-11-17"]
+    assert [m["sent_at"][:10] for m in sent] == ["2026-11-03", "2026-11-06", "2026-11-10", "2026-11-16", "2026-11-20", "2026-11-25"]
     assert all(m["status"] == "dry_run" and "/u/" in m["body"] for m in sent)
     assert runs(c, flow)[0]["status"] == "done"
 

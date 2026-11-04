@@ -10,7 +10,7 @@ from tests.source_fakes import FakeHttp
 
 EXPECTED = {"greenhouse", "lever", "workable", "ashby", "smartrecruiters", "recruitee", "zoho_recruit", "adzuna", "jooble", "themuse", "google_cse",
             "brave_search", "osm_overpass", "osm_nominatim", "google_places", "opencorporates", "data_gov_in", "wikidata", "website_deep", "apollo",
-            "hunter", "snov", "prospeo", "dropcontact", "lusha", "rocketreach", "peopledatalabs", "builtin_verifier", "zerobounce", "neverbounce",
+            "hunter", "snov", "prospeo", "dropcontact", "lusha", "rocketreach", "peopledatalabs", "builtin_verifier", "smtp_probe", "zerobounce", "neverbounce",
             "kickbox", "millionverifier", "bouncer"}
 
 
@@ -31,7 +31,7 @@ def test_every_documented_source_is_registered_with_docs_steps_terms_and_a_test(
 def test_plan_is_cheapest_first_free_before_owner_keys():
     ids = list(registry.BY_ID)
     verifiers = [s.id for s in registry.plan("verify_email", ids)]
-    assert verifiers[0] == "builtin_verifier" and set(verifiers[1:]) == {"hunter", "zerobounce", "neverbounce", "kickbox", "millionverifier", "bouncer", "snov"}
+    assert verifiers[0] == "builtin_verifier" and verifiers[1] == "smtp_probe" and set(verifiers[2:]) == {"hunter", "zerobounce", "neverbounce", "kickbox", "millionverifier", "bouncer", "snov"}
     finders = registry.plan("find_email", ids)
     assert finders[0].free and finders[0].id == "website_deep"
     costs = [(not s.free, s.cost) for s in finders]

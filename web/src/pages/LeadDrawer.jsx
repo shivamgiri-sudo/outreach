@@ -343,7 +343,7 @@ export default function LeadDrawer({ id, onClose }) {
         <p className="sub">{sequenceStatus(lead.sequence)}</p>
       ) : (
         <button className="btn ghost" disabled={!lead.email} onClick={() => act(() => api.enroll(id))}>
-          {lead.email ? "Start 4-step email sequence" : "No email — cannot start"}
+          {lead.email ? "Start 6-step email sequence" : "No email — cannot start"}
         </button>
       )}
       <label htmlFor="reply-box">Paste their reply (stops the sequence, detects yes / no / question)</label>

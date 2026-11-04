@@ -10,6 +10,7 @@ lead's real Email 1. A provider-wide problem (bad key, rate limit, outage) pause
 counting as a failure against every lead; each message carries an idempotency key so a retry after a timeout
 can't deliver it twice.
 """
+import re
 import threading
 import uuid
 from datetime import date, datetime, timedelta
@@ -209,6 +210,8 @@ def _compose(lead: dict, step: dict, cfg: dict, offer: dict, base_url: str, now:
     body_text, missing_body = render(step["body"], variables)
     if missing_subject or missing_body:
         return None
+    if re.search(r"\{\{|\}\}", str(lead.get("company") or "")):
+        return None                              # a mail-merge leftover as the company name: never email that lead
     footer = sequences.identity_footer(cfg)
     message = {"lead_id": lead["id"], "to": lead["email"], "subject": subject,
                "body": body_text + (f"\n{footer}" if footer else ""), "step": step["name"],

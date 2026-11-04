@@ -6,13 +6,13 @@ by credit cost. The waterfall (waterfall.py) walks that order and stops once a l
 """
 from . import (adzuna, apollo_src, ashby, brave_search, builtin_verifier, data_gov_in, dropcontact, google_cse, google_places_src,
                greenhouse, hunter_src, jooble, lever, lusha, opencorporates, osm_nominatim, osm_overpass, peopledatalabs, prospeo,
-               recruitee, rocketreach, site_discover, smartrecruiters, snov, themuse, verifiers, wikidata, workable, zoho_recruit)
+               recruitee, rocketreach, site_discover, smartrecruiters, smtp_probe_src, snov, themuse, verifiers, wikidata, workable, zoho_recruit)
 from .base import CAPS, Budget, Cache, Ctx
 
 SOURCES = [m.SPEC for m in (
     greenhouse, lever, workable, ashby, smartrecruiters, recruitee, zoho_recruit, adzuna, jooble, themuse, google_cse, brave_search,
     osm_overpass, osm_nominatim, google_places_src, opencorporates, data_gov_in, wikidata,
-    site_discover, apollo_src, hunter_src, snov, prospeo, dropcontact, lusha, rocketreach, peopledatalabs, builtin_verifier)] + verifiers.SPECS
+    site_discover, apollo_src, hunter_src, snov, prospeo, dropcontact, lusha, rocketreach, peopledatalabs, builtin_verifier, smtp_probe_src)] + verifiers.SPECS
 BY_ID = {s.id: s for s in SOURCES}
 assert len(BY_ID) == len(SOURCES)
 LEGACY_VERIFIER_ID = "email_verifier"        # the older card that holds {provider, api_key} for ZeroBounce / NeverBounce
