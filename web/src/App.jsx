@@ -22,6 +22,7 @@ import Tasks from "./pages/Tasks.jsx";
 import LinkedInQueue from "./pages/LinkedInQueue.jsx";
 import Hygiene from "./pages/Hygiene.jsx";
 import Campaigns from "./pages/Campaigns.jsx";
+import { THEMES, getTheme, setTheme } from "./theme.js";
 
 // [id, label, component, icon]
 const PAGES = [
@@ -139,6 +140,11 @@ export default function App() {
   const [page, setPage] = useState(pageFromHash);
   const [focusLead, setFocusLead] = useState(null);
   const [searching, setSearching] = useState(false);
+  const [theme, setThemeState] = useState(getTheme());
+  const cycleTheme = () => {
+    const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+    setTheme(next); setThemeState(next);
+  };
   const [pending, setPending] = useState(0);
   const [auth, setAuth] = useState({ checked: false, required: false, signedIn: false });
   const [me, setMe] = useState(null);
@@ -207,6 +213,9 @@ export default function App() {
             ))}
           </div>
         ))}
+        <button className="theme-toggle" onClick={cycleTheme} title="Switch between light, dark and the system setting" aria-label={`Colour theme: ${theme}. Click to change.`}>
+          <Icon name={theme === "dark" ? "moon" : theme === "light" ? "sun" : "monitor"} />Theme: {theme === "system" ? "Auto" : theme === "dark" ? "Dark" : "Light"}
+        </button>
         {auth.required && (
           <button className="signout" onClick={signOut} title={me.email ? `${me.name} (${me.role})` : `Signed in as ${me.role}`}>
             <Icon name="logout" />Sign out

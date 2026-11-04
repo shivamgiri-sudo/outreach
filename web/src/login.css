@@ -182,7 +182,7 @@
 
 /* ---------- dark mode follows the system setting, like the rest of the app ---------- */
 @media (prefers-color-scheme: dark) {
-  .login {
+  :root:not([data-theme="light"]) .login {
     --l-page: #0b1120; --l-card: #111a2c; --l-ink: #f1f5f9; --l-body: #cbd5e1; --l-muted: #a0b0c6; --l-line: #22304a;
     --l-field: #0b1322; --l-field-line: #5d7192; --l-placeholder: #8293ab; --l-accent: #7dd3fc; --l-ring: rgba(56,189,248,.22);
     --l-glass: rgba(255,255,255,.055); --l-glass-line: rgba(255,255,255,.13);
@@ -190,21 +190,44 @@
     --t-blue: #84bdec; --t-blue-bg: rgba(32,120,184,.22); --t-green: #9bd982; --t-green-bg: rgba(112,192,80,.17); --t-red: #f4949a; --t-red-bg: rgba(216,48,56,.2);
     --rings: .22;
   }
-  .login-art {
+  :root:not([data-theme="light"]) .login-art {
     background:
       radial-gradient(42rem 26rem at -6% -4%, rgba(229,57,53,.2), transparent 62%),
       radial-gradient(38rem 26rem at 104% 6%, rgba(30,136,229,.24), transparent 62%),
       radial-gradient(44rem 30rem at 62% 104%, rgba(112,192,80,.16), transparent 64%),
       linear-gradient(165deg, #0d1528 0%, #0a1020 100%);
   }
-  .login-art::before { background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.5px); }
-  .login-logo { box-sizing: content-box; padding: 6px 10px; border-radius: 12px; background: #fff; box-shadow: 0 8px 24px -10px rgba(0,0,0,.6); }
-  .login-input input:focus { border-color: #38bdf8; }
-  .login-note.warn { color: #fdba74; }
-  .login-error { background: rgba(248,113,113,.1); border-color: rgba(248,113,113,.35); color: #fecaca; }
-  .login-glass, .login-tile { box-shadow: none; }
-  .login-for img { box-shadow: none; }
+  :root:not([data-theme="light"]) .login-art::before { background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.5px); }
+  :root:not([data-theme="light"]) .login-logo { box-sizing: content-box; padding: 6px 10px; border-radius: 12px; background: #fff; box-shadow: 0 8px 24px -10px rgba(0,0,0,.6); }
+  :root:not([data-theme="light"]) .login-input input:focus { border-color: #38bdf8; }
+  :root:not([data-theme="light"]) .login-note.warn { color: #fdba74; }
+  :root:not([data-theme="light"]) .login-error { background: rgba(248,113,113,.1); border-color: rgba(248,113,113,.35); color: #fecaca; }
+  :root:not([data-theme="light"]) .login-glass, :root:not([data-theme="light"]) .login-tile { box-shadow: none; }
+  :root:not([data-theme="light"]) .login-for img { box-shadow: none; }
 }
+:root[data-theme="dark"] .login {
+    --l-page: #0b1120; --l-card: #111a2c; --l-ink: #f1f5f9; --l-body: #cbd5e1; --l-muted: #a0b0c6; --l-line: #22304a;
+    --l-field: #0b1322; --l-field-line: #5d7192; --l-placeholder: #8293ab; --l-accent: #7dd3fc; --l-ring: rgba(56,189,248,.22);
+    --l-glass: rgba(255,255,255,.055); --l-glass-line: rgba(255,255,255,.13);
+    --l-shadow: 0 1px 2px rgba(0,0,0,.5), 0 22px 44px -18px rgba(0,0,0,.7);
+    --t-blue: #84bdec; --t-blue-bg: rgba(32,120,184,.22); --t-green: #9bd982; --t-green-bg: rgba(112,192,80,.17); --t-red: #f4949a; --t-red-bg: rgba(216,48,56,.2);
+    --rings: .22;
+  }
+:root[data-theme="dark"] .login-art {
+    background:
+      radial-gradient(42rem 26rem at -6% -4%, rgba(229,57,53,.2), transparent 62%),
+      radial-gradient(38rem 26rem at 104% 6%, rgba(30,136,229,.24), transparent 62%),
+      radial-gradient(44rem 30rem at 62% 104%, rgba(112,192,80,.16), transparent 64%),
+      linear-gradient(165deg, #0d1528 0%, #0a1020 100%);
+  }
+:root[data-theme="dark"] .login-art::before { background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.5px); }
+:root[data-theme="dark"] .login-logo { box-sizing: content-box; padding: 6px 10px; border-radius: 12px; background: #fff; box-shadow: 0 8px 24px -10px rgba(0,0,0,.6); }
+:root[data-theme="dark"] .login-input input:focus { border-color: #38bdf8; }
+:root[data-theme="dark"] .login-note.warn { color: #fdba74; }
+:root[data-theme="dark"] .login-error { background: rgba(248,113,113,.1); border-color: rgba(248,113,113,.35); color: #fecaca; }
+:root[data-theme="dark"] .login-glass, :root[data-theme="dark"] .login-tile { box-shadow: none; }
+:root[data-theme="dark"] .login-for img { box-shadow: none; }
+
 
 @keyframes flow-x { from { transform: translateX(-100%); } to { transform: translateX(230%); } }
 @keyframes flow-y { from { transform: translateY(-100%); } to { transform: translateY(230%); } }

@@ -13,7 +13,7 @@
   --hero: radial-gradient(90% 120% at 100% 0%, rgba(30,136,229,.45), transparent 60%), linear-gradient(135deg, #0f172a 0%, #11325a 55%, #0369a1 115%);
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0b1120; --panel: #121a2b; --ink: #e2e8f0; --muted: #a0b0c6; --line: #233049;
     --brand: #7dd3fc; --brand-2: #38bdf8; --brand-soft: #0e2a40; --accent: #fb923c;
     --ok: #4ade80; --warn: #fb923c; --hot: #f472b6;
@@ -21,6 +21,14 @@
     --ring: 0 0 0 3px rgba(56,189,248,.25);
   }
 }
+:root[data-theme="dark"] {
+    --bg: #0b1120; --panel: #121a2b; --ink: #e2e8f0; --muted: #a0b0c6; --line: #233049;
+    --brand: #7dd3fc; --brand-2: #38bdf8; --brand-soft: #0e2a40; --accent: #fb923c;
+    --ok: #4ade80; --warn: #fb923c; --hot: #f472b6;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.2); --shadow-up: 0 12px 30px rgba(0,0,0,.45);
+    --ring: 0 0 0 3px rgba(56,189,248,.25);
+  }
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; font: 14px/1.55 "Plus Jakarta Sans", Inter, system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); word-spacing: .03em; -webkit-font-smoothing: antialiased; }
@@ -79,9 +87,16 @@ h3 { font-size: 16px; font-weight: 700; }
 .tone-violet .stat-icon { background: #ede9fe; color: #6d28d9; }
 .tone-green .stat-icon { background: #dcfce7; color: #15803d; }
 @media (prefers-color-scheme: dark) {
-  .tone-blue .stat-icon { background: #1e2a5a; color: #93c5fd; } .tone-amber .stat-icon { background: #3b2412; color: #fdba74; }
-  .tone-violet .stat-icon { background: #2c2257; color: #c4b5fd; } .tone-green .stat-icon { background: #12341f; color: #86efac; }
+  :root:not([data-theme="light"]) .tone-blue .stat-icon { background: #1e2a5a; color: #93c5fd; }
+  :root:not([data-theme="light"]) .tone-amber .stat-icon { background: #3b2412; color: #fdba74; }
+  :root:not([data-theme="light"]) .tone-violet .stat-icon { background: #2c2257; color: #c4b5fd; }
+  :root:not([data-theme="light"]) .tone-green .stat-icon { background: #12341f; color: #86efac; }
 }
+:root[data-theme="dark"] .tone-blue .stat-icon { background: #1e2a5a; color: #93c5fd; }
+:root[data-theme="dark"] .tone-amber .stat-icon { background: #3b2412; color: #fdba74; }
+:root[data-theme="dark"] .tone-violet .stat-icon { background: #2c2257; color: #c4b5fd; }
+:root[data-theme="dark"] .tone-green .stat-icon { background: #12341f; color: #86efac; }
+
 
 /* ---------- tables, pills, buttons, forms ---------- */
 table { width: 100%; border-collapse: collapse; }
@@ -474,3 +489,7 @@ td small { color: var(--muted); overflow-wrap: anywhere; }
 @media (max-width: 760px) { .bell-panel { left: 8px; right: 8px; width: auto; top: 54px; } }
 .side { z-index: 40; }
 .tabs.scroll { flex-wrap: wrap; overflow: visible; row-gap: 0; }
+:root { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+.side .theme-toggle { margin-top: 8px; }
