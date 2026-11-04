@@ -23,7 +23,7 @@ class ApplyBody(BaseModel):
 
 
 class RunBody(BaseModel):
-    max_leads: int = Field(default=50, ge=1, le=300)
+    max_leads: int = Field(default=50, ge=1, le=1000)
     max_credits: int = Field(default=30, ge=0, le=500)
     dry_run: bool = False
     recheck_guesses: bool = False          # also re-verify guesses that are still unconfirmed (uses paid checks)

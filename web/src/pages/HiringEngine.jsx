@@ -45,7 +45,7 @@ export default function HiringEngine() {
           <b>Run it</b>
           <p className="sub">Works on your busiest hirers first. Emails are only checked, never sent.</p>
           <div className="row">
-            <div><label>Leads to check</label><input type="number" min="1" max="300" value={maxLeads} onChange={(e) => setMaxLeads(e.target.value)} /></div>
+            <div><label>Leads to check</label><input type="number" min="1" max="1000" value={maxLeads} onChange={(e) => setMaxLeads(e.target.value)} /></div>
             <div><label>Most paid checks</label><input type="number" min="0" max="500" value={maxCredits} onChange={(e) => setMaxCredits(e.target.value)} /></div>
           </div>
           <label className="row" style={{ fontWeight: 400, margin: "8px 0 0" }}>
