@@ -54,6 +54,7 @@ from .routes_find_leads import make_router as make_find_leads_router
 from .routes_hiring_engine import make_router as make_hiring_engine_router
 from .routes_reply_inbox import make_router as make_reply_inbox_router
 from .routes_icp import make_router as make_icp_router
+from .routes_signals import make_router as make_signals_router
 from .routes_linkedin_agent import make_router as make_linkedin_agent_router
 from .providers import get_json
 from .senders import make_transactional_sender
@@ -163,7 +164,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                email_transport=post_json, ai_transport=post_json, apollo_transport=post_json,
                channel_transport=None, smtp_factory=None, imap_factory=None, resolver=None,
                inbound_processor=None, delivery_processor=None, campaign_transports=None,
-               capture_graph_transport=None, capture_sheet_fetcher=None) -> FastAPI:
+               capture_graph_transport=None, capture_sheet_fetcher=None, signal_fetch=None) -> FastAPI:
     password = admin_password if admin_password is not None else os.environ.get("OUTREACH_ADMIN_PASSWORD", "")
     limiter = auth.LoginLimiter()
     docs = os.environ.get("OUTREACH_ENABLE_DOCS") == "1"
@@ -415,6 +416,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_hiring_engine_router(store, campaign_io))
     app.include_router(make_reply_inbox_router(store))
     app.include_router(make_icp_router(store, ai_transport))
+    app.include_router(make_signals_router(store, signal_fetch, ai_transport))
     app.include_router(make_linkedin_agent_router(store, transactional_sender))
     app.include_router(make_sources_router(store, campaign_io))
     if os.environ.get("OUTREACH_AUTORUN") == "1":

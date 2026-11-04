@@ -21,6 +21,7 @@ import Meetings from "./pages/Meetings.jsx";
 import Tasks from "./pages/Tasks.jsx";
 import LinkedInQueue from "./pages/LinkedInQueue.jsx";
 import Replies from "./pages/Replies.jsx";
+import Signals from "./pages/Signals.jsx";
 import Hygiene from "./pages/Hygiene.jsx";
 import Campaigns from "./pages/Campaigns.jsx";
 import HiringEngine from "./pages/HiringEngine.jsx";
@@ -33,6 +34,7 @@ const PAGES = [
   ["hygiene", "Data hygiene", Hygiene, "check"],
   ["campaigns", "Campaigns", Campaigns, "rocket"],
   ["engine", "Hiring engine", HiringEngine, "workflow"],
+  ["signals", "Buying signals", Signals, "bell"],
   ["sources", "Data sources", DataSources, "chart"],
   ["insights", "Insights", Insights, "chart"],
   ["growth", "Free experience", Growth, "gift"],
@@ -53,7 +55,7 @@ const PAGES = [
 
 const GROUPS = [
   ["Overview", ["dashboard"]],
-  ["Pipeline", ["leads", "campaigns", "engine", "hygiene", "sources", "insights", "growth"]],
+  ["Pipeline", ["leads", "campaigns", "engine", "signals", "hygiene", "sources", "insights", "growth"]],
   ["Outreach", ["replies", "tasks", "outbox", "linkedin", "flows", "workflows", "templates", "calls", "meetings"]],
   ["Library", ["stories", "prompts"]],
   ["Admin", ["setup", "integrations"]],
