@@ -506,3 +506,4 @@ td small { color: var(--muted); overflow-wrap: anywhere; }
   .find-card > svg, .find-card > .find-icon, .find-card > span:first-child:not(.find-card-text) { display: none; }
   .row > input:not([type="checkbox"]):not([type="radio"]), .row > select { flex-basis: 100%; }
 }
+@media (max-width: 640px) { .fb-name { flex: 1 1 100%; order: 3; } }
