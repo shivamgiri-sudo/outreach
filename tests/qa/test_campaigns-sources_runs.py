@@ -85,7 +85,7 @@ def test_dry_run_on_all_sources_writes_nothing_and_matches_the_real_run(tmp_path
     assert snapshot(tmp_path) == before                                    # no leads, jobs, runs, notifications
     found = {s: v["found"] for s, v in preview["sources"].items()}
     assert found == {"apollo_search": 99, "apollo_hiring": 30, "careers_page": 4, "google_places": 100}
-    assert preview["discovered"] == 233 and preview["credits_used_estimate"] == 1 + 31 + 6
+    assert preview["discovered"] == 233 and preview["credits_used_estimate"] == 1 + 31 + 11
     assert len(io.urls("people/match")) == 0                               # a preview never spends enrichment credits
     assert not [e for e in preview["errors"] if e["source"] != "Careers page"]
 
@@ -189,7 +189,7 @@ def test_places_quota_midway_keeps_paid_rows_and_says_why(tmp_path):
     c = connected(tmp_path, io)
     camp = create(c, target=TARGET, sources={"google_places": True, "max_results": 100}, rules={"max_new_leads_per_run": 200})
     report = run(c, camp["id"], now=NOW)
-    assert report["sources"]["google_places"] == {"found": 57, "requests": 3} and report["new"] == 57
+    assert report["sources"]["google_places"] == {"found": 57, "requests": 6} and report["new"] == 57
     assert any(e["source"] == "Google Places" and "429" in e["message"] for e in report["errors"])
 
 

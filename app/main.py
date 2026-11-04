@@ -70,6 +70,15 @@ from .unsubscribe import ensure_cutover
 
 BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
 PUBLIC_API_PATHS = ("/api/login", "/api/auth/status")
+def open_store(data_file):
+    """JSON file by default; MySQL when OUTREACH_DATABASE_URL is set (the data file path is then only used for restore copies)."""
+    url = os.environ.get("OUTREACH_DATABASE_URL", "").strip()
+    if url:
+        from .store_mysql import MySqlStore
+        return MySqlStore(data_file, url)
+    return Store(data_file)
+
+
 DEFAULT_DATA_FILE = Path(os.environ.get("OUTREACH_DATA_FILE") or Path(__file__).resolve().parent.parent / "data" / "store.json")
 
 
@@ -158,7 +167,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                   redoc_url="/redoc" if docs else None, openapi_url="/openapi.json" if docs else None)
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
                        allow_methods=["*"], allow_headers=["*"], expose_headers=["X-Renewed-Token"])
-    store = Store(data_file)
+    store = open_store(data_file)
     app.state.store = store
     ensure_cutover(store)                     # signed unsubscribe links start now; older unsigned ones get 60 days
     source_names.backfill(store)              # adds source_id next to source on older leads (idempotent, never rewrites source)
