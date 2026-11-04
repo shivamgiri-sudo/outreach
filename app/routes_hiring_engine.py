@@ -26,6 +26,7 @@ class RunBody(BaseModel):
     max_leads: int = Field(default=50, ge=1, le=300)
     max_credits: int = Field(default=30, ge=0, le=500)
     dry_run: bool = False
+    recheck_guesses: bool = False          # also re-verify guesses that are still unconfirmed (uses paid checks)
 
 
 def make_router(store, transports: dict) -> APIRouter:
@@ -33,7 +34,7 @@ def make_router(store, transports: dict) -> APIRouter:
 
     @router.post("/api/hiring-engine/run")
     def run(body: RunBody):
-        return he.run_engine(store, transports, datetime.now(timezone.utc), body.max_leads, body.max_credits, body.dry_run)
+        return he.run_engine(store, transports, datetime.now(timezone.utc), body.max_leads, body.max_credits, body.dry_run, body.recheck_guesses)
 
     @router.get("/api/hiring-engine/candidates")
     def candidates(max_leads: int = 50):

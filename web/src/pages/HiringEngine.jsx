@@ -20,12 +20,13 @@ export default function HiringEngine() {
   const [report, setReport] = useState(null);
   const [maxLeads, setMaxLeads] = useState(50);
   const [maxCredits, setMaxCredits] = useState(30);
+  const [recheck, setRecheck] = useState(false);
   const load = () => { setError(""); api.hiringSummary().then(setData).catch((e) => setError(e.message)); };
   useEffect(() => { load(); }, []);
 
   const run = async (dry) => {
     setBusy(true); setReport(null);
-    try { setReport({ ...(await api.hiringRun({ max_leads: Number(maxLeads), max_credits: Number(maxCredits), dry_run: dry })), dry }); load(); }
+    try { setReport({ ...(await api.hiringRun({ max_leads: Number(maxLeads), max_credits: Number(maxCredits), dry_run: dry, recheck_guesses: recheck })), dry }); load(); }
     catch (e) { setError(e.message); }
     setBusy(false);
   };
@@ -47,6 +48,10 @@ export default function HiringEngine() {
             <div><label>Leads to check</label><input type="number" min="1" max="300" value={maxLeads} onChange={(e) => setMaxLeads(e.target.value)} /></div>
             <div><label>Most paid checks</label><input type="number" min="0" max="500" value={maxCredits} onChange={(e) => setMaxCredits(e.target.value)} /></div>
           </div>
+          <label className="row" style={{ fontWeight: 400, margin: "8px 0 0" }}>
+            <input type="checkbox" style={{ width: "auto" }} checked={recheck} onChange={(e) => setRecheck(e.target.checked)} />
+            Also re-check guesses that are still unconfirmed (uses paid checks)
+          </label>
           <div className="row" style={{ marginTop: 10 }}>
             <button className="btn ghost" disabled={busy} onClick={() => run(true)}>Preview (changes nothing)</button>
             <button className="btn" disabled={busy} onClick={() => run(false)}>{busy ? "Working…" : "Run the engine"}</button>

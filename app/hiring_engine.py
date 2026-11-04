@@ -198,7 +198,8 @@ def apply_checks(store, results: list) -> dict:
     return report
 
 
-def run_engine(store, transports: dict, now, max_leads: int = 50, max_credits: int = 30, dry_run: bool = False) -> dict:
+def run_engine(store, transports: dict, now, max_leads: int = 50, max_credits: int = 30, dry_run: bool = False,
+               recheck: bool = False) -> dict:
     """Classify the posters, then build and verify email guesses for decision makers who have no email."""
     leads = [l for l in store.read("leads") if not l.get("is_test")]
     report = {"checked": 0, "agencies": 0, "employers": 0, "guessed": 0, "confirmed": 0, "kept_as_guess": 0, "rejected": 0,
@@ -213,7 +214,8 @@ def run_engine(store, transports: dict, now, max_leads: int = 50, max_credits: i
         report["agencies" if poster["kind"] == "agency" else "employers"] += 1
         domain = valid_domain(lead.get("domain")) or ""
         first, last = split_name(lead.get("contact_name"))
-        needs_email = not lead.get("email") and not lead.get("email_guess") and lead.get("email_guess_status") != "rejected"
+        open_guess = lead.get("email_guess") and lead.get("email_guess_status") in ("unconfirmed", "risky")
+        needs_email = not lead.get("email") and lead.get("email_guess_status") != "rejected" and (not lead.get("email_guess") or (recheck and open_guess))
         if poster["kind"] != "agency" and needs_email:
             if not (first and domain):
                 report["skipped_no_name_or_domain"] += 1

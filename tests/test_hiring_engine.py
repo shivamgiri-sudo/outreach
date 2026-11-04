@@ -140,3 +140,17 @@ def test_checks_done_on_another_machine_are_applied_with_the_same_rules(tmp_path
     assert not by_id["l3"].get("email") and by_id["l3"]["email_guess_status"] == "risky"         # catch-all proves nothing
     assert report["confirmed"] == 1 and report["ignored"] == 1
     assert client.get("/api/hiring-engine/candidates").json() == []
+
+
+def test_recheck_reverifies_unconfirmed_guesses_only_when_asked(monkeypatch, tmp_path):
+    client, store, fake = run_with(monkeypatch, tmp_path, {"anita.desai@acme.in": "valid"})
+    lead(store, id="l1", company="Acme", domain="acme.in", contact_name="Anita Desai", open_roles=3, email_guess="anita@acme.in",
+         email_guess_status="unconfirmed")
+    lead(store, id="l2", company="Beta", domain="beta.in", contact_name="Bina Shah", open_roles=2, email_guess="bina@beta.in",
+         email_guess_status="rejected")
+    he.run_engine(store, {}, NOW)
+    assert fake.asked == []                                          # default: an open guess is left alone
+    report = he.run_engine(store, {}, NOW, recheck=True)
+    saved = {l["id"]: l for l in store.read("leads")}
+    assert fake.asked == ["anita.desai@acme.in"] and saved["l1"]["email"] == "anita.desai@acme.in" and report["confirmed"] == 1
+    assert not saved["l2"].get("email")                              # a rejected set is never retried
