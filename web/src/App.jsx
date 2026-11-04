@@ -20,6 +20,7 @@ import Integrations from "./pages/Integrations.jsx";
 import Meetings from "./pages/Meetings.jsx";
 import Tasks from "./pages/Tasks.jsx";
 import LinkedInQueue from "./pages/LinkedInQueue.jsx";
+import Replies from "./pages/Replies.jsx";
 import Hygiene from "./pages/Hygiene.jsx";
 import Campaigns from "./pages/Campaigns.jsx";
 import HiringEngine from "./pages/HiringEngine.jsx";
@@ -40,6 +41,7 @@ const PAGES = [
   ["outbox", "Outbox & sending", Outbox, "send"],
   ["calls", "Priya's call desk", CallDesk, "phone"],
   ["meetings", "Meetings", Meetings, "calendar"],
+  ["replies", "Replies", Replies, "inbox"],
   ["tasks", "Tasks & follow-ups", Tasks, "tasks"],
   ["linkedin", "LinkedIn outreach", LinkedInQueue, "users"],
   ["templates", "Sequences & templates", Templates, "mail"],
@@ -52,7 +54,7 @@ const PAGES = [
 const GROUPS = [
   ["Overview", ["dashboard"]],
   ["Pipeline", ["leads", "campaigns", "engine", "hygiene", "sources", "insights", "growth"]],
-  ["Outreach", ["tasks", "outbox", "linkedin", "flows", "workflows", "templates", "calls", "meetings"]],
+  ["Outreach", ["replies", "tasks", "outbox", "linkedin", "flows", "workflows", "templates", "calls", "meetings"]],
   ["Library", ["stories", "prompts"]],
   ["Admin", ["setup", "integrations"]],
 ];

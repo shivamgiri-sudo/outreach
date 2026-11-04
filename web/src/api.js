@@ -105,6 +105,7 @@ export const api = {
   clearStuck: (id) => request(`/api/leads/${id}/sequence/clear-stuck`, { method: "POST" }),
   clearPractice: () => request("/api/practice/clear", { method: "POST" }),
   inbox: () => request("/api/inbox"),
+  replyInbox: (q = {}) => request(`/api/reply-inbox?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== "" && v !== undefined).map(([k, v]) => [k, String(v)]))}`),
   leadActivity: (id) => request(`/api/leads/${id}/activity`),
   logActivity: (id, body) => request(`/api/leads/${id}/activity`, { method: "POST", body }),
   taskBoard: (owner = "") => request(`/api/tasks/board${owner ? `?owner=${encodeURIComponent(owner)}` : ""}`),
