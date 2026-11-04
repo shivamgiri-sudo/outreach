@@ -29,6 +29,8 @@ ALLOWED = (                             # (method, path regex) an extension toke
     ("GET", re.compile(r"^/api/extension/match$")),
     ("GET", re.compile(r"^/api/extension/queue$")),
     ("POST", re.compile(r"^/api/extension/leads/[^/]+/(sent|accepted|replied)$")),
+    ("GET", re.compile(r"^/api/extension/agent$")),                  # the LinkedIn agent program on your computer
+    ("POST", re.compile(r"^/api/extension/agent/event$")),
 )
 GRACE = timedelta(hours=12)             # same "due" window as the web queue
 COMPANY_NOISE = re.compile(r"\b(pvt|private|ltd|limited|llp|inc|incorporated|co|corp|corporation|the)\b")
