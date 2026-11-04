@@ -25,6 +25,14 @@ function FlowList({ onOpen }) {
     api.flows().then(setFlows).catch((e) => { setError(e.message); setFlows([]); });
     api.flowTemplates().then(setTemplates).catch(() => setTemplates([]));
   }, []);
+  const importFile = async (file) => {
+    if (!file) return;
+    setError("");
+    try {
+      if (file.size > 500_000) throw new Error("That file is too big to be a flow.");
+      onOpen((await api.importFlow(JSON.parse(await file.text()))).id);
+    } catch (e) { setError(e instanceof SyntaxError ? "That file is not a flow (it is not valid JSON)." : e.message); }
+  };
   const create = async (make) => {
     setError("");
     try { onOpen((await make()).id); } catch (e) { setError(e.message); }
@@ -39,6 +47,8 @@ function FlowList({ onOpen }) {
       <div className="row" style={{ marginBottom: 16 }}>
         <button type="button" className="btn" onClick={() => setPicking(!picking)} aria-expanded={picking}>New from template</button>
         <button type="button" className="btn ghost" onClick={() => create(() => api.createFlow({ name: "Untitled flow" }))}>Blank flow</button>
+        <label className="btn ghost" style={{ cursor: "pointer" }}>Import a flow
+          <input type="file" accept="application/json,.json" hidden onChange={(e) => { importFile(e.target.files?.[0]); e.target.value = ""; }} /></label>
       </div>
       {picking && (
         <div className="grid g2" style={{ marginBottom: 16 }} data-testid="flow-templates">

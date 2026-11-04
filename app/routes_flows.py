@@ -21,9 +21,19 @@ from .whatsapp import TEMPLATES as WHATSAPP_TEMPLATES
 
 BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
 MAX_BULK = 500
+EXPORT_FORMAT = "mcn-flow-1"
 
 
 class FlowBody(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    nodes: Optional[list] = None
+    edges: Optional[list] = None
+    settings: Optional[dict] = None
+
+
+class ImportBody(BaseModel):
+    format: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None
     nodes: Optional[list] = None
@@ -126,6 +136,26 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
             raise HTTPException(400, str(exc))
         store.update("flows", lambda rows: [*rows, flow])
         return present(flow)
+
+    @router.post("/api/flows/import")
+    def import_flow(body: ImportBody):
+        """A flow exported from this app (or written by hand). It arrives as a draft: you check it, then turn it on."""
+        if body.format not in (None, EXPORT_FORMAT):
+            raise HTTPException(400, "This file is not a flow exported from this app.")
+        if not body.nodes:
+            raise HTTPException(400, "The file has no steps.")
+        try:
+            flow = build_flow(f"{body.name or 'Imported flow'} (imported)"[:80], body.description or "", body.nodes, body.edges, body.settings)
+        except FlowError as exc:
+            raise HTTPException(400, str(exc))
+        store.update("flows", lambda rows: [*rows, flow])
+        return present(flow)
+
+    @router.get("/api/flows/{flow_id}/export")
+    def export_flow(flow_id: str):
+        flow = find(flow_id)
+        return {"format": EXPORT_FORMAT, "name": flow["name"], "description": flow.get("description", ""),
+                "nodes": flow["nodes"], "edges": flow["edges"], "settings": flow.get("settings") or {}}
 
     @router.get("/api/flows/{flow_id}")
     def get_flow(flow_id: str):

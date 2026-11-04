@@ -194,6 +194,16 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
     } catch (e) { say(e.message, true); } finally { setBusy(false); }
   };
 
+  const exportFlow = async () => {
+    try {
+      const data = await api.exportFlow(flowId);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = `${(data.name || "flow").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      say(dirty ? "Exported the last saved version. Save first to include your latest changes." : "Exported.");
+    } catch (e) { say(e.message, true); }
+  };
   if (!flow) return <p className="empty">{note.text || "Loading…"}</p>;
   const [pill, word] = STATUS[flow.status] || ["", flow.status];
 
@@ -227,6 +237,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
           {view === "list" ? "Canvas view" : "List view"}
         </button>
         <span className="fb-spacer" />
+        <button type="button" className="btn ghost" onClick={exportFlow}>Export</button>
         <button type="button" className="btn ghost" onClick={validate}>Validate</button>
         <button type="button" className="btn" onClick={save} disabled={busy || !dirty}>Save</button>
         {flow.status === "active"
