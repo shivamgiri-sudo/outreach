@@ -468,3 +468,7 @@ details.section summary { cursor: pointer; font-weight: 700; }
 .row > div:has(> label) > input:not([type="checkbox"]), .row > div:has(> label) > select { width: 100%; }
 td, th { vertical-align: middle; }
 td small { color: var(--muted); overflow-wrap: anywhere; }
+.bell-panel { position: fixed; left: 264px; right: auto; top: 12px; width: min(380px, calc(100vw - 280px)); max-height: calc(100vh - 24px); overflow-y: auto; }
+.bell-item { overflow-wrap: anywhere; }
+@media (max-width: 1000px) { .bell-panel { left: 88px; width: min(380px, calc(100vw - 100px)); } }
+@media (max-width: 760px) { .bell-panel { left: 8px; right: 8px; width: auto; top: 54px; } }
