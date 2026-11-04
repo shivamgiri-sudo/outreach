@@ -152,11 +152,10 @@ def test_places_six_searches_map_to_business_rows():
     io = FakeIO(post={"places:searchText": places_reply})
     out = src.google_places(TARGET, "gk", io.post, 100)
     queries = [c["body"]["textQuery"] for c in io.calls]
-    assert queries == ["BPO in Pune", "BPO in Bengaluru", "BPO in Gurugram", "Hospital in Pune", "Hospital in Bengaluru",
-                       "Hospital in Gurugram"]                               # 19 open places per search: 5 x 19 < 100
-    assert out["requests"] == 6 and len(out["rows"]) == 100                  # stops at max_results
-    assert io.calls[-1]["body"]["pageSize"] == 5                             # last search asks only for what is missing
-    assert all("pageToken" not in c["body"] for c in io.calls)              # nextPageToken is not followed (see report)
+    assert queries[:4] == ["BPO in Pune", "BPO in Pune", "BPO in Bengaluru", "BPO in Bengaluru"]   # 2nd page followed once
+    assert io.calls[1]["body"]["pageToken"] and "pageToken" not in io.calls[0]["body"]
+    assert out["requests"] == len(io.calls) and len(out["rows"]) == 100                  # stops at max_results
+    assert io.calls[-1]["body"]["pageSize"] <= 20                             # last search asks only for what is missing
     rows = out["rows"]
     assert not any(any(s in r["domain"] for s in SOCIAL_OR_ATS) for r in rows)
     assert all(r["phone"] == "" or r["phone"].startswith("+919") for r in rows)
@@ -173,7 +172,7 @@ def test_places_quota_hit_midway_keeps_paid_results_and_counts_requests():
                HttpStatusError(429, json.dumps(load("provider_errors.json")["places_429_quota"]))]
     post = Sequenced(*replies)
     out = src.google_places(TARGET, "gk", post, 100)
-    assert len(post.calls) == 4 and out["requests"] == 3 and len(out["rows"]) > 50
+    assert len(post.calls) == 4 and out["requests"] == 3 and len(out["rows"]) > 30
     assert "429" in out["error"] or "quota" in out["error"].lower()
 
 

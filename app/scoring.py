@@ -64,10 +64,28 @@ def score_lead(lead: dict, weights: dict = DEFAULT_WEIGHTS) -> dict:
     }
     signals = {name: round(parts[name] * weights[name], 1) for name in parts}
     score = min(100, round(sum(signals.values())))
-    return {"score": score, "signals": signals, "band": band(score)}
+    return {"score": score, "signals": signals, "band": band(score), "reasons": reasons(lead, parts)}
 
 
 def band(score: float) -> str:
     if score >= HOT_THRESHOLD:
         return "hot"
     return "warm" if score >= WARM_THRESHOLD else "cold"
+
+
+def reasons(lead: dict, parts: dict) -> list:
+    """Plain-words 'why this lead', strongest signal first; only signals that actually fired."""
+    out = []
+    if parts["hiring_volume"]:
+        out.append((parts["hiring_volume"] * DEFAULT_WEIGHTS["hiring_volume"], f"{lead.get('open_roles')} open role(s) right now"))
+    if parts["hiring_pain"]:
+        age, repost = lead.get("max_job_age_days") or 0, lead.get("repost_count") or 0
+        text = f"a role open {age} days" + (f", reposted {repost}x" if repost else "") if age else f"a role reposted {repost}x"
+        out.append((parts["hiring_pain"] * DEFAULT_WEIGHTS["hiring_pain"], text + " (hard to fill)"))
+    if parts["fit"]:
+        out.append((parts["fit"] * DEFAULT_WEIGHTS["fit"], "right size and in India" if parts["fit"] >= 1 else "partly in our target size/location"))
+    if parts["engagement"]:
+        out.append((parts["engagement"] * DEFAULT_WEIGHTS["engagement"], "has opened, clicked or replied"))
+    if parts["intent"]:
+        out.append((parts["intent"] * DEFAULT_WEIGHTS["intent"], "said yes to being contacted"))
+    return [text for _w, text in sorted(out, key=lambda item: -item[0])]

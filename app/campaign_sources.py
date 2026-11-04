@@ -23,10 +23,12 @@ APOLLO_JOB_POSTINGS_URL = APOLLO_BASE + "/organizations/{org_id}/job_postings"
 APOLLO_PER_PAGE_MAX = 100
 APOLLO_LOCKED_PREFIX = "email_not_unlocked"
 PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
-PLACES_FIELD_MASK = ("places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,"
+PLACES_FIELD_MASK = ("nextPageToken,places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,"
                      "places.internationalPhoneNumber,places.websiteUri,places.businessStatus,places.googleMapsUri")
 PLACES_PAGE_MAX = 20
+PLACES_MAX_PAGES = 3          # Google returns at most 60 places per search (3 pages of 20)
 MAX_QUERIES = 10
+MAX_AREA_QUERIES = 30
 MAX_ROLE_TITLES = 2
 # Decision makers for an AI screening + interview-booking product.
 DEFAULT_PERSON_TITLES = ["HR Head", "Head of HR", "HR Manager", "Talent Acquisition", "Talent Acquisition Manager",
@@ -222,8 +224,13 @@ def map_place(place: dict, city: str) -> dict:
 
 
 def places_queries(target: dict) -> list:
+    """'<kind> in <city>' per kind and city; with `areas` (neighbourhoods) it becomes '<kind> in <area>, <city>', which
+    gets past Google's 60-result cap per search."""
     kinds = _clean_list(target.get("industries")) or _clean_list(target.get("keywords")) or ["companies"]
     cities = _clean_list(target.get("cities")) or ["India"]
+    areas = _clean_list(target.get("areas"))
+    if areas and cities != ["India"]:
+        return [(f"{kind} in {area}, {city}", city) for kind in kinds for city in cities for area in areas][:MAX_AREA_QUERIES]
     return [(f"{kind} in {city}", city if city != "India" else "") for kind in kinds for city in cities][:MAX_QUERIES]
 
 
@@ -233,29 +240,45 @@ def _places_key_problem(exc: Exception) -> bool:
 
 
 def google_places(target: dict, key: str, post, max_results: int) -> dict:
-    """Places Text Search (New): '<industry> in <city>' -> businesses with website and office phone."""
-    rows, requests = [], 0
+    """Places Text Search (New): '<industry> in <city>' -> businesses with website and office phone. Follows
+    nextPageToken (up to 3 pages) and skips a place already returned by an earlier query."""
+    rows, requests, seen = [], 0, set()
     headers = {"X-Goog-Api-Key": key, "X-Goog-FieldMask": PLACES_FIELD_MASK}
+
+    def done():
+        return {"rows": [r for r in rows if r["company"]][:max_results], "requests": requests}
+
     for query, city in places_queries(target):
-        if len(rows) >= max_results:
-            break
-        body = {"textQuery": query, "pageSize": min(PLACES_PAGE_MAX, max_results - len(rows)), "regionCode": "IN", "languageCode": "en"}
-        try:
-            reply = post(PLACES_SEARCH_URL, headers, body)
-        except PermissionError as exc:
-            raise KeyRejected("Google rejected the Places API key (or the Places API is not enabled for it).") from exc
-        except OSError as exc:
-            if _places_key_problem(exc):
-                raise KeyRejected("Google says the Places API key is not valid.") from exc
-            if not requests:
-                raise
-            return {"rows": [r for r in rows if r["company"]][:max_results], "requests": requests,      # keep paid results
-                    "error": f"Stopped after {requests} search(es): {str(exc)[:200]}"}
-        requests += 1
-        for place in reply.get("places") or []:
-            if isinstance(place, dict) and place.get("businessStatus") != "CLOSED_PERMANENTLY":
+        token = ""
+        for _page in range(PLACES_MAX_PAGES):
+            if len(rows) >= max_results:
+                return done()
+            body = {"textQuery": query, "pageSize": min(PLACES_PAGE_MAX, max_results - len(rows)), "regionCode": "IN", "languageCode": "en"}
+            if token:
+                body["pageToken"] = token
+            try:
+                reply = post(PLACES_SEARCH_URL, headers, body)
+            except PermissionError as exc:
+                raise KeyRejected("Google rejected the Places API key (or the Places API is not enabled for it).") from exc
+            except OSError as exc:
+                if _places_key_problem(exc):
+                    raise KeyRejected("Google says the Places API key is not valid.") from exc
+                if not requests:
+                    raise
+                return {**done(), "error": f"Stopped after {requests} search(es): {str(exc)[:200]}"}      # keep paid results
+            requests += 1
+            for place in reply.get("places") or []:
+                if not isinstance(place, dict) or place.get("businessStatus") == "CLOSED_PERMANENTLY":
+                    continue
+                if place.get("id") and place["id"] in seen:
+                    continue
+                seen.add(place.get("id"))
                 rows.append(map_place(place, city))
-    return {"rows": [r for r in rows if r["company"]][:max_results], "requests": requests}
+            new_token = reply.get("nextPageToken") or ""
+            if not new_token or new_token == token:       # no more pages, or the same page handed back
+                break
+            token = new_token
+    return done()
 
 
 def check_places(entry: dict, post) -> dict:

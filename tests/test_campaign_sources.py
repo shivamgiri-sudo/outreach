@@ -170,3 +170,22 @@ def test_google_places_is_a_lead_data_connector_and_setup_tests_spend_no_credits
     assert shown["values"]["api_key"] == "••••1234" and shown["status"] == "configured"
     assert c.post("/api/integrations/google_places/test", json={}).json()["ok"] is True
     assert io.calls[-1]["headers"]["X-Goog-FieldMask"] == "places.id"
+
+
+def test_places_follows_next_page_and_skips_duplicates():
+    page1 = {"places": [{"id": "a", "displayName": {"text": "A Co"}}, {"id": "b", "displayName": {"text": "B Co"}}], "nextPageToken": "t2"}
+    page2 = {"places": [{"id": "b", "displayName": {"text": "B Co"}}, {"id": "c", "displayName": {"text": "C Co"}}]}
+    replies = iter([page1, page2])
+    calls = []
+
+    def post(url, headers, body):
+        calls.append(body)
+        return next(replies)
+    out = src.google_places({**TARGET, "cities": ["Pune"]}, "k", post, 25)
+    assert [r["company"] for r in out["rows"]] == ["A Co", "B Co", "C Co"] and out["requests"] == 2
+    assert "pageToken" not in calls[0] and calls[1]["pageToken"] == "t2"
+
+
+def test_places_areas_widen_the_search():
+    queries = src.places_queries({**TARGET, "industries": ["BPO"], "cities": ["Pune"], "areas": ["Baner", "Hinjewadi"]})
+    assert queries == [("BPO in Baner, Pune", "Pune"), ("BPO in Hinjewadi, Pune", "Pune")]
