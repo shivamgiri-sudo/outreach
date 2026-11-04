@@ -353,9 +353,27 @@ def enrich(store, campaign: dict, transports: dict, report: dict) -> None:
 
 
 # ---------- verification, scoring, qualification ----------
+def _verify_one(store, transports: dict, config: dict, email: str) -> str:
+    """valid / invalid / risky for one address: the old ZeroBounce / NeverBounce calls, or a newer verifier from the source registry."""
+    spec = config.get("spec")
+    if spec is None:
+        return src.verify_email(email, config, transports["get"])
+    from .sources import registry
+    ctx = registry.make_ctx(store, transports, 1000).bind(spec, {"api_key": config["api_key"]})
+    result = spec.verify(ctx, email)
+    if result["status"] not in ("valid", "invalid", "risky"):
+        raise OSError(f"{spec.title}: no verdict")
+    return result["status"]
+
+
 def verify(store, campaign: dict, transports: dict, report: dict) -> None:
     """Syntax, business domain and shared-mailbox checks; the connected email verifier when it can be called."""
     config = src.verifier_config(store.read("integrations"))
+    if config and not config["supported"]:
+        from .sources import registry                    # the newer verifiers (Kickbox, MillionVerifier, Bouncer, Emailable…) also work here
+        spec = registry.BY_ID.get(config["provider"])
+        if spec is not None and spec.verify is not None:
+            config = {**config, "supported": True, "spec": spec}
     if config and not config["supported"]:
         add_error(report, "email_verifier", f"'{config['provider'] or 'unnamed'}' cannot be called automatically yet "
                                             "(ZeroBounce and NeverBounce can). Emails are marked unverified.")
@@ -377,7 +395,7 @@ def verify(store, campaign: dict, transports: dict, report: dict) -> None:
         elif usable and not stopped and calls < cap:
             try:
                 calls += 1
-                status, check["provider"] = src.verify_email(email, usable, transports["get"]), usable["provider"]
+                status, check["provider"] = _verify_one(store, transports, usable, email), usable["provider"]
                 report["credits_used_estimate"] += 1
             except (src.KeyRejected, PermissionError) as exc:
                 stopped, status = True, "unverified"

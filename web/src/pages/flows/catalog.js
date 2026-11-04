@@ -7,7 +7,7 @@ export const NODE_W = 220;
 export const NODE_H = 68;
 export const PORT_GAP = 64;
 
-export const GROUPS = [["trigger", "Triggers"], ["logic", "Logic"], ["action", "Actions"]];
+export const GROUPS = [["trigger", "Triggers"], ["logic", "Logic"], ["action", "Actions"], ["note", "Notes"]];
 
 const ICONS = {
   bolt: "M13 2 3 14h9l-1 8 10-12h-9l1-8z",
@@ -30,6 +30,12 @@ const ICONS = {
   bell: "M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0",
   globe: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20",
   stop: "M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9zM9 9h6v6H9z",
+  sparkles: "M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 3v4M21 5h-4M5 17v4M7 19H3",
+  sliders: "M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6",
+  note: "M5 3h14a2 2 0 0 1 2 2v10l-6 6H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM15 21v-4a2 2 0 0 1 2-2h4",
+  plus: "M12 5v14M5 12h14",
+  copy: "M9 9h11a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1zM5 15H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1",
+  power: "M18.4 6.6a9 9 0 1 1-12.8 0M12 2v10",
 };
 export const iconPath = (name) => ICONS[name] || ICONS.bolt;
 
@@ -93,6 +99,17 @@ export const TYPES = {
   notify: ["action", "Notify a person", "bell", ["next"], { message: "" }, "An in-app notification (and an email when reminder emails are on)."],
   webhook: ["action", "Webhook", "globe", ["next", "error"], { url: "", include_contact: false }, "POSTs the lead's basic details as JSON to a public https address."],
   stop: ["action", "Stop", "stop", [], {}, "Ends the flow for this lead."],
+  "trigger.schedule": ["trigger", "On a schedule", "clock", ["next"], { when: "weekdays", hour: 10, limit: 30 },
+    "Runs by itself at the hour you pick (India time) and starts matching leads that are not in the flow yet, up to a limit."],
+  ai: ["action", "Ask Claude", "sparkles", ["next", "error"], { mode: "draft", prompt: "", save_as: "answer", options: [] },
+    "Claude writes a draft, picks one of your options, or pulls out a detail. The answer is saved under a name you can use as {{name}} in later steps."],
+  set_vars: ["action", "Set fields", "sliders", ["next"], { values: [{ name: "pitch", value: "" }] },
+    "Make named fields from the lead's details, for example pitch = Hiring for {{role}} at {{company}}. Use them as {{pitch}} in later steps."],
+  switch: ["logic", "Switch", "split", null, { field: "band", cases: ["hot", "warm"] },
+    "Looks at one value and sends the lead down the matching path (up to 4), or 'other' when nothing matches."],
+  http: ["action", "HTTP request", "globe", ["next", "error"], { method: "GET", url: "", body: "", save_as: "" },
+    "Calls a public https address and can save the answer for later steps. Private and internal addresses are always refused."],
+  note: ["note", "Sticky note", "note", [], { text: "" }, "A comment on the canvas for you and your team. It never runs."],
 };
 
 export const groupOf = (type) => TYPES[type]?.[0] || "action";
@@ -105,10 +122,26 @@ export const startingConfig = (type) => JSON.parse(JSON.stringify(TYPES[type]?.[
 
 export function outputsOf(node, edges = []) {
   const fixed = TYPES[node.type]?.[3];
+  if (node.type === "switch") {
+    const cases = (node.config?.cases || []).filter((v) => String(v).trim() !== "").slice(0, 4);
+    const used = edges.filter((e) => e.from === node.id).map((e) => e.label).filter((l) => /^c[1-4]$/.test(l));
+    const count = Math.max(cases.length, ...used.map((l) => Number(l[1])), 1);
+    return [...Array.from({ length: count }, (_, i) => `c${i + 1}`), "other"];
+  }
   if (fixed) return fixed;
   const chosen = node.config?.branches?.length ? node.config.branches : DEFAULT_BRANCHES;
   const used = edges.filter((e) => e.from === node.id).map((e) => e.label);
   return REPLY_OUTPUTS.filter((o) => chosen.includes(o) || used.includes(o));
+}
+
+// The words shown on a path leaving a step. A Switch shows the value each path matches.
+export function outputLabel(node, label) {
+  if (node?.type === "switch") {
+    if (label === "other") return "other";
+    const value = (node.config?.cases || [])[Number(label.slice(1)) - 1];
+    return value ? String(value) : label;
+  }
+  return OUTPUT_LABELS[label] ?? label;
 }
 
 const host = (url) => { try { return new URL(url).host; } catch { return url || "no address yet"; } };
@@ -137,6 +170,12 @@ export function summaryOf(node, caller = "Priya") {
     case "add_tag": return c.tag ? `#${c.tag}` : "No tag yet";
     case "notify": return `To ${c.to || caller}: ${c.message || "…"}`;
     case "webhook": return `POST to ${host(c.url)}`;
+    case "trigger.schedule": return `${{ daily: "Every day", weekdays: "Every weekday", weekly: "Every week" }[c.when] || "Pick when"} at ${String(c.hour ?? 10).padStart(2, "0")}:00 IST`;
+    case "ai": return `${{ draft: "Writes a draft", classify: "Picks: " + (c.options || []).join(", "), extract: "Pulls out a detail" }[c.mode] || "Pick what Claude does"} → {{${c.save_as || "?"}}}`;
+    case "set_vars": return (c.values || []).map((v) => v.name).filter(Boolean).join(", ") || "No fields yet";
+    case "switch": return `On ${c.field?.startsWith("var:") ? c.field.slice(4) : IF_FIELDS[c.field]?.[0] || "?"}`;
+    case "http": return `${c.method || "GET"} ${host(c.url)}`;
+    case "note": return c.text || "Empty note";
     case "stop": return "End here";
     default: return "";
   }

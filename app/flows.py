@@ -62,8 +62,22 @@ NODE_TYPES = {
     "notify": ("action", "Notify a person", ("next",)),
     "webhook": ("action", "Webhook", ("next", "error")),
     "stop": ("action", "Stop", ()),
+    # n8n-style additions: a schedule trigger, an AI step, variables, a multi-way switch, a generic HTTP call and sticky notes
+    "trigger.schedule": ("trigger", "On a schedule", ("next",)),
+    "ai": ("action", "Ask Claude", ("next", "error")),
+    "set_vars": ("action", "Set fields", ("next",)),
+    "switch": ("logic", "Switch", ("c1", "c2", "c3", "c4", "other")),
+    "http": ("action", "HTTP request", ("next", "error")),
+    "note": ("note", "Note", ()),
 }
 WAIT_TYPES = ("wait", "wait_for_reply")
+VAR_NAME = re.compile(r"^[a-z][a-z0-9_]{0,29}$")
+RESERVED_VARS = frozenset({"greeting", "first_name", "company", "role", "sender", "unsub_link", "demo_link", "offer_line"})
+AI_MODES = ("draft", "classify", "extract")
+SCHEDULE_WHEN = ("daily", "weekdays", "weekly")
+HTTP_METHODS = ("GET", "POST")
+MAX_PROMPT, MAX_VAR_VALUE = 2000, 500
+MAX_VARS_PER_STEP, MAX_SWITCH_CASES = 8, 4
 
 
 class FlowError(ValueError):
@@ -173,10 +187,94 @@ def _check_webhook_url(url: str) -> list:
     return []
 
 
-def config_errors(node: dict, team_names=None) -> list:
+def flow_var_names(nodes: list) -> list:
+    """Field names this flow creates (Set fields, Ask Claude and HTTP request steps): usable as {{name}} in later text."""
+    names = []
+    for n in nodes:
+        c = n.get("config") or {}
+        if n["type"] == "set_vars":
+            names += [str(v.get("name") or "") for v in c.get("values") or [] if isinstance(v, dict)]
+        elif n["type"] in ("ai", "http"):
+            names.append(str(c.get("save_as") or ""))
+    return [x for x in dict.fromkeys(names) if VAR_NAME.match(x) and x not in RESERVED_VARS]
+
+
+def _var_errors(name, what: str) -> list:
+    name = str(name or "")
+    if not VAR_NAME.match(name):
+        return [f"{what}: use a short lowercase name with letters, numbers or underscores (for example intent or summary)."]
+    if name in RESERVED_VARS:
+        return [f"{what}: '{name}' is already used by the app. Pick another name."]
+    return []
+
+
+def _new_step_errors(t: str, c: dict) -> list:
+    out = []
+    if t == "trigger.schedule":
+        if c.get("when") not in SCHEDULE_WHEN:
+            out.append("Pick how often it runs: every day, every weekday or once a week.")
+        if _int_in(c.get("hour"), 0, 23) is None:
+            out.append("Pick the hour it runs (0–23, India time).")
+        if c.get("when") == "weekly" and _int_in(c.get("weekday"), 0, 6) is None:
+            out.append("Pick the day of the week it runs.")
+        if _int_in(c.get("limit", 50), 1, 500) is None:
+            out.append("Start between 1 and 500 leads each time.")
+        for key in ("source", "campaign_id", "tag", "city", "country", "stage", "band"):
+            if len(str(c.get(key) or "")) > 80:
+                out.append(f"The {key.replace('_', ' ')} filter is too long.")
+    elif t == "ai":
+        if c.get("mode") not in AI_MODES:
+            out.append("Pick what Claude should do: write a draft, choose one of your options, or pull out a detail.")
+        prompt = str(c.get("prompt") or "").strip()
+        if not prompt:
+            out.append("Tell Claude what to do. You can use the lead's details, for example {{company}} and {{role}}.")
+        elif len(prompt) > MAX_PROMPT:
+            out.append(f"Keep the instruction under {MAX_PROMPT} characters.")
+        if c.get("mode") == "classify":
+            options = [str(o).strip() for o in c.get("options") or [] if str(o).strip()]
+            if not 2 <= len(options) <= 6 or len(set(o.lower() for o in options)) != len(options):
+                out.append("Give Claude 2 to 6 different options to choose from.")
+        out += _var_errors(c.get("save_as"), "Save the answer as")
+    elif t == "set_vars":
+        values = c.get("values")
+        if not isinstance(values, list) or not 1 <= len(values) <= MAX_VARS_PER_STEP:
+            out.append(f"Add 1 to {MAX_VARS_PER_STEP} fields to set.")
+        else:
+            for row in values:
+                row = row if isinstance(row, dict) else {}
+                out += _var_errors(row.get("name"), "Field name")
+                if len(str(row.get("value") or "")) > MAX_VAR_VALUE:
+                    out.append(f"Keep each field value under {MAX_VAR_VALUE} characters.")
+    elif t == "switch":
+        field = str(c.get("field") or "")
+        if not (field in IF_FIELDS or (field.startswith("var:") and VAR_NAME.match(field[4:]))):
+            out.append("Pick what to switch on: a lead detail (stage, band, city…) or a field made earlier in the flow.")
+        cases = [str(v).strip() for v in c.get("cases") or [] if str(v).strip()]
+        if not 1 <= len(cases) <= MAX_SWITCH_CASES:
+            out.append(f"Give 1 to {MAX_SWITCH_CASES} values to match; everything else goes to 'other'.")
+    elif t == "http":
+        if str(c.get("method") or "GET").upper() not in HTTP_METHODS:
+            out.append("The method must be GET or POST.")
+        out += _check_webhook_url(re.sub(r"\{\{[^}]*\}\}", "x", str(c.get("url") or "")))
+        if len(str(c.get("body") or "")) > MAX_BODY:
+            out.append("The request body is too long.")
+        if str(c.get("save_as") or ""):
+            out += _var_errors(c.get("save_as"), "Save the response as")
+    elif t == "note":
+        if len(str(c.get("text") or "")) > MAX_NOTE:
+            out.append(f"Keep the note under {MAX_NOTE} characters.")
+    return out
+
+
+def config_errors(node: dict, team_names=None, extra_vars=()) -> list:
     """Plain-English problems with one step's settings."""
     t, c = node["type"], node.get("config") or {}
     out = []
+    if t in ("trigger.schedule", "ai", "set_vars", "switch", "http", "note"):
+        if len(str(c.get("title") or "")) > MAX_TITLE:
+            out.append(f"Keep the step name under {MAX_TITLE} characters.")
+        return out + _new_step_errors(t, c) + (
+            _check_text_placeholders(c.get("prompt"), [*TEXT_PLACEHOLDERS, *extra_vars], "The instruction") if t == "ai" else [])
     if len(str(c.get("title") or "")) > MAX_TITLE:
         out.append(f"Keep the step name under {MAX_TITLE} characters.")
     if t == "trigger.reply" and c.get("label") not in TRIGGER_REPLY_LABELS:
@@ -204,7 +302,7 @@ def config_errors(node: dict, team_names=None) -> list:
     elif t == "wait_for_reply" and _int_in(c.get("days"), 1, 60) is None:
         out.append("Wait for a reply for 1 to 60 days.")
     elif t == "email":
-        out += _email_errors(c)
+        out += _email_errors(c, extra_vars)
     elif t == "whatsapp" and c.get("template") not in WHATSAPP_TEMPLATES:
         out.append("Pick an approved WhatsApp template (free text is only allowed inside the 24-hour window, so flows use templates).")
     elif t == "sms":
@@ -213,7 +311,7 @@ def config_errors(node: dict, team_names=None) -> list:
             out.append("Write the SMS text (it must match your DLT-approved template in India).")
         elif len(text) > MAX_SMS:
             out.append(f"Keep the SMS under {MAX_SMS} characters.")
-        out += _check_text_placeholders(text, TEXT_PLACEHOLDERS, "The SMS")
+        out += _check_text_placeholders(text, [*TEXT_PLACEHOLDERS, *extra_vars], "The SMS")
     elif t == "linkedin_task":
         if c.get("mode", "task") not in LINKEDIN_MODES:
             out.append("Choose 'start the LinkedIn sequence' or 'one task with my message'.")
@@ -223,7 +321,7 @@ def config_errors(node: dict, team_names=None) -> list:
                 out.append("Write the LinkedIn message the person will send by hand.")
             elif len(message) > MAX_NOTE:
                 out.append(f"Keep the LinkedIn message under {MAX_NOTE} characters.")
-            out += _check_text_placeholders(message, TEXT_PLACEHOLDERS, "The LinkedIn message")
+            out += _check_text_placeholders(message, [*TEXT_PLACEHOLDERS, *extra_vars], "The LinkedIn message")
     elif t in ("call_task", "meeting_link"):
         if len(str(c.get("note") or "")) > MAX_NOTE:
             out.append(f"Keep the note under {MAX_NOTE} characters.")
@@ -273,7 +371,7 @@ def _if_errors(c: dict) -> list:
     return []
 
 
-def _email_errors(c: dict) -> list:
+def _email_errors(c: dict, extra_vars=()) -> list:
     out = []
     subject, body = str(c.get("subject") or "").strip(), str(c.get("body") or "").strip()
     if not subject:
@@ -292,7 +390,7 @@ def _email_errors(c: dict) -> list:
     if c.get("body_no_role") and "unsub_link" not in _placeholders(c["body_no_role"]):
         out.append("The no-role version also needs {{unsub_link}}.")
     text = " ".join(str(c.get(k) or "") for k in ("subject", "body", "subject_no_role", "body_no_role"))
-    return out + _check_text_placeholders(text, EMAIL_PLACEHOLDERS, "The email")
+    return out + _check_text_placeholders(text, [*EMAIL_PLACEHOLDERS, *extra_vars], "The email")
 
 
 def _cycle_errors(nodes: list, edges: list) -> list:
@@ -353,6 +451,8 @@ def structure_errors(nodes: list, edges: list) -> list:
         if e["label"] not in outputs_of(source["type"]):
             allowed = ", ".join(outputs_of(source["type"])) or "none"
             out.append(_problem(f"'{title_of(source)}' has no '{e['label']}' output (it has: {allowed}).", node=source["id"], edge=e["id"]))
+        if target["type"] == "note":
+            out.append(_problem("A note is only a comment: nothing can connect to it.", node=target["id"], edge=e["id"]))
         if is_trigger(target["type"]):
             out.append(_problem("Nothing can lead into a trigger; the trigger is where the flow starts.", node=target["id"], edge=e["id"]))
         port = (e["from"], e["label"])
@@ -375,8 +475,9 @@ def validate_graph(nodes: list, edges: list, team_names=None) -> list:
     elif len(triggers) > 1:
         for extra in triggers[1:]:
             out.append(_problem("Use one trigger per flow. Make a second flow for a different start.", node=extra["id"]))
+    names = flow_var_names(nodes)
     for n in nodes:
-        out += [_problem(m, node=n["id"]) for m in config_errors(n, team_names)]
+        out += [_problem(m, node=n["id"]) for m in config_errors(n, team_names, names)]
     if triggers:
         reach, todo = {triggers[0]["id"]}, [triggers[0]["id"]]
         while todo:
@@ -386,7 +487,7 @@ def validate_graph(nodes: list, edges: list, team_names=None) -> list:
                     reach.add(e["to"])
                     todo.append(e["to"])
         for n in nodes:
-            if n["id"] not in reach and not is_trigger(n["type"]):
+            if n["id"] not in reach and not is_trigger(n["type"]) and n["type"] != "note":
                 out.append(_problem("This step is not connected to the trigger, so no lead can reach it.", node=n["id"]))
         if not any(e["from"] == triggers[0]["id"] for e in edges):
             out.append(_problem("Connect the trigger to the first step.", node=triggers[0]["id"]))

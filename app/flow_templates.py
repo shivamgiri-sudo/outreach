@@ -93,7 +93,47 @@ def _linkedin_combo_flow() -> dict:
             "nodes": nodes, "edges": edges}
 
 
-TEMPLATES = {"cold_email": _cold_email_flow, "yes_whatsapp_call": _yes_flow, "linkedin_email": _linkedin_combo_flow}
+def _ai_triage_flow() -> dict:
+    """Claude reads each new lead, labels how urgent their hiring looks, and the switch sends it down the right path."""
+    nodes = [
+        {"id": "trigger", "type": "trigger.lead_added", "config": {"title": "A new lead arrives"}, "x": 340, "y": 60},
+        {"id": "ask", "type": "ai", "config": {"title": "How urgent is their hiring?", "mode": "classify", "save_as": "urgency",
+                                                 "options": ["high", "medium", "low"],
+                                                 "prompt": "Looking at {{company}} and the role {{role}}, how urgent does their hiring look? "
+                                                           "Answer high, medium or low."}, "x": 340, "y": 190},
+        {"id": "route", "type": "switch", "config": {"title": "Route by urgency", "field": "var:urgency", "cases": ["high", "medium", "low"]},
+         "x": 340, "y": 320},
+        {"id": "tell", "type": "notify", "config": {"title": "Tell the caller", "message": "Urgent hirer: {{company}} ({{role}}). Call today."},
+         "x": 60, "y": 470},
+        {"id": "hot", "type": "add_tag", "config": {"title": "Tag: hiring-urgent", "tag": "hiring-urgent"}, "x": 60, "y": 600},
+        {"id": "warm", "type": "add_tag", "config": {"title": "Tag: hiring-soon", "tag": "hiring-soon"}, "x": 340, "y": 470},
+        {"id": "cool", "type": "add_tag", "config": {"title": "Tag: hiring-later", "tag": "hiring-later"}, "x": 620, "y": 470},
+        {"id": "note", "type": "note", "config": {"title": "How this works", "text": "Claude labels each new lead. The Switch sends high, medium and low "
+                                                 "down their own paths. Anything else goes out of the 'other' dot. Turn a step off from its settings."},
+         "x": 640, "y": 60},
+    ]
+    edges = [_edge("trigger", "ask"), _edge("ask", "route"), _edge("route", "tell", "c1"), _edge("tell", "hot"),
+             _edge("route", "warm", "c2"), _edge("route", "cool", "c3")]
+    return {"name": "AI triage of new leads", "settings": {"stop_on_reply": False},
+            "description": "Claude labels each new lead high, medium or low urgency; the Switch tags it and tells the caller about the urgent ones.",
+            "nodes": nodes, "edges": edges}
+
+
+def _daily_followup_flow() -> dict:
+    """Every weekday at 10:00 IST, start up to 30 warm leads in a follow-up task for the caller."""
+    nodes = [
+        {"id": "trigger", "type": "trigger.schedule", "config": {"title": "Every weekday at 10:00", "when": "weekdays", "hour": 10,
+                                                                    "limit": 30, "band": "warm"}, "x": 300, "y": 60},
+        {"id": "call", "type": "call_task", "config": {"title": "Follow-up call", "note": "Warm lead from the daily list. Call through PD only."},
+         "x": 300, "y": 190},
+    ]
+    return {"name": "Daily warm-lead follow-ups", "settings": {"stop_on_reply": False},
+            "description": "Each weekday at 10:00 IST this starts up to 30 warm leads that are not in the flow yet and gives the caller a call task for each.",
+            "nodes": nodes, "edges": [_edge("trigger", "call")]}
+
+
+TEMPLATES = {"cold_email": _cold_email_flow, "yes_whatsapp_call": _yes_flow, "linkedin_email": _linkedin_combo_flow,
+             "ai_triage": _ai_triage_flow, "daily_followup": _daily_followup_flow}
 
 
 def template_list() -> list:

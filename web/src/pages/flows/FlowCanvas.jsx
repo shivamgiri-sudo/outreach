@@ -1,5 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
-import { GRID, NODE_H, NODE_W, OUTPUT_LABELS, groupOf, iconOf, iconPath, isTrigger, outputsOf, summaryOf, titleOf } from "./catalog.js";
+import { GRID, NODE_H, NODE_W, groupOf, iconOf, iconPath, isTrigger, outputLabel, outputsOf, summaryOf, titleOf } from "./catalog.js";
 import { curve, inPort, nodeWidth, outPort, snap } from "./graph.js";
 
 const MIN_ZOOM = 0.3;
@@ -11,7 +11,7 @@ const clamp = (v) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v));
 // output port to another card to connect them. Cards and connections are focusable buttons for keyboard users.
 const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
   const { nodes, edges, selected, problems, highlight, caller, onSelect, onDragStart, onPreviewMove, onCommitMove,
-    onKeyMove, onConnect, onDeleteEdge, onDeleteNode, onOpenConfig, onDropType } = props;
+    onKeyMove, onConnect, onDeleteEdge, onDeleteNode, onOpenConfig, onDropType, onAddFrom, onDuplicate, onToggleOff, stepResults } = props;
   const svg = useRef(null);
   const [view, setView] = useState({ x: 40, y: 20, k: 1 });
   const [drag, setDrag] = useState(null);
@@ -94,6 +94,7 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
       const target = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("[data-node-id]");
       const to = target?.getAttribute("data-node-id");
       if (to && to !== drag.from) onConnect(drag.from, drag.label, to);
+      else if (!to && pointer && Math.hypot(pointer.x - drag.start.x, pointer.y - drag.start.y) > 40) onAddFrom?.(drag.from, drag.label, pointer);
     }
     setDrag(null);
     setPointer(null);
@@ -104,6 +105,8 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
     const moves = { ArrowUp: [0, -step], ArrowDown: [0, step], ArrowLeft: [-step, 0], ArrowRight: [step, 0] };
     if (moves[e.key]) { e.preventDefault(); onKeyMove(node.id, ...moves[e.key]); }
     else if (e.key === "Enter") { e.preventDefault(); onOpenConfig(node.id); }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") { e.preventDefault(); onDuplicate?.(node.id); }
+    else if (e.key.toLowerCase() === "d" && !e.ctrlKey && !e.metaKey) { e.preventDefault(); onToggleOff?.(node.id); }
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); onDeleteNode(node.id); }
   };
   const keyEdge = (e, edge) => {
@@ -135,7 +138,7 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
             if (!a || !b) return null;
             const { d, mid } = curve(outPort(a, e.label, edges), inPort(b, edges));
             const isSel = selected?.kind === "edge" && selected.id === e.id;
-            const label = OUTPUT_LABELS[e.label] ?? e.label;
+            const label = outputLabel(a, e.label);
             return (
               <g key={e.id} className={`fb-edge${highlight.has(e.id) ? " on" : ""}${isSel ? " sel" : ""}${e.label === "error" ? " err" : ""}`}
                 data-edge-id={e.id} tabIndex={0} role="button" aria-pressed={isSel}
@@ -156,12 +159,30 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
           })}
           {drag?.mode === "connect" && pointer && <path className="fb-edge-temp" d={curve(drag.start, pointer).d} />}
           {nodes.map((n) => {
+            if (n.type === "note") {
+              const sel = selected?.kind === "node" && selected.id === n.id;
+              return (
+                <g key={n.id} data-node-id={n.id} className={`fb-note${sel ? " sel" : ""}`} transform={`translate(${n.x},${n.y})`} tabIndex={0} role="button"
+                  aria-label={`Note: ${n.config?.text || "empty"}. Arrow keys move it, Enter edits, Delete removes.`}
+                  onPointerDown={(e) => startNode(e, n)} onFocus={() => onSelect({ kind: "node", id: n.id })}
+                  onKeyDown={(e) => keyNode(e, n)} onDoubleClick={() => onOpenConfig(n.id)}>
+                  <rect className="fb-note-card" width="240" height="120" rx="6" />
+                  <foreignObject x="10" y="8" width="220" height="104">
+                    <div xmlns="http://www.w3.org/1999/xhtml" className="fb-note-text">
+                      {n.config?.title ? <b>{n.config.title}</b> : null}{n.config?.text || "Double-click to write a note"}
+                    </div>
+                  </foreignObject>
+                </g>
+              );
+            }
             const width = nodeWidth(n, edges);
             const outs = outputsOf(n, edges);
             const issues = problems[n.id] || [];
             const isSel = selected?.kind === "node" && selected.id === n.id;
             const summary = summaryOf(n, caller);
-            const cls = `fb-node g-${groupOf(n.type)}${isSel ? " sel" : ""}${issues.length ? " bad" : ""}${highlight.has(n.id) ? " on" : ""}`;
+            const off = !!n.config?.disabled;
+            const result = stepResults?.[n.id];
+            const cls = `fb-node g-${groupOf(n.type)}${isSel ? " sel" : ""}${issues.length ? " bad" : ""}${highlight.has(n.id) ? " on" : ""}${off ? " off" : ""}`;
             return (
               <g key={n.id} data-node-id={n.id} className={cls} transform={`translate(${n.x},${n.y})`} tabIndex={0} role="button"
                 aria-pressed={isSel} aria-label={`${titleOf(n)}: ${summary}${issues.length ? `. Problem: ${issues.join(" ")}` : ""}. Arrow keys move it, Enter edits, Delete removes.`}
@@ -171,7 +192,10 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
                 <rect className="fb-card" width={width} height={NODE_H} rx="12" />
                 <rect className="fb-band" width="6" height={NODE_H} rx="3" />
                 <g transform="translate(16,11) scale(.75)"><path d={iconPath(iconOf(n.type))} className="fb-icon" /></g>
-                <text x="44" y="27" className="fb-title">{clip(titleOf(n), Math.floor(width / 9))}</text>
+                <text x="44" y="27" className="fb-title">{clip(titleOf(n), Math.floor(width / 9))}{off ? " (off)" : ""}</text>
+                {result && <g className={`fb-result ${result.ok === false ? "bad" : "ok"}`} transform={`translate(${width - 10},-8)`}>
+                  <circle r="11" /><path d={result.ok === false ? "M-4,-4 L4,4 M4,-4 L-4,4" : "M-5,0 L-1.5,4 L5,-4"} />
+                </g>}
                 {issues.length
                   ? <text x="16" y="52" className="fb-err-text" data-testid="node-error">{clip(`⚠ ${issues[0]}`, Math.floor(width / 6.4))}</text>
                   : <text x="16" y="52" className="fb-summary">{clip(summary, Math.floor(width / 6.4))}</text>}
@@ -183,7 +207,21 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
                       onPointerDown={(e) => startConnect(e, n, label)}>
                       <circle className="fb-port-hit" cx={px} cy={NODE_H} r="13" />
                       <circle className="fb-port out" cx={px} cy={NODE_H} r="7" />
-                      {OUTPUT_LABELS[label] && <text className="fb-port-label" x={px} y={NODE_H + 22}>{OUTPUT_LABELS[label]}</text>}
+                      {outputLabel(n, label) && !edges.some((e) => e.from === n.id && e.label === label) && <text className="fb-port-label" x={px} y={NODE_H + 22}>{clip(outputLabel(n, label), 12)}</text>}
+                    </g>
+                  );
+                })}
+                {outs.map((label, i) => {
+                  if (edges.some((e) => e.from === n.id && e.label === label)) return null;
+                  const px = (width * (i + 1)) / (outs.length + 1);
+                  return (
+                    <g key={`add-${label}`} className="fb-add" transform={`translate(${px},${NODE_H + 44})`} role="button" tabIndex={0}
+                      aria-label={`Add a step after ${titleOf(n)}${outputLabel(n, label) ? ` (${outputLabel(n, label)})` : ""}`}
+                      onPointerDown={(e) => { e.stopPropagation(); onAddFrom?.(n.id, label, null); }}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onAddFrom?.(n.id, label, null); } }}>
+                      <line x1="0" y1="-30" x2="0" y2="-12" className="fb-add-line" />
+                      <rect x="-12" y="-12" width="24" height="24" rx="6" />
+                      <path d="M0,-5 L0,5 M-5,0 L5,0" />
                     </g>
                   );
                 })}
@@ -192,6 +230,7 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
           })}
         </g>
       </svg>
+      <Minimap nodes={nodes} edges={edges} view={view} size={rect()} onJump={(cx, cy) => { const r = rect(); setView((v) => ({ ...v, x: r.width / 2 - cx * v.k, y: r.height / 2 - cy * v.k })); }} />
       <div className="fb-zoom" role="toolbar" aria-label="Zoom">
         <button type="button" className="btn ghost" aria-label="Zoom out" onClick={() => { const r = rect(); zoomAt(1 / 1.2, r.width / 2, r.height / 2); }}>−</button>
         <span aria-live="polite">{Math.round(view.k * 100)}%</span>
@@ -201,5 +240,27 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
     </div>
   );
 });
+
+// A small overview in the corner: every step as a dot, the visible area as a frame. Click it to jump there.
+function Minimap({ nodes, edges, view, size, onJump }) {
+  if (nodes.length < 2) return null;
+  const W = 170, H = 110, pad = 30;
+  const minX = Math.min(...nodes.map((n) => n.x)) - pad, minY = Math.min(...nodes.map((n) => n.y)) - pad;
+  const maxX = Math.max(...nodes.map((n) => n.x + nodeWidth(n, edges))) + pad, maxY = Math.max(...nodes.map((n) => n.y + NODE_H)) + pad;
+  const vx = -view.x / view.k, vy = -view.y / view.k, vw = size.width / view.k, vh = size.height / view.k;
+  const x0 = Math.min(minX, vx), y0 = Math.min(minY, vy), x1 = Math.max(maxX, vx + vw), y1 = Math.max(maxY, vy + vh);
+  const k = Math.min(W / (x1 - x0), H / (y1 - y0));
+  const pick = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    onJump(x0 + (e.clientX - r.left) / k, y0 + (e.clientY - r.top) / k);
+  };
+  return (
+    <svg className="fb-minimap" width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Overview of the whole flow. Click to move there." onPointerDown={pick}>
+      {nodes.map((n) => <rect key={n.id} x={(n.x - x0) * k} y={(n.y - y0) * k} width={Math.max(4, nodeWidth(n, edges) * k)} height={Math.max(3, NODE_H * k)} rx="1.5"
+        className={`fb-mini-node${n.type === "note" ? " note" : ""}`} />)}
+      <rect x={(vx - x0) * k} y={(vy - y0) * k} width={vw * k} height={vh * k} className="fb-mini-view" />
+    </svg>
+  );
+}
 
 export default FlowCanvas;

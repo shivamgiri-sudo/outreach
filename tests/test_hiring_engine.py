@@ -192,3 +192,21 @@ def test_sequence_never_sends_to_an_address_a_check_called_invalid(tmp_path):
     sent_to = [m["to"] for m in client.get("/api/outbox").json()]
     assert sent_to == ["abe@acme.in"] and out["blocked"] == 1
     assert "failed a mailbox check" in next(l for l in store.read("leads") if l["email"] == "bea@beta.in")["sequence"]["blocked"]
+
+
+def test_campaign_verification_can_use_the_newer_verifiers(tmp_path):
+    from app import campaign_pipeline
+    client, store = make_client(tmp_path)
+    store.write("integrations", {"email_verifier": {"mode": "api", "values": {"provider": "Kickbox", "api_key": "k"}}})
+    calls = []
+
+    def http(url, headers, body):
+        calls.append(url)
+        return {"result": "deliverable", "reason": "accepted_email", "success": True}
+    spec_ctx = {"source_http": lambda method, url, headers, body, form: http(url, headers, body)}
+    config = campaign_pipeline.src.verifier_config(store.read("integrations"))
+    assert config["supported"] is False                                   # the old path still does not know Kickbox ...
+    from app.sources import registry
+    ctx = registry.make_ctx(store, spec_ctx, 10).bind(registry.get("kickbox"), {"api_key": "k"})
+    assert registry.get("kickbox").verify(ctx, "a@acme.in")["status"] == "valid" and "api.kickbox.com" in calls[0]   # ... but the registry does
+    assert hasattr(campaign_pipeline, "_verify_one")

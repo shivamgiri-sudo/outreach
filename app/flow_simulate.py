@@ -6,12 +6,13 @@ are applied to a private copy of the lead so later If steps see them. A wait-for
 choose to assume (default: no reply, so the timeout path).
 """
 import copy
+import re
 from datetime import datetime, timedelta
 
 from . import flow_actions as act
 from .activities import caller_name, next_call_slot
 from .channels.netguard import check_public_url
-from .flows import graph_of, is_trigger, title_of
+from .flows import graph_of, is_trigger, outputs_of, title_of
 from .senders import email_ready
 from .sequence_runner import NO_EMAIL_STAGES, get_settings
 from .stages import CONSENT_REQUIRED, can_move
@@ -89,7 +90,25 @@ def _simulate_action(store, flow, node, lead, now, base_url) -> tuple:
         except ValueError as exc:
             return "error", f"would not call the webhook: {exc}", False
         return "next", f"would POST the lead's basic details to {url.split('/')[2]}", True
+    if t == "http":
+        try:
+            url = check_public_url(re.sub(r"\{\{[^}]*\}\}", "x", str(c.get("url") or "")), resolver=lambda host: ["93.184.216.34"])
+        except ValueError as exc:
+            return "error", f"would not call the address: {exc}", False
+        saved = f", saving the answer as {c['save_as']}" if c.get("save_as") else ""
+        return "next", f"would {str(c.get('method') or 'GET').upper()} {url.split('/')[2]}{saved}", True
+    if t == "ai":
+        if not _llm_ready(store):
+            return "error", "would not run: Ask Claude is not connected (Integrations → AI)", False
+        what = {"draft": "write a draft", "classify": "choose one of " + ", ".join(map(str, c.get("options") or [])),
+                "extract": "pull out a detail"}.get(c.get("mode"), "answer")
+        return "next", f"would ask Claude to {what}, saved as {c.get('save_as')} (nothing is sent in a simulation)", True
     return "next", "", True
+
+
+def _llm_ready(store) -> bool:
+    from .ai import _llm_config
+    return bool(_llm_config(store))
 
 
 def simulate(store, flow: dict, lead: dict, now: datetime, base_url: str, assume_reply: str = "timeout") -> dict:
@@ -108,6 +127,7 @@ def simulate(store, flow: dict, lead: dict, now: datetime, base_url: str, assume
     def after(node_id, label):
         return next((e["to"] for e in edges if e["from"] == node_id and e["label"] == label), None)
 
+    sim_vars = {}
     current, clock, seen, ended = after(trigger["id"], "next"), now, {}, "Reaches the end of the flow."
     for _ in range(MAX_SIMULATED_STEPS):
         if current is None:
@@ -117,12 +137,40 @@ def simulate(store, flow: dict, lead: dict, now: datetime, base_url: str, assume
         if seen[current] > 1:
             ended = f"Loops back to “{title_of(node)}”; the simulation stops here."
             break
-        if node["type"] not in ("wait", "wait_for_reply", "if", "split", "stop") and (block := _message_block(store, lead)):
+        if node["type"] not in ("wait", "wait_for_reply", "if", "split", "stop", "set_vars", "switch") and (block := _message_block(store, lead)):
             path.append(_entry(node, block, None, False))
             ended = "Stops: the lead may not be contacted."
             break
         t, c = node["type"], node.get("config") or {}
-        if t == "if":
+        token = act.CURRENT_VARS.set(dict(sim_vars))
+        try:
+            if c.get("disabled") and t != "stop":
+                outs = outputs_of(t)
+                label = "next" if "next" in outs else (outs[0] if outs else "next")
+                path.append(_entry(node, "skipped: this step is turned off", label))
+                current = after(node["id"], label)
+                continue
+        finally:
+            act.CURRENT_VARS.reset(token)
+        if t == "set_vars":
+            made = {}
+            for row in c.get("values") or []:
+                tok = act.CURRENT_VARS.set({**sim_vars, **made})
+                try:
+                    made[str(row.get("name"))] = act.text_for(store, lead, str(row.get("value") or ""), base_url, clock)[0][:500]
+                finally:
+                    act.CURRENT_VARS.reset(tok)
+            sim_vars.update(made)
+            label = "next"
+            path.append(_entry(node, "would set " + ", ".join(f"{k} = “{v[:40]}”" for k, v in made.items()), label))
+        elif t == "switch":
+            field = str(c.get("field") or "")
+            value = str(sim_vars.get(field[4:], "(made by an earlier step)")) if field.startswith("var:") else str(act.lead_facts(lead).get(field, ""))
+            cases = [str(v).strip().lower() for v in c.get("cases") or []]
+            idx = next((i for i, v in enumerate(cases) if v and v == value.strip().lower()), None)
+            label = "other" if idx is None else f"c{idx + 1}"
+            path.append(_entry(node, f"{value or 'empty'} → {'no case matches, so other' if idx is None else cases[idx]}", label))
+        elif t == "if":
             passed, why = act.evaluate(c, act.lead_facts(lead))
             label = "yes" if passed else "no"
             path.append(_entry(node, f"{label} — {why}", label))
@@ -151,6 +199,8 @@ def simulate(store, flow: dict, lead: dict, now: datetime, base_url: str, assume
                 current = None
                 break
             path.append(_entry(node, result, label, ok))
+            if ok and t in ("ai", "http") and c.get("save_as"):
+                sim_vars[str(c["save_as"])] = "(answer from this step)"
         current = after(node["id"], label)
     else:
         ended = f"Stopped after {MAX_SIMULATED_STEPS} steps."

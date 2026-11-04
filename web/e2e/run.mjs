@@ -971,7 +971,7 @@ await step("Flow builder: add an If step and connect its yes / no outputs by dra
   await page.getByRole("button", { name: "← All flows" }).click();
   await page.getByRole("button", { name: "Blank flow" }).click();
   await page.getByTestId("flow-canvas").waitFor();
-  for (const name of ["If / else", "Send email", "Stop"]) await page.getByRole("button", { name: `Add step: ${name}` }).click();
+  for (const name of ["If / else", "Send email", "Stop"]) { await page.getByTestId("add-step").click(); await page.getByRole("option", { name: `Add step: ${name}` }).click(); }
   await page.getByRole("button", { name: "Auto-layout" }).click();
   const trigger = await nodeId("Added by hand");
   await dragTo(page.locator(`[data-port="${trigger}:next"] .fb-port-hit`), flowNode("If / else").locator(".fb-card"));

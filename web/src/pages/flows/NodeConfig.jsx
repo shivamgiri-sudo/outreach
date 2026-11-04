@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { STAGE_ORDER, stageLabel } from "../../labels.js";
 import {
-  ACTIVATION_EVENTS, BRANCH_HEADINGS, EMAIL_PLACEHOLDERS, IF_FIELDS, IF_OPS, OUTPUT_LABELS, PERSONAS, REPLY_LABELS, REPLY_OUTPUTS,
-  TEXT_PLACEHOLDERS, helpOf, isTrigger, labelOf, opsFor, outputsOf, titleOf,
+  ACTIVATION_EVENTS, BRANCH_HEADINGS, EMAIL_PLACEHOLDERS, IF_FIELDS, IF_OPS, PERSONAS, REPLY_LABELS, REPLY_OUTPUTS,
+  TEXT_PLACEHOLDERS, helpOf, isTrigger, labelOf, opsFor, outputLabel, outputsOf, titleOf,
 } from "./catalog.js";
 
 const pretty = (s) => String(s).replace(/_/g, " ");
@@ -31,7 +31,7 @@ function Chips({ names, onInsert }) {
 }
 
 // Plain-English settings for the selected step, its connections and its problems.
-export default function NodeConfig({ node, nodes, edges, catalog, problems, onChange, onConnect, onDelete, panelRef }) {
+export default function NodeConfig({ node, nodes, edges, catalog, problems, onChange, onConnect, onDelete, onDuplicate, panelRef }) {
   const c = node.config || {};
   const lastText = useRef({ key: null, el: null });
   const team = catalog?.team?.length ? catalog.team : [catalog?.caller || "Priya"];
@@ -63,6 +63,9 @@ export default function NodeConfig({ node, nodes, edges, catalog, problems, onCh
       </select>
     </Field>
   );
+  const flowVars = [...new Set(nodes.flatMap((n) => (n.type === "set_vars" ? (n.config?.values || []).map((v) => v.name) : ["ai", "http"].includes(n.type) ? [n.config?.save_as] : []))
+    .filter((v) => v && /^[a-z][a-z0-9_]{0,29}$/.test(v)))];
+  const withVars = (names) => [...names, ...flowVars];
   const owner = (key, label) => select(key, label, [["", `${catalog?.caller || "Priya"} (the caller)`], ...team.filter((t) => t !== catalog?.caller).map((t) => [t, t])]);
   const kind = IF_FIELDS[c.field]?.[1] || "text";
   const valueInput = () => {
@@ -76,7 +79,61 @@ export default function NodeConfig({ node, nodes, edges, catalog, problems, onCh
     return text("value", "Value", { hint, placeholder });
   };
 
+  const listOf = (key) => (Array.isArray(c[key]) ? c[key] : []);
+  const setRow = (i, patch) => set("values", listOf("values").map((row, j) => (j === i ? { ...row, ...patch } : row)));
   const fields = {
+    "trigger.schedule": () => (<>
+      {select("when", "How often", [["daily", "Every day"], ["weekdays", "Every weekday (Mon–Fri)"], ["weekly", "Once a week"]])}
+      {c.when === "weekly" && select("weekday", "Day", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d, i) => [String(i), d]))}
+      <Field id={id("hour")} label="Hour (India time)"><input id={id("hour")} type="number" min="0" max="23" value={c.hour ?? ""} onChange={num("hour")} /></Field>
+      <Field id={id("limit")} label="Start at most this many leads each time" hint="Only leads that are not already in this flow.">
+        <input id={id("limit")} type="number" min="1" max="500" value={c.limit ?? 50} onChange={num("limit")} /></Field>
+      <fieldset className="fb-fieldset"><legend>Which leads (all optional)</legend>
+        {select("band", "Temperature", [["", "Any"], ["hot", "Hot"], ["warm", "Warm"], ["cold", "Cold"]])}
+        {select("stage", "Stage", [["", "Any"], ...STAGE_ORDER.map((s2) => [s2, stageLabel(s2)])])}
+        {text("source", "Source contains", { placeholder: "apollo, meta_ads" })}
+        {text("city", "City", { placeholder: "Pune" })}
+        {text("tag", "Has tag", { placeholder: "bpo" })}
+      </fieldset>
+    </>),
+    ai: () => (<>
+      {select("mode", "What should Claude do", [["draft", "Write a draft"], ["classify", "Choose one of my options"], ["extract", "Pull out one detail"]])}
+      {text("prompt", "Instruction", { long: true, rows: 5, placeholder: "Write a two-line opening for {{first_name}} at {{company}} about their {{role}} hiring.",
+        hint: "Claude also sees the lead's company, title, city and stage. It is told to use only these facts." })}
+      <Chips names={withVars(TEXT_PLACEHOLDERS)} onInsert={insert} />
+      {c.mode === "classify" && (
+        <Field id={id("options")} label="Options (separate with commas)" hint="Claude must answer with exactly one. Anything else becomes 'unknown'.">
+          <input id={id("options")} value={listOf("options").join(", ")} placeholder="high, medium, low"
+            onChange={(e) => set("options", e.target.value.split(",").map((v) => v.trim()).filter(Boolean))} /></Field>
+      )}
+      {text("save_as", "Save the answer as", { placeholder: "intent", hint: "Lowercase letters, numbers and _ . Use it later as {{intent}}, or in a Switch." })}
+      <p className="field-help">Needs Claude connected under Integrations → AI. Leads' texts are treated as data, never as instructions.</p>
+    </>),
+    set_vars: () => (<>
+      {listOf("values").map((row, i) => (
+        <fieldset key={i} className="fb-fieldset"><legend>Field {i + 1}</legend>
+          <Field id={id(`n${i}`)} label="Name"><input id={id(`n${i}`)} value={row.name ?? ""} placeholder="pitch" onChange={(e) => setRow(i, { name: e.target.value })} /></Field>
+          <Field id={id(`v${i}`)} label="Value" hint="Can use {{company}}, {{role}}, {{first_name}} and earlier fields.">
+            <textarea id={id(`v${i}`)} rows={2} value={row.value ?? ""} placeholder="Hiring for {{role}} at {{company}}" onChange={(e) => setRow(i, { value: e.target.value })} /></Field>
+          {listOf("values").length > 1 && <button type="button" className="btn ghost" onClick={() => set("values", listOf("values").filter((_, j) => j !== i))}>Remove this field</button>}
+        </fieldset>
+      ))}
+      {listOf("values").length < 8 && <button type="button" className="btn ghost" onClick={() => set("values", [...listOf("values"), { name: "", value: "" }])}>Add a field</button>}
+    </>),
+    switch: () => (<>
+      {select("field", "Switch on", [...Object.entries(IF_FIELDS).map(([k, [shown]]) => [k, shown]), ...flowVars.map((v) => [`var:${v}`, `Field made earlier: ${v}`])])}
+      <Field id={id("cases")} label="Values to match (up to 4, separate with commas)" hint="Each value gets its own path, in this order. Everything else goes to 'other'. Capital letters do not matter.">
+        <input id={id("cases")} value={listOf("cases").join(", ")} placeholder="hot, warm, cold"
+          onChange={(e) => set("cases", e.target.value.split(",").map((v) => v.trim()).slice(0, 4))} /></Field>
+    </>),
+    http: () => (<>
+      {select("method", "Method", [["GET", "GET (read)"], ["POST", "POST (send)"]])}
+      {text("url", "Address (https only)", { placeholder: "https://api.example.com/lookup?company={{company}}", hint: "Public addresses only. Private and internal ones are refused." })}
+      {c.method === "POST" && text("body", "Body (JSON)", { long: true, rows: 5, placeholder: '{"company": "{{company}}"}' })}
+      <Chips names={withVars(TEXT_PLACEHOLDERS)} onInsert={insert} />
+      {text("save_as", "Save the answer as (optional)", { placeholder: "lookup", hint: "Use it later as {{lookup}}, or in a Switch." })}
+    </>),
+    note: () => text("text", "Note", { long: true, rows: 5, placeholder: "Remind your team what this part of the flow is for." }),
     "trigger.lead_added": () => (<>
       {text("source", "Source contains (optional)", { placeholder: "apollo, sheet, careers_page" })}
       {text("city", "City (optional)", { placeholder: "Pune" })}
@@ -121,7 +178,7 @@ export default function NodeConfig({ node, nodes, edges, catalog, problems, onCh
     email: () => (<>
       {text("subject", "Subject", { placeholder: "{{role}} hiring at {{company}}" })}
       {text("body", "Email text", { long: true, rows: 8, hint: "Short and honest. Keep {{unsub_link}}: every email needs an unsubscribe." })}
-      <Chips names={EMAIL_PLACEHOLDERS} onInsert={insert} />
+      <Chips names={withVars(EMAIL_PLACEHOLDERS)} onInsert={insert} />
       <details className="section"><summary>Version for leads without a role (optional)</summary>
         {text("subject_no_role", "Subject without a role", { placeholder: "Hiring at {{company}}" })}
         {text("body_no_role", "Text without a role", { long: true, rows: 5 })}
@@ -130,13 +187,13 @@ export default function NodeConfig({ node, nodes, edges, catalog, problems, onCh
     whatsapp: () => select("template", "Approved template", templates.map((t) => [t, pretty(t)]), "Sent only to leads who said yes (consent recorded)."),
     sms: () => (<>
       {text("text", "SMS text", { long: true, rows: 4, hint: "Must match your DLT-approved template. Include an opt-out." })}
-      <Chips names={TEXT_PLACEHOLDERS} onInsert={insert} />
+      <Chips names={withVars(TEXT_PLACEHOLDERS)} onInsert={insert} />
       {text("template_id", "DLT template id (optional)")}
     </>),
     linkedin_task: () => (<>
       {select("mode", "What to do", [["task", "One task with my message"], ["start_sequence", "Start the LinkedIn sequence (needs their profile link)"]])}
       {(c.mode || "task") === "task" && (<>{text("message", "Message for the person to send by hand", { long: true, rows: 4, hint: "Connection notes: 300 characters or fewer." })}
-        <Chips names={TEXT_PLACEHOLDERS} onInsert={insert} /></>)}
+        <Chips names={withVars(TEXT_PLACEHOLDERS)} onInsert={insert} /></>)}
     </>),
     call_task: () => (<>{owner("owner", "Who calls")}{text("note", "Note for the caller", { long: true, rows: 3, placeholder: "They said yes. Call through PD only, before 18:55." })}</>),
     meeting_link: () => (<>{owner("owner", "Who sends the link")}{text("note", "Note (optional)", { long: true, rows: 3 })}</>),
@@ -161,14 +218,18 @@ export default function NodeConfig({ node, nodes, edges, catalog, problems, onCh
       {problems.length > 0 && (
         <div className="tip error" role="alert">{problems.map((p, i) => <div key={i}>{p}</div>)}</div>
       )}
-      {text("title", "Step name (optional)", { placeholder: labelOf(node.type) })}
+      {text("title", node.type === "note" ? "Heading (optional)" : "Step name (optional)", { placeholder: labelOf(node.type) })}
       {fields[node.type]?.()}
+      {node.type !== "note" && !isTrigger(node.type) && node.type !== "stop" && (
+        <label className="check-row"><input type="checkbox" checked={!!c.disabled} onChange={(e) => set("disabled", e.target.checked)} />
+          Turn this step off (leads skip it and carry on; shortcut: press D on the canvas)</label>
+      )}
       {outputsOf(node, edges).length > 0 && (
         <fieldset className="fb-fieldset"><legend>Where each path goes</legend>
           {outputsOf(node, edges).map((label) => {
             const current = edges.find((e) => e.from === node.id && e.label === label);
             return (
-              <Field key={label} id={id(`out-${label}`)} label={BRANCH_HEADINGS[label] || OUTPUT_LABELS[label] || label}>
+              <Field key={label} id={id(`out-${label}`)} label={node.type === "switch" ? (label === "other" ? "Anything else" : `If it is “${outputLabel(node, label)}”`) : BRANCH_HEADINGS[label] || outputLabel(node, label)}>
                 <select id={id(`out-${label}`)} value={current?.to || ""} onChange={(e) => onConnect(label, e.target.value || null)}>
                   <option value="">— end here (not connected) —</option>
                   {others.map((n) => <option key={n.id} value={n.id}>{titleOf(n)} ({n.id})</option>)}
@@ -179,6 +240,7 @@ export default function NodeConfig({ node, nodes, edges, catalog, problems, onCh
         </fieldset>
       )}
       <div className="row" style={{ marginTop: 12 }}>
+        {onDuplicate && !isTrigger(node.type) && <button type="button" className="btn ghost" onClick={onDuplicate}>Duplicate (Ctrl+D)</button>}
         <button type="button" className="btn ghost danger" onClick={onDelete}>Delete this step</button>
       </div>
     </section>

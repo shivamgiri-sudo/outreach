@@ -388,7 +388,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_growth_router(store, _build_lead, _present))
     app.include_router(make_enrich_router(store, fetcher, apollo_transport))
     app.include_router(make_workflows_router(store, ai_transport))
-    app.include_router(make_flows_router(store, email_sender, channel_transport, resolver))
+    app.include_router(make_flows_router(store, email_sender, channel_transport, resolver, ai_transport))
     app.include_router(make_setup_router(store, email_transport, ai_transport, apollo_transport, BASE_URL, routes_growth.WEBHOOK_SECRET, lambda: bool(password),
                                            source_transports={"fetch": fetcher, **(campaign_transports or {})}))
     app.include_router(make_whatsapp_router(store, _present))

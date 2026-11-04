@@ -53,14 +53,15 @@ def _team_names(store) -> set:
     return {m.get("name") for m in team(store) if m.get("name")}
 
 
-def make_router(store, email_sender, transport=None, resolver=None) -> APIRouter:
+def make_router(store, email_sender, transport=None, resolver=None, ai_transport=None) -> APIRouter:
     router = APIRouter()
     ensure_collections(store)
     notify_sender = make_transactional_sender(store)
 
     def context() -> Context:
         return Context(sender=email_sender, base_url=public_base_url(store, BASE_URL), transport=transport, resolver=resolver,
-                       notify_sender=notify_sender, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1")
+                       notify_sender=notify_sender, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1",
+                       ai_transport=ai_transport)
 
     def find(flow_id: str) -> dict:
         flow = next((f for f in store.read("flows") if f["id"] == flow_id), None)

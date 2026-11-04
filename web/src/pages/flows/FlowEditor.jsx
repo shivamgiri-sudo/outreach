@@ -2,35 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api.js";
 import FlowCanvas from "./FlowCanvas.jsx";
 import FlowListView from "./FlowListView.jsx";
+import NodePicker from "./NodePicker.jsx";
 import NodeConfig from "./NodeConfig.jsx";
 import { EnrolPanel, RunsPanel, SimulatePanel } from "./FlowPanels.jsx";
-import { GROUPS, NODE_H, TYPES, iconOf, iconPath, isTrigger, startingConfig, titleOf } from "./catalog.js";
+import { NODE_H, NODE_W, TYPES, isTrigger, outputsOf, startingConfig, titleOf } from "./catalog.js";
 import { autoLayout, snap, uid, useHistory } from "./graph.js";
 
 const PHONE = "(max-width: 600px)";
 const isPhone = () => typeof window !== "undefined" && window.matchMedia?.(PHONE).matches;
 const typing = (el) => el && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable);
 const STATUS = { active: ["ok", "Active"], paused: ["warn", "Paused"], draft: ["", "Draft"] };
-
-function Palette({ onAdd }) {
-  return (
-    <aside className="fb-palette" aria-label="Steps you can add">
-      {GROUPS.map(([group, heading]) => (
-        <div key={group} className="fb-pal-group">
-          <span className="nav-title">{heading}</span>
-          {Object.entries(TYPES).filter(([, t]) => t[0] === group).map(([type, t]) => (
-            <button key={type} type="button" className={`fb-pal g-${group}`} draggable
-              onDragStart={(e) => { e.dataTransfer.setData("application/x-flow-step", type); e.dataTransfer.effectAllowed = "copy"; }}
-              onClick={() => onAdd(type)} aria-label={`Add step: ${t[1]}`}>
-              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={iconPath(iconOf(type))} /></svg>
-              <span>{t[1]}</span>
-            </button>
-          ))}
-        </div>
-      ))}
-    </aside>
-  );
-}
 
 export default function FlowEditor({ flowId, catalog, onBack }) {
   const [flow, setFlow] = useState(null);
@@ -46,6 +27,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
   const [busy, setBusy] = useState(false);
   const [leads, setLeads] = useState([]);
   const [leaving, setLeaving] = useState(false);
+  const [picker, setPicker] = useState(null);                // null, or { from, label, at } where the new step should connect
   const [runsKey, setRunsKey] = useState(0);
   const canvas = useRef(null);
   const config = useRef(null);
@@ -87,10 +69,11 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
     });
     return ids;
   }, [sim, graph.edges]);
+  const stepResults = useMemo(() => Object.fromEntries((sim?.path || []).map((p) => [p.node, { ok: p.ok !== false, text: p.result }])), [sim]);
   const selectedNode = selected?.kind === "node" ? graph.nodes.find((n) => n.id === selected.id) : null;
   const say = (text, bad = false) => setNote({ text, bad });
 
-  const addNode = (type, x, y) => {
+  const addNode = (type, x, y, from = null) => {
     const id = uid("n");
     let pos = { x, y };
     if (x === undefined) {
@@ -98,9 +81,34 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
       const lowest = Math.max(0, ...graphRef.current.nodes.map((n) => n.y));
       pos = centre ? { x: snap(centre.x - 110 + (graphRef.current.nodes.length % 4) * 20), y: snap(centre.y) } : { x: 300, y: snap(lowest + NODE_H + 70) };
     }
-    commit((g) => ({ ...g, nodes: [...g.nodes, { id, type, config: startingConfig(type), ...pos }] }));
+    if (from) {
+      const source = graphRef.current.nodes.find((n) => n.id === from.id);
+      const slot = source ? Math.max(0, outputsOf(source, graphRef.current.edges).indexOf(from.label)) : 0;
+      if (source && x === undefined) pos = from.at ? { x: snap(from.at.x - 110), y: snap(from.at.y + 20) } : { x: snap(source.x + slot * (NODE_W + 40)), y: snap(source.y + NODE_H + 100) };
+    }
+    commit((g) => ({
+      ...g,
+      nodes: [...g.nodes, { id, type, config: startingConfig(type), ...pos }],
+      edges: from ? [...g.edges.filter((e) => !(e.from === from.id && e.label === from.label)), { id: uid("e"), from: from.id, to: id, label: from.label }] : g.edges,
+    }));
     setSelected({ kind: "node", id });
     say(`Added “${TYPES[type][1]}”. ${isTrigger(type) ? "" : "Connect it by dragging from an output dot, or pick where paths go in the panel."}`);
+  };
+  const addFrom = (nodeId, label, at) => setPicker({ id: nodeId, label, at });
+  const duplicate = (id) => {
+    const original = graphRef.current.nodes.find((n) => n.id === id);
+    if (!original || isTrigger(original.type)) return;
+    const copyId = uid("n");
+    commit((g) => ({ ...g, nodes: [...g.nodes, { ...JSON.parse(JSON.stringify(original)), id: copyId, x: original.x + 40, y: original.y + 40,
+      config: { ...JSON.parse(JSON.stringify(original.config || {})), title: `${titleOf(original)} (copy)` } }] }));
+    setSelected({ kind: "node", id: copyId });
+    say("Duplicated. The copy is not connected yet.");
+  };
+  const toggleOff = (id) => {
+    const target = graphRef.current.nodes.find((n) => n.id === id);
+    if (!target || isTrigger(target.type) || ["stop", "note"].includes(target.type)) return;
+    commit((g) => ({ ...g, nodes: g.nodes.map((n) => (n.id === id ? { ...n, config: { ...n.config, disabled: !n.config?.disabled } } : n)) }), `${id}:disabled`);
+    say(target.config?.disabled ? `${titleOf(target)} is on again.` : `${titleOf(target)} is turned off: leads skip it.`);
   };
   const connect = (from, label, to) => commit((g) => ({
     ...g, edges: [...g.edges.filter((e) => !(e.from === from && e.label === label)), { id: uid("e"), from, to, label }],
@@ -131,6 +139,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       else if (mod && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+      else if (mod && e.key.toLowerCase() === "d" && selected?.kind === "node") { e.preventDefault(); duplicate(selected.id); }
       else if ((e.key === "Delete" || e.key === "Backspace") && selected
                && (e.target === document.body || e.target.closest?.(".fb-stage"))) {
         e.preventDefault();
@@ -210,6 +219,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
         </div>
       )}
       <div className="fb-bar" role="toolbar" aria-label="Flow actions">
+        <button type="button" className="btn" onClick={() => setPicker({ id: null, label: null, at: null })} data-testid="add-step"><b aria-hidden="true">+</b> Add step</button>
         <button type="button" className="btn ghost" onClick={undo} disabled={!canUndo} aria-keyshortcuts="Control+Z">Undo</button>
         <button type="button" className="btn ghost" onClick={redo} disabled={!canRedo} aria-keyshortcuts="Control+Y">Redo</button>
         <button type="button" className="btn ghost" onClick={layout}>Auto-layout</button>
@@ -226,17 +236,17 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
       {note.text && <div className={`tip${note.bad ? " error" : ""}`} role={note.bad ? "alert" : "status"}>{note.text}</div>}
       {general.length > 0 && <div className="tip error" role="alert">{general.map((p, i) => <div key={i}>{p.message}</div>)}</div>}
       <div className="fb-main">
-        <Palette onAdd={(type) => addNode(type)} />
         <div className="fb-stage">
           {view === "canvas" ? (
             <>
-              <p className="field-help fb-help">Drag the background to move around, scroll to zoom. Drag from a dot under a step to another step to connect.
-                Keyboard: Tab to a step, arrows move it, Enter edits, Delete removes; Ctrl+Z / Ctrl+Y undo and redo.</p>
+              <p className="field-help fb-help">Drag the background to move around, scroll to zoom. Drag from a dot under a step to another step to connect, or click the + under it to add the next step.
+                Keyboard: Tab to a step, arrows move it, Enter edits, D turns it off, Ctrl+D duplicates, Delete removes; Ctrl+Z / Ctrl+Y undo and redo.</p>
               <FlowCanvas ref={canvas} nodes={graph.nodes} edges={graph.edges} selected={selected} problems={problems} highlight={highlight}
                 caller={catalog?.caller} onSelect={setSelected} onDragStart={() => { dragBefore.current = graphRef.current; }}
                 onPreviewMove={(id, x, y) => preview((g) => ({ ...g, nodes: g.nodes.map((n) => (n.id === id ? { ...n, x, y } : n)) }))}
                 onCommitMove={() => dragBefore.current && record(dragBefore.current)} onKeyMove={moveBy} onConnect={connect}
-                onDeleteEdge={deleteEdge} onDeleteNode={deleteNode} onOpenConfig={openConfig} onDropType={addNode} />
+                onDeleteEdge={deleteEdge} onDeleteNode={deleteNode} onOpenConfig={openConfig} onDropType={addNode}
+                onAddFrom={addFrom} onDuplicate={duplicate} onToggleOff={toggleOff} stepResults={stepResults} />
             </>
           ) : (
             <FlowListView nodes={graph.nodes} edges={graph.edges} problems={problems} highlight={highlight} caller={catalog?.caller} onEdit={openConfig} />
@@ -247,7 +257,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
             <NodeConfig key={selectedNode.id} node={selectedNode} nodes={graph.nodes} edges={graph.edges} catalog={catalog}
               problems={problems[selectedNode.id] || []} onChange={updateConfig} panelRef={config}
               onConnect={(label, to) => (to ? connect(selectedNode.id, label, to) : unlink(selectedNode.id, label))}
-              onDelete={() => deleteNode(selectedNode.id)} />
+              onDelete={() => deleteNode(selectedNode.id)} onDuplicate={() => duplicate(selectedNode.id)} />
           ) : (
             <section className="card fb-panel">
               <h3>Flow settings</h3>
@@ -264,6 +274,9 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
           <RunsPanel flowId={flowId} refreshKey={`${runsKey}-${flow.status}`} />
         </div>
       </div>
+      <NodePicker open={!!picker} onlyTriggers={false} heading={picker?.id ? "What happens next?" : "Add a step"}
+        onClose={() => setPicker(null)}
+        onPick={(type) => { const from = picker?.id ? picker : null; addNode(type, undefined, undefined, from); }} />
       <p className="sr-only" aria-live="polite">{selectedNode ? `Selected ${titleOf(selectedNode)}` : ""}</p>
     </div>
   );

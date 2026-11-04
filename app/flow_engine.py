@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from . import flow_actions as act
-from .flows import FlowError, ensure_collections, graph_for_version, is_trigger, title_of
+from .flows import FlowError, ensure_collections, graph_for_version, is_trigger, outputs_of, title_of
 from .sequence_runner import WARM_STAGES
 
 MAX_STEPS_PER_RUN = 200
@@ -37,10 +37,10 @@ class Context:
     """What actions need from the outside world (injected so tests never touch the network)."""
 
     def __init__(self, sender=None, base_url: str = "", transport=None, resolver=None, notify_sender=None,
-                 ignore_hours: bool = False):
+                 ignore_hours: bool = False, ai_transport=None):
         self.sender = sender or (lambda message: {"status": "dry_run"})
         self.base_url, self.transport, self.resolver = base_url, transport, resolver
-        self.notify_sender, self.ignore_hours = notify_sender, ignore_hours
+        self.notify_sender, self.ignore_hours, self.ai_transport = notify_sender, ignore_hours, ai_transport
         self.emails_sent = 0
 
 
@@ -178,11 +178,50 @@ def _lead_added_matches(config: dict, lead: dict) -> bool:
     return not tag or tag in {str(t).lower() for t in lead.get("tags") or []}
 
 
-def poll_triggers(store, now: datetime) -> int:
-    """Triggers that are found by looking, not told: new leads, booked meetings, no reply for N days."""
-    flows = [f for f in store.read("flows") if f["status"] == "active" and (trigger_of(f) or {}).get("type") in POLLED_TRIGGERS]
+def _schedule_matches(config: dict, lead: dict) -> bool:
+    if not _lead_added_matches(config, lead):
+        return False
+    for key in ("stage", "band"):
+        wanted = str(config.get(key) or "").strip().lower()
+        if wanted and wanted != str(lead.get(key) or "").lower():
+            return False
+    return True
+
+
+def poll_schedules(store, now: datetime) -> int:
+    """On-a-schedule flows: once a day (or weekday / week) at the chosen India-time hour, start the matching leads that
+    are not already in the flow, up to the limit."""
+    flows = [f for f in store.read("flows") if f["status"] == "active" and (trigger_of(f) or {}).get("type") == "trigger.schedule"]
     if not flows:
         return 0
+    ist = now.astimezone(act.IST)
+    today = ist.date().isoformat()
+    leads, taken = store.read("leads"), {(r["flow_id"], r["lead_id"]) for r in store.read("flow_runs")}
+    started = 0
+    for flow in flows:
+        config = trigger_of(flow).get("config") or {}
+        when = config.get("when")
+        if (when == "weekdays" and ist.weekday() >= 5) or (when == "weekly" and ist.weekday() != int(config.get("weekday") or 0)):
+            continue
+        if ist < ist.replace(hour=int(config.get("hour") or 0), minute=0, second=0, microsecond=0) or flow.get("schedule_last") == today:
+            continue
+        store.update("flows", lambda fs, fid=flow["id"]: [{**f, "schedule_last": today} if f["id"] == fid else f for f in fs])
+        limit = int(config.get("limit") or 50)
+        for lead in [l for l in leads if (flow["id"], l["id"]) not in taken and _schedule_matches(config, l)][:limit]:
+            try:
+                enroll(store, flow, lead["id"], now, "scheduled")
+                started += 1
+            except (FlowError, LookupError):
+                pass
+    return started
+
+
+def poll_triggers(store, now: datetime) -> int:
+    """Triggers that are found by looking, not told: new leads, booked meetings, no reply for N days, and schedules."""
+    scheduled = poll_schedules(store, now)
+    flows = [f for f in store.read("flows") if f["status"] == "active" and (trigger_of(f) or {}).get("type") in POLLED_TRIGGERS]
+    if not flows:
+        return scheduled
     leads = store.read("leads")
     taken = {(r["flow_id"], r["lead_id"]) for r in store.read("flow_runs")}
     last_sent = {}
@@ -190,7 +229,7 @@ def poll_triggers(store, now: datetime) -> int:
         if m.get("status") != "failed" and _parse(m.get("sent_at")):
             stamp = _parse(m["sent_at"])
             last_sent[m["lead_id"]] = max(stamp, last_sent.get(m["lead_id"], stamp))
-    started = 0
+    started = scheduled
     for flow in flows:
         trigger = trigger_of(flow)
         config, since = trigger.get("config") or {}, _parse(flow.get("activated_at")) or now
@@ -231,12 +270,13 @@ def _finish(store, flow: dict, run: dict, status: str, reason: str, now: datetim
         _note(store, run["lead_id"], flow, f"{word} — {reason}", now)
 
 
-def _move(store, flow, graph, run, node, label, result, now, note=False) -> bool:
+def _move(store, flow, graph, run, node, label, result, now, note=False, data=None) -> bool:
     """Record a finished step and go to the step on its `label` output (or finish when nothing is connected)."""
     target = next_node(graph, node["id"], label)
 
     def change(r):
-        updated = {**r, "history": [*r["history"], {"node": node["id"], "at": iso(now), "result": result}],
+        entry = {"node": node["id"], "at": iso(now), "result": result, **({"data": data} if data else {})}
+        updated = {**r, "history": [*r["history"], entry],
                    "step": r["step"] + 1, "claim": None, "waiting_on": None, "wait_until": None, "deferred": None,
                    "updated_at": iso(now), "current_node": target}
         if target is None:
@@ -366,6 +406,12 @@ def advance_run(store, flow: dict, run_id: str, now: datetime, ctx: Context, cou
 def _step(store, flow, graph, run, node, lead, now, ctx, counts) -> bool:
     """Do the current step. Returns True when the run moved on and the next step may run in the same tick."""
     t, c = node["type"], node.get("config") or {}
+    if c.get("disabled") and t != "stop" and not is_trigger(t):
+        outs = outputs_of(t)
+        if not _due(run, now):
+            return False
+        counts["steps"] += 1
+        return _move(store, flow, graph, run, node, "next" if "next" in outs else (outs[0] if outs else "next"), "skipped: this step is turned off", now)
     if t == "wait":
         if run.get("waiting_on") != run["step"]:
             until = act.wait_until(c, now)
@@ -399,6 +445,13 @@ def _step(store, flow, graph, run, node, lead, now, ctx, counts) -> bool:
         variant = (run.get("variants") or {}).get(node["id"]) or act.split_variant(lead["id"], node["id"], c.get("percent_a"))
         _change_run(store, run["id"], run["step"], lambda r: {**r, "variants": {**(r.get("variants") or {}), node["id"]: variant}})
         return _move(store, flow, graph, _run(store, run["id"]), node, variant, f"variant {variant.upper()}", now)
+    if t == "switch":
+        field = str(c.get("field") or "")
+        value = str((run.get("vars") or {}).get(field[4:], "")) if field.startswith("var:") else str(act.lead_facts(lead).get(field, ""))
+        cases = [str(v).strip().lower() for v in c.get("cases") or []]
+        index = next((i for i, v in enumerate(cases) if v and v == value.strip().lower()), None)
+        label = "other" if index is None else f"c{index + 1}"
+        return _move(store, flow, graph, run, node, label, f"{value or 'empty'} → {label if index is None else cases[index]}", now)
     if t == "stop":
         _finish(store, flow, run, "done", "reached a Stop step", now)
         counts["finished"] += 1
@@ -406,7 +459,10 @@ def _step(store, flow, graph, run, node, lead, now, ctx, counts) -> bool:
     outcome = _act(store, flow, run, node, lead, now, ctx)
     kind = outcome["kind"]
     if kind == "ok":
-        return _move(store, flow, graph, _run(store, run["id"]), node, "next", outcome["result"], now, note=outcome.get("note", True))
+        if outcome.get("vars"):
+            _change_run(store, run["id"], run["step"], lambda r: {**r, "vars": {**(r.get("vars") or {}), **outcome["vars"]}})
+        return _move(store, flow, graph, _run(store, run["id"]), node, "next", outcome["result"], now, note=outcome.get("note", True),
+                     data=outcome.get("data"))
     if kind == "refused":
         latest = _run(store, run["id"])
         if next_node(graph, node["id"], "error"):
@@ -423,6 +479,7 @@ def _step(store, flow, graph, run, node, lead, now, ctx, counts) -> bool:
 
 def _act(store, flow, run, node, lead, now, ctx) -> dict:
     step = run["step"]
+    act.CURRENT_VARS.set(dict(run.get("vars") or {}))
 
     def claim(extra=None) -> bool:
         return _change_run(store, run["id"], step, lambda r: None if r.get("claim") else {
