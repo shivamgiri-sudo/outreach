@@ -1,5 +1,5 @@
 """Campaign routes: save targeting and rules, preview a run, run it for real, pause / resume, runs and leads."""
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -145,6 +145,7 @@ class Rules(BaseModel):
     auto_enrol: bool = False
     credit_cap: int = Field(default=100, ge=0, le=5000)
     caller: str = Field(default="", max_length=60)
+    only_companies: List[str] = Field(default_factory=list, max_length=500)    # empty = every qualifying lead
 
 
 class CampaignBody(BaseModel):

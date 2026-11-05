@@ -149,7 +149,7 @@ export function outputLabel(node, label) {
 
 const host = (url) => { try { return new URL(url).host; } catch { return url || "no address yet"; } };
 
-export function summaryOf(node, caller = "Priya") {
+export function summaryOf(node, caller = "the representative") {
   const c = node.config || {};
   switch (node.type) {
     case "trigger.manual": return "Start from the lead panel or in bulk";

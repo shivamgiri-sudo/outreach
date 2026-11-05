@@ -261,7 +261,7 @@ def test_linkedin_call_meeting_notify_and_tag_actions(c):
     tasks = [t for t in store_of(c).read("tasks") if t["lead_id"] == acme]
     kinds = {t["kind"]: t for t in tasks}
     assert kinds["linkedin"]["text"] == "Hi Ravi, glad to connect." and kinds["linkedin"]["title"].startswith("LinkedIn")
-    assert kinds["call"]["owner"] == "Priya" and kinds["call"]["due_at"]
+    assert kinds["call"]["owner"] == "Sales team" and kinds["call"]["due_at"]
     assert "no calendar is connected" in kinds["meeting"]["text"]
     assert any(n["text"] == "Check this lead" for n in c.get("/api/notifications").json())
     assert c.get(f"/api/leads/{acme}").json()["tags"] == ["combo"]

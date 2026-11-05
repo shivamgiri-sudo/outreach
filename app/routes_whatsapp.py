@@ -2,9 +2,10 @@
 import os
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from .audit import actor_of
 from .growth_core import public_base_url
 from .whatsapp import TEMPLATES, WhatsAppError, send
 
@@ -20,9 +21,11 @@ def make_router(store, present) -> APIRouter:
     router = APIRouter()
 
     @router.post("/api/leads/{lead_id}/whatsapp")
-    def send_whatsapp(lead_id: str, body: WhatsAppBody):
+    def send_whatsapp(lead_id: str, body: WhatsAppBody, request: Request):
+        who = actor_of(getattr(request.state, "user", None))
+        me = who["name"] if who["email"] else ""          # no login (local use): fall back to the team name in Settings
         try:
-            return present(send(store, lead_id, body.template, body.text, datetime.now(timezone.utc), public_base_url(store, BASE_URL)))
+            return present(send(store, lead_id, body.template, body.text, datetime.now(timezone.utc), public_base_url(store, BASE_URL), sender=me))
         except LookupError:
             raise HTTPException(404, "Lead not found")
         except WhatsAppError as exc:

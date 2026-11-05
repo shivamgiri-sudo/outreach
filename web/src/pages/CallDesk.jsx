@@ -3,10 +3,10 @@ import { api } from "../api.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 
 const OUTCOMES = ["Connected – interested", "Call back later", "Not interested", "Wrong number", "No answer"];
-const PD_NOTE = "Dial through PD only. Missed leads are redialled through PD the same day, before 18:55.";
+const PD_NOTE = "Calls are placed by a person, never by a bot or an auto-dialler. Redial missed leads the same day, before 18:55.";
 const SCRIPT = [
-  ["Opener", "Hi {{first_name}}, Priya from BookMyInterview. You replied about screening for {{role}} — is this a good minute?"],
-  ["Opener (Hinglish)", "Hi {{first_name}}, main Priya, BookMyInterview se. Aapne {{role}} ki screening ke baare mein reply kiya tha — kya abhi ek minute baat ho sakti hai?"],
+  ["Opener", "Hi {{first_name}}, {{rep}} from BookMyInterview. You replied about screening for {{role}} — is this a good minute?"],
+  ["Opener (Hinglish)", "Hi {{first_name}}, main {{rep}}, BookMyInterview se. Aapne {{role}} ki screening ke baare mein reply kiya tha — kya abhi ek minute baat ho sakti hai?"],
   ["Ask", "How is hiring for {{role}} going right now — what takes most of your team's time?"],
   ["Proof", "Honestly, we're in beta and have no case studies yet. That's why your first role is free, so you can judge it on your own candidates."],
   ["Next step", "Shall I set up your first role with you now? It's free and takes a few minutes."],
@@ -28,6 +28,8 @@ export default function CallDesk() {
   const [leads, setLeads] = useState([]);
   const [open, setOpen] = useState(null);
   const [dialUrl, setDialUrl] = useState("");
+  const [rep, setRep] = useState("your name");
+  useEffect(() => { api.me().then((m) => setRep(m.name || "your name")).catch(() => {}); }, []);
   useEffect(() => {
     api.integrations().then((list) => {
       const t = list.find((i) => i.id === "telephony");
@@ -43,7 +45,7 @@ export default function CallDesk() {
 
   return (
     <>
-      <h2>Priya's call desk</h2>
+      <h2>Call desk</h2>
       <p className="sub">Leads who said yes. Call hot ones first.</p>
       <p className="sub"><b>{PD_NOTE}</b></p>
       <div className="grid g2">
@@ -70,7 +72,7 @@ export default function CallDesk() {
         </div>
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Call script</h3>
-          {SCRIPT.map(([t, text]) => <p key={t}><b>{t}:</b> {text}</p>)}
+          {SCRIPT.map(([t, text]) => <p key={t}><b>{t}:</b> {text.replaceAll("{{rep}}", rep)}</p>)}
           <h3>If they say…</h3>
           {OBJECTIONS.map(([t, text]) => <p key={t}><b>“{t}”</b> — {text}</p>)}
         </div>

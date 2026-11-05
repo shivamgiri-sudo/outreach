@@ -90,8 +90,11 @@ def within_session_window(lead: dict, now: datetime) -> bool:
     return bool(last) and now - last <= SESSION_WINDOW
 
 
-def send(store, lead_id: str, template: str, text: str, now: datetime, base_url: str, transport=None) -> dict:
-    """Queue one WhatsApp message (practice mode until a provider is live) and return the updated lead."""
+def send(store, lead_id: str, template: str, text: str, now: datetime, base_url: str, transport=None, sender: str = "") -> dict:
+    """Queue one WhatsApp message (practice mode until a provider is live) and return the updated lead.
+
+    `sender` is the representative sending it: their name goes into the message, and into the log. Flows and other
+    automatic paths pass none and use the team name from Settings."""
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None:
         raise LookupError("Lead not found")
@@ -114,7 +117,7 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
         raw = TEMPLATES[template]
     else:
         raise WhatsAppError("Unknown template")
-    variables = lead_variables(lead, get_settings(store)["sender_name"], base_url,
+    variables = lead_variables(lead, sender.strip() or get_settings(store)["sender_name"], base_url,
                                {"demo_link": f"{base_url}/demo/{lead['demo_token']}"}, secret=server_secret(store))
     body, missing = render(raw, variables)
     if missing:
@@ -129,11 +132,12 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
                            "en", params, text=body if template == "custom" else None, transport=transport or request)
     message = {"lead_id": lead_id, "to": lead["phone"], "template": template, "body": body,
                "sent_at": now.isoformat(timespec="seconds"), "status": result.get("status", "dry_run"),
-               "provider_id": result.get("provider_id"), "error": result.get("error")}
+               "provider_id": result.get("provider_id"), "error": result.get("error"), "by": sender.strip()}
     store.update("whatsapp_outbox", lambda rows: [*rows, message])
     if message["status"] == "failed":
         raise WhatsAppError(f"The WhatsApp provider refused the message: {message['error'] or 'unknown error'}")
-    event = {"at": message["sent_at"], "kind": "whatsapp", "text": f"{template} — {message['status']}"}
+    event = {"at": message["sent_at"], "kind": "whatsapp", "text": f"{template} — {message['status']}" + (f" (sent by {sender.strip()})" if sender.strip() else ""),
+             **({"by": sender.strip()} if sender.strip() else {})}
     demo = {k: lead[k] for k in ("demo_token", "referral_code", "activation") if k in lead}
 
     def record(latest: dict) -> dict:

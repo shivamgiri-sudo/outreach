@@ -56,7 +56,7 @@ function SendingBanner({ status, onResume, onClearPractice }) {
 
 export default function Outbox() {
   const [box, setBox] = useState([]);
-  const [cfg, setCfg] = useState({ daily_cap: 20, sender_name: "Priya" });
+  const [cfg, setCfg] = useState({ daily_cap: 20, sender_name: "" });
   const [status, setStatus] = useState(null);
   const [inbox, setInbox] = useState([]);
   const [message, setMessage] = useState("");

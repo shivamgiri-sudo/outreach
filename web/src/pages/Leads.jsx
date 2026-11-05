@@ -185,6 +185,28 @@ export default function Leads({ focusLead, go }) {
     setPicked([]); setBusy(""); load();
   };
 
+  const saveAsList = async () => {
+    const name = window.prompt("Name this list (for example: Noida BPOs, Nov)", `Selected ${picked.length} leads`);
+    if (!name) return;
+    setBusy("list");
+    try {
+      const r = await api.createList({ name, lead_ids: picked });
+      setMessage(`Saved “${r.name}” with ${r.lead_ids.length} leads. Open Lists to start email or LinkedIn for it only.`);
+      setPicked([]);
+    } catch (e) { setMessage(e.message); }
+    setBusy("");
+  };
+  const bulkLinkedIn = async () => {
+    setBusy("li");
+    try {
+      const list = await api.createList({ name: `LinkedIn ${new Date().toISOString().slice(0, 10)} (${picked.length})`, lead_ids: picked });
+      const r = await api.listStartLinkedIn(list.id);
+      setMessage(`Started LinkedIn outreach for ${r.started} of ${r.asked}.${r.refused.length ? " Left out: " + r.refused.map((x) => `${x.count} (${x.reason})`).join("; ") : ""}`);
+      setPicked([]); load();
+    } catch (e) { setMessage(e.message); }
+    setBusy("");
+  };
+
   const filtered = Boolean(query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly);
 
   const header = (key, label) => (
@@ -301,6 +323,8 @@ export default function Leads({ focusLead, go }) {
         <div className="bulkbar" role="region" aria-label="Actions for selected leads">
           <b>{picked.length} selected</b>
           <button className="btn" disabled={busy === "enroll"} onClick={bulkEnroll}>{busy === "enroll" ? "Starting…" : "Start email sequence"}</button>
+          <button className="btn ghost" disabled={busy === "li"} onClick={bulkLinkedIn}>{busy === "li" ? "Starting…" : "Start LinkedIn outreach"}</button>
+          <button className="btn ghost" disabled={busy === "list"} onClick={saveAsList}>Save as list</button>
           {isOwner() && <DownloadButton path={exportPath("leads")} body={{ ids: picked }} label="Download CSV" testId="download-leads-picked" />}
           <button className="btn ghost" onClick={() => setPicked([])}>Clear</button>
         </div>

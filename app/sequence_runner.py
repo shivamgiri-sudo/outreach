@@ -25,7 +25,7 @@ from .privacy import is_blocked
 from .senders import email_ready
 from .sequences import DEFAULT_DAILY_CAP, IST, due_steps, in_business_hours, lead_variables, render
 
-DEFAULT_SENDER = "Priya"
+DEFAULT_SENDER = "BookMyInterview team"
 DEFAULT_PER_RUN_CAP = 5
 MIN_GAP = timedelta(days=2)
 RETRY_AFTER = timedelta(hours=1)

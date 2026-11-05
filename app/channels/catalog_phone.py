@@ -145,7 +145,7 @@ CALLS = [
                     help="Must contain {phone} where the number goes.")],
              ["Ask the dialler team for a click-to-call link.",
               "Paste it here with {phone} where the number goes.",
-              "Priya dials through PD only; outcomes are logged on the call desk."],
+              "The representative dials through the dialler; outcomes are logged on the call desk. No automatic or bot calls."],
              "Checks that the link contains {phone}.", ["click_to_call"], recommended=True, cost_note="No extra cost."),
     provider("exotel", "calls", "Exotel", "Indian cloud telephony: rings the agent, then connects the lead.",
              "https://developer.exotel.com/",

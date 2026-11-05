@@ -42,7 +42,7 @@ def test_start_needs_a_profile_link_and_never_restarts(tmp_path):
     assert c.post(f"/api/leads/{lid}/linkedin/start").status_code == 400
     c2, lid2 = make(tmp_path / "b")
     r = c2.post(f"/api/leads/{lid2}/linkedin/start").json()
-    assert r["task"]["title"] == "LinkedIn step 1: send connection request" and r["task"]["owner"] == "Priya"
+    assert r["task"]["title"] == "LinkedIn step 1: send connection request" and r["task"]["owner"] == "Sales team"
     assert c2.post(f"/api/leads/{lid2}/linkedin/start").status_code == 400
 
 

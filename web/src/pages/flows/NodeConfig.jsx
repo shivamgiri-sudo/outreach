@@ -63,7 +63,7 @@ function WebhookBox({ flowId }) {
 export default function NodeConfig({ flowId, node, nodes, edges, catalog, problems, onChange, onConnect, onDelete, onDuplicate, panelRef }) {
   const c = node.config || {};
   const lastText = useRef({ key: null, el: null });
-  const team = catalog?.team?.length ? catalog.team : [catalog?.caller || "Priya"];
+  const team = catalog?.team?.length ? catalog.team : [catalog?.caller || "Sales team"];
   const templates = catalog?.whatsapp_templates || ["first_after_yes"];
   const set = (key, value) => onChange({ [key]: value }, `${node.id}:${key}`);
   const num = (key) => (e) => set(key, e.target.value === "" ? "" : Number(e.target.value));
@@ -95,7 +95,7 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
   const flowVars = [...new Set(nodes.flatMap((n) => (n.type === "set_vars" ? (n.config?.values || []).map((v) => v.name) : ["ai", "http"].includes(n.type) ? [n.config?.save_as] : []))
     .filter((v) => v && /^[a-z][a-z0-9_]{0,29}$/.test(v)))];
   const withVars = (names) => [...names, ...flowVars];
-  const owner = (key, label) => select(key, label, [["", `${catalog?.caller || "Priya"} (the caller)`], ...team.filter((t) => t !== catalog?.caller).map((t) => [t, t])]);
+  const owner = (key, label) => select(key, label, [["", `${catalog?.caller || "Sales team"} (the caller)`], ...team.filter((t) => t !== catalog?.caller).map((t) => [t, t])]);
   const kind = IF_FIELDS[c.field]?.[1] || "text";
   const valueInput = () => {
     if (c.op === "exists") return null;

@@ -76,7 +76,7 @@ def test_yes_reply_creates_one_call_task_for_priya_and_logging_the_call_closes_i
     c.post(f"/api/leads/{lid}/reply", json={"text": "Yes please"})
     calls = [t for t in c.get("/api/tasks/board").json()["today"] + c.get("/api/tasks/board").json()["upcoming"]
              + c.get("/api/tasks/board").json()["overdue"] if t["kind"] == "call"]
-    assert len(calls) == 1 and calls[0]["owner"] == "Priya" and calls[0]["priority"] == "high"
+    assert len(calls) == 1 and calls[0]["owner"] == "Sales team" and calls[0]["priority"] == "high"
     c.post(f"/api/leads/{lid}/stage", json={"stage": "whatsapp_active"})
     assert sum(1 for t in c.app.state.store.read("tasks") if t.get("kind") == "call") == 1     # no duplicate call task
     today = c.get("/api/today").json()

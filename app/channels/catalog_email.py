@@ -12,8 +12,8 @@ def _sender_fields(domain_required=False):
     return [
         field("domain", "Sending domain", domain_required, placeholder="mail.yourbrand.in",
               help="A separate look-alike domain, never bookmyinterview.ai itself."),
-        field("from_name", "From name", True, placeholder="Priya from BookMyInterview"),
-        field("from_email", "From email", True, placeholder="priya@mail.yourbrand.in", kind="email"),
+        field("from_name", "From name", True, placeholder="Your name from BookMyInterview"),
+        field("from_email", "From email", True, placeholder="name@mail.yourbrand.in", kind="email"),
     ]
 
 
@@ -103,7 +103,7 @@ INBOUND = [
              "https://support.google.com/mail/answer/7126229",
              [field("imap_host", "IMAP server", True, placeholder="imap.gmail.com", default="imap.gmail.com"),
               field("imap_port", "Port", True, placeholder="993", kind="number", default="993", help="993 (SSL)."),
-              field("username", "Mailbox username", True, placeholder="priya@mail.yourbrand.in"),
+              field("username", "Mailbox username", True, placeholder="name@mail.yourbrand.in"),
               field("password", "Password or app password", True, secret=True),
               field("folder", "Folder", placeholder="INBOX", default="INBOX"),
               field("mark_seen", "Mark messages as read after reading", kind="select", options=["yes", "no"],

@@ -270,7 +270,7 @@ def test_reply_trigger_starts_the_yes_template(c):
     assert len(call_tasks) == 1                                    # the flow reuses the yes-reply call task, no duplicate
     tick(c, T0 + timedelta(days=2, hours=1))
     notes = c.get("/api/notifications").json()
-    assert any(n["title"].startswith("Flow Yes → WhatsApp + Priya call") for n in notes)
+    assert any(n["title"].startswith("Flow Yes → WhatsApp + representative call") for n in notes)
     assert runs(c, flow)[0]["status"] == "done"
 
 

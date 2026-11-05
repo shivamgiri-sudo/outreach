@@ -107,7 +107,7 @@ def record(store, event: dict, now: Optional[datetime] = None, notify_sender=Non
                                         SETTINGS_SEEN: {"at": iso(now), "state": str(event.get("state") or kind)[:40]}})
     if kind == "error" and event.get("fatal"):
         save_config(store, {"enabled": False})
-        owner = store.read("settings").get("linkedin_owner") or "Priya"
+        owner = store.read("settings").get("linkedin_owner") or "Sales team"
         notify(store, owner, "LinkedIn agent paused", f"The LinkedIn agent stopped itself: {row['note'] or 'LinkedIn showed a checkpoint'}. "
                "Open LinkedIn yourself, sort it out, then switch the agent back on.", kind="linkedin", sender=notify_sender)
     return row

@@ -17,7 +17,7 @@ export const EMPTY_CAMPAIGN = {
   target: { industries: [], cities: [], roles_hiring: [], company_size_buckets: [], keywords: [] },
   sources: { careers_pages: [], careers_html: [], apollo_search: false, apollo_hiring: false, google_places: false, csv_import_ids: [], max_results: 25, extra: [], extra_params: {} },
   enrich: { crawler: true, hunter: false, firecrawl: false, apollo_match: false, extra: [], extra_params: {} },
-  rules: { credit_cap: 100, min_score: 40, require_business_email: true, skip_role_addresses: false, max_new_leads_per_run: 50, auto_enrol: false, caller: "" },
+  rules: { credit_cap: 100, min_score: 40, require_business_email: true, skip_role_addresses: false, max_new_leads_per_run: 50, auto_enrol: false, caller: "", only_companies: [] },
 };
 
 function Chips({ label, field, values, onChange }) {
@@ -115,7 +115,7 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
   const [paste, setPaste] = useState({ url: "", html: "" });
   useEffect(() => {
     api.campaignSources().then(setStatus).catch(() => {});
-    if (!initial) api.team().then((t) => setC((x) => ({ ...x, rules: { ...x.rules, caller: x.rules.caller || t.caller_name || "Priya" } }))).catch(() => {});
+    if (!initial) api.team().then((t) => setC((x) => ({ ...x, rules: { ...x.rules, caller: x.rules.caller || t.caller_name || "Sales team" } }))).catch(() => {});
   }, []);
   const set = (part, key, value) => setC((x) => ({ ...x, [part]: { ...x[part], [key]: value } }));
   const [pagesText, setPagesText] = useState(() => c.sources.careers_pages.join("\n"));
@@ -247,6 +247,15 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
             <label htmlFor="camp-caller">Who gets the update after each run</label>
             <input id="camp-caller" value={r.caller} onChange={(e) => set("rules", "caller", e.target.value)} />
             <Check checked={r.auto_enrol} onChange={(v) => set("rules", "auto_enrol", v)}><b>Start the email sequence automatically for qualifying leads</b></Check>
+            {r.auto_enrol && (
+              <div style={{ marginTop: 8 }}>
+                <label htmlFor="only-companies">Only email these companies (optional)</label>
+                <textarea id="only-companies" rows={2} placeholder="One company name per line. Leave empty to email every qualifying lead."
+                  value={(r.only_companies || []).join("\n")}
+                  onChange={(e) => set("rules", "only_companies", e.target.value.split("\n").map((x) => x.trim()).filter(Boolean))} />
+                <small className="sub-inline">{(r.only_companies || []).length ? `Only ${(r.only_companies || []).length} chosen compan${(r.only_companies || []).length === 1 ? "y" : "ies"} will be emailed; other qualifying leads stay in the list unstarted.` : "Nothing is held back."}</small>
+              </div>
+            )}
             {r.auto_enrol && <div className="tip" style={{ marginTop: 8 }} role="note">Sending still follows the Outbox rules: practice mode until "Send for real" is on, daily caps and warm-up, one email per company a day, Mon–Fri 09:00–18:00 IST, and unsubscribes are never emailed.</div>}
           </div>
         </div>

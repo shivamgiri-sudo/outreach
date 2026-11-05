@@ -16,6 +16,7 @@ def ist(day: int, hour: int, minute: int = 0) -> datetime:
 
 def seeded(tmp_path) -> Store:
     store = Store(tmp_path / "d.json")
+    store.write("settings", {"caller_name": "Priya"})
     store.write("leads", [
         {"id": "l1", "company": "Acme Retail", "stage": "interested", "timeline": [],
          "consent": {"text": "Yes please", "at": ist(2, 15).isoformat(), "source": "email reply"}},
@@ -49,7 +50,7 @@ def test_digest_once_per_weekday_at_or_after_0930_ist(tmp_path):
 
 def test_digest_goes_out_from_the_minute_timer_and_by_email_when_on(tmp_path):
     store = seeded(tmp_path)
-    store.write("settings", {"notify_email": True, "team": [{"name": "Priya", "email": "priya@team.example"}]})
+    store.write("settings", {"notify_email": True, "caller_name": "Priya", "team": [{"name": "Priya", "email": "priya@team.example"}]})
     mails = []
     sender = lambda message: mails.append(message) or {"status": "sent"}
     assert reminder_tick(store, ist(3, 9, 0), sender)["digest"] is False

@@ -15,7 +15,7 @@ const STAGES = [
 
 const FEATURES = [
   { icon: "layers", tone: "blue", title: "Multi-channel sequences", text: "Email, WhatsApp and LinkedIn, paced and tracked in one place." },
-  { icon: "inbox", tone: "green", title: "Reply reading & tasks for Priya", text: "Replies are read and sorted; a yes becomes a call task." },
+  { icon: "inbox", tone: "green", title: "Reply reading & tasks for your team", text: "Replies are read and sorted; a yes becomes a call task." },
   { icon: "shield", tone: "red", title: "DPDP-ready consent & unsubscribe", text: "Consent recorded, one-click unsubscribe, erasure on request." },
 ];
 

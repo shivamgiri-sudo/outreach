@@ -180,13 +180,13 @@ def make_router(store, transactional_sender=None) -> APIRouter:
     @router.get("/api/team")
     def get_team():
         settings = store.read("settings")
-        return {"caller_name": settings.get("caller_name") or "Priya", "team": team(store), "notify_email": bool(settings.get("notify_email"))}
+        return {"caller_name": settings.get("caller_name") or "Sales team", "team": team(store), "notify_email": bool(settings.get("notify_email"))}
 
     @router.put("/api/team")
     def put_team(body: TeamBody):
         changes = {}
         if body.caller_name is not None:
-            changes["caller_name"] = body.caller_name.strip()[:60] or "Priya"
+            changes["caller_name"] = body.caller_name.strip()[:60] or "Sales team"
         if body.team is not None:
             clean = []
             for m in body.team[:50]:

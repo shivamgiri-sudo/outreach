@@ -135,7 +135,7 @@ def test_whatsapp_yes_gives_priya_a_call_task_and_logging_the_call_closes_it(c, 
     lead = lead_of(c, 16)
     meta_post(c, meta_message(phone(16), "Haan ji, call kar lijiye", "wamid.QA.Y16", ts=int(clock.now.timestamp())), path)
     [task] = tasks_for(store, lead["id"], "call", "open")
-    assert task["owner"] == "Priya" and task["due_at"].startswith("2026-11-09T05:30")   # Monday 11:00 IST
+    assert task["owner"] == "Sales team" and task["due_at"].startswith("2026-11-09T05:30")   # Monday 11:00 IST
     # a second yes over the weekend does not stack another call task
     clock.set(utc(2026, 11, 7, 6, 0))
     meta_post(c, meta_message(phone(16), "haan, Monday theek hai", "wamid.QA.Y16b", ts=int(clock.now.timestamp())), path)

@@ -1,8 +1,8 @@
 """Starter flows built from the logic the app already has, so a team can start from something that works.
 
 1. Cold email 6-step: the built-in sequence's six emails (Day 1, 4, 8, 12, 16, 21), stopping on any reply.
-2. Yes -> WhatsApp + Priya call: WhatsApp only with recorded consent, a call task, a nudge if no meeting in 2 days.
-3. LinkedIn + email combo: a LinkedIn task first (a person sends it), then email; a yes goes to Priya.
+2. Yes -> WhatsApp + representative call: WhatsApp only with recorded consent, a call task, a nudge if no meeting in 2 days.
+3. LinkedIn + email combo: a LinkedIn task first (a person sends it), then email; a yes goes to the representative.
 `POST /api/flows/templates/{key}` saves a draft copy that can be edited freely.
 """
 from .flows import build_flow
@@ -61,9 +61,9 @@ def _yes_flow() -> dict:
     edges = [_edge("trigger", "consent"), _edge("consent", "wa", "yes"), _edge("consent", "call", "no"),
              _edge("wa", "call"), _edge("wa", "call", "error"), _edge("call", "wait"), _edge("wait", "meeting"),
              _edge("meeting", "notify", "yes")]
-    return {"name": "Yes → WhatsApp + Priya call", "settings": {"stop_on_reply": False},
+    return {"name": "Yes → WhatsApp + representative call", "settings": {"stop_on_reply": False},
             "description": "When someone replies yes: the sample-screen WhatsApp (only with consent), a call task for "
-                           "Priya, and a nudge to you if no meeting is booked within two days.",
+                           "the representative, and a nudge to you if no meeting is booked within two days.",
             "nodes": nodes, "edges": edges}
 
 
@@ -89,7 +89,7 @@ def _linkedin_combo_flow() -> dict:
              _edge("wait2", "email3")]
     return {"name": "LinkedIn + email combo", "settings": {"stop_on_reply": True},
             "description": "A LinkedIn connection task first (sent by a person), then email 1 after 3 days. A yes goes "
-                           "to Priya; silence gets the tip email and, a week later, the permission close.",
+                           "to the representative; silence gets the tip email and, a week later, the permission close.",
             "nodes": nodes, "edges": edges}
 
 

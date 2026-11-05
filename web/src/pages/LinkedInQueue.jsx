@@ -19,7 +19,7 @@ function Settings({ cfg, onSave }) {
       <label>New connection requests per day (start with 10–15)
         <input type="number" min="1" max="40" value={form.linkedin_daily_connections} onChange={(e) => setForm({ ...form, linkedin_daily_connections: e.target.value })} /></label>
       <label>Who sends from the LinkedIn account
-        <input value={form.linkedin_owner} placeholder="Priya" onChange={(e) => setForm({ ...form, linkedin_owner: e.target.value })} /></label>
+        <input value={form.linkedin_owner} placeholder="Name of the representative" onChange={(e) => setForm({ ...form, linkedin_owner: e.target.value })} /></label>
       <label>Case-study link (step 4 is skipped until a real link is set)
         <input value={form.case_study_url} placeholder="https://…" onChange={(e) => setForm({ ...form, case_study_url: e.target.value })} /></label>
       <button className="btn" style={{ marginTop: 8 }} onClick={() => onSave({ ...form, linkedin_daily_connections: Number(form.linkedin_daily_connections) })}>Save</button>

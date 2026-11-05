@@ -12,7 +12,7 @@ CATALOGUE = [
         "modes": ["api"],
         "fields": [
             {"key": "domain", "label": "Sending domain", "required": True, "placeholder": "mail.yourbrand.in"},
-            {"key": "from_name", "label": "From name", "required": True, "placeholder": "Priya from BookMyInterview"},
+            {"key": "from_name", "label": "From name", "required": True, "placeholder": "Your name from BookMyInterview"},
             {"key": "from_email", "label": "From email", "required": True, "placeholder": "hello@mail.yourbrand.in"},
             {"key": "smtp_host", "label": "SMTP host", "required": False, "placeholder": "smtp.resend.com"},
             {"key": "api_key", "label": "Email provider API key", "required": True, "secret": True},
@@ -84,14 +84,14 @@ CATALOGUE = [
         "steps": ["Create an account with a verifier.", "Paste the API key here, or verify CSVs yourself."],
     },
     {
-        "id": "telephony", "title": "Calling (Priya's dialler)", "group": "Messaging",
+        "id": "telephony", "title": "Calling (click-to-call)", "group": "Messaging",
         "why": "Click-to-call and call outcome logging for the call desk.",
         "modes": ["api", "manual"],
         "fields": [
             {"key": "click_to_call_url", "label": "Click-to-call URL template", "required": True,
              "placeholder": "https://dialler/call?number={phone}"},
         ],
-        "steps": ["Ask the dialler team for a click-to-call link.", "Paste it here. Manual mode: Priya dials herself and logs the result."],
+        "steps": ["Ask the dialler team for a click-to-call link.", "Paste it here. Manual mode: the representative dials and logs the result. Nothing is ever dialled automatically."],
     },
     {
         "id": "hunter", "title": "Hunter.io", "group": "Lead data",

@@ -56,7 +56,7 @@ def test_meta_batch_classifies_every_reply_type(c):
     one = fresh(c, ids[1])
     assert one["stage"] == "interested" and one["consent"]["source"] == "whatsapp reply" and one["whatsapp_last_inbound_at"]
     call = tasks_for(store, ids[1], "call")
-    assert len(call) == 1 and call[0]["owner"] == "Priya" and call[0]["priority"] == "high"
+    assert len(call) == 1 and call[0]["owner"] == "Sales team" and call[0]["priority"] == "high"
     # 2: Meta's marketing opt-out quick reply "Stop promotions" -> unsubscribed
     assert fresh(c, ids[2])["stage"] == "unsubscribed"
     # 3: interactive button "Yes, call me" -> interested

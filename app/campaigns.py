@@ -213,6 +213,13 @@ def _preview_rows(plan: dict, campaign: dict) -> list:
 
 def _enrol(store, campaign: dict, ids: list, report: dict) -> None:
     refused = {}
+    only = {c.strip().lower() for c in (campaign["rules"].get("only_companies") or []) if c and c.strip()}
+    if only:                                   # the owner chose which companies this campaign may email
+        by_id = {l["id"]: l for l in store.read("leads")}
+        kept = [i for i in ids if (by_id.get(i, {}).get("company") or "").strip().lower() in only]
+        if len(kept) < len(ids):
+            pipe.add_error(report, "sequence", f"{len(ids) - len(kept)} qualified leads were left out: their company is not in this campaign's chosen companies")
+        ids = kept
     for lead_id in ids:
         try:
             enroll_lead(store, lead_id, note=f"Enrolled in email sequence by campaign {campaign['name']}")

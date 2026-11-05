@@ -14,9 +14,9 @@ _BY_STAGE = {
                   "Share one useful tip about screening high-volume roles. No link, no pitch."),
     "engaged": ("Ask permission to send the sample screen on WhatsApp", "email",
                 "Ask: 'Can I send the sample screen I drafted for your role on WhatsApp?' Record their yes as consent."),
-    "interested": ("Send the sample screen on WhatsApp and alert Priya", "whatsapp",
+    "interested": ("Send the sample screen on WhatsApp and alert the representative", "whatsapp",
                    "Thank them for the yes, send the sample screen for their role, offer to set up their first role free."),
-    "whatsapp_active": ("Priya to call within 24 hours", "call",
+    "whatsapp_active": ("Representative to call within 24 hours", "call",
                         "Ask for 2 minutes, ask what is slow in their hiring today, explain screening and "
                         "self-booking in one line, agree one next step."),
     "call_done": ("Send recap and invite them to set up the first role", "email",

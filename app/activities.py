@@ -4,7 +4,7 @@
   or real), replies, WhatsApp, calls, meetings, notes, tasks and system events.
 - Tasks have an id, a due time (IST shown in the UI), an owner and a priority; they can be snoozed, reassigned
   and completed. Old tasks without ids get one the first time the list is read.
-- When a lead says yes, a call task for the caller (Priya by default) is created for the same business day.
+- When a lead says yes, a call task for the caller (the team caller set in Settings) is created for the same business day.
 """
 import uuid
 from datetime import datetime, time, timedelta, timezone
@@ -17,7 +17,7 @@ NEXT_DAY_CALL = time(11, 0)
 ACTIVITY_TYPES = ("call", "meeting", "note", "email", "whatsapp", "sms", "linkedin", "other")
 CALL_OUTCOMES = ("connected", "no_answer", "busy", "wrong_number", "call_back", "interested", "not_interested", "meeting_booked")
 PRIORITIES = ("high", "normal", "low")
-DEFAULT_CALLER = "Priya"
+DEFAULT_CALLER = "Sales team"
 TASK_TITLES = {
     "review": "Check a reply", "question": "Answer a question", "wrong_person": "Find the right contact",
     "other": "Read a reply", "pilot": "Run a free pilot", "workflow": "Follow up", "unmatched_reply": "Match a reply to a lead",

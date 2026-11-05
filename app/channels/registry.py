@@ -26,7 +26,7 @@ CHANNELS = [
     {"id": "sms", "title": "SMS", "integration_id": "sms", "kind": "exclusive", "live_flag": "live_sms",
      "about": "Text messages in India need DLT registration first. Practice mode until 'Send for real' is on."},
     {"id": "calls", "title": "Calls", "integration_id": "telephony", "kind": "exclusive",
-     "about": "How Priya's call desk places calls."},
+     "about": "How a representative places calls from the call desk (manual, click-to-call)."},
     {"id": "calendar", "title": "Calendar & meetings", "integration_id": "calendar", "kind": "exclusive",
      "about": "Book demos from a lead's page, with a video link, and see bookings land on the lead."},
     {"id": "lead_data", "title": "Lead data", "kind": "legacy",

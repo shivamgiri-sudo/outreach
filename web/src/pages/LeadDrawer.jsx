@@ -84,6 +84,45 @@ function InlineForm({ fields, submitLabel, onSubmit, onCancel }) {
   );
 }
 
+// Fix a wrong email, number or name by hand. Every change is logged with who made it and shows in the history below.
+const EDIT_FIELDS = [["contact_name", "Contact name"], ["title", "Title"], ["email", "Email"], ["phone", "Phone"], ["company", "Company"],
+  ["website", "Website"], ["linkedin_url", "LinkedIn profile link"]];
+
+function EditDetails({ lead, onSaved }) {
+  const [open, setOpen] = useState(false);
+  const [values, setValues] = useState({});
+  const [reason, setReason] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const start = () => { setValues(Object.fromEntries(EDIT_FIELDS.map(([k]) => [k, lead[k] || ""]))); setReason(""); setMsg(""); setOpen(true); };
+  const changed = Object.fromEntries(EDIT_FIELDS.filter(([k]) => (values[k] || "") !== (lead[k] || "")).map(([k]) => [k, values[k] || ""]));
+  const save = async (e) => {
+    e.preventDefault();
+    setBusy(true); setMsg("");
+    try { const r = await api.editLead(lead.id, changed, reason); setOpen(false); onSaved(r); } catch (err) { setMsg(err.message); }
+    setBusy(false);
+  };
+  if (!open) return <button className="btn ghost" onClick={start}>Edit details</button>;
+  return (
+    <form className="inline-form" onSubmit={save} aria-label="Edit contact details">
+      {EDIT_FIELDS.map(([k, label]) => (
+        <label key={k}>{label}
+          <input value={values[k] || ""} onChange={(e) => setValues({ ...values, [k]: e.target.value })} />
+        </label>
+      ))}
+      <label>Why are you changing it? (optional)
+        <input value={reason} placeholder="e.g. wrong number on the card" onChange={(e) => setReason(e.target.value)} />
+      </label>
+      {msg && <div className="tip error" role="alert">{msg}</div>}
+      <p className="sub" style={{ margin: 0 }}>Saved with your name, the time, the old and the new value.</p>
+      <div className="row">
+        <button className="btn" type="submit" disabled={busy || !Object.keys(changed).length}>{busy ? "Saving…" : `Save ${Object.keys(changed).length || ""} change${Object.keys(changed).length === 1 ? "" : "s"}`}</button>
+        <button className="btn ghost" type="button" onClick={() => setOpen(false)}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
 // DPDP (owner only): download everything held on this person, or erase it for good.
 function PrivacyActions({ lead, onErased }) {
   const [confirming, setConfirming] = useState(false);
@@ -211,6 +250,7 @@ export default function LeadDrawer({ id, onClose }) {
       </div>
       <p className="sub">{lead.contact_name} {lead.title && `· ${lead.title}`}<br />{lead.email} {lead.phone && `· ${lead.phone}`}
         <br /><small>Source: {sourceLabel(lead)}</small></p>
+      <EditDetails lead={lead} onSaved={(r) => setLead(r)} />
       {error && <div className="tip error" role="alert">{error}</div>}
 
       <LeadOrigin lead={lead} />
@@ -240,7 +280,7 @@ export default function LeadDrawer({ id, onClose }) {
         <InlineForm submitLabel="Save consent" onCancel={() => setForm("")}
           fields={[
             { key: "text", label: "Their exact words, and where (saved as proof of consent)", required: true,
-              placeholder: "e.g. “Yes, send it on WhatsApp” — call with Priya, 3 Nov" },
+              placeholder: "e.g. “Yes, send it on WhatsApp” — call with Amit, 3 Nov" },
             { key: "channel", label: "They agreed to be contacted on", initial: "whatsapp",
               options: [["whatsapp", "WhatsApp"], ["call", "Phone call"], ["email", "Email"], ["any", "Any channel"]] },
           ]}
@@ -379,7 +419,7 @@ export default function LeadDrawer({ id, onClose }) {
       <h3>Conversation & history</h3>
       <div className="timeline">
         {[...lead.timeline].reverse().map((t, i) => (
-          <div key={i}><small>{t.at.slice(0, 16).replace("T", " ")} · {t.kind}</small>{t.text}</div>
+          <div key={i} className={t.kind === "edit" ? "timeline-edit" : undefined}><small>{t.at.slice(0, 16).replace("T", " ")} · {t.kind === "edit" ? "details edited" : t.kind}{t.by ? ` · ${t.by}` : ""}</small>{t.text}</div>
         ))}
       </div>
       <label htmlFor="note-box">Log a reply, call or note</label>

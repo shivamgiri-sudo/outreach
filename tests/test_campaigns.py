@@ -194,7 +194,7 @@ def test_caller_is_notified_and_yes_reply_task_names_the_campaign(tmp_path):
     camp = create(c, sources={"apollo_search": True, "careers_html": [ACME_PAGE]}, rules={"auto_enrol": True})
     run(c, camp["id"])
     note = c.get("/api/notifications").json()[0]
-    assert note["to"] == "Priya" and note["title"] == "Campaign Pune support hiring: 1 new leads, 1 enrolled"
+    assert note["to"] == "Sales team" and note["title"] == "Campaign Pune support hiring: 1 new leads, 1 enrolled"
     assert "practice or live mode" in note["text"] and note["kind"] == "campaign"
     acme = by_company(c, "Acme Retail Pvt Ltd")
     c.post(f"/api/leads/{acme['id']}/reply", json={"text": "Yes, interested. Please send it."})

@@ -21,6 +21,8 @@ import Meetings from "./pages/Meetings.jsx";
 import Tasks from "./pages/Tasks.jsx";
 import LinkedInQueue from "./pages/LinkedInQueue.jsx";
 import Replies from "./pages/Replies.jsx";
+import Lists from "./pages/Lists.jsx";
+import Intelligence from "./pages/Intelligence.jsx";
 import Signals from "./pages/Signals.jsx";
 import Hygiene from "./pages/Hygiene.jsx";
 import Campaigns from "./pages/Campaigns.jsx";
@@ -32,16 +34,18 @@ const PAGES = [
   ["dashboard", "Dashboard", Dashboard, "dashboard"],
   ["leads", "Leads", Leads, "users"],
   ["hygiene", "Data hygiene", Hygiene, "check"],
+  ["lists", "Lists", Lists, "tasks"],
   ["campaigns", "Campaigns", Campaigns, "rocket"],
   ["engine", "Hiring engine", HiringEngine, "workflow"],
   ["signals", "Buying signals", Signals, "bell"],
   ["sources", "Data sources", DataSources, "chart"],
   ["insights", "Insights", Insights, "chart"],
+  ["intelligence", "Intelligence", Intelligence, "bell"],
   ["growth", "Free experience", Growth, "gift"],
   ["flows", "Flow builder", FlowBuilder, "workflow"],
   ["workflows", "Simple rules", Workflows, "rules"],
   ["outbox", "Outbox & sending", Outbox, "send"],
-  ["calls", "Priya's call desk", CallDesk, "phone"],
+  ["calls", "Call desk", CallDesk, "phone"],
   ["meetings", "Meetings", Meetings, "calendar"],
   ["replies", "Replies", Replies, "inbox"],
   ["tasks", "Tasks & follow-ups", Tasks, "tasks"],
@@ -55,7 +59,7 @@ const PAGES = [
 
 const GROUPS = [
   ["Overview", ["dashboard"]],
-  ["Pipeline", ["leads", "campaigns", "engine", "signals", "hygiene", "sources", "insights", "growth"]],
+  ["Pipeline", ["leads", "lists", "campaigns", "engine", "signals", "hygiene", "sources", "insights", "intelligence", "growth"]],
   ["Outreach", ["replies", "tasks", "outbox", "linkedin", "flows", "workflows", "templates", "calls", "meetings"]],
   ["Library", ["stories", "prompts"]],
   ["Admin", ["setup", "integrations"]],

@@ -20,6 +20,7 @@ from .activation import next_nudge
 from .enrich import polite_fetch
 from .routes_enrich import make_router as make_enrich_router
 from fastapi import Request
+from . import audit
 from fastapi.responses import JSONResponse
 
 from . import auth
@@ -39,6 +40,8 @@ from .routes_today import make_router as make_today_router
 from .routes_providers import make_router as make_providers_router
 from .routes_activities import make_router as make_activities_router
 from .routes_linkedin import make_router as make_linkedin_router
+from .routes_lists import make_router as make_lists_router
+from .routes_analytics import make_router as make_analytics_router
 from . import extension_api
 from .routes_extension import make_router as make_extension_router
 from .routes_compliance import make_router as make_compliance_router
@@ -106,6 +109,18 @@ class ConsentBody(BaseModel):
 class NoteBody(BaseModel):
     text: str
     kind: str = "note"
+
+
+class EditBody(BaseModel):
+    contact_name: Optional[str] = None
+    company: Optional[str] = None
+    title: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    country: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    reason: str = ""
 
 
 class IntegrationBody(BaseModel):
@@ -310,15 +325,16 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         return stats
 
     @app.post("/api/leads/{lead_id}/stage")
-    def move_stage(lead_id: str, body: StageBody):
+    def move_stage(lead_id: str, body: StageBody, request: Request):
         find(lead_id)
+        who = audit.actor_of(getattr(request.state, "user", None))["name"]
         refused = {}
 
         def move(lead: dict):
             if not can_move(lead["stage"], body.stage, has_consent=bool(lead.get("consent"))):
                 refused["from"] = lead["stage"]
                 return None
-            return {**lead, "stage": body.stage, "timeline": [*lead["timeline"], _event("stage", f"{lead['stage']} → {body.stage}")]}
+            return {**lead, "stage": body.stage, "timeline": [*lead["timeline"], {**_event("stage", f"{lead['stage']} → {body.stage} (by {who})"), "by": who}]}
         store.update_lead(lead_id, move)
         if refused:
             raise HTTPException(400, f"Cannot move from {refused['from']} to {body.stage}")
@@ -330,21 +346,46 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         return _present(next(l for l in store.read("leads") if l["id"] == lead_id))
 
     @app.post("/api/leads/{lead_id}/consent")
-    def record_consent(lead_id: str, body: ConsentBody):
+    def record_consent(lead_id: str, body: ConsentBody, request: Request):
         text = body.text.strip()
         if len(text) < 3:
-            raise HTTPException(400, "Write what they said and how (for example: 'Yes on a call with Priya, 3 Nov').")
+            raise HTTPException(400, "Write what they said and how (for example: 'Yes on a call with Amit, 3 Nov').")
+        who = audit.actor_of(getattr(request.state, "user", None))["name"]
         saved = change_lead(lead_id, lambda lead: {
             **lead, "consent": {"text": text[:500], "at": _now(), "source": body.source or "recorded by a person",
                                 "channel": body.channel or "any"},
             "consent_withdrawn_at": None,
-            "timeline": [*lead["timeline"], _event("consent", f"Said yes: {text[:500]}")]})
+            "timeline": [*lead["timeline"], {**_event("consent", f"Said yes: {text[:500]} (recorded by {who})"), "by": who}]})
         ledger_consent(store, lead_id, "given", body.channel or "any", text, body.source or "recorded by a person")
         return saved
 
+    @app.patch("/api/leads/{lead_id}")
+    def edit_lead(lead_id: str, body: EditBody, request: Request):
+        """Correct contact details by hand. Logged with who, when, old and new value; shown in the lead journey."""
+        changes = {k: v for k, v in body.model_dump(exclude={"reason"}).items() if v is not None}
+        if not changes:
+            raise HTTPException(400, "Nothing to change.")
+        try:
+            result = audit.edit_contact(store, lead_id, changes, audit.actor_of(getattr(request.state, "user", None)), body.reason.strip())
+        except LookupError:
+            raise HTTPException(404, "Lead not found")
+        except audit.EditRefused as exc:
+            raise HTTPException(400, str(exc)) from exc
+        return {**_present(result["lead"]), "changed": result["changed"]}
+
+    @app.get("/api/leads/{lead_id}/changes")
+    def lead_changes(lead_id: str):
+        find(lead_id)
+        return audit.log_for(store, lead_id)
+
+    @app.get("/api/change-log")
+    def change_log(limit: int = 300):
+        return audit.log_for(store, "", max(1, min(limit, 1000)))
+
     @app.post("/api/leads/{lead_id}/note")
-    def add_note(lead_id: str, body: NoteBody):
-        saved = change_lead(lead_id, lambda lead: {**lead, "timeline": [*lead["timeline"], _event(body.kind, body.text)]})
+    def add_note(lead_id: str, body: NoteBody, request: Request):
+        who = audit.actor_of(getattr(request.state, "user", None))["name"]
+        saved = change_lead(lead_id, lambda lead: {**lead, "timeline": [*lead["timeline"], {**_event(body.kind, body.text), "by": who}]})
         if body.kind == "call":
             close_call_tasks(store, lead_id, body.text)
             saved = _present(next(l for l in store.read("leads") if l["id"] == lead_id))
@@ -402,6 +443,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_providers_router(store, fetcher))
     app.include_router(make_activities_router(store, transactional_sender))
     app.include_router(make_linkedin_router(store))
+    app.include_router(make_lists_router(store, _present))
+    app.include_router(make_analytics_router(store))
     app.include_router(make_extension_router(store))
     app.include_router(make_compliance_router(store))
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,

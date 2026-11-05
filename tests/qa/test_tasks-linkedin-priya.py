@@ -303,7 +303,7 @@ def test_team_settings_clean_input(tmp_path):
     c = make_app(tmp_path)
     r = c.put("/api/team", json={"caller_name": "   ", "team": [{"name": "  Meena  ", "email": "meena@x.invalid", "role": "caller",
                                                                      "extra": "dropped"}, {"name": ""}, "junk", {"phone": "1"}]}).json()
-    assert r["caller_name"] == "Priya" and r["team"][0]["name"] == "Priya"            # caller always present
-    assert [m["name"] for m in r["team"]] == ["Priya", "Meena"] and "extra" not in r["team"][1]
+    assert r["caller_name"] == "Sales team" and r["team"][0]["name"] == "Sales team"            # caller always present
+    assert [m["name"] for m in r["team"]] == ["Sales team", "Meena"] and "extra" not in r["team"][1]
     r = c.put("/api/team", json={"caller_name": "Meena"}).json()
     assert [m["name"] for m in r["team"]] == ["Meena"] and r["notify_email"] is False
