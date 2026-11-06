@@ -6,7 +6,7 @@ import Login from "./pages/Login.jsx";
 import Workflows from "./pages/Workflows.jsx";
 import FlowBuilder from "./pages/FlowBuilder.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
-import Leads from "./pages/Leads.jsx";
+import Leads, { phoneMatches } from "./pages/Leads.jsx";
 import Templates from "./pages/Templates.jsx";
 import Stories from "./pages/Stories.jsx";
 import PromptGenerator from "./pages/PromptGenerator.jsx";
@@ -147,7 +147,7 @@ function QuickSearch({ onClose, onPage, onLead }) {
   const q = query.trim().toLowerCase();
   const results = useMemo(() => [
     ...PAGES.filter(([, label]) => !q || label.toLowerCase().includes(q)).map(([id, label]) => ({ type: "page", id, label })),
-    ...(q ? leads.filter((l) => [l.company, l.domain, l.contact_name, l.email].join(" ").toLowerCase().includes(q)).slice(0, 8)
+    ...(q ? leads.filter((l) => [l.company, l.domain, l.contact_name, l.email, l.phone].join(" ").toLowerCase().includes(q) || phoneMatches(l.phone, q)).slice(0, 8)
       .map((l) => ({ type: "lead", id: l.id, label: l.company || l.domain, hint: `${stageLabel(l.stage)} · score ${l.score}` })) : []),
   ], [q, leads]);
   const choose = (r) => (r.type === "page" ? onPage(r.id) : onLead(r.id));

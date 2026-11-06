@@ -251,3 +251,13 @@ def test_csv_streams_in_chunks(seeded):
     columns, rows = exports.build(store, "leads", {}, lambda lead: {**lead, "score": 1, "band": "cold"})
     chunks = list(exports.csv_chunks(columns, rows * 400))
     assert len(chunks) > 2 and chunks[0].startswith(BOM) and json.dumps(chunks[0]).count("\\r\\n") == 1
+
+
+def test_phone_typed_with_spaces_finds_the_lead():
+    """QA sweep: searching Leads for '+91 98907 79946' found nothing (stored '+919890779946'); the export agrees now."""
+    from app.exports import _lead_matches
+    lead = {"id": "x", "company": "Bharat Freight Movers", "phone": "+919890779946"}
+    for q in ("+91 98907 79946", "098907-79946", "9890779946", "(989) 077 9946"):
+        assert _lead_matches(lead, {"q": q}, set()), q
+    assert not _lead_matches(lead, {"q": "98907 1"}, set())          # too short to be a phone
+    assert not _lead_matches(lead, {"q": "2026"}, set())

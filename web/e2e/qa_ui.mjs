@@ -35,7 +35,7 @@ const step = async (name, fn) => {
 const closeDrawer = async () => { if (await page.locator(".drawer").count()) { await page.keyboard.press("Escape"); await page.locator(".drawer").waitFor({ state: "detached" }); } };
 const openLead = async (company) => {
   await closeDrawer();
-  await goPage(page, "leads");
+  await goPage(page, "leads", page.viewportSize().width <= 760);
   await page.getByLabel("Search leads").fill(company);
   await settle(page, 300);
   await page.locator("td[data-label=Company] button").getByText(company, { exact: true }).first().click();
@@ -265,6 +265,183 @@ if (want("periods")) await step("Dashboard + Analytics periods: 7/30/90/custom, 
     await page.getByRole("button", { name: "Last 30 days" }).click();
     await settle(page, 400);
   }
+  return notes.join(" ;; ");
+});
+
+if (want("keyboard")) await step("Keyboard: Ctrl+K search, J/K in drawer, Esc closes, focus visible", async () => {
+  const notes = [];
+  await goPage(page, "dashboard");
+  await page.keyboard.press("Control+k");
+  const box = page.getByRole("dialog").locator("input").first();
+  await box.waitFor();
+  await box.fill("Arogya");
+  await settle(page, 500);
+  const results = await page.getByRole("dialog").locator("button").allInnerTexts();
+  notes.push(`ctrl+k "Arogya": ${results.length} results, first="${(results[0] || "").replace(/\n/g, " ")}"`);
+  await page.keyboard.press("Enter");
+  await settle(page, 600);
+  const title = await page.locator("#drawer-title").innerText().catch(() => "(no drawer)");
+  notes.push(`enter opened: ${title} at ${await page.evaluate(() => location.hash)}`);
+  await page.keyboard.press("Escape");
+  await settle(page, 300);
+  notes.push(`esc closed drawer: ${(await page.locator(".drawer").count()) === 0}`);
+  // empty search, junk
+  await page.keyboard.press("Control+k");
+  await page.getByRole("dialog").locator("input").first().fill("zzzz-no-such-thing-<script>");
+  await settle(page, 300);
+  notes.push(`junk: "${(await page.getByRole("dialog").innerText()).replace(/\n/g, " ").slice(0, 80)}"`);
+  await page.keyboard.press("Escape");
+  notes.push(`esc closed search: ${(await page.getByRole("dialog").count()) === 0}`);
+  // J / K in the lead drawer from the Leads table
+  await goPage(page, "leads");
+  await page.locator("td[data-label=Company] button").first().click();
+  const t0 = await page.locator("#drawer-title").innerText();
+  await page.locator(".drawer h2, .drawer #drawer-title").first().click();
+  await page.keyboard.press("j"); await settle(page, 400);
+  const t1 = await page.locator("#drawer-title").innerText();
+  await page.keyboard.press("j"); await settle(page, 400);
+  const t2 = await page.locator("#drawer-title").innerText();
+  await page.keyboard.press("k"); await settle(page, 400);
+  const t3 = await page.locator("#drawer-title").innerText();
+  const rows = (await page.locator("td[data-label=Company] button").allInnerTexts()).slice(0, 3);
+  notes.push(`J/K: ${t0} -> ${t1} -> ${t2} -> k ${t3}; table first 3: ${rows.join(" | ")}`);
+  if (t1 !== rows[1] || t2 !== rows[2] || t3 !== rows[1]) throw new Error(`J/K order wrong: ${notes.at(-1)}`);
+  // typing j in the reply box must not jump
+  await page.locator(".drawer").getByRole("tab", { name: "Outreach" }).click();
+  await page.locator("#reply-box").fill("");
+  await page.locator("#reply-box").type("jk");
+  notes.push(`typing jk in a box keeps the lead: ${(await page.locator("#drawer-title").innerText()) === t3}`);
+  await page.locator("#reply-box").fill("");
+  await page.keyboard.press("Escape"); await settle(page, 300);
+  notes.push(`esc from input closes drawer: ${(await page.locator(".drawer").count()) === 0}`);
+  // focus visible: tab to the first nav button and read its outline
+  await page.locator("body").click({ position: { x: 700, y: 5 } }).catch(() => {});
+  let outlined = 0;
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press("Tab");
+    const o = await page.evaluate(() => { const el = document.activeElement; const cs = getComputedStyle(el); return { tag: el.tagName, o: cs.outlineStyle !== "none" && parseFloat(cs.outlineWidth) > 0, sh: cs.boxShadow !== "none" }; });
+    if (o.o || o.sh) outlined++;
+  }
+  notes.push(`focus ring on ${outlined}/6 tabbed controls`);
+  if (outlined < 5) throw new Error(notes.join(" ;; "));
+  return notes.join(" ;; ");
+});
+
+if (want("mobile")) await step("Phone 375px: menu opens/closes, bottom bar, drawer fits", async () => {
+  const notes = [];
+  await page.setViewportSize({ width: 375, height: 812 });
+  await settle(page, 400);
+  const bar = page.getByRole("navigation", { name: "Quick links" });
+  const labels = await bar.locator("button").allInnerTexts();
+  notes.push(`bottom bar: ${labels.map((x) => x.trim()).join(", ")}`);
+  for (const lab of ["Leads", "Replies", "Tasks"]) {
+    await bar.getByRole("button", { name: lab }).click(); await settle(page, 400);
+    const o = await overflow(page);
+    notes.push(`${lab}: ${await page.evaluate(() => location.hash)}${o ? " OVERFLOW " + o : ""}`);
+  }
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.locator("#main-nav").getByRole("button", { name: "Analytics", exact: true }).waitFor();
+  await page.keyboard.press("Escape"); await settle(page, 300);
+  notes.push(`esc closes menu: ${!(await page.locator(".layout.menu-open").count())}`);
+  await bar.getByRole("button", { name: "More pages" }).click();
+  await page.locator("#main-nav").getByRole("button", { name: "Companies", exact: true }).click(); await settle(page, 500);
+  notes.push(`More -> Companies: ${await page.evaluate(() => location.hash)}, menu closed: ${!(await page.locator(".layout.menu-open").count())}`);
+  await goPage(page, "leads", true);
+  await page.locator("td[data-label=Company] button").first().click();
+  await page.locator(".drawer").waitFor();
+  const dw = await page.locator(".drawer").boundingBox();
+  const o = await overflow(page);
+  notes.push(`drawer width ${Math.round(dw.width)} at 375${o ? " OVERFLOW " + o : ""}`);
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 1400, height: 900 });
+  if (notes.some((n) => n.includes("OVERFLOW"))) throw new Error(notes.join(" ;; "));
+  return notes.join(" ;; ");
+});
+
+if (want("lists")) await step("Lists: save 4 replied leads as a list from Leads, check list numbers", async () => {
+  await goPage(page, "leads");
+  for (const c of ["Bharat Freight Movers", "Apollo Care Clinics", "Reliance Fresh Outlet", "Teleperformance Hub"]) {
+    await page.getByLabel("Search leads").fill(c); await settle(page, 300);
+    await page.getByLabel(`Select ${c}`, { exact: true }).check();
+  }
+  await page.getByLabel("Search leads").fill("");
+  await page.getByTestId("bulkbar").getByRole("button", { name: "Save as list" }).click();
+  const dlg = page.getByRole("dialog").last();
+  await dlg.locator("input").fill("Replied in Nov — QA");
+  await dlg.getByRole("button").filter({ hasText: /OK|Save|Continue|Yes/ }).first().click();
+  const msg = await page.getByRole("status").first().innerText();
+  await goPage(page, "lists");
+  const row = page.locator("tr", { hasText: "Replied in Nov — QA" });
+  const txt = (await row.innerText()).replace(/\s+/g, " ");
+  // 4 leads, none really emailed (practice only) -> 0% reply; replies made outside email do not inflate the rate
+  if (!/\b4\b/.test(txt)) throw new Error(`list row: ${txt}`);
+  return `${msg} || ${txt}`;
+});
+
+if (want("campaignlist")) await step("Campaigns list: metrics of the two campaigns", async () => {
+  await goPage(page, "campaigns");
+  const txt = (await page.locator("main").innerText()).replace(/\n+/g, " / ");
+  return txt.slice(0, 700);
+});
+
+if (want("drawers")) await step("Drawers at 1400/768/375: lead drawer tabs and company detail, no bad text or overflow", async () => {
+  const bad = [];
+  for (const [w, h] of [[1400, 900], [768, 1000], [375, 812]]) {
+    await page.setViewportSize({ width: w, height: h });
+    for (const company of ["Bharat Freight Movers", "Teleperformance Hub", "Shree Ganesh Logistics"]) {
+      await openLead(company);
+      for (const tab of ["Overview", "Activity", "Outreach", "Product / Free trial", "Data"]) {
+        await page.locator(".drawer").getByRole("tab", { name: tab }).click(); await settle(page, 300);
+        const txt = await page.locator(".drawer").innerText();
+        for (const [re, label] of [[/\{\{\s*[\w.]+\s*\}\}/, "{{}}"], [/\bundefined\b|\bNaN\b|\[object Object\]|Invalid Date/, "junk"], [/\b(UTC|GMT)\b/, "UTC"]]) {
+          const m = txt.match(re); if (m) bad.push(`${w} ${company}/${tab}: ${label} "…${txt.slice(Math.max(0, m.index - 60), m.index + 40).replace(/\s+/g, " ")}…"`);
+        }
+        const o = await overflow(page); if (o) bad.push(`${w} ${company}/${tab}: ${o}`);
+      }
+      await closeDrawer();
+    }
+    await goPage(page, "companies", w <= 760);
+    await page.getByText("Bharat Freight Movers", { exact: true }).first().click(); await settle(page, 500);
+    const ct = await page.locator("main, .drawer").last().innerText();
+    if (/undefined|NaN|\{\{/.test(ct)) bad.push(`${w} company detail: bad text`);
+    const o = await overflow(page); if (o) bad.push(`${w} company detail: ${o}`);
+    await page.keyboard.press("Escape"); await settle(page, 300);
+  }
+  await page.setViewportSize({ width: 1400, height: 900 });
+  if (bad.length) throw new Error(bad.join(" ;; "));
+});
+
+if (want("sorting")) await step("Leads: sort headers, filters and pages give correct rows", async () => {
+  const notes = [];
+  await goPage(page, "leads");
+  await page.getByLabel("Leads per page").selectOption("50").catch(() => {});
+  const col = async (label) => page.locator(`td[data-label="${label}"]`).allInnerTexts();
+  await page.locator("th button.th-sort", { hasText: "Score" }).click(); await settle(page, 300);
+  const scores = (await col("Score")).map((t) => parseInt(t, 10));
+  notes.push(`score sorted desc: ${scores.every((v, i) => i === 0 || v <= scores[i - 1])} (${scores.slice(0, 5).join(",")})`);
+  await page.locator("th button.th-sort", { hasText: "Company" }).click(); await settle(page, 300);
+  const names = await col("Company");
+  const sorted = [...names].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+  notes.push(`company A-Z: ${JSON.stringify(names.slice(0, 3)) === JSON.stringify(sorted.slice(0, 3))} (${names.slice(0, 3).join(" | ")})`);
+  const pager = page.getByRole("navigation", { name: "Pages of leads" });
+  const p1 = await pager.locator("span").first().innerText();
+  await pager.getByRole("button", { name: "Next" }).click(); await settle(page, 300);
+  const p2 = await pager.locator("span").first().innerText();
+  const page2first = (await col("Company"))[0];
+  notes.push(`pager: "${p1}" -> "${p2}", page 2 starts ${page2first} (expected ${sorted[50] || "?"})`);
+  await page.getByLabel("Filter by stage").selectOption({ label: "Interested (said yes)" }).catch(async () => page.getByLabel("Filter by stage").selectOption("interested"));
+  await settle(page, 300);
+  const interested = await col("Company");
+  notes.push(`stage=interested: ${interested.join(" | ")}`);
+  await page.getByLabel("Filter by stage").selectOption("");
+  await page.getByLabel("Search leads").fill("+91 98907 79946"); await settle(page, 300);
+  notes.push(`search by phone with spaces: ${(await col("Company")).join(" | ") || "(none)"}`);
+  const dl = await page.getByRole("button", { name: /^Download these/ }).first().innerText().catch(() => "");
+  notes.push(`download button: ${dl}`);
+  await page.getByLabel("Search leads").fill("KAVITA.NAIR@bharatfreightmovers.co.in"); await settle(page, 300);
+  notes.push(`search by upper-case email: ${(await col("Company")).join(" | ") || "(none)"}`);
+  await page.getByLabel("Search leads").fill("");
+  if (!notes[0].includes("true") || !notes[1].includes("true") || interested.length !== 2 || notes[4].includes("(none)")) throw new Error(notes.join(" ;; "));
   return notes.join(" ;; ");
 });
 

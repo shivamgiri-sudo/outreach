@@ -32,10 +32,16 @@ function ownerMatches(lead, owner, me) {
   return lead.owner === owner;
 }
 
+// A phone typed the way people write it ("+91 98907 79946", "098907-79946") finds the stored "+919890779946".
+export function phoneMatches(phone, query) {
+  const want = String(query || "").replace(/\D/g, "").replace(/^0+/, "");
+  return want.length >= 6 && /^[\d\s()+.-]+$/.test(String(query).trim()) && String(phone || "").replace(/\D/g, "").includes(want);
+}
+
 function matches(lead, query, stage, band, onlyIds, sources = [], inboundOnly = false, owner = "", tag = "", me = {}) {
   const q = query.trim().toLowerCase();
   const text = [lead.company, lead.domain, lead.contact_name, lead.email, lead.phone, lead.role].join(" ").toLowerCase();
-  return (!q || text.includes(q)) && (!stage || lead.stage === stage) && (!band || lead.band === band) && (!onlyIds || onlyIds.includes(lead.id))
+  return (!q || text.includes(q) || phoneMatches(lead.phone, q)) && (!stage || lead.stage === stage) && (!band || lead.band === band) && (!onlyIds || onlyIds.includes(lead.id))
     && (!sources.length || sources.includes(sourceId(lead))) && (!inboundOnly || Boolean(lead.inbound)) && ownerMatches(lead, owner, me)
     && (!tag || (lead.tags || []).some((t) => String(t).toLowerCase() === tag.toLowerCase()));
 }
