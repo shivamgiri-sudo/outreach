@@ -56,3 +56,10 @@ def test_drawer_edit_takes_an_office_landline_and_an_international_number(tmp_pa
     assert r.status_code == 200 and r.json()["phone"] == "+14155550134" and r.json()["phone_type"] == "intl"
     bad = c.patch(f"/api/leads/{lead['id']}", json={"phone": "12345"})
     assert bad.status_code == 400 and "STD code" in bad.json()["detail"]
+
+
+def test_found_contacts_get_the_company_site_not_the_contact_page(tmp_path):
+    c = TestClient(create_app(data_file=tmp_path / "d.json"))
+    c.post("/api/scrape/extract", json={"url": "https://www.acmetools.in/about/contact-us.html", "html": CONTACT_PAGE,
+                                        "company": "Acme Tools", "add_leads": True})
+    assert {l["website"] for l in c.get("/api/leads").json()} == {"https://www.acmetools.in"}
