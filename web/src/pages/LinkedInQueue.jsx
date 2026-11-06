@@ -135,7 +135,11 @@ function LinkedInAgent({ onMessage }) {
                 <td>{a.counts.connect_today} requests · {a.counts.message_today} messages</td>
                 <td>{a.counts.connect_week} requests</td>
                 <td>{a.leads}</td>
-                <td>{a.paused && <button className="btn ghost" onClick={() => save({ resume_account: a.account }, `${a.name || a.account} resumed.`)}>Resume</button>}</td>
+                <td>{a.paused && <button className="btn ghost" onClick={() => save({ resume_account: a.account }, `${a.name || a.account} resumed.`)}>Resume</button>}
+                  {st.accounts.length > 1 && <select aria-label={`${a.account} is the same LinkedIn account as`} value="" onChange={(e) => e.target.value
+                    && window.confirm(`${a.account} is the same LinkedIn account as ${e.target.value} (its profile link changed)? Its people and counts move over.`)
+                    && save({ merge_from: a.account, merge_into: e.target.value }, `Merged ${a.account} into ${e.target.value}.`)}>
+                    <option value="">Same account as…</option>{st.accounts.filter((x) => x.account !== a.account).map((x) => <option key={x.account} value={x.account}>{x.name || x.account}</option>)}</select>}</td>
               </tr>))}</tbody></table>
           <small className="sub-inline">Each account has its own daily and weekly caps and its own pause. A person belongs to the account that contacted them first; only that account sends them messages.</small>
         </div>

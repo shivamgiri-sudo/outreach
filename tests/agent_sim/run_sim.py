@@ -241,6 +241,11 @@ y = add_lead("connect-11", "CapCo")
 code, out = run_agent(PROFILE_B, "--once"); skip_gap()   # B already used >=1 today in S2
 check("S11 an account at its daily cap sends nothing more", not any(i["to"] == "connect-11" and i["from"] == "acct-b" for i in fake_state()["invites"]), out[-200:])
 
+# ---------------------------------------------------------------- S12: other people's buttons on the page are never pressed
+check("S12 no invitation or message ever went to someone else on the page (people you may know)",
+      not any(i["to"] == "kamal-other" for i in fake_state()["invites"]) and not any(m["to"] == "kamal-other" for m in fake_state()["messages"]),
+      str([i for i in fake_state()["invites"] if i["to"] == "kamal-other"]))
+
 # ---------------------------------------------------------------- done
 fake.terminate()
 server.should_exit = True

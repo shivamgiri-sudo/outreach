@@ -97,40 +97,82 @@ async function claim(leadId) {
 }
 
 const toLocal = (url) => { try { const u = new URL(url); return LINKEDIN + u.pathname + u.search; } catch { return url; } };
-const topCard = (page) => page.locator("main").first();
+// The person's own card is the first section of the profile. Everything further down (people you may know, "more
+// profiles for you") has Connect / Message buttons for OTHER people, so a button is only used when its label names this
+// lead, or when it sits inside that first card. LinkedIn moves the buttons between layouts (sometimes outside <main>).
+const topCard = (page) => page.locator("main section, main:not(:has(section))").first();
+const tokens = (name) => String(name || "").toLowerCase().normalize("NFKD").replace(/[^a-z\s]/g, " ").split(/\s+/).filter((w) => w.length > 1);
+function namesLead(label, name) {
+  const want = tokens(name), have = tokens(label);
+  if (!want.length) return false;
+  return have.includes(want[0]) && (want.length === 1 || have.includes(want[want.length - 1]));
+}
+// Every visible element whose label names this lead, the ones on the profile itself first (LinkedIn also repeats the
+// buttons in a sticky header that is often covered, and keeps hidden copies).
+async function labelledAll(page, selector, name) {
+  const all = page.locator(selector), found = [];
+  for (let i = 0, n = await all.count(); i < n; i++) {
+    const el = all.nth(i);
+    if (!namesLead(await el.getAttribute("aria-label"), name) || !(await el.isVisible().catch(() => false))) continue;
+    const box = await el.boundingBox().catch(() => null);
+    if (!box || box.width < 2 || box.height < 2) continue;
+    found.push({ el, inMain: await el.evaluate((e) => !!e.closest("main")).catch(() => false) });
+  }
+  return found.sort((x, y) => Number(y.inMain) - Number(x.inMain)).map((f) => f.el);
+}
+async function labelled(page, selector, name) {
+  return (await labelledAll(page, selector, name))[0] || null;
+}
+// Click the first candidate that takes the click; something covering a button (a banner, the sticky header) moves on.
+async function clickOne(candidates) {
+  for (const el of candidates) {
+    try { await el.click({ timeout: 5000 }); return true; } catch { /* covered or gone: try the next copy */ }
+  }
+  return false;
+}
 
 async function degreeOf(page) {
   const text = (await topCard(page).innerText({ timeout: 5000 }).catch(() => "")).slice(0, 1500);
   const m = text.match(/\b(1st|2nd|3rd)\b/);
   return m ? m[1] : "";
 }
-async function isPending(page) {
-  return (await topCard(page).getByRole("button", { name: /^pending$|withdraw/i }).count()) > 0;
+async function isPending(page, name) {
+  if (await labelled(page, 'button[aria-label*="pending" i], button[aria-label*="withdraw" i]', name)) return true;
+  return (await topCard(page).getByRole("button", { name: /^pending\b/i }).count()) > 0;
+}
+async function findMessage(page, name) {
+  const own = await labelled(page, 'button[aria-label^="Message" i], a[aria-label^="Message" i]', name);   // on-profile copy first
+  if (own) return own;
+  const inCard = topCard(page).getByRole("button", { name: /^message$/i }).or(topCard(page).getByRole("link", { name: /^message$/i })).first();
+  return (await inCard.count()) && (await inCard.isVisible().catch(() => false)) ? inCard : null;
 }
 
-async function findConnect(page) {
-  const direct = topCard(page).locator('button[aria-label*="to connect" i], button[aria-label^="Connect" i]').first();
-  if (await direct.count()) return direct;
-  const byText = topCard(page).getByRole("button", { name: /^connect$/i }).first();
-  if (await byText.count()) return byText;
+async function findConnect(page, name) {
+  const own = await labelledAll(page, 'button[aria-label*="to connect" i], a[aria-label*="to connect" i]', name);
+  if (own.length) return own;
+  const inCard = topCard(page).getByRole("button", { name: /^connect$/i }).first();
+  if (await inCard.count() && await inCard.isVisible().catch(() => false)) return [inCard];
   const more = topCard(page).getByRole("button", { name: /^more( actions)?$|more actions/i }).first();
   if (await more.count()) {
     await more.click(); await sleep(600);
-    const item = page.getByRole("menuitem", { name: /connect/i }).first();
-    if (await item.count()) return item;
-    const alt = page.locator('[role="menu"] [aria-label*="to connect" i], [role="menu"] :text-is("Connect")').first();
-    if (await alt.count()) return alt;
+    const items = await labelledAll(page, '[role="menu"] [aria-label*="to connect" i], [role="menuitem"][aria-label*="to connect" i]', name);
+    if (items.length) return items;
+    const plain = page.locator('[role="menu"]').getByText("Connect", { exact: true }).first();     // menu we opened from their own card
+    if (await plain.count()) return [plain];
+    await page.keyboard.press("Escape");
   }
   return null;
 }
 
 async function doConnect(page, lead, note) {
-  if (await isPending(page)) return { done: true, already: "pending" };
+  if (!tokens(lead.name).length) return { done: false, why: "the lead has no name, so the right Connect button cannot be told apart" };
+  if (await isPending(page, lead.name)) return { done: true, already: "pending" };
   if ((await degreeOf(page)) === "1st") return { done: true, already: "connected" };
-  const connect = await findConnect(page);
-  if (!connect) return { done: false, why: "no Connect button on this profile (they may only allow Follow or Message)" };
+  const connect = await findConnect(page, lead.name);
+  if (!connect || !connect.length) return { done: false, why: "no Connect button on this profile (they may only allow Follow or Message)" };
   if (DRY) return { done: false, dry: true, why: `would click Connect and send a ${note.length}-character note` };
-  await connect.click(); await sleep(800);
+  if (!(await clickOne(connect))) return { done: false, why: "the Connect button for this person was covered by something on the page; nothing was sent" };
+  await sleep(800);
   await checkTrouble(page);            // the weekly invitation limit appears right after Connect: stop, do not read it as "no note"
   const dialog = page.getByRole("dialog").first();
   const addNote = dialog.getByRole("button", { name: /add a note/i }).first();
@@ -151,11 +193,11 @@ async function doConnect(page, lead, note) {
 }
 
 async function doMessage(page, lead, text) {
-  const messageButton = topCard(page).locator('button[aria-label^="Message" i], a[aria-label^="Message" i]').first();
-  const button = (await messageButton.count()) ? messageButton : topCard(page).getByRole("button", { name: /^message$/i }).first();
-  if (!(await button.count())) return { done: false, why: "no Message button (you may not be connected yet)" };
+  const button = await findMessage(page, lead.name);
+  if (!button) return { done: false, why: "no Message button for this person (you may not be connected yet)" };
   if (DRY) return { done: false, dry: true, why: `would open Message and send ${text.length} characters` };
-  await button.click(); await sleep(SETTLE);
+  if (!(await clickOne([button]))) return { done: false, why: "the Message button was covered by something on the page; nothing was sent" };
+  await sleep(SETTLE);
   const box = page.locator('div[role="textbox"][contenteditable="true"]').last();
   if (!(await box.count())) return { done: false, why: "the message box did not open" };
   await box.click();
@@ -170,12 +212,11 @@ async function doMessage(page, lead, text) {
 }
 
 // Open Profile: not a 1st-degree connection, yet LinkedIn shows a Message button (Premium members who allow free messages).
-async function reportProfile(page, leadId, state) {
+async function reportProfile(page, leadId, state, name) {
   if (!leadId || state.profiled[leadId]) return;
   state.profiled[leadId] = true;
   const degree = await degreeOf(page);
-  const msg = topCard(page).locator('button[aria-label^="Message" i], a[aria-label^="Message" i]');
-  const open = degree !== "1st" && (await msg.count()) > 0;
+  const open = degree !== "1st" && !!(await findMessage(page, name));
   await api(`/api/extension/leads/${leadId}/profile`, "POST", { open_profile: open, degree }).catch((e) => log("could not report profile:", e.message));
   if (open) log("Open Profile: can be messaged without connecting");
 }
@@ -191,7 +232,7 @@ async function oneCycle(page, state) {
     state.checked[w.lead_id] = Date.now();
     await page.goto(toLocal(w.profile_url), { waitUntil: "domcontentloaded" }); await sleep(SETTLE);
     await checkTrouble(page);
-    await reportProfile(page, w.lead_id, state);
+    await reportProfile(page, w.lead_id, state, w.name);
     if ((await degreeOf(page)) === "1st" && !DRY) {
       await api(`/api/extension/leads/${w.lead_id}/accepted`, "POST");
       await event("accepted", { lead_id: w.lead_id, note: `${w.name} accepted` });
@@ -208,7 +249,7 @@ async function oneCycle(page, state) {
     if (!DRY && !(await claim(item.lead_id))) continue;
     await page.goto(toLocal(item.profile_url), { waitUntil: "domcontentloaded" }); await sleep(SETTLE);
     await checkTrouble(page);
-    await reportProfile(page, item.lead_id, state);
+    await reportProfile(page, item.lead_id, state, item.name);
     const result = kind === "connect" ? await doConnect(page, item, info.message.text) : await doMessage(page, item, info.message.text);
     if (result.dry) { log(`DRY ${item.name}: ${result.why}`); return { acted: "dry" }; }
     if (!result.done) {

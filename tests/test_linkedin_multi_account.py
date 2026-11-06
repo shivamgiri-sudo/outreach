@@ -63,3 +63,18 @@ def test_an_agent_without_an_account_works_as_before(tmp_path):
     assert c.post(f"/api/extension/leads/{acme}/sent", json={"step": 1}, headers=bearer(tok)).status_code == 200
     agent.record(store, {"kind": "error", "fatal": True, "note": "checkpoint"}, now=TUE_11)
     assert agent.config(store)["enabled"] is False
+
+
+def test_a_renamed_account_can_be_merged_into_its_new_link(tmp_path):
+    c, owner, store, acme, tok = rig(tmp_path)
+    h = lambda extra: {**bearer(tok), **extra}
+    c.post(f"/api/extension/leads/{acme}/claim", headers=h(A))
+    agent.record(store, {"kind": "connect", "lead_id": acme, "account": "acct-a"}, now=TUE_11)
+    agent.heartbeat(store, account="acct-a2", name="Renamed")
+    r = c.put("/api/linkedin-agent", json={"merge_from": "acct-a", "merge_into": "acct-a2"}, headers=bearer(owner))
+    assert r.status_code == 200, r.text
+    accts = {a["account"]: a for a in r.json()["accounts"]}
+    assert "acct-a" not in accts and accts["acct-a2"]["leads"] == 1
+    assert c.app.state.store.read("leads") and next(l for l in store.read("leads") if l["id"] == acme)["linkedin_seq"]["account"] == "acct-a2"
+    assert all(r.get("account") != "acct-a" for r in agent.log_rows(store))
+    assert c.put("/api/linkedin-agent", json={"merge_from": "nope", "merge_into": "acct-a2"}, headers=bearer(owner)).status_code == 400

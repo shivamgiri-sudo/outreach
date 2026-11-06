@@ -169,6 +169,33 @@ def resume(store, account: str) -> None:
     store.update("settings", lambda s: {**s, SETTINGS_PAUSED: {k: v for k, v in (s.get(SETTINGS_PAUSED) or {}).items() if k != account}})
 
 
+def merge(store, old: str, new: str) -> int:
+    """The same LinkedIn account under a new profile link (renamed): its people, counts and pause move to the new name."""
+    old, new = norm_account(old), norm_account(new)
+    if not old or not new or old == new:
+        raise ValueError("Pick two different accounts.")
+    known = store.read("settings").get(SETTINGS_ACCOUNTS) or {}
+    if old not in known:
+        raise ValueError(f"No LinkedIn account {old}.")
+
+    def fix_settings(s):
+        accts = dict(s.get(SETTINGS_ACCOUNTS) or {})
+        merged = {**accts.pop(old, {}), **accts.get(new, {})}
+        accts[new] = merged
+        held = dict(s.get(SETTINGS_PAUSED) or {})
+        if old in held:
+            held.setdefault(new, held.pop(old))
+        rows = [{**r, "account": new} if r.get("account") == old else r for r in s.get(SETTINGS_LOG) or []]
+        return {**s, SETTINGS_ACCOUNTS: accts, SETTINGS_PAUSED: held, SETTINGS_LOG: rows}
+    store.update("settings", fix_settings)
+    moved = 0
+    for l in store.read("leads"):
+        if (l.get("linkedin_seq") or {}).get("account") == old:
+            store.update_lead(l["id"], lambda x: {**x, "linkedin_seq": {**x["linkedin_seq"], "account": new}})
+            moved += 1
+    return moved
+
+
 def accounts(store, now: datetime) -> list:
     held = paused(store)
     out = []

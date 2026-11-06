@@ -19,7 +19,7 @@ const pretty = (slug) => slug.replace(/-\d+$/, "").split("-").map((w) => w[0].to
 
 function profile(acct, slug) {
   const kind = slug.split("-")[0];
-  const name = pretty(slug) + " " + slug.split("-").pop();
+  const name = kind[0].toUpperCase() + kind.slice(1) + " Lead";      // the same name the driver gives the lead
   const accepted = state.accepted[`${acct}|${slug}`];
   const pending = kind === "pending" || state.invites.some((i) => i.from === acct && i.to === slug) && !accepted;
   const degree = kind === "first" || accepted ? "1st" : "2nd";
@@ -30,7 +30,15 @@ function profile(acct, slug) {
     else if (kind === "follow") buttons += `<button aria-label="Follow ${name}">Follow</button>`;
     else buttons += `<button aria-label="Invite ${name} to connect" id="connect">Connect</button>`;
   }
-  return page(`<main><section><h1>${name}</h1><span>Head of Talent · ${degree}</span><div>${buttons}</div></section></main>
+  // Below the person's card: a "people you may know" block with OTHER people's buttons. Their Connect sends at once,
+  // with no dialog (as on LinkedIn). The agent must never press these.
+  const others = `<section><h2>People you may know</h2><button aria-label="Invite Kamal Other to connect" id="other-connect">Connect</button>
+    <button aria-label="Message Kamal Other">Message</button></section>`;
+  // LinkedIn repeats the buttons in a sticky header outside <main>, often under a banner that takes the click.
+  const sticky = degree !== "1st" && !pending && kind !== "follow" ? `<header style="position:fixed;top:0;right:0;width:200px;height:50px">
+    <button aria-label="Invite ${name} to connect" style="width:100px;height:40px">Connect</button></header>
+    <div style="position:fixed;top:0;right:0;width:260px;height:60px;z-index:20;background:rgba(0,0,0,.05)"></div>` : "";
+  return page(`${sticky}<main style="margin-top:80px"><section><h1>${name}</h1><span>Head of Talent · ${degree}</span><div>${buttons}</div></section>${others}</main>
 <script>
 const post = (path, body) => fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 const c = document.getElementById("connect");
@@ -44,6 +52,8 @@ if (c) c.onclick = () => {
   [...d.querySelectorAll("button")].filter((b) => /^Send/.test(b.textContent)).forEach((b) => b.onclick = async () => {
     const t = d.querySelector("textarea"); await post("/__invite", { to: ${JSON.stringify(slug)}, note: t ? t.value : "" }); d.remove(); location.reload(); });
 };
+const oc = document.getElementById("other-connect");
+if (oc) oc.onclick = async () => { await post("/__invite", { to: "kamal-other", note: "" }); oc.textContent = "Pending"; };
 const m = document.getElementById("msg");
 if (m) m.onclick = () => {
   const box = document.createElement("div"); box.setAttribute("role", "textbox"); box.contentEditable = "true"; box.style.minHeight = "40px"; box.style.border = "1px solid #999";

@@ -18,6 +18,8 @@ class ConfigBody(BaseModel):
     gap_minutes: Optional[int] = None
     check_replies: Optional[bool] = None
     resume_account: Optional[str] = None
+    merge_from: Optional[str] = None
+    merge_into: Optional[str] = None
 
 
 class EventBody(BaseModel):
@@ -41,7 +43,9 @@ def make_router(store, notify_sender=None) -> APIRouter:
         if body.resume_account:
             agent.resume(store, body.resume_account)
         try:
-            agent.save_config(store, body.model_dump(exclude={"resume_account"}))
+            if body.merge_from or body.merge_into:
+                agent.merge(store, body.merge_from or "", body.merge_into or "")
+            agent.save_config(store, body.model_dump(exclude={"resume_account", "merge_from", "merge_into"}))
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
         return agent.status(store)
