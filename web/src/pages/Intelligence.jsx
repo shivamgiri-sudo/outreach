@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { istLabel } from "../time.js";
 import { api } from "../api.js";
+import { ops } from "../opsApi.js";
 import { ErrorState } from "../states.jsx";
 
 const when = (iso) => (iso ? istLabel(iso) : "—");
@@ -19,22 +20,22 @@ function Bars({ rows, label, value }) {
   ));
 }
 
-export default function Intelligence() {
+export default function Intelligence({ range, embedded = false }) {
   const [d, setD] = useState(null);
   const [log, setLog] = useState([]);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const remind = () => api.remindStale().then((r) => { setNote(`${r.created} follow-up task${r.created === 1 ? "" : "s"} created (${r.stale - r.created} already had one).`); load(); }).catch((e) => setNote(e.message));
   const exportCsv = () => api.downloadChangeLog().catch((e) => setNote(e.message));
-  const load = () => { setError(""); api.intelligence().then(setD).catch((e) => setError(e.message)); api.changeLog(50).then(setLog).catch(() => {}); };
+  const load = () => { setError(""); (range ? ops.intelligence(range) : api.intelligence()).then(setD).catch((e) => setError(e.message)); api.changeLog(50).then(setLog).catch(() => {}); };
   useEffect(() => { load(); }, []);
   if (error) return <ErrorState message="Intelligence could not load." detail={error} onRetry={load} />;
   if (!d) return <p>Loading…</p>;
   const { channels: ch, timing: t, quality: q } = d;
   return (
     <>
-      <h2>Intelligence</h2>
-      <p className="sub">What is working, who replies, when, and where the data needs care. Everything here is worked out from what the team has already done.</p>
+      {!embedded && <h2>Intelligence</h2>}
+      <p className="sub">{range ? "For leads created or active in the chosen period. " : ""}What is working, who replies, when, and where the data needs care. Everything here is worked out from what the team has already done.</p>
 
       <h3>Email</h3>
       <div style={GRID}>
@@ -52,7 +53,7 @@ export default function Intelligence() {
           <p className="sub">{t.replies_measured ? <>Best day <b>{t.best_day}</b>, best hour <b>{t.best_hour_ist} IST</b>{t.median_hours_to_reply != null && <>, usually after <b>{t.median_hours_to_reply} h</b></>}.</> : "No replies yet to measure."}</p>
           <Bars rows={t.by_weekday} label="day" value="replies" />
         </div>
-        <div className="card">
+        <div className="card" style={{ overflowX: "auto" }}>
           <h3 style={{ marginTop: 0 }}>Which roles respond</h3>
           {d.personas.length === 0 ? <p className="empty">No leads yet.</p> : (
             <table><thead><tr><th>Role</th><th>Leads</th><th>Contacted</th><th>Replied</th><th>Interested</th></tr></thead>
@@ -60,7 +61,7 @@ export default function Intelligence() {
           )}
         </div>
       </div>
-      <div className="card" style={{ marginTop: 12 }}>
+      <div className="card" style={{ marginTop: 12, overflowX: "auto" }}>
         <b>Connection note test</b> <small className="sub-inline">each new lead gets note A or B, shared evenly</small>
         <table><thead><tr><th>Note</th><th>Requests sent</th><th>Accepted</th><th>Accept rate</th></tr></thead>
           <tbody>{["A", "B"].map((v) => { const x = ch.linkedin.variants?.[v] || {}; return <tr key={v}><td>{v}</td><td>{x.sent ?? 0}</td><td>{x.accepted ?? 0}</td><td>{x.accept_rate ?? 0}%</td></tr>; })}</tbody></table>
@@ -69,7 +70,7 @@ export default function Intelligence() {
       {note && <p className="sub" role="status" style={{ marginTop: 10 }}>{note}</p>}
 
       <div className="grid g2" style={{ marginTop: 14 }}>
-        <div className="card">
+        <div className="card" style={{ overflowX: "auto" }}>
           <h3 style={{ marginTop: 0 }}>Companies that engage</h3>
           {d.companies.length === 0 ? <p className="empty">Nobody has been contacted yet.</p> : (
             <table><thead><tr><th>Company</th><th>Leads</th><th>Replied</th><th>Interested</th><th>Last touch</th></tr></thead>
@@ -86,7 +87,7 @@ export default function Intelligence() {
 
       <div className="grid g2" style={{ marginTop: 14 }}>
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Team activity (30 days)</h3>
+          <h3 style={{ marginTop: 0 }}>Team activity ({range ? "this period" : "30 days"})</h3>
           {d.team.length === 0 ? <p className="empty">No actions with a name on them yet.</p> : d.team.map((m) => (
             <div key={m.who}><b>{m.who}</b> <small className="sub-inline">{m.total} action{m.total === 1 ? "" : "s"} · {Object.entries(m.by_kind).map(([k, v]) => `${v} ${k}`).join(", ")}</small></div>
           ))}

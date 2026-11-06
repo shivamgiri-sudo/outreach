@@ -105,7 +105,13 @@ def stats(store, row: dict) -> dict:
             "email_ready": sum(1 for l in members if ready_for_email(l)),
             "email_started": count("email_started"), "emailed": count("emailed"), "opened": count("opened"), "replied": count("replied"),
             "linkedin_started": count("linkedin_started"), "linkedin_sent": count("linkedin_sent"),
-            "linkedin_accepted": count("linkedin_accepted"), "interested": count("interested")}
+            "linkedin_accepted": count("linkedin_accepted"), "interested": count("interested"),
+            "open_rate": _rate(count("opened"), count("emailed")), "reply_rate": _rate(count("replied"), count("emailed")),
+            "accept_rate": _rate(count("linkedin_accepted"), count("linkedin_sent"))}
+
+
+def _rate(part: int, whole: int) -> float:
+    return round(100 * part / whole, 1) if whole else 0.0
 
 
 def start_email(store, list_id: str, by: str, only: Optional[list] = None) -> dict:

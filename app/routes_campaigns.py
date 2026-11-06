@@ -1,7 +1,7 @@
 """Campaign routes: save targeting and rules, preview a run, run it for real, pause / resume, runs and leads."""
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
 from . import campaigns
@@ -194,7 +194,10 @@ def make_router(store, transports: dict, present, notify_sender=None) -> APIRout
 
     @router.get("/api/campaigns")
     def list_all():
-        return campaigns.list_campaigns(store)
+        from .campaign_metrics import outcomes
+        rows = campaigns.list_campaigns(store)
+        results = outcomes(store, [c["id"] for c in rows])
+        return [{**c, "outcomes": results.get(c["id"])} for c in rows]
 
     @router.post("/api/campaigns")
     def create(body: CampaignBody):
@@ -202,7 +205,8 @@ def make_router(store, transports: dict, present, notify_sender=None) -> APIRout
 
     @router.get("/api/campaigns/{campaign_id}")
     def get_one(campaign_id: str):
-        return found(campaign_id)
+        from .campaign_metrics import outcomes
+        return {**found(campaign_id), "outcomes": outcomes(store, [campaign_id])[campaign_id]}
 
     @router.put("/api/campaigns/{campaign_id}")
     def save(campaign_id: str, body: CampaignChanges):
@@ -213,9 +217,12 @@ def make_router(store, transports: dict, present, notify_sender=None) -> APIRout
         return campaigns.update_campaign(store, campaign_id, body.model_dump(exclude_unset=True))
 
     @router.delete("/api/campaigns/{campaign_id}")
-    def delete(campaign_id: str):
-        found(campaign_id)
+    def delete(campaign_id: str, request: Request):
+        from . import audit
+        campaign = found(campaign_id)
         campaigns.delete_campaign(store, campaign_id)
+        audit.record(store, getattr(request.state, "user", None), "campaign.delete", campaign.get("name") or campaign_id,
+                     f"id {campaign_id} (its leads are kept)")
         return {"deleted": True, "note": "The campaign's leads are kept."}
 
     @router.post("/api/campaigns/{campaign_id}/run")
@@ -242,8 +249,12 @@ def make_router(store, transports: dict, present, notify_sender=None) -> APIRout
         return list(reversed(found(campaign_id).get("runs") or []))
 
     @router.get("/api/campaigns/{campaign_id}/leads")
-    def leads(campaign_id: str):
+    def leads(campaign_id: str, page: Optional[int] = None, size: int = 25, stage: str = "", q: str = "", state: str = "", sort: str = "score"):
+        """Without `page`: every lead (older callers). With `page`: one page, filtered by stage, text and outreach state."""
         found(campaign_id)
-        return sorted((present(l) for l in campaigns.campaign_leads(store, campaign_id)), key=lambda l: -l["score"])
+        if page is None:
+            return sorted((present(l) for l in campaigns.campaign_leads(store, campaign_id)), key=lambda l: -l["score"])
+        from .campaign_metrics import leads_page
+        return leads_page(store, campaign_id, present, page, size, stage[:40], q, state[:20], sort[:20])
 
     return router

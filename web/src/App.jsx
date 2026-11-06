@@ -29,6 +29,7 @@ import Hygiene from "./pages/Hygiene.jsx";
 import Campaigns from "./pages/Campaigns.jsx";
 import HiringEngine from "./pages/HiringEngine.jsx";
 import MyDay from "./pages/MyDay.jsx";
+import Analytics from "./pages/Analytics.jsx";
 import { THEMES, getTheme, setTheme } from "./theme.js";
 import { DialogProvider } from "./Dialog.jsx";
 import { useModalFocus } from "./DrawerShell.jsx";
@@ -45,6 +46,7 @@ const PAGES = [
   ["engine", "Hiring engine", HiringEngine, "workflow"],
   ["signals", "Buying signals", Signals, "bell"],
   ["sources", "Data sources", DataSources, "layers"],
+  ["analytics", "Analytics", Analytics, "chart"],
   ["insights", "Insights", Insights, "chart"],
   ["intelligence", "Intelligence", Intelligence, "eye"],
   ["growth", "Free experience", Growth, "gift"],
@@ -70,7 +72,7 @@ const GROUPS_ALL = [
   ["Pipeline", ["leads", "companies", "lists", "campaigns", "growth"]],
   ["Conversations", ["replies", "calls", "linkedin", "tasks", "meetings", "outbox"]],
   ["Content & automation", ["templates", "flows", "workflows", "stories", "prompts"]],
-  ["Analytics", ["analytics", "insights", "intelligence"]],
+  ["Analytics", ["analytics"]],
   ["Data", ["sources", "signals", "hygiene", "engine"]],
   ["Settings", ["setup", "integrations"]],
 ];

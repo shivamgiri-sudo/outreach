@@ -1,11 +1,14 @@
-"""GET /api/intelligence, the change-log CSV export, and one-click reminders for leads that are going cold."""
+"""GET /api/intelligence and /api/analytics (with a period: from / to as IST days, or days), the change-log CSV export,
+one-click reminders for leads that are going cold, the owner's audit trail and the system health check."""
 import csv
 import io
 
-from fastapi import APIRouter, HTTPException, Request
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response
 
-from . import activities, analytics, audit
+from . import activities, analytics, analytics_range, audit
 
 
 def _cell(value) -> str:
@@ -16,9 +19,57 @@ def _cell(value) -> str:
 def make_router(store) -> APIRouter:
     router = APIRouter()
 
+    def period(date_from: str, date_to: str, days: Optional[int]) -> dict:
+        try:
+            return analytics_range.parse_range(date_from[:10], date_to[:10], days)
+        except analytics_range.RangeError as exc:
+            raise HTTPException(400, str(exc)) from None
+
     @router.get("/api/intelligence")
-    def intelligence():
-        return analytics.build(store)
+    def intelligence(date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"), days: Optional[int] = None):
+        if not (date_from or date_to or days is not None):
+            return analytics.build(store)
+        return analytics.build(store, rng=period(date_from, date_to, days))
+
+    @router.get("/api/analytics")
+    def analytics_all(date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"), days: Optional[int] = None):
+        """KPI tiles with the change against the previous period, the funnel by campaign / step / variant / source,
+        stage velocity and team activity."""
+        return analytics_range.build(store, period(date_from, date_to, days))
+
+    @router.get("/api/analytics/overview")
+    def analytics_overview(date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"), days: Optional[int] = None):
+        return analytics_range.overview(store, period(date_from, date_to, days))
+
+    @router.get("/api/audit")
+    def audit_trail(action: str = "", by: str = "", q: str = "", date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"),
+                    limit: int = 200, offset: int = 0):
+        """Owner only (routes_auth): who did what and when, newest first."""
+        return audit.trail(store, action[:60], by[:80], q[:80], date_from[:10], date_to[:10], max(1, min(limit, 1000)), max(0, offset))
+
+    @router.get("/api/audit.csv")
+    def audit_csv(action: str = "", by: str = "", q: str = "", date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to")):
+        from .backup import ist_label
+        from datetime import datetime
+        rows = audit.trail(store, action[:60], by[:80], q[:80], date_from[:10], date_to[:10], audit.MAX_AUDIT_ROWS)["items"]
+        out = io.StringIO()
+        writer = csv.writer(out)
+        writer.writerow(["at_ist", "at", "by", "by_email", "role", "action", "what", "target", "detail"])
+        for r in rows:
+            try:
+                when = ist_label(datetime.fromisoformat(r["at"]))
+            except (TypeError, ValueError):
+                when = ""
+            writer.writerow([_cell(v) for v in (when, r["at"], r["by"], r["by_email"], r["by_role"], r["action"],
+                                                audit.ACTIONS.get(r["action"], r["action"]), r["target"], r["detail"])])
+        return Response("\ufeff" + out.getvalue(), media_type="text/csv",
+                        headers={"Content-Disposition": 'attachment; filename="audit-log.csv"'})
+
+    @router.get("/api/system/health")
+    def system_health():
+        """Owner only (routes_auth): background jobs, sending, queue, backups, LinkedIn agent, database, version."""
+        from . import system_health as health
+        return health.build(store)
 
     @router.get("/api/change-log.csv")
     def change_log_csv():

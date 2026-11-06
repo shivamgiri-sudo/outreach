@@ -349,3 +349,5 @@ export const api = {
   scoring: () => request("/api/scoring"),
   saveScoring: (body) => request("/api/scoring", { method: "PUT", body }),
 };
+// Shared with small feature modules (opsApi.js) so they can call the API without growing this file.
+export { request as apiRequest, download as apiDownload };

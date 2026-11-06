@@ -18,7 +18,7 @@ from .web_security import client_ip
 LOCAL_OWNER = {"sub": "local", "email": "", "name": "This computer", "role": "owner", "claims": None}
 ANYONE = {("POST", "/api/logout")}
 OWNER_ROUTES = {
-    ("PUT", "/api/settings"), ("PUT", "/api/offer"), ("PUT", "/api/team"), ("POST", "/api/workspaces"), ("DELETE", "/api/workspaces/{ws_id}"), ("POST", "/api/sequence/{index}/send-preview"),
+    ("PUT", "/api/settings"), ("POST", "/api/settings/live-sending"), ("PUT", "/api/offer"), ("PUT", "/api/team"), ("POST", "/api/workspaces"), ("DELETE", "/api/workspaces/{ws_id}"), ("POST", "/api/sequence/{index}/send-preview"),
     ("GET", "/api/channels/webhooks"), ("GET", "/api/flows/{flow_id}/webhook"), ("PUT", "/api/icp"), ("POST", "/api/signals/run"), ("POST", "/api/signals/watch"), ("DELETE", "/api/signals/watch/{watch_id}"), ("POST", "/api/icp/score"), ("GET", "/api/oauth/{provider}/start"),
     ("POST", "/api/sequences/run"), ("POST", "/api/sending/resume"), ("POST", "/api/sequences/resume-failed"),
     ("POST", "/api/practice/clear"), ("GET", "/api/enrich/apollo-export"),
@@ -29,7 +29,7 @@ OWNER_ROUTES = {
     ("GET", "/api/scoring"), ("PUT", "/api/scoring"),
     ("PUT", "/api/insights/source-spend"), ("GET", "/api/inbound/log"), ("POST", "/api/inbound/{connector_id}/test"), ("POST", "/api/inbound/{connector_id}/sync"),
 }
-OWNER_PREFIXES = ("/api/users", "/api/compliance", "/api/backup", "/api/export/", "/api/capture", "/api/hiring-engine", "/api/linkedin-agent")    # any method (exports: no CSV for callers)
+OWNER_PREFIXES = ("/api/users", "/api/compliance", "/api/backup", "/api/export/", "/api/capture", "/api/hiring-engine", "/api/linkedin-agent", "/api/audit", "/api/system")    # any method (exports: no CSV for callers)
 OWNER_WRITE_PREFIXES = ("/api/integrations", "/api/channels", "/api/workflows", "/api/flows")   # anything but GET
 READ_METHODS = ("GET", "HEAD", "OPTIONS")
 
@@ -178,6 +178,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         user = {"email": email, "name": body.name.strip()[:80] or email, "role": body.role,
                 "password_hash": auth.hash_password(body.password), "created_at": auth.now_iso()}
         store.update("settings", lambda s: {**s, "users": [*(s.get("users") or []), user]})
+        from . import audit
+        audit.record(store, actor(request), "user.add", email, f"role {body.role}")
         return auth.public_user(user)
 
     @router.put("/api/users/{email}")
@@ -204,6 +206,13 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
             raise HTTPException(400, "Keep at least one owner login (no admin password is set).")
         store.update("settings", lambda s: {**s, "users": [updated if isinstance(u, dict) and u.get("email") == user["email"] else u
                                                            for u in s.get("users") or []]})
+        from . import audit
+        what = [f"role {user.get('role')} -> {changes['role']}" if "role" in changes and changes["role"] != user.get("role") else "",
+                "password changed" if "password_hash" in changes else "",
+                f"workspaces: {', '.join(changes['workspaces']) or 'all'}" if "workspaces" in changes else "",
+                f"may edit contacts: {'yes' if changes['can_edit_contacts'] else 'no'}" if "can_edit_contacts" in changes else "",
+                "name changed" if "name" in changes and changes["name"] != user.get("name") else ""]
+        audit.record(store, actor(request), "user.change", user["email"], "; ".join(w for w in what if w) or "no change")
         return auth.public_user(updated)
 
     @router.delete("/api/users/{email}")
@@ -217,6 +226,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
             raise HTTPException(400, "Keep at least one owner login (no admin password is set).")
         store.update("settings", lambda s: {**s, "users": [u for u in s.get("users") or []
                                                            if not (isinstance(u, dict) and u.get("email") == user["email"])]})
+        from . import audit
+        audit.record(store, actor(request), "user.remove", user["email"], f"was {user.get('role')}")
         return {"ok": True}
 
     return router

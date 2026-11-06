@@ -359,6 +359,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         if refused:
             hint = {"reason": " Going back a stage needs a reason.", "owner": " Skipping steps needs an owner, with a reason."}.get(refused["rule"], "")
             raise HTTPException(400, f"Cannot move from {refused['from']} to {body.stage}.{hint}")
+        audit.record_stage(store, request, lead_id, body.stage)
         if body.stage == "interested":
             on_became_interested(store, lead_id, "Moved to Interested")
         if body.stage == "unsubscribed":

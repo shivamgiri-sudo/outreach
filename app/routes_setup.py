@@ -126,7 +126,7 @@ def make_router(store, email_transport=post_json, ai_transport=post_json, apollo
             row("bmi_limits", "Confirm the free limits are set inside BookMyInterview", bool(settings.get("confirm_bmi_limits")),
                 "Otherwise free use has no ceiling.", "setup", True),
             {"id": "live_sending", "title": "Switch on real sending", "status": "done" if settings.get("live_sending") else "todo",
-             "detail": "A deliberate last step: tick 'Send for real' on the Outbox page.", "page": "outbox", "required": False},
+             "detail": "A deliberate last step: switch on 'Send for real' on the Outbox page.", "page": "outbox", "required": False},
             row("login", "Turn on login", bool(auth_required()), "Set OUTREACH_ADMIN_PASSWORD before sharing the app.", "setup"),
             row("secret_key", "Encrypt saved keys", bool(getattr(store, "secrets_encrypted", False)) and not getattr(store, "secret_errors", 0),
                 "Saved keys are encrypted but OUTREACH_SECRET_KEY is missing or wrong, so they can't be used. Set the right key "

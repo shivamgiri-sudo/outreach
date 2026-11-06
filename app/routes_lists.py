@@ -83,19 +83,27 @@ def make_router(store, present) -> APIRouter:
         return lists.set_members(store, list_id, lists.resolve(store, body.add), body.remove, who(request))
 
     @router.delete("/api/lists/{list_id}")
-    def remove(list_id: str):
+    def remove(list_id: str, request: Request):
+        row = lists.get(store, list_id)
         if not lists.delete(store, list_id):
             raise HTTPException(404, "List not found")
+        audit.record(store, getattr(request.state, "user", None), "list.delete", (row or {}).get("name") or list_id,
+                     f"{len((row or {}).get('lead_ids') or [])} leads (the leads stay)")
         return {"ok": True}
 
     @router.post("/api/lists/{list_id}/start-email")
     def start_email(list_id: str, request: Request, body: StartBody = StartBody()):
-        found(list_id)
-        return lists.start_email(store, list_id, who(request), body.lead_ids)
+        row = found(list_id)
+        result = lists.start_email(store, list_id, who(request), body.lead_ids)
+        audit.record(store, getattr(request.state, "user", None), "bulk.list_email", row["name"], f"started {result['started']} of {result['asked']}")
+        return result
 
     @router.post("/api/lists/{list_id}/start-linkedin")
     def start_linkedin(list_id: str, request: Request, body: StartBody = StartBody()):
-        found(list_id)
-        return lists.start_linkedin(store, list_id, who(request), body.lead_ids)
+        row = found(list_id)
+        result = lists.start_linkedin(store, list_id, who(request), body.lead_ids)
+        audit.record(store, getattr(request.state, "user", None), "bulk.list_linkedin", row["name"],
+                     f"started {result.get('started', 0)} of {result.get('asked', 0)}")
+        return result
 
     return router
