@@ -235,6 +235,39 @@ if (want("callscript")) await step("Call desk: script never shows raw {{brand}} 
   return `gap notes=${gap}; ${txt.split("\n").find((l) => l.startsWith("Why us")) || ""}`;
 });
 
+const tile = async (label) => {
+  const t = page.getByTestId(`kpi-${label}`).first();
+  return (await t.innerText()).replace(/\n+/g, " | ");
+};
+if (want("periods")) await step("Dashboard + Analytics periods: 7/30/90/custom, long and reversed ranges", async () => {
+  const notes = [];
+  for (const id of ["dashboard", "analytics"]) {
+    await goPage(page, id);
+    for (const d of [7, 90, 30]) {
+      await page.getByRole("button", { name: `Last ${d} days` }).click();
+      await settle(page, 500);
+      notes.push(`${id} ${d}d: ${await tile("New leads")} / ${await tile("Replied")}`);
+    }
+    await page.getByRole("button", { name: "Custom", exact: true }).click();
+    await page.getByLabel("From (IST day)").fill("2023-01-01");
+    await settle(page, 300);
+    const body = await page.locator("main").innerText();
+    if (/could not load/i.test(body)) throw new Error(`${id}: a 2023-to-today range breaks the page`);
+    if (!(await page.getByRole("button", { name: "Apply" }).isDisabled())) throw new Error(`${id}: Apply allowed for a range over 731 days`);
+    notes.push(`${id} custom 2023-01-01..today: ${(body.match(/Pick at most[^\n]*/) || ["(no hint)"])[0]}`);
+    await page.getByLabel("From (IST day)").fill("2026-11-01");
+    await page.getByLabel("To (IST day)").fill("2026-11-06");
+    await page.getByRole("button", { name: "Apply" }).click();
+    await settle(page, 600);
+    notes.push(`${id} custom 1-6 Nov: ${await tile("New leads")} :: ${(await page.getByTestId("period-picker").innerText()).split("\n").pop()}`);
+    await page.getByLabel("To (IST day)").fill("2026-10-01");
+    notes.push(`${id} reversed: Apply disabled=${await page.getByRole("button", { name: "Apply" }).isDisabled()}`);
+    await page.getByRole("button", { name: "Last 30 days" }).click();
+    await settle(page, 400);
+  }
+  return notes.join(" ;; ");
+});
+
 const out = results.map((r) => r.join(" | ")).join("\n");
 console.log("\n==== RESULTS\n" + out + "\n==== PROBLEMS\n" + [...new Set(problems)].join("\n"));
 await browser.close();
