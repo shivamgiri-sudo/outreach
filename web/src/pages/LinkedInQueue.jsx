@@ -124,6 +124,22 @@ function LinkedInAgent({ onMessage }) {
         can live without if the worst happens.</p>
       <p className="sub">Today: {c.counts.connect_today} connection requests, {c.counts.message_today} messages · this week: {c.counts.connect_week} requests ·
         left today: {c.connections_left_today} requests, {c.messages_left_today} messages{c.why_not ? ` · ${c.why_not}` : ""}.</p>
+      {(st.accounts || []).length > 0 && (
+        <div className="table-wrap" style={{ marginBottom: 8 }}>
+          <table><thead><tr><th>LinkedIn account</th><th>Status</th><th>Today</th><th>This week</th><th>People</th><th></th></tr></thead>
+            <tbody>{st.accounts.map((a) => (
+              <tr key={a.account}>
+                <td><b>{a.name || a.account}</b><br /><small>{a.account}</small></td>
+                <td>{a.paused ? <span className="pill warn" title={a.paused.note}>Paused: {a.paused.note}</span> : a.online ? <span className="pill ok">Running</span> : <span className="pill">Not running</span>}
+                  {a.last_seen && <><br /><small>seen {istLabel(a.last_seen)}</small></>}</td>
+                <td>{a.counts.connect_today} requests · {a.counts.message_today} messages</td>
+                <td>{a.counts.connect_week} requests</td>
+                <td>{a.leads}</td>
+                <td>{a.paused && <button className="btn ghost" onClick={() => save({ resume_account: a.account }, `${a.name || a.account} resumed.`)}>Resume</button>}</td>
+              </tr>))}</tbody></table>
+          <small className="sub-inline">Each account has its own daily and weekly caps and its own pause. A person belongs to the account that contacted them first; only that account sends them messages.</small>
+        </div>
+      )}
       <details className="section"><summary>Set it up on your computer (once)</summary>
         <ol className="steps">
           <li>Create a pairing token in the Chrome assistant box below and copy it.</li>
@@ -131,6 +147,7 @@ function LinkedInAgent({ onMessage }) {
           <li>Start the agent (keep it running while you want it to work):<br /><code>{command}</code></li>
           <li>A Chrome window opens. Log in to LinkedIn in that window yourself (including any code LinkedIn sends). The agent waits, then starts.</li>
           <li>Try it first without clicking anything: add <code>--dry</code> to the command. It says what it would do.</li>
+          <li>More LinkedIn accounts: run one agent per account, each with its own window profile, for example <code>--profile ~/.mcn-li-rahul</code>. The same token can be used; the portal tells the accounts apart by who is logged in.</li>
         </ol>
         <button className="btn ghost" onClick={() => copyText(command).then(() => onMessage("Command copied."))}>Copy the command</button>
       </details>

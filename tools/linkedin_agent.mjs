@@ -37,8 +37,12 @@ if (!PORTAL || !TOKEN) { console.error("Usage: node tools/linkedin_agent.mjs --p
 const log = (...a) => console.log(new Date().toLocaleTimeString(), ...a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Which LinkedIn account this window is logged in to (its /in/ slug). The portal keeps caps, the gap and the safety
+// pause per account, and gives each person to one account only, so several accounts can run side by side.
+const ME = { account: "", name: "", checkedAt: 0 };
 async function api(pathname, method = "GET", body) {
-  const res = await fetch(PORTAL + pathname, { method, headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+  const res = await fetch(PORTAL + pathname, { method, headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json",
+    ...(ME.account ? { "X-LinkedIn-Account": ME.account, "X-LinkedIn-Name": encodeURIComponent(ME.name).slice(0, 200) } : {}) },
     body: body ? JSON.stringify(body) : undefined });
   if (!res.ok) { const text = await res.text(); const err = new Error(`${method} ${pathname}: ${res.status} ${text.slice(0, 160)}`); err.status = res.status; throw err; }
   return res.json();
@@ -68,6 +72,28 @@ async function ensureLoggedIn(page) {
   if (!loggedIn()) throw new Fatal("you did not log in to LinkedIn in time");
   await page.goto(LINKEDIN + "/feed/", { waitUntil: "domcontentloaded" });
   await sleep(SETTLE);
+}
+
+async function whoAmI(page) {
+  await page.goto(LINKEDIN + "/in/me/", { waitUntil: "domcontentloaded" });
+  await sleep(SETTLE);
+  await checkTrouble(page);
+  const m = new URL(page.url()).pathname.match(/^\/in\/([^/]+)/);
+  const slug = m && m[1] !== "me" ? decodeURIComponent(m[1]).toLowerCase() : "";
+  if (!slug) throw new Fatal("could not tell which LinkedIn account is logged in (the /in/me page did not open your profile)");
+  const heading = ((await page.locator("main h1").first().innerText({ timeout: 3000 }).catch(() => "")) || "").trim();
+  const name = (heading || (await page.title()).replace(/\s*\|\s*LinkedIn\s*$/i, "").replace(/^\(\d+\)\s*/, "")).trim().slice(0, 80);
+  if (ME.account && ME.account !== slug) {
+    log(`The window is now logged in as ${slug} (was ${ME.account}). Work continues as ${slug}; people taken by ${ME.account} stay with it.`);
+    await event("paused", { state: "account_changed", note: `account changed from ${ME.account} to ${slug}` });
+  }
+  Object.assign(ME, { account: slug, name, checkedAt: Date.now() });
+  return ME;
+}
+
+async function claim(leadId) {
+  try { await api(`/api/extension/leads/${leadId}/claim`, "POST"); return true; }
+  catch (e) { if (e.status === 409) { log(`skip: ${e.message.replace(/^.*?: 409 /, "")}`); return false; } throw e; }
 }
 
 const toLocal = (url) => { try { const u = new URL(url); return LINKEDIN + u.pathname + u.search; } catch { return url; } };
@@ -105,6 +131,7 @@ async function doConnect(page, lead, note) {
   if (!connect) return { done: false, why: "no Connect button on this profile (they may only allow Follow or Message)" };
   if (DRY) return { done: false, dry: true, why: `would click Connect and send a ${note.length}-character note` };
   await connect.click(); await sleep(800);
+  await checkTrouble(page);            // the weekly invitation limit appears right after Connect: stop, do not read it as "no note"
   const dialog = page.getByRole("dialog").first();
   const addNote = dialog.getByRole("button", { name: /add a note/i }).first();
   if (await addNote.count() && await addNote.isEnabled()) {
@@ -154,6 +181,7 @@ async function reportProfile(page, leadId, state) {
 }
 
 async function oneCycle(page, state) {
+  if (ME.account && Date.now() - ME.checkedAt > 30 * 60 * 1000) await whoAmI(page);   // someone may have switched accounts in the window
   const ctl = await api("/api/extension/agent");
   if (!ctl.active_now) return { idle: `not now: ${ctl.why_not}` };
   const queue = await api("/api/extension/queue");
@@ -169,8 +197,7 @@ async function oneCycle(page, state) {
       await event("accepted", { lead_id: w.lead_id, note: `${w.name} accepted` });
       log(`accepted: ${w.name}`);
     }
-    return { acted: "checked acceptance" };
-  }
+  }                                    // looking at profiles is a read: it does not use up this cycle's action
   if (ctl.wait_seconds > 0) return { idle: `waiting ${ctl.wait_seconds}s between actions` };
   for (const item of queue.due) {
     if (!item.profile_url) continue;
@@ -178,6 +205,7 @@ async function oneCycle(page, state) {
     if ((kind === "connect" && (!ctl.may_connect || state.noNotes && !ALLOW_NO_NOTE)) || (kind === "message" && !ctl.may_message)) continue;
     const info = await api(`/api/extension/match?profile_url=${encodeURIComponent(item.profile_url)}`);
     if (!info.can_send || !info.message) { log(`skip ${item.name}: ${info.reason}`); continue; }
+    if (!DRY && !(await claim(item.lead_id))) continue;
     await page.goto(toLocal(item.profile_url), { waitUntil: "domcontentloaded" }); await sleep(SETTLE);
     await checkTrouble(page);
     await reportProfile(page, item.lead_id, state);
@@ -206,6 +234,7 @@ async function main() {
   try {
     await event("started", { state: "running", note: DRY ? "started in dry-run mode" : "agent started" });
     if (!args["skip-login-check"]) await ensureLoggedIn(page);
+    if (!args["no-account"]) { await whoAmI(page); log(`Logged in to LinkedIn as ${ME.name || ME.account} (${ME.account}).`); }
     log(DRY ? "Dry run: nothing will be clicked." : "Running. Press Ctrl+C to stop.");
     for (;;) {
       const outcome = await oneCycle(page, state);

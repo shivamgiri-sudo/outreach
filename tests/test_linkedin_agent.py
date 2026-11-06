@@ -186,7 +186,8 @@ def test_agent_sends_a_connection_request_with_the_sequence_note(live):
     assert seq_status(live, ravi) == "waiting_for_acceptance"
     log = live.call("/api/linkedin-agent")["log"]
     assert log[0]["kind"] == "connect" and log[0]["lead_id"] == ravi
-    assert live.call("/api/extension/agent", token=None)["wait_seconds"] > 0           # the fixed gap now applies
+    assert agent.control(live.store, account="test-sender")["wait_seconds"] > 0        # the fixed gap now applies to that account
+    assert log[0].get("account") == "test-sender"
 
 
 @needs_browser
@@ -217,7 +218,7 @@ def test_agent_stops_itself_and_switches_off_when_linkedin_shows_a_security_chec
     open_up(live)
     out = live.run_agent()
     assert out.returncode == 3, out.stdout + out.stderr
-    assert live.call("/api/linkedin-agent")["config"]["enabled"] is False
+    assert agent.paused(live.store).get("test-sender") is not None                  # only that LinkedIn account is paused
     assert "security check" in live.store.read("notifications")[-1]["text"]
     assert not [e for e in live.mock.EVENTS if e["kind"] in ("invite", "message")]
 

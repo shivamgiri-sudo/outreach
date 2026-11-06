@@ -291,3 +291,64 @@ def clear_practice(store) -> dict:
                                                            if k not in ("practice_days", "practice_last_at")}}
                                         if r.get("sequence") else r for r in rows])
     return removed
+
+
+def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str = "") -> dict:
+    """A person presses "Send email now" for ONE lead: its next due sequence email goes at once.
+
+    Same compose / claim / record path as the scheduled run, so the sequence carries on normally afterwards. A person chose
+    it, so the daily cap and the one-email-per-company-a-day spacing do not apply; unsubscribed, suppressed, bounced,
+    erased, failed-mailbox-check and warm/closed leads are still refused, and only a step that is due now can go."""
+    server_secret(store)
+    if not _RUN_LOCK.acquire(timeout=30):
+        raise ValueError("Another send run is in progress. Try again in a minute.")
+    try:
+        lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+        if lead is None:
+            raise LookupError("Lead not found")
+        seq = lead.get("sequence")
+        if not seq:
+            raise ValueError("Start the email sequence for this lead first.")
+        if seq.get("stopped"):
+            raise ValueError(f"The sequence is stopped ({seq['stopped']}).")
+        if lead["stage"] in NO_EMAIL_STAGES + WARM_STAGES:
+            raise ValueError(f"This lead is {lead['stage']}; no sequence emails.")
+        if not lead.get("email") or is_blocked(store, lead["email"]) or lead["email"] in set(store.read("suppressed")):
+            raise ValueError("This address may not be emailed (unsubscribed, bounced, erased or on the do-not-contact list).")
+        if (lead.get("email_check") or {}).get("status") == "invalid":
+            raise ValueError("A mailbox check said this address does not exist.")
+        if seq.get("in_flight"):
+            raise ValueError("An email to this lead is being sent right now.")
+        cfg = get_settings(store)
+        live = bool(cfg["live_sending"]) and bool(email_ready(store))
+        if live and (pause := sending_paused(store, now)):
+            raise ValueError(f"Sending is paused: {pause['reason']}")
+        if live and sequences.needs_postal_address(lead) and not cfg.get("sender_address"):
+            raise ValueError("US/Canada addresses need a postal address in the footer; add it in Outbox settings.")
+        days_key, last_key = _mode_keys(live)
+        last = seq.get(last_key)
+        steps = due_steps(datetime.fromisoformat(seq["enrolled_at"]), seq.get(days_key, []), now,
+                          last_sent_at=datetime.fromisoformat(last) if last else None)
+        if not steps:
+            raise ValueError("No email is due for this lead right now (the next one has its own day in the sequence).")
+        today = now.astimezone(IST).date()
+        composed = _compose(lead, steps[0], cfg, get_offer(store), base_url, now, today)
+        if composed is None:
+            raise ValueError("A detail needed by the email is missing for this lead.")
+        message, demo = composed
+        day = steps[0]["day"]
+        key = f"{lead['id']}:{day}:{'live' if live else 'practice'}"
+        message.update({"idempotency_key": key, "by": by, "manual": True,
+                        "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead['id']}@{_message_domain(store)}>"})
+        if not _claim(store, lead["id"], day, now, lead["email"], demo):
+            raise ValueError("This lead may not be emailed right now.")
+        message.update(sender(message))
+        store.update("outbox", lambda rows: [*rows, message])
+        if message["status"] in ("provider_error", "failed"):
+            _release(store, lead["id"])
+            raise ValueError(f"The email provider did not take it: {message.get('error') or message['status']}")
+        store.update_lead(lead["id"], lambda r: (lambda saved: {**saved, "timeline": [*saved["timeline"][:-1], {**saved["timeline"][-1], "by": by}]})(
+            _record_send(r, day, message, demo, now, days_key, last_key)))
+        return {"status": message["status"], "step": message["step"], "to": message["to"], "mode": "live" if live else "practice"}
+    finally:
+        _RUN_LOCK.release()

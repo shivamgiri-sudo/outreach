@@ -53,6 +53,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
+        if path in ("/in/me", "/in/me/"):                     # the agent asks who is logged in
+            self.send_response(302); self.send_header("Location", "/in/test-sender/"); self.end_headers(); return
+        if path == "/in/test-sender/":
+            body = "<html><head><title>Test Sender | LinkedIn</title></head><body><main><h1>Test Sender</h1></main></body></html>"
+            self.send_response(200); self.send_header("Content-Type", "text/html"); self.end_headers(); self.wfile.write(body.encode()); return
         body = PAGES.get(path) or {"/feed/": "<html><body><main>Your feed</main></body></html>",
                                    "/in/blocked": "<html><body><main>Let's do a quick security check to continue</main></body></html>"}.get(path)
         if body is None:

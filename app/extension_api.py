@@ -28,7 +28,7 @@ SETTINGS_KEY = "extension_tokens"
 ALLOWED = (                             # (method, path regex) an extension token may call; nothing else
     ("GET", re.compile(r"^/api/extension/match$")),
     ("GET", re.compile(r"^/api/extension/queue$")),
-    ("POST", re.compile(r"^/api/extension/leads/[^/]+/(sent|accepted|replied|profile)$")),
+    ("POST", re.compile(r"^/api/extension/leads/[^/]+/(sent|accepted|replied|profile|claim)$")),
     ("GET", re.compile(r"^/api/extension/agent$")),                  # the LinkedIn agent program on your computer
     ("POST", re.compile(r"^/api/extension/agent/event$")),
     ("POST", re.compile(r"^/api/mcp$")),                              # Claude / MCP clients: read-only tools (see mcp_server)
@@ -170,7 +170,11 @@ def _open_task(store, lead_id: str) -> Optional[dict]:
     return min(rows, key=lambda t: t.get("due_at") or "") if rows else None
 
 
-def describe(store, lead: dict) -> dict:
+def owner_of(lead: dict) -> str:
+    return (lead.get("linkedin_seq") or {}).get("account") or ""
+
+
+def describe(store, lead: dict, account: str = "") -> dict:
     """Everything the side panel needs for one lead: status, the message (only when sending is allowed) and why not."""
     seq = lead.get("linkedin_seq") or None
     settings = store.read("settings")
@@ -188,6 +192,9 @@ def describe(store, lead: dict) -> dict:
         out["reason"] = "Not on the LinkedIn sequence yet. Start it from the LinkedIn page in the app."
         return out
     status = seq.get("status")
+    if account and owner_of(lead) and owner_of(lead) != account:
+        out["reason"] = f"Another LinkedIn account ({owner_of(lead)}) is handling this person; only that account messages them."
+        return out
     if status == "stopped":
         out["reason"] = "The sequence is stopped" + (" because they replied." if seq.get("stopped") == "replied" else ".")
         return out
@@ -224,19 +231,21 @@ def no_match() -> dict:
             "reason": "This profile is not one of your leads.", "actions": []}
 
 
-def queue(store) -> dict:
-    """Today's due steps with a verified http(s) profile link, for the popup list."""
+def queue(store, account: str = "") -> dict:
+    """Today's due steps with a verified http(s) profile link, for the popup list. With an account: only its own leads
+    and leads no account has contacted yet."""
     q = li.queue(store)
     leads = {l["id"]: l for l in store.read("leads")}
+    mine = lambda lead: not account or owner_of(lead) in ("", account)
     due = []
     for d in q["due"]:
         lead = leads.get(d["lead_id"]) or {}
-        if lead.get("stage") in ("unsubscribed", "disqualified"):
+        if lead.get("stage") in ("unsubscribed", "disqualified") or not mine(lead):
             continue
         kind = next((s["kind"] for s in li.STEPS if s["n"] == d["step"]), None)
         due.append({"lead_id": d["lead_id"], "name": d["name"], "company": d["company"], "title": d["title"], "step": d["step"],
                     "kind": kind, "due_at": d["due_at"], "profile_url": safe_http_url(d.get("linkedin_url"))})
     waiting = [{"lead_id": w["lead_id"], "name": w["name"], "company": w["company"], "since": w["since"],
                 "profile_url": safe_http_url(w.get("linkedin_url"))} for w in q["waiting_for_acceptance"]
-               if (leads.get(w["lead_id"]) or {}).get("stage") not in ("unsubscribed", "disqualified")]
+               if (leads.get(w["lead_id"]) or {}).get("stage") not in ("unsubscribed", "disqualified") and mine(leads.get(w["lead_id"]) or {})]
     return {"due": due, "waiting_for_acceptance": waiting, "owner": q["owner"]}

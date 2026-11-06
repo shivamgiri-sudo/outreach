@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
@@ -18,7 +18,7 @@ from .channels.netguard import is_public_host
 from .privacy import is_blocked, record_consent
 from .senders import email_ready
 from .unsubscribe import legacy_allowed, log_legacy_use, parse as parse_unsub
-from .sequence_runner import NO_EMAIL_STAGES, clear_practice, get_settings, resume_lead, run_due, sending_paused
+from .sequence_runner import NO_EMAIL_STAGES, clear_practice, get_settings, resume_lead, run_due, send_now, sending_paused
 
 BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
 IGNORE_BUSINESS_HOURS = os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"  # local testing only
@@ -253,6 +253,20 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
             raise HTTPException(404, "Lead not found")
         except EnrollRefused as exc:
             raise HTTPException(400, str(exc))
+
+    @router.post("/api/leads/{lead_id}/email-now")
+    def email_now(lead_id: str, request: Request):
+        """Send this one lead's next due sequence email now (a person's choice; logged with who did it)."""
+        from .audit import actor_of
+        try:
+            result = send_now(store, lead_id, resolve_now(None), public_base_url(store, BASE_URL), email_sender,
+                              actor_of(getattr(request.state, "user", None))["name"])
+        except LookupError:
+            raise HTTPException(404, "Lead not found")
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from None
+        refreshed, j = find(lead_id)
+        return {**result, "lead": present(refreshed[j])}
 
     @router.post("/api/sequences/run")
     def run_sequences(body: RunBody):

@@ -152,6 +152,7 @@ export const api = {
   linkedinQueue: () => request("/api/linkedin/queue"),
   linkedinSettings: () => request("/api/linkedin/settings"),
   workspaces: () => request("/api/workspaces"),
+  emailNow: (leadId) => request(`/api/leads/${leadId}/email-now`, { method: "POST" }),
   createWorkspace: (name) => request("/api/workspaces", { method: "POST", body: { name } }),
   deleteWorkspace: (id) => request(`/api/workspaces/${encodeURIComponent(id)}`, { method: "DELETE" }),
   moveToWorkspace: (id, leadIds) => request(`/api/workspaces/${encodeURIComponent(id)}/move`, { method: "POST", body: { lead_ids: leadIds } }),

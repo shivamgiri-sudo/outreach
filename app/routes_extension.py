@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from . import extension_api as ext, linkedin_seq as li
+from . import extension_api as ext, linkedin_agent as agent_mod, linkedin_seq as li
 
 
 class PairBody(BaseModel):
@@ -59,21 +59,49 @@ def make_router(store) -> APIRouter:
         return {"ok": True}
 
     # ----- the extension's own routes -----
+    def account_of(request: Request) -> str:
+        return agent_mod.norm_account(request.headers.get("x-linkedin-account", ""))
+
     @router.get("/api/extension/match")
-    def match(profile_url: str = Query("", max_length=2000), name: str = Query("", max_length=200), company: str = Query("", max_length=200)):
+    def match(request: Request, profile_url: str = Query("", max_length=2000), name: str = Query("", max_length=200), company: str = Query("", max_length=200)):
         lead = ext.find_lead(store, profile_url, name, company)
-        return ext.describe(store, lead) if lead else ext.no_match()
+        return ext.describe(store, lead, account_of(request)) if lead else ext.no_match()
 
     @router.get("/api/extension/queue")
-    def queue():
-        return ext.queue(store)
+    def queue(request: Request):
+        return ext.queue(store, account_of(request))
+
+    @router.post("/api/extension/leads/{lead_id}/claim")
+    def claim(lead_id: str, request: Request):
+        """Before an agent touches a person: the lead becomes this account's (atomically), unless another account has it."""
+        account = account_of(request)
+        lead_or_404(lead_id)
+        if not account:
+            return {"ok": True, "account": ""}
+        won = {}
+
+        def apply(l):
+            seq = l.get("linkedin_seq")
+            if not seq:
+                return None
+            if seq.get("account") and seq["account"] != account:
+                won["other"] = seq["account"]
+                return None
+            if seq.get("account") == account:
+                return None
+            return {**l, "linkedin_seq": {**seq, "account": account}, "timeline": [*l["timeline"], {
+                "at": li.iso(li.now_utc()), "kind": "linkedin", "text": f"LinkedIn account {account} took this person"}]}
+        store.update_lead(lead_id, apply)
+        if won.get("other"):
+            raise HTTPException(409, f"Another LinkedIn account ({won['other']}) is handling this person.")
+        return {"ok": True, "account": account}
 
     def refuse(info: dict, why: str = ""):
         raise HTTPException(409, why or info["reason"] or "That is not possible right now.")
 
     @router.post("/api/extension/leads/{lead_id}/sent")
-    def sent(lead_id: str, body: SentBody):
-        info = ext.describe(store, lead_or_404(lead_id))
+    def sent(lead_id: str, body: SentBody, request: Request):
+        info = ext.describe(store, lead_or_404(lead_id), account_of(request))
         if not info["can_send"]:
             refuse(info)
         if info["message"]["step"] != body.step:
@@ -82,12 +110,17 @@ def make_router(store) -> APIRouter:
         return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id))}
 
     @router.post("/api/extension/leads/{lead_id}/accepted")
-    def accepted(lead_id: str):
+    def accepted(lead_id: str, request: Request):
         lead = lead_or_404(lead_id)
+        account = account_of(request)
+        if account and ext.owner_of(lead) not in ("", account):
+            raise HTTPException(409, f"Another LinkedIn account ({ext.owner_of(lead)}) sent this request.")
         if (lead.get("linkedin_seq") or {}).get("status") != "waiting_for_acceptance":
             refuse(ext.describe(store, lead), "This person is not waiting to accept a connection request.")
         li.mark_accepted(store, lead_id)
-        return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id))}
+        if account and not ext.owner_of(lead):
+            store.update_lead(lead_id, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "account": account}})
+        return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id), account)}
 
     @router.post("/api/extension/leads/{lead_id}/profile")
     def profile(lead_id: str, body: ProfileBody):

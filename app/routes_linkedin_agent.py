@@ -1,7 +1,8 @@
 """LinkedIn agent: the portal switch and score (owner), and the calls the agent program makes with its pairing token."""
 from typing import Optional
+from urllib.parse import unquote
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from . import linkedin_agent as agent
@@ -16,6 +17,7 @@ class ConfigBody(BaseModel):
     weekdays_only: Optional[bool] = None
     gap_minutes: Optional[int] = None
     check_replies: Optional[bool] = None
+    resume_account: Optional[str] = None
 
 
 class EventBody(BaseModel):
@@ -36,22 +38,25 @@ def make_router(store, notify_sender=None) -> APIRouter:
 
     @router.put("/api/linkedin-agent")
     def put_config(body: ConfigBody):
+        if body.resume_account:
+            agent.resume(store, body.resume_account)
         try:
-            agent.save_config(store, body.model_dump())
+            agent.save_config(store, body.model_dump(exclude={"resume_account"}))
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
         return agent.status(store)
 
     # ----- the agent program (pairing token; see extension_api.ALLOWED) -----
     @router.get("/api/extension/agent")
-    def control():
-        agent.heartbeat(store, "asking")
-        return agent.control(store)
+    def control(request: Request):
+        account = request.headers.get("x-linkedin-account", "")
+        agent.heartbeat(store, "asking", account=account, name=unquote(request.headers.get("x-linkedin-name", ""))[:80])
+        return agent.control(store, account=account)
 
     @router.post("/api/extension/agent/event")
-    def event(body: EventBody):
+    def event(body: EventBody, request: Request):
         try:
-            return agent.record(store, body.model_dump(), notify_sender=notify_sender)
+            return agent.record(store, {**body.model_dump(), "account": request.headers.get("x-linkedin-account", "")}, notify_sender=notify_sender)
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
 
