@@ -30,6 +30,7 @@ import Campaigns from "./pages/Campaigns.jsx";
 import HiringEngine from "./pages/HiringEngine.jsx";
 import MyDay from "./pages/MyDay.jsx";
 import Analytics from "./pages/Analytics.jsx";
+import Help from "./pages/Help.jsx";
 import { THEMES, getTheme, setTheme } from "./theme.js";
 import { DialogProvider } from "./Dialog.jsx";
 import { useModalFocus } from "./DrawerShell.jsx";
@@ -63,6 +64,7 @@ const PAGES = [
   ["prompts", "Prompt generator", PromptGenerator, "wand"],
   ["setup", "Setup", Setup, "settings"],
   ["integrations", "Integrations", Integrations, "plug"],
+  ["help", "Help centre", Help, "help"],
 ];
 
 // Menu groups. Ids that are not in PAGES yet (myday, companies, analytics) are skipped, so a new page only needs its
@@ -74,7 +76,7 @@ const GROUPS_ALL = [
   ["Content & automation", ["templates", "flows", "workflows", "stories", "prompts"]],
   ["Analytics", ["analytics"]],
   ["Data", ["sources", "signals", "hygiene", "engine"]],
-  ["Settings", ["setup", "integrations"]],
+  ["Settings", ["setup", "integrations", "help"]],
 ];
 const BY_ID = Object.fromEntries(PAGES.map((p) => [p[0], p]));
 const GROUPS = GROUPS_ALL.map(([g, ids]) => [g, ids.filter((id) => BY_ID[id])]).filter(([, ids]) => ids.length);

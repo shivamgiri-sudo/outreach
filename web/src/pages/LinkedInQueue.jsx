@@ -5,6 +5,7 @@ import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import { useConfirm } from "../Dialog.jsx";
+import { GuideButton } from "../GuidePanel.jsx";
 
 const PERSONA = { ceo_founder: "CEO / Founder", chro: "CHRO / HR Director", ta_head: "Head of TA", recruitment_head: "Recruitment Head",
   business_head: "Business Head", general: "General" };
@@ -146,6 +147,7 @@ function LinkedInAgent({ onMessage }) {
           <small className="sub-inline">Each account has its own daily and weekly caps and its own pause. A person belongs to the account that contacted them first; only that account sends them messages.</small>
         </div>
       )}
+      <p><GuideButton keys="app:linkedin_agent" label="How do I set up the agent? (step-by-step guide)" testId="agent-guide" /></p>
       <details className="section"><summary>Set it up on your computer (once)</summary>
         <ol className="steps">
           <li>Create a pairing token in the Chrome assistant box below and copy it.</li>
@@ -197,6 +199,7 @@ function ChromeAssistant({ onMessage }) {
       <summary><b>Chrome assistant</b> <span className="sub">— shows these messages next to the LinkedIn profile you have open</span></summary>
       <p className="sub">A Chrome extension reads the one profile you open, shows the ready message and lets you insert it. You press LinkedIn's Send
         yourself and confirm in the panel. It never clicks, scrolls or sends for you. Install steps: <code>extensions/linkedin-assistant/README.md</code> in the project.</p>
+      <p><GuideButton keys="app:chrome_extension" label="How do I install and pair it?" testId="extension-guide" /></p>
       <div className="row">
         <input aria-label="Name for this computer" placeholder="Name for this computer (optional)" value={label} maxLength={60} onChange={(e) => setLabel(e.target.value)} />
         <button className="btn" onClick={create}>Create pairing token</button>

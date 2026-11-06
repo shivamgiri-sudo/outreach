@@ -4,6 +4,10 @@ import { useModalFocus } from "../../DrawerShell.jsx";
 import { istLabel } from "../../time.js";
 import { CustomHttpBuilder, CustomWebhookMapper } from "./CustomBuilder.jsx";
 import { CopyRow, FieldInput, StatusPill, initialValues, missingRequired } from "./Fields.jsx";
+import { GuideButton } from "../../GuidePanel.jsx";
+import { fieldHelp, useGuides } from "../../guides.js";
+
+export const guideKeys = (channelId, provider) => [`hub:${channelId}:${provider.id}`, ...(provider.legacy ? [`integration:${provider.id}`] : [])];
 
 // What the Test step asks for, per channel: [input type, label, placeholder]
 const TEST_TARGET = {
@@ -34,6 +38,8 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
   const [confirmRemove, setConfirmRemove] = useState(false);
   const panel = useRef(null);
   useDialog(panel, onClose);
+  const { data: guides } = useGuides();
+  const keys = guideKeys(channel.id, start);
 
   const legacy = provider.legacy;
   const custom = provider.custom;
@@ -110,6 +116,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
         {step === 0 && (
           <section>
             <p>{provider.why}</p>
+            <GuideButton keys={keys} className="btn guide-cta" label="How do I get this? Full step-by-step guide" testId="wizard-guide" />
             <ol className="steps">{provider.steps.map((s) => <li key={s}>{s}</li>)}</ol>
             {provider.cost_note && <p className="field-help">Cost: {provider.cost_note}</p>}
             {provider.terms && <p className="field-help" data-testid="source-terms">Terms: {provider.terms}</p>}
@@ -119,6 +126,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
 
         {step === 1 && (
           <section>
+            <p className="guide-row-actions"><GuideButton keys={keys} label="Where do I find these details?" testId="wizard-guide-details" /></p>
             {legacy && provider.modes?.length > 1 && (
               <div className="row">
                 {provider.modes.map((m) => (
@@ -132,7 +140,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
             {provider.id === "custom_http" && <CustomHttpBuilder provider={provider} values={values} setValues={setValues} />}
             {provider.id === "custom_webhook" && <CustomWebhookMapper channel={channel.id} provider={provider} values={values} setValues={setValues} />}
             {!custom && (!legacy || mode === "api") && provider.fields.map((f) => (
-              <FieldInput key={f.key} field={f} value={values[f.key]} saved={provider.values?.[f.key]}
+              <FieldInput key={f.key} field={f} value={values[f.key]} saved={provider.values?.[f.key]} guide={fieldHelp(guides, keys, f.key)}
                 onChange={(v) => setValues({ ...values, [f.key]: v })} />
             ))}
             {!custom && provider.fields.length === 0 && !legacy && <p className="sub">Nothing to type for this one. Click Save, then copy the webhook address.</p>}

@@ -4,6 +4,8 @@ import { sourceLabel, useSourceRegistry } from "../../labels.js";
 import { istLabel } from "../../time.js";
 import { CopyRow } from "./Fields.jsx";
 import { useDialog } from "./Wizard.jsx";
+import { FieldHint, GuideButton, useTouched } from "../../GuidePanel.jsx";
+import { fieldHelp, useGuides } from "../../guides.js";
 
 const OUTCOMES = { new: "New lead", merged: "Added to an existing lead", refused: "Refused (opted out or erased)", replay: "Repeat ignored", error: "Problem" };
 const lines = (v) => (Array.isArray(v) ? v.join("\n") : v || "");
@@ -23,6 +25,9 @@ function ConnectorPanel({ connector: start, type, onClose, onChanged, go }) {
   const [sure, setSure] = useState(false);
   const panel = useRef(null);
   useDialog(panel, onClose);
+  const { data: guides } = useGuides();
+  const [touched, touch] = useTouched();
+  const gkey = `capture:${type.id}`;
   const token = c.token;                                   // only present right after create or rotate
   const url = c.urls.capture || c.urls.callback || c.urls.webhook || c.urls.sync;
   const run = async (fn) => {
@@ -56,6 +61,7 @@ function ConnectorPanel({ connector: start, type, onClose, onChanged, go }) {
 
         <h3>Set it up</h3>
         <p>{type.why}</p>
+        <GuideButton keys={gkey} className="btn guide-cta" label="How do I get this? Full step-by-step guide" testId="capture-guide" />
         <ol className="steps">{type.steps.map((s) => <li key={s}>{s}</li>)}</ol>
 
         {url && <CopyRow label={c.urls.callback ? "Callback URL" : c.urls.webhook ? "Webhook URL" : "Address to send leads to"} value={url} testid="capture-url" />}
@@ -94,10 +100,13 @@ function ConnectorPanel({ connector: start, type, onClose, onChanged, go }) {
               <>
                 <label htmlFor={`cap-${f.key}`}>{f.label}</label>
                 {f.kind === "lines"
-                  ? <textarea id={`cap-${f.key}`} rows={3} value={form[f.key]} placeholder={f.placeholder} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
+                  ? <textarea id={`cap-${f.key}`} rows={3} value={form[f.key]} placeholder={f.placeholder} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                      onBlur={() => touch(f.key)} aria-describedby={fieldHelp(guides, gkey, f.key) ? `cap-${f.key}-hint cap-${f.key}-problem` : undefined} />
                   : <input id={`cap-${f.key}`} type={f.secret ? "password" : "text"} autoComplete="off" value={form[f.key]}
                       placeholder={f.secret && c.secrets[f.key] ? `${c.secrets[f.key]} (saved; leave empty to keep)` : f.placeholder || ""}
-                      onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />}
+                      onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} onBlur={() => touch(f.key)}
+                      aria-describedby={fieldHelp(guides, gkey, f.key) ? `cap-${f.key}-hint cap-${f.key}-problem` : undefined} />}
+                <FieldHint id={`cap-${f.key}`} help={fieldHelp(guides, gkey, f.key)} value={form[f.key]} touched={touched[f.key]} />
               </>
             )}
           </div>
@@ -158,6 +167,7 @@ function AddConnector({ types, existing, onCreated, onClose }) {
             </label>
           ))}
         </fieldset>
+        {chosen && <p><GuideButton keys={`capture:${chosen.id}`} label={`How do I connect ${chosen.title}?`} testId="add-capture-guide" /></p>}
         <div className="field"><label htmlFor="new-cap-name">Connector name</label>
           <input id="new-cap-name" value={name} placeholder={chosen?.title} onChange={(e) => setName(e.target.value)} />
           <p className="field-help">Only for you: for example “Diwali Meta ads” or “Website contact form”.</p></div>
