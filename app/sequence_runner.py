@@ -352,3 +352,54 @@ def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str 
         return {"status": message["status"], "step": message["step"], "to": message["to"], "mode": "live" if live else "practice"}
     finally:
         _RUN_LOCK.release()
+
+
+MAX_MANUAL_SUBJECT, MAX_MANUAL_BODY = 200, 8000
+
+
+def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, base_url: str, sender, by: str = "") -> dict:
+    """One email a person wrote (or pasted from a template) for ONE lead, outside the sequence. Not part of the sequence
+    and does not change it. The same safety rules apply: unsubscribed / suppressed / bounced / erased / failed-check
+    addresses are refused, an unsubscribe line is always added, practice mode until 'Send for real' is on."""
+    from .unsubscribe import unsub_url
+    subject, body = " ".join(str(subject or "").split())[:MAX_MANUAL_SUBJECT], str(body or "").strip()[:MAX_MANUAL_BODY]
+    if not subject or not body:
+        raise ValueError("Write a subject and a message.")
+    lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+    if lead is None:
+        raise LookupError("Lead not found")
+    email = lead.get("email")
+    if not email:
+        raise ValueError("This lead has no email address.")
+    if lead["stage"] in ("unsubscribed", "disqualified") or is_blocked(store, email) or email in set(store.read("suppressed")):
+        raise ValueError("This address may not be emailed (unsubscribed, bounced, erased or on the do-not-contact list).")
+    if (lead.get("email_check") or {}).get("status") == "invalid":
+        raise ValueError("A mailbox check said this address does not exist.")
+    cfg = get_settings(store)
+    live = bool(cfg["live_sending"]) and bool(email_ready(store))
+    if live and (pause := sending_paused(store, now)):
+        raise ValueError(f"Sending is paused: {pause['reason']}")
+    variables = lead_variables(lead, cfg["sender_name"], base_url, {}, secret=server_secret(store))
+    subject, _ = render(subject, variables)
+    body, missing = render(body, variables)
+    if missing or re.search(r"\{\{|\}\}", subject + body):
+        raise ValueError("Fill in or remove the {{placeholders}} first: " + ", ".join(sorted(set(missing))) if missing else "Remove the {{ }} left in the text.")
+    if "/u/" not in body:
+        body += f"\n\nNot relevant? Unsubscribe: {unsub_url(store, base_url, lead_id)}"
+    footer = sequences.identity_footer(cfg)
+    if footer:
+        body += f"\n{footer}"
+    key = f"{lead_id}:manual:{uuid.uuid4().hex[:8]}"
+    message = {"lead_id": lead_id, "to": email, "subject": subject, "body": body, "step": "One-off email", "variant": "manual",
+               "manual": True, "by": by, "sent_at": now.isoformat(timespec="seconds"), "sent_at_ist_date": now.astimezone(IST).date().isoformat(),
+               "idempotency_key": key, "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead_id}@{_message_domain(store)}>"}
+    message.update(sender(message))
+    store.update("outbox", lambda rows: [*rows, message])
+    if message["status"] in ("provider_error", "failed"):
+        raise ValueError(f"The email provider did not take it: {message.get('error') or message['status']}")
+    sent = message["status"] == "sent"
+    store.update_lead(lead_id, lambda l: {**l, "last_activity_at": now.isoformat(timespec="seconds"),
+                                          "stage": "contacted" if sent and l["stage"] in EARLY_STAGES else l["stage"],
+                                          "timeline": [*l["timeline"], {"at": now.isoformat(timespec="seconds"), "kind": "email" if sent else "practice",
+                                                                        "text": f"One-off email: {subject} — {message['status'] if sent else 'practice only, not sent'}", "by": by}]})
+    return {"status": message["status"], "to": email, "subject": subject, "mode": "live" if live else "practice"}

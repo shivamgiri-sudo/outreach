@@ -146,14 +146,14 @@ def log_activity(store, lead_id: str, kind: str, body: dict) -> dict:
     store.update("activities", lambda rows: [*rows, row])
     summary = f"{kind.title()}" + (f" — {row['outcome'].replace('_', ' ')}" if row["outcome"] else "") + (f": {row['body'][:200]}" if row["body"] else "")
     store.update_lead(lead_id, lambda l: {**l, "last_activity_at": at,
-                                          "timeline": [*l["timeline"], {"at": at, "kind": kind, "text": summary}]})
+                                          "timeline": [*l["timeline"], {"at": at, "kind": kind, "text": summary, **({"by": row["by"]} if row["by"] else {})}]})
     if kind == "call":
         close_call_tasks(store, lead_id, summary)
     return row
 
 
 # Timeline kinds that are shown from their detailed source instead (full email/WhatsApp text, logged activities).
-_DETAILED_ELSEWHERE = {"email", "practice", "whatsapp", "call", "meeting", "linkedin", "sms", "note_logged"}
+_DETAILED_ELSEWHERE = {"email", "practice", "whatsapp", "call", "meeting", "sms", "note_logged"}
 
 
 def lead_activity(store, lead: dict) -> list:
@@ -164,7 +164,7 @@ def lead_activity(store, lead: dict) -> list:
         if m.get("lead_id") == lid:
             items.append({"at": m["sent_at"], "type": "email", "direction": "out", "title": m.get("subject", ""),
                           "body": m.get("body", ""), "status": {"dry_run": "practice (not sent)"}.get(m.get("status"), m.get("status")),
-                          "detail": m.get("step", ""), "to": m.get("to"), "delivered_at": m.get("delivered_at"), "error": m.get("error")})
+                          "detail": m.get("step", "") + (f" · by {m['by']}" if m.get("by") else ""), "to": m.get("to"), "delivered_at": m.get("delivered_at"), "error": m.get("error")})
     for m in store.read("whatsapp_outbox"):
         if m.get("lead_id") == lid:
             items.append({"at": m["sent_at"], "type": "whatsapp", "direction": "out", "title": m.get("template", ""),
@@ -195,9 +195,48 @@ def lead_activity(store, lead: dict) -> list:
             continue                       # logged notes / "other" activities are already listed above
         if e["kind"] == "reply" and any(t and t in e["text"] for t in inbox_texts):
             continue                       # the captured message already shows this reply in full
-        items.append({"at": e["at"], "type": e["kind"], "direction": "in" if e["kind"] == "reply" else "none",
-                      "title": e["kind"].replace("_", " ").capitalize(), "body": e["text"], "status": ""})
+        items.append({"at": e["at"], "type": e["kind"], "direction": "in" if e["kind"] == "reply" else "out" if e["kind"] == "linkedin" else "none",
+                      "title": "LinkedIn" if e["kind"] == "linkedin" else e["kind"].replace("_", " ").capitalize(), "body": e["text"], "status": "",
+                      "detail": e.get("by", "")})
+    for r in store.read("settings").get("linkedin_agent_log") or []:
+        if r.get("lead_id") == lid and r.get("kind") in ("connect", "message", "accepted", "error"):
+            items.append({"at": r["at"], "type": "linkedin", "direction": "in" if r["kind"] == "accepted" else "out",
+                          "title": {"connect": "LinkedIn connection request (agent)", "message": "LinkedIn message (agent)",
+                                    "accepted": "LinkedIn: they accepted", "error": "LinkedIn agent could not act"}[r["kind"]],
+                          "body": r.get("note", ""), "status": "problem" if r["kind"] == "error" else "done", "detail": r.get("account", "")})
     return sorted(items, key=_when, reverse=True)
+
+
+def history_summary(store, lead: dict) -> dict:
+    """Every attempt on one contact, counted by channel, with the call outcomes and the last touch of each kind."""
+    items = lead_activity(store, lead)
+    calls = [i for i in items if i["type"] == "call"]
+    outcomes = {}
+    for c in calls:
+        key = c.get("status") or "not recorded"
+        outcomes[key] = outcomes.get(key, 0) + 1
+    emails_out = [i for i in items if i["type"] == "email" and i["direction"] == "out"]
+    real = [e for e in emails_out if e.get("status") not in ("practice (not sent)",)]
+    replies = [i for i in items if i["direction"] == "in" and i["type"] in ("email", "whatsapp", "sms", "reply")]
+    li = [i for i in items if i["type"] == "linkedin"]
+    last = lambda rows: max((r["at"] for r in rows if r.get("at")), default=None)
+    eng = lead.get("engagement") or {}
+    seq = lead.get("linkedin_seq") or {}
+    return {
+        "total_touches": len([i for i in items if i["direction"] == "out"]),
+        "calls": {"attempts": len(calls), "outcomes": outcomes, "connected": sum(v for k, v in outcomes.items() if k in ("connected", "interested", "not_interested", "meeting_booked", "call_back")),
+                  "unanswered": outcomes.get("no_answer", 0) + outcomes.get("busy", 0), "last": last(calls)},
+        "emails": {"sent": len(real), "practice": len(emails_out) - len(real), "opens": eng.get("opens", 0), "clicks": eng.get("clicks", 0),
+                   "replies": len([r for r in replies if r["type"] in ("email", "reply")]), "last": last(emails_out)},
+        "whatsapp": {"sent": len([i for i in items if i["type"] == "whatsapp" and i["direction"] == "out"]), "last": last([i for i in items if i["type"] == "whatsapp"])},
+        "linkedin": {"status": seq.get("status") or ("not started" if not seq else ""), "steps_done": seq.get("done", []), "account": seq.get("account", ""),
+                     "open_profile": bool((lead.get("linkedin_profile") or {}).get("open_profile")), "last": last(li)},
+        "meetings": len([i for i in items if i["type"] == "meeting"]),
+        "open_tasks": len([i for i in items if i["type"] == "task" and i.get("status") == "open"]),
+        "first_touch": min((i["at"] for i in items if i["direction"] == "out" and i.get("at")), default=None),
+        "last_touch": last([i for i in items if i["direction"] in ("out", "in")]),
+        "last_reply": last(replies),
+    }
 
 
 def _when(item: dict) -> datetime:

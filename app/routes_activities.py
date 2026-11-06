@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from .activities import (ACTIVITY_TYPES, CALL_OUTCOMES, PRIORITIES, add_task, complete_task, ensure_task_ids,
-                         lead_activity, log_activity, now_utc, task_buckets, team, update_task, iso)
+                         history_summary, lead_activity, log_activity, now_utc, task_buckets, team, update_task, iso)
 
 
 class ActivityBody(BaseModel):
@@ -75,9 +75,17 @@ def make_router(store, transactional_sender=None) -> APIRouter:
     def activity(lead_id: str):
         return lead_activity(store, lead_or_404(lead_id))
 
+    @router.get("/api/leads/{lead_id}/history-summary")
+    def summary(lead_id: str):
+        return history_summary(store, lead_or_404(lead_id))
+
     @router.post("/api/leads/{lead_id}/activity")
-    def add_activity(lead_id: str, body: ActivityBody):
+    def add_activity(lead_id: str, body: ActivityBody, request: Request):
         lead_or_404(lead_id)
+        if not body.by.strip():
+            from .audit import actor_of
+            user = getattr(request.state, "user", None) or {}
+            body.by = actor_of(user)["name"] if user.get("email") else ""
         if body.type not in ACTIVITY_TYPES:
             raise HTTPException(400, f"type must be one of: {', '.join(ACTIVITY_TYPES)}")
         if body.type == "call" and body.outcome and body.outcome not in CALL_OUTCOMES:
