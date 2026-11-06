@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from .lead_merge import FUZZY_COMPANY_MIN, STAGE_RANK, completeness, lead_domain
 from .lead_model import event
+from .scraper import outreach_ok
 from .places import city_key, clean_city, clean_country, clean_state, is_indian_place, size_bucket, state_for_city
 from .standardise import (clean_company, clean_email, clean_person_name, clean_title, company_key, key_similarity,
                           department_of, email_alias_key, host_of, is_free_mail, is_role_email, names_compatible,
@@ -89,11 +90,18 @@ def duplicate_clusters(leads: list) -> list:
         reasons = [{"a": leads[a]["id"], "b": leads[b]["id"], "why": why} for (a, b), why in clusters.why.items()
                    if a in members and b in members]
         keep = max(members, key=lambda i: (bool(leads[i].get("sequence")), len(leads[i].get("timeline") or []),
-                                           STAGE_RANK.get(leads[i].get("stage"), 11), completeness(leads[i])))
+                                           STAGE_RANK.get(leads[i].get("stage"), 11), _personal_email(leads[i]),
+                                           completeness(leads[i])))
         out.append({"lead_ids": [leads[i]["id"] for i in members], "reasons": reasons,
                     "why": sorted({r["why"] for r in reasons}), "suggested_keep": leads[keep]["id"],
                     "leads": [summary(leads[i]) for i in members]})
     return sorted(out, key=lambda c: -len(c["lead_ids"]))
+
+
+def _personal_email(lead: dict) -> bool:
+    """A named person's address beats abuse@ / privacy@ / info@ when choosing which duplicate to keep."""
+    email = lead.get("email") or ""
+    return bool(email) and not is_role_email(email) and outreach_ok(email)
 
 
 def _company_pairs(leads: list, clusters: _Clusters, by_company: dict) -> None:

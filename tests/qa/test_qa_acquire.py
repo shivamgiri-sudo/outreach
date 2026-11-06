@@ -63,3 +63,12 @@ def test_found_contacts_get_the_company_site_not_the_contact_page(tmp_path):
     c.post("/api/scrape/extract", json={"url": "https://www.acmetools.in/about/contact-us.html", "html": CONTACT_PAGE,
                                         "company": "Acme Tools", "add_leads": True})
     assert {l["website"] for l in c.get("/api/leads").json()} == {"https://www.acmetools.in"}
+
+
+def test_duplicate_group_suggests_a_named_persons_address_not_abuse_at(tmp_path):
+    from app.hygiene_report import duplicate_clusters
+    leads = [{"id": "a", "company": "Zoho", "email": "abuse@zohocorp.com", "website": "https://www.zoho.com", "stage": "new", "timeline": [{}]},
+             {"id": "b", "company": "Zoho", "email": "info@zohocorp.com", "website": "https://www.zoho.com", "stage": "new", "timeline": [{}]},
+             {"id": "c", "company": "Zoho", "email": "jessica.loo@zohocorp.com", "website": "https://www.zoho.com", "stage": "new", "timeline": [{}]}]
+    [group] = duplicate_clusters(leads)
+    assert group["suggested_keep"] == "c"
