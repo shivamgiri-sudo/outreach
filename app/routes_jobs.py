@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from .jobs import job_age_days, job_domain, job_key, parse_job_postings
+from .job_discover import discover_jobs
 from .scraper import fetch_page
 
 MAX_ROLE_TITLES = 2
@@ -78,7 +79,13 @@ def make_router(store, build_lead, present) -> APIRouter:
             now = datetime.fromisoformat(body.now)
             now = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
         try:
-            found = _csv_jobs(body.csv) if body.csv else parse_job_postings(body.html or fetch_page(body.url), body.url)
+            note = ""
+            if body.csv:
+                found = _csv_jobs(body.csv)
+            elif body.html:
+                found = parse_job_postings(body.html, body.url)
+            else:
+                found, note = discover_jobs(body.url, fetch_page)
         except (ValueError, PermissionError, OSError) as exc:
             raise HTTPException(400, str(exc))
 
@@ -108,6 +115,7 @@ def make_router(store, build_lead, present) -> APIRouter:
             return leads
         store.update("leads", merge_in)
         created, updated = stats["created"], stats["updated"]
-        return {"jobs_found": len(found), "jobs_new": new, "reposts": reposts, "leads_created": created, "leads_updated": updated}
+        return {"jobs_found": len(found), "jobs_new": new, "reposts": reposts, "leads_created": created, "leads_updated": updated,
+                "note": note}
 
     return router

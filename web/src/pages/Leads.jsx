@@ -120,7 +120,7 @@ export default function Leads({ go }) {
     try {
       const looksCsv = jobsText.trim().toLowerCase().startsWith("company,");
       const r = await api.ingestJobs({ url: jobsUrl, csv: looksCsv ? jobsText : "", html: looksCsv ? "" : jobsText });
-      setMessage(`Read ${r.jobs_found} job(s): ${r.leads_created} new company lead(s), ${r.leads_updated} updated, ${r.reposts} repost(s) spotted.`);
+      setMessage(`Read ${r.jobs_found} job(s): ${r.leads_created} new company lead(s), ${r.leads_updated} updated, ${r.reposts} repost(s) spotted.${r.note ? " " + r.note : ""}`);
       load();
     } catch (e) {
       setMessage(e.message);
