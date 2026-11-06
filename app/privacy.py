@@ -42,8 +42,19 @@ def hashes_for(email=None, phones=()) -> set:
     return out
 
 
+def linkedin_hash(url) -> str:
+    """Hash of a LinkedIn person link ("linkedin:<slug>", lower-case), or "" when it is not one. Lets an erased person who
+    was known only by their profile (e.g. saved from the Chrome assistant) stay erased."""
+    from urllib.parse import unquote
+    m = re.search(r"linkedin\.com/in/([^/?#\s]+)", str(url or ""), re.I)
+    return contact_hash("linkedin:" + unquote(m.group(1)).strip().lower()) if m else ""
+
+
 def lead_hashes(lead: dict) -> set:
-    return hashes_for(lead.get("email"), [lead.get("phone"), *(lead.get("phones") or [])])
+    out = hashes_for(lead.get("email"), [lead.get("phone"), *(lead.get("phones") or [])])
+    if linkedin_hash(lead.get("linkedin_url")):
+        out.add(linkedin_hash(lead.get("linkedin_url")))
+    return out
 
 
 def is_blocked(store, email: Optional[str] = None, phone: Optional[str] = None) -> bool:

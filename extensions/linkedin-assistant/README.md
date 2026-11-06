@@ -57,6 +57,17 @@ and fail if a click, synthetic mouse or keyboard event, timer, randomness or scr
 6. Later, when a request is accepted, open their profile and press **They accepted**. When someone writes back, press
    **They replied**, paste what they said (optional) and save: the sequence stops and the app handles the reply.
 
+### Save a profile to the portal (one person, one click)
+
+When the profile you opened yourself is not a lead yet, the panel shows **Save to portal** (or **Update lead** when it
+is a lead with an empty name, title, company or profile link). Press it and the panel shows what it read from this one
+page: name, headline, current company and location, taken only from the visible top card. Correct anything, then press
+**Save**. The app makes the lead (source "Saved from LinkedIn", owned by you, in your workspace) or fills only the
+empty fields of the existing lead; it never overwrites what the team already has. People on the do-not-contact list,
+erased people and leads in a workspace you do not work in are refused with a message. The button is hidden on every
+other LinkedIn page (search results, feed, lists, sub-pages such as `/in/<name>/details/`). There is no bulk or list
+saving, and nothing is collected in the background. Saving is limited to 60 profiles an hour per pairing token.
+
 The panel also tells you plainly when there is nothing to do: not paired, profile is not a lead, the person is
 unsubscribed or disqualified (never offered a message), still waiting to accept, already sent today, or not due yet.
 
@@ -66,10 +77,11 @@ unsubscribed or disqualified (never offered a message), still waiting to accept,
 - The pairing token is stored in `chrome.storage.local` in this browser profile. It is never logged and never sent
   anywhere except your server. On the server only a hash of it is kept.
 - A pairing token can use only the few `/api/extension/...` routes (look up a lead, today's queue, record sent /
-  accepted / replied). It cannot read your lead list, settings or users, and it cannot make more tokens. It expires
+  accepted / replied, save the one profile you confirmed). It cannot read your lead list, settings or users, and it cannot make more tokens. It expires
   after 90 days and can be revoked at any time in the web app.
 - Only the profile address without its query string, the name and the company shown on the page are sent to your
-  server for matching. Nothing else on the page is read.
+  server for matching. When you press Save in the confirm box, the values in that box (name, headline, company,
+  location) are sent too. Nothing else on the page is read.
 
 ## Permissions (and why)
 

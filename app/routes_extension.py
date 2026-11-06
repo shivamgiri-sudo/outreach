@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from . import extension_api as ext, linkedin_agent as agent_mod, linkedin_seq as li
+from . import extension_api as ext, extension_save, linkedin_agent as agent_mod, linkedin_seq as li
 
 
 class PairBody(BaseModel):
@@ -22,8 +22,17 @@ class ReplyBody(BaseModel):
     text: str = Field(default="", max_length=2000)
 
 
+class SaveProfileBody(BaseModel):
+    profile_url: str = Field(max_length=2000)
+    name: str = Field(max_length=extension_save.NAME_MAX)
+    title: str = Field(default="", max_length=extension_save.FIELD_MAX)
+    company: str = Field(default="", max_length=extension_save.FIELD_MAX)
+    location: str = Field(default="", max_length=extension_save.FIELD_MAX)
+
+
 def make_router(store) -> APIRouter:
     router = APIRouter()
+    save_limit = extension_save.HourlyLimit()
 
     def person(request: Request) -> dict:
         from .routes_auth import LOCAL_OWNER
@@ -149,5 +158,19 @@ def make_router(store) -> APIRouter:
             refuse(ext.describe(store, lead), "This person is not on the LinkedIn sequence.")
         li.mark_replied(store, lead_id, body.text.strip())
         return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id))}
+
+    @router.post("/api/extension/save-profile")
+    def save_profile(body: SaveProfileBody, request: Request):
+        """The rep pressed "Save to portal" on the one profile they have open: create the lead, or fill its empty fields."""
+        user = getattr(request.state, "user", None) or {}
+        if user.get("kind") != "extension":
+            raise HTTPException(403, "Only the Chrome assistant saves profiles. Add the lead on the Leads page instead.")
+        if not save_limit.allow(user.get("token_id") or user.get("sub") or "", extension_save.SAVES_PER_HOUR):
+            raise HTTPException(429, f"You have saved {extension_save.SAVES_PER_HOUR} profiles in the last hour. "
+                                     "Saving is kept to a human pace; try again later.")
+        try:
+            return extension_save.save_profile(store, user, body.model_dump(), account_of(request))
+        except extension_save.SaveRefused as exc:
+            raise HTTPException(exc.status, exc.message)
 
     return router

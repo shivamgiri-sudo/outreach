@@ -42,6 +42,7 @@ SOURCES = (
     ("sheet", "Spreadsheet import", "import"),
     ("referral", "Referral", "referral"),
     ("manual", "Added by hand", "manual"),
+    ("linkedin_manual", "Saved from LinkedIn", "manual"),          # a rep pressed "Save to portal" in the Chrome assistant
     ("unknown", "Unknown", "manual"),
 )
 # Old spellings and near-duplicates -> the id they mean.

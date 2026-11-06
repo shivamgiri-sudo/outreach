@@ -29,6 +29,7 @@ ALLOWED = (                             # (method, path regex) an extension toke
     ("GET", re.compile(r"^/api/extension/match$")),
     ("GET", re.compile(r"^/api/extension/queue$")),
     ("POST", re.compile(r"^/api/extension/leads/[^/]+/(sent|accepted|replied|profile|claim)$")),
+    ("POST", re.compile(r"^/api/extension/save-profile$")),           # the rep pressed "Save to portal" on one profile
     ("GET", re.compile(r"^/api/extension/agent$")),                  # the LinkedIn agent program on your computer
     ("POST", re.compile(r"^/api/extension/agent/event$")),
     ("GET", re.compile(r"^/api/extension/cloud/(login-job|code)$")),  # the cloud agent on this server (linkedin_cloud);
@@ -119,7 +120,9 @@ def authenticate(store, admin_password: str, raw: str) -> Optional[dict]:
         store.update("settings", lambda s: {**s, SETTINGS_KEY: [{**t, "last_used_at": iso(now)} if t.get("id") == row["id"] else t
                                                                  for t in s.get(SETTINGS_KEY) or []]})
     return {"sub": sub, "email": principal.get("email", ""), "name": principal.get("name", ""), "kind": "extension",
-            "token_id": row["id"], "role": "viewer" if principal["role"] == "viewer" else "caller", "claims": None}
+            "token_id": row["id"], "role": "viewer" if principal["role"] == "viewer" else "caller", "claims": None,
+            # the person's workspace limits travel with the token (owners: none), so a saved lead lands where they work
+            "workspaces": [] if principal["role"] == "owner" else list(principal.get("workspaces") or [])}
 
 
 # ---------- matching ----------
@@ -185,7 +188,8 @@ def describe(store, lead: dict, account: str = "") -> dict:
            "title": lead.get("title"), "stage": lead.get("stage"),
            "linkedin_seq": {"status": (seq or {}).get("status"), "next_step": None, "due": None},
            "message": None, "can_send": False, "reason": "", "actions": [],
-           "open_profile": bool((lead.get("linkedin_profile") or {}).get("open_profile"))}
+           "open_profile": bool((lead.get("linkedin_profile") or {}).get("open_profile")),
+           "has_profile_link": bool(lead.get("linkedin_url"))}
     if lead.get("stage") in ("unsubscribed", "disqualified"):
         out["reason"] = f"This person is {lead['stage']}; no LinkedIn outreach."
         out["actions"] = ["replied"] if seq else []

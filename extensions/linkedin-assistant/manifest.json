@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MCN LinkedIn Assistant",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shows the ready-made MCN Outreach message for the LinkedIn profile you have open. You read it, insert it and press Send yourself.",
   "minimum_chrome_version": "114",
   "permissions": ["storage", "activeTab", "sidePanel"],

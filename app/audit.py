@@ -115,6 +115,7 @@ ACTIONS = {
     "workspace.create": "Workspace created", "workspace.delete": "Workspace removed", "linkedin_agent.on": "LinkedIn agent switched on",
     "linkedin_agent.off": "LinkedIn agent switched off", "linkedin_agent.settings": "LinkedIn agent settings saved",
     "settings.save": "Settings saved", "contact.edit": "Contact details corrected",
+    "extension.save_profile": "Profile saved from LinkedIn (Chrome assistant)",
 }
 MAX_DETAIL = 500
 
