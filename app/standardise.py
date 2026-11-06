@@ -179,6 +179,8 @@ _TITLE_PHRASES = [
     (r"\bsenior vice president\b", "svp"), (r"\bvice president\b", "vp"), (r"\bmanaging director\b", "md"),
     (r"\bgeneral manager\b", "gm"), (r"\bco\s*-?\s*founder\b", "cofounder"), (r"\bbusiness partner\b", "bp"),
     (r"\bhead of\b", "head"), (r"\bhr\s*bp\b", "hrbp"),
+    # "Senior Talent Partner" is a recruiter, not a business owner
+    (r"\b(talent|people|recruit\w*|hiring|sourcing|ta|hr|learning|campus|staffing)\s+partner\b", r"\1 partner_"),
 ]
 _TITLE_ABBREV = {"sr": "senior", "snr": "senior", "jr": "junior", "asst": "assistant", "assoc": "associate", "mgr": "manager",
                  "exec": "executive", "exe": "executive", "dy": "deputy", "hod": "head", "recruitment": "recruiter"}

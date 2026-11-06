@@ -12,6 +12,9 @@ const WARNING_LABELS = {
   role_address: "Shared inboxes (info@, hr@…)", role_address_skipped: "Shared inboxes left out", free_mail: "Personal addresses (Gmail, Yahoo…)",
   free_mail_skipped: "Personal addresses left out", foreign_phone: "Numbers outside India (kept)", suppressed: "On the do-not-contact list (row skipped)",
   suppressed_extra: "Extra addresses on the do-not-contact list", closed_lead: "Matches leads that are closed (their stage stays)",
+  source_opt_out: "Opted out of email in the source file (row skipped)", do_not_call: "Marked do not call (phones left out)",
+  email_flagged: "Emails the source marked risky or unverified (check before emailing)",
+  custom_unreadable: "Custom field values that could not be read",
 };
 
 const ACTIONS = { create: "New lead", merge: "Adds details to a lead you have", duplicate: "Same as an earlier row",
