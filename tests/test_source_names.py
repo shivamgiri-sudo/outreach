@@ -141,3 +141,11 @@ def test_insights_use_canonical_sources_stage_counts_and_spend(tmp_path):
     assert next(r for r in ins["by_source"] if r["source"] == "apollo")["cost_per_lead"] is None
     assert ins["totals"]["leads"] == 4
     assert client.put("/api/insights/source-spend", json={"spend": {"meta_ads": "abc"}}).status_code == 400
+
+
+def test_every_import_format_source_is_in_the_registry():
+    """QA sweep: a HubSpot export was "Unknown" on Leads (source_id) but "Hubspot" on the Dashboard (raw source)."""
+    from app.header_map import FORMATS
+    from app.source_names import BY_ID, canonical
+    assert all(canonical(f["source"])[0] != "unknown" for f in FORMATS)
+    assert BY_ID["hubspot"]["label"] == "HubSpot" and BY_ID["hubspot"]["kind"] == "import"
