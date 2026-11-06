@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from app import auth
 from app.main import PUBLIC_API_PATHS, PUBLIC_GET_PATHS, create_app
+from app.routes_linkedin_runner import PUBLIC_PATHS as RUNNER_PUBLIC_PATHS
 from app.routes_auth import needed_role
 from tests.export_fakes import SECRETS, seed
 
@@ -92,8 +93,8 @@ def test_viewer_gets_403_on_every_mutating_api_route(tmp_path):
     viewer = team(c)["viewer"]
     leaked = []
     for method, path in all_routes(c.app):
-        if method in READ or not path.startswith("/api/") or path in ("/api/login", "/api/logout"):
-            continue
+        if method in READ or not path.startswith("/api/") or path in ("/api/login", "/api/logout") or path in RUNNER_PUBLIC_PATHS:
+            continue                          # office-runner pairing: no session at all, it checks its one-time code itself
         r = call(c, method, path, viewer)
         if r.status_code != 403:
             leaked.append((method, path, r.status_code))
@@ -184,6 +185,8 @@ def test_every_api_route_needs_a_login_except_the_documented_public_ones(tmp_pat
     for method, path in all_routes(c.app):
         if not path.startswith("/api/") or method == "OPTIONS" or path in PUBLIC_API_PATHS or (method == "GET" and path in PUBLIC_GET_PATHS):
             continue
+        if path in RUNNER_PUBLIC_PATHS:
+            continue                          # checked below: each refuses without its one-time code / runner token
         for headers in ({}, {"Authorization": "Bearer "}, {"Authorization": "Basic YWRtaW46YWRtaW4="}, {"X-Webhook-Secret": ""}):
             r = call(c, method, path, headers=headers)
             if r.status_code != 401:
@@ -191,6 +194,14 @@ def test_every_api_route_needs_a_login_except_the_documented_public_ones(tmp_pat
     assert open_routes == []
     assert set(PUBLIC_API_PATHS) == {"/api/login", "/api/auth/status"}
     assert set(PUBLIC_GET_PATHS) == {"/api/brand/public", "/api/brand/logo"}      # read-only brand for sign-in page and mail apps
+    # Office runner (LinkedIn on an office computer): pairing, installers and bundle need the 15-minute code or the runner token.
+    assert set(RUNNER_PUBLIC_PATHS) == {"/api/linkedin-runner/pair", "/api/linkedin-runner/install.ps1", "/api/linkedin-runner/install.sh",
+                                        "/api/linkedin-runner/bundle.tar.gz", "/api/linkedin-runner/bundle.zip"}
+    assert c.post("/api/linkedin-runner/pair", json={"code": "ZZZZZZZZ"}).status_code in (400, 403)
+    assert c.get("/api/linkedin-runner/bundle.tar.gz").status_code == 403 and c.get("/api/linkedin-runner/bundle.zip").status_code == 403
+    for kind in ("ps1", "sh"):
+        text = c.get(f"/api/linkedin-runner/install.{kind}").text
+        assert "expired" in text and "npm" not in text and "mcnr_" not in text
     assert c.get("/api/auth/status").json() == {"auth_required": True}
 
 
