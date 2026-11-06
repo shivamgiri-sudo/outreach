@@ -102,6 +102,9 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
     if store.update_lead(lead_id, change) is None:
         return None
     effect = outcome["effect"]
+    if label not in ("auto_reply", "bounce", "unsubscribe"):
+        from .lead_ops import auto_assign_on_reply
+        auto_assign_on_reply(store, lead_id)       # an unowned lead goes to its open task's owner / the LinkedIn owner
     if label not in ("auto_reply", "bounce") and channel != "linkedin":
         _stop_linkedin(store, lead_id, f"replied by {channel}")       # one real reply stops every cold channel
     if label in ("unsubscribe", "bounce") and channel == "email":

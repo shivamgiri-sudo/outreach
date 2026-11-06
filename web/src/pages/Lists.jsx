@@ -6,6 +6,7 @@ import { stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import { useHashParam } from "../route.js";
 import { useConfirm } from "../Dialog.jsx";
+import ConfirmDialog from "./ConfirmDialog.jsx";
 
 const when = (iso) => (iso ? istLabel(iso) : "");
 const result = (verb, r) => `${verb} for ${r.started} of ${r.asked}.${r.refused.length ? " Left out: " + r.refused.map((x) => `${x.count} (${x.reason})`).join("; ") : ""}`;
@@ -96,6 +97,7 @@ function ListDetail({ id, onChanged, onClose }) {
   const [picked, setPicked] = useState([]);
   const [msg, setMsg] = useState("");
   const [lead, setLead] = useHashParam("lead");
+  const [askEmail, setAskEmail] = useState(false);
   const load = () => api.list(id).then(setD).catch((e) => setMsg(e.message));
   useEffect(() => { load(); }, [id]);
   if (!d) return <div className="card">{msg || "Loading…"}</div>;
@@ -109,10 +111,19 @@ function ListDetail({ id, onChanged, onClose }) {
         <button className="btn ghost" onClick={onClose}>Close</button>
       </div>
       <div className="row" style={{ margin: "10px 0", flexWrap: "wrap" }}>
-        <button className="btn" onClick={() => run(api.listStartEmail, "Email started")}>Start email {picked.length ? `for ${picked.length} selected` : "for all"}</button>
+        <button className="btn" onClick={() => setAskEmail(true)}>Start email {picked.length ? `for ${picked.length} selected` : "for all"}</button>
         <button className="btn ghost" onClick={() => run(api.listStartLinkedIn, "LinkedIn started")}>Start LinkedIn {picked.length ? `for ${picked.length} selected` : "for all"}</button>
         {picked.length > 0 && <button className="btn ghost" onClick={async () => { await api.listMembers(id, { remove: picked }); setPicked([]); load(); onChanged(); }}>Remove selected from list</button>}
       </div>
+      {askEmail && (
+        <ConfirmDialog title="Start the email sequence?" confirmLabel={`Yes, start for ${picked.length || d.members.length}`} onCancel={() => setAskEmail(false)}
+          onConfirm={() => { setAskEmail(false); run(api.listStartEmail, "Email started"); }}>
+          <p style={{ margin: "0 0 6px" }} data-testid="confirm-count">
+            This is for <b>{picked.length || d.members.length}</b> lead(s) {picked.length ? <>you ticked in “{d.name}”.</> : <>— every lead in “{d.name}”, including any not on screen.</>}
+          </p>
+          <p style={{ margin: 0 }}>Leads with no email, already in the sequence, unsubscribed or on the do-not-contact list are skipped. Sending still follows your daily cap, business hours and practice mode.</p>
+        </ConfirmDialog>
+      )}
       {msg && <p className="sub" role="status">{msg}</p>}
       <div className="table-wrap">
         <table>

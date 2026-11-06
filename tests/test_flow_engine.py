@@ -73,7 +73,8 @@ def test_if_sends_leads_down_yes_or_no(c):
 @pytest.mark.parametrize("field,op,value,expected", [
     ("city", "eq", "pune", True), ("city", "in", "Delhi, Pune", True), ("city", "ne", "Pune", False),
     ("title", "contains", "hr", True), ("has_phone", "eq", "true", True), ("has_consent", "eq", "true", False),
-    ("tag", "contains", "vip", True), ("tag", "exists", "", True), ("country", "exists", "", True), ("band", "eq", "cold", False),
+    ("tag", "contains", "vip", True), ("tag", "exists", "", True), ("country", "exists", "", True),
+    ("band", "eq", "cold", True), ("band", "eq", "warm", False),   # Acme: 12 open roles on the log scale (19.6) + fit 15 = 35, cold
 ])
 def test_if_operators(c, field, op, value, expected):
     flow = make_flow(c, [TRIGGER, node("check", "if", field=field, op=op, value=value), node("y", "add_tag", tag="y"),

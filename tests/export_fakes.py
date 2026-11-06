@@ -32,7 +32,7 @@ def seed(store) -> dict:
     leads = [
         _lead("l1", {"company": '=HYPERLINK("http://evil.example","x")', "contact_name": "Ravi Kumar", "title": "Founder",
                      "email": "ravi@acme.in", "phone": "98765 43210", "website": "https://acme.in", "country": "IN",
-                     "open_roles": "10", "company_size": "200", "max_job_age_days": "30"}, "apollo",
+                     "open_roles": "60", "company_size": "200", "max_job_age_days": "30"}, "apollo",
               campaign_id="c1", tags=["vip"], stage="contacted", created_at="2026-11-01T04:00:00+00:00",
               consent={"text": "Yes on a call with Priya", "at": "2026-11-02T06:30:00+00:00", "source": "recorded by a person",
                        "channel": "whatsapp"},
@@ -46,7 +46,7 @@ def seed(store) -> dict:
         _lead("l2", {"company": "Śrī Gaṇeśa Traders ₹", "contact_name": "@admin", "email": "sam@ganesa.in"},
               "web_scraper:https://ganesa.in", created_at="2026-10-01T04:00:00+00:00"),
         _lead("l3", {"company": "Gamma Foods", "contact_name": "-Neha", "email": "neha@gamma.in", "phone": "9123456780",
-                     "country": "IN", "open_roles": "10", "company_size": "200"}, "manual", campaign_id="c1", stage="new",
+                     "country": "IN", "open_roles": "60", "company_size": "200"}, "manual", campaign_id="c1", stage="new",
               campaign_check={"qualified": False, "reasons": ["no email found yet", "score below 40"]}),
         _lead("l4", {"company": "Gamma Foods Pvt Ltd", "contact_name": "Neha", "email": "neha@gamma.in"}, "manual"),
     ]

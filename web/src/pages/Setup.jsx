@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import GoLive from "./GoLive.jsx";
 import BackupRestore from "./BackupRestore.jsx";
 import { useConfirm, usePrompt } from "../Dialog.jsx";
+import ScoringCard from "./ScoringCard.jsx";
 
 const STATUS = { configured: ["ok", "Connected"], incomplete: ["warn", "Missing details"], not_configured: ["", "Not set up"] };
 
@@ -257,7 +258,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
       </div>
       {tab === "checklist" && <GoLive embedded go={(page) => (page === "setup" ? setTab("connections") : go?.(page))} />}
       {tab === "backup" && <BackupRestore />}
-      {tab === "team" && role === "owner" && <><Workspaces /><Users /></>}
+      {tab === "team" && role === "owner" && <><Workspaces /><Users /><ScoringCard /></>}
       {tab === "connections" && (
         <>
           <div className="tip" style={{ marginBottom: 16 }}>

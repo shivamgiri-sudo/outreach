@@ -78,22 +78,28 @@ def test_merge_moves_activities_and_consent_rows_so_export_and_erasure_cover_the
 
 # ---------------------------------------------------------------- scoring
 REALISTIC = [
-    # (lead, expected band, expected fit)  -- fit = 9 for size 20-2000, +6 for India
-    ({"company": "Shivam Auto Components", "country": "India", "company_size": 320, "open_roles": 25,
+    # (lead, expected band, expected fit)  -- fit = 9 for size 20+ (no upper limit), +6 for India.
+    # Open roles count on a log scale with full marks from 50 roles (was: full marks from 10). These examples used to
+    # carry 10-25 roles; they now carry 60 so the India / not-India cases still sit either side of the hot line (70).
+    ({"company": "Shivam Auto Components", "country": "India", "company_size": 320, "open_roles": 60,
       "max_job_age_days": 45}, "hot", 15),
-    ({"company": "Ganesh Retail", "country": "IND", "company_size": 150, "open_roles": 10, "max_job_age_days": 30}, "hot", 15),
-    ({"company": "Kaveri Agro Foods", "country": "", "city": "Bangalore", "company_size": 150, "open_roles": 10,
+    ({"company": "Ganesh Retail", "country": "IND", "company_size": 150, "open_roles": 60, "max_job_age_days": 30}, "hot", 15),
+    ({"company": "Kaveri Agro Foods", "country": "", "city": "Bangalore", "company_size": 150, "open_roles": 60,
       "max_job_age_days": 30}, "hot", 15),
-    ({"company": "Narmada Logistics", "country": "", "phone": "+91 90000 10077", "company_size": 150, "open_roles": 10,
+    ({"company": "Narmada Logistics", "country": "", "phone": "+91 90000 10077", "company_size": 150, "open_roles": 60,
       "max_job_age_days": 30}, "hot", 15),
-    ({"company": "Gulf Staffing FZE", "country": "AE", "city": "Dubai", "company_size": 150, "open_roles": 10,
+    ({"company": "Gulf Staffing FZE", "country": "AE", "city": "Dubai", "company_size": 150, "open_roles": 60,
       "max_job_age_days": 30}, "warm", 9),
-    ({"company": "Ganesh Retail", "country": "india", "company_size": 150, "open_roles": 10, "max_job_age_days": 28},
+    ({"company": "Ganesh Retail", "country": "india", "company_size": 150, "open_roles": 60, "max_job_age_days": 28},
      "warm", 15),                                                                       # 30 + 23.3 + 15 = 68
+    ({"company": "Ganesh Retail", "country": "IND", "company_size": 150, "open_roles": 10, "max_job_age_days": 30},
+     "warm", 15),                                                                       # 18.3 + 25 + 15 = 58: 10 roles is no longer full marks
     ({"company": "Tiny Tiffins", "country": "IN", "company_size": 8, "open_roles": 1}, "cold", 6),
-    ({"company": "Pearl Edutech", "country": "IN", "company_size": 60, "open_roles": 8}, "cold", 15),   # 24 + 15 = 39
-    ({"company": "Pearl Edutech", "country": "IN", "company_size": 60, "open_roles": 8,
-      "engagement": {"opens": 1, "clicks": 0, "replies": 0}}, "warm", 15),              # + 3.3 = 42
+    ({"company": "Pearl Edutech", "country": "IN", "company_size": 60, "open_roles": 20}, "cold", 15),  # 23.2 + 15 = 38
+    ({"company": "Pearl Edutech", "country": "IN", "company_size": 60, "open_roles": 20,
+      "engagement": {"opens": 1, "clicks": 0, "replies": 0}}, "warm", 15),             # + 3.3 = 42
+    ({"company": "Big BPO Services", "country": "IN", "company_size": 5000, "open_roles": 80,
+      "max_job_age_days": 30}, "hot", 15),                                              # 5,000 staff used to score 0 for size
 ]
 
 
@@ -112,7 +118,7 @@ def test_engagement_and_consent_signals():
 
 # ---------------------------------------------------------------- insights and dashboard
 def _closed_but_hot(lid, stage, **extra):
-    return lead(lid, company=f"Firm {lid}", stage=stage, country="IN", company_size=300, open_roles=40,
+    return lead(lid, company=f"Firm {lid}", stage=stage, country="IN", company_size=300, open_roles=60,
                 max_job_age_days=60, email=f"hr@{lid}.example", **extra)
 
 

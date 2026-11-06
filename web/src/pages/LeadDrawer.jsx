@@ -12,6 +12,7 @@ import { useAlert, useConfirm } from "../Dialog.jsx";
 import LeadFlows from "./flows/LeadFlows.jsx";
 import LeadStage from "./LeadStage.jsx";
 import { EditDetails, InlineForm, LeadOrigin, PrivacyActions, SIGNAL_LABELS, linkedinDrafts, replyMeaning, sequenceStatus } from "./LeadDrawerParts.jsx";
+import LeadAssign from "./LeadAssign.jsx";
 
 // The lead drawer is a header (name, score, stage, prev/next) over five tabs. HOW TO ADD A SMALL PANEL:
 //   - lead-level facts / ownership / tags / other contacts  -> the OVERVIEW tab, at the "SLOT: overview panels" line;
@@ -103,6 +104,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
       </div>
       <LeadStage lead={lead} onLead={setLead} onError={setError} />
       {/* SLOT: overview panels (LeadOwner, LeadTags, OtherContacts …) — one line each */}
+      <LeadAssign lead={lead} onChanged={setLead} />
       <OtherContacts lead={lead} />
       <LeadMeetings lead={lead} onChanged={load} />
       <label htmlFor="note-box">Quick note</label>
