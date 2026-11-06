@@ -84,6 +84,13 @@ def _is_negated(text: str, start: int) -> bool:
     return bool(_NEGATION_BEFORE.search(text[max(0, start - 28):start]))
 
 
+def is_person_reply(event: dict) -> bool:
+    """A timeline "reply" written by a person. Out-of-office auto-replies and bounces are logged on the timeline as
+    "[auto_reply] ..." / "[bounce] ..." but are not replies: they never add to engagement.replies (inbound.reply_effect),
+    so the Dashboard, Analytics, Companies and reply timing must not count them either."""
+    return event.get("kind") == "reply" and not str(event.get("text") or "").startswith(("[auto_reply]", "[bounce]"))
+
+
 def classify_reply(text: str) -> str:
     lowered = strip_quoted(text or "").lower().strip()
     if not lowered:

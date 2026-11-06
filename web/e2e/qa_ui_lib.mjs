@@ -138,7 +138,7 @@ export async function clickAround(page, problems, ctx, where, opts = {}) {
   for (let i = 0; i < Math.min(sels, 12); i++) {
     const s = page.locator("main select:visible").nth(i);
     const label = (await s.getAttribute("aria-label", { timeout: 2000 }).catch(() => null)) || (await s.getAttribute("id", { timeout: 2000 }).catch(() => null)) || `select${i}`;
-    if (/stage|owner|assign|status|role|mode|provider|channel|template|sequence|field for/i.test(label) && !opts.allSelects) continue;
+    if (/stage|owner|assign|status|role|mode|provider|channel|template|sequence|field for|label|reassign|move|priority|tag/i.test(label) && !opts.allSelects) continue;
     const values = await s.locator("option").evaluateAll((os) => os.map((o) => o.value)).catch(() => []);
     const first = await s.inputValue().catch(() => null);
     for (const v of values.slice(0, 8)) {

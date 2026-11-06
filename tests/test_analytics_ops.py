@@ -110,7 +110,8 @@ def test_intelligence_and_insights_honour_the_period(tmp_path):
     old = c.get("/api/intelligence?from=2026-01-01&to=2026-01-07").json()
     assert old["channels"]["email"]["enrolled"] == 0 and old["team"] == []
     ins = c.get(f"/api/insights?from={FROM}&to={TO}").json()
-    assert ins["totals"]["leads"] == 1 and ins["totals"]["emails_sent"] == 4 and ins["range"]["days"] == 7
+    # the practice (dry_run) row is not an email sent: Insights agrees with the Analytics overview (3)
+    assert ins["totals"]["leads"] == 1 and ins["totals"]["emails_sent"] == 3 and ins["range"]["days"] == 7
 
 
 def test_analytics_respect_workspace_scope(tmp_path):
@@ -314,3 +315,21 @@ def test_list_rates_and_csv_export(tmp_path):
     assert (stats["open_rate"], stats["reply_rate"], stats["accept_rate"]) == (50.0, 50.0, 100.0)
     r = c.get("/api/export/lists.csv")
     assert r.status_code == 200 and "open_rate" in r.text.splitlines()[0] and "Both" in r.text
+
+
+def test_out_of_office_is_not_a_reply_anywhere(tmp_path):
+    """QA sweep: an out-of-office pasted on a lead counted as 'Replied' on the Dashboard/Analytics (7) and made the
+    company an 'Engaged account', while Insights and Intelligence said 6. Practice emails counted as 'sent' on Insights
+    (15) but not on the Dashboard (0)."""
+    c = TestClient(create_app(data_file=tmp_path / "s.json"))
+    c.post("/api/leads/import", json={"csv": "company,email,website\nTele Hub,ravi@telehub.in,telehub.in\nAcme,asha@acme.in,acme.in\n",
+                                      "source": "manual"})
+    ids = {l["company"]: l["id"] for l in c.get("/api/leads").json()}
+    c.post(f"/api/leads/{ids['Tele Hub']}/reply", json={"text": "I am out of office until 15 November."})
+    c.post(f"/api/leads/{ids['Acme']}/reply", json={"text": "Not interested, thanks."})
+    over = c.get("/api/analytics/overview?days=7").json()
+    assert over["kpis"]["replied"]["value"] == 1
+    comp = {x["name"]: x for x in c.get("/api/companies").json()["items"]}
+    assert comp["Tele Hub"]["replies"] == 0 and comp["Tele Hub"]["engaged"] is False
+    assert comp["Acme"]["replies"] == 1 and comp["Acme"]["engaged"] is False       # everyone there said no
+    assert c.get("/api/intelligence").json()["timing"]["replies_measured"] == 1

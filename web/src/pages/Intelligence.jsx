@@ -57,7 +57,7 @@ export default function Intelligence({ range, embedded = false }) {
           <h3 style={{ marginTop: 0 }}>Which roles respond</h3>
           {d.personas.length === 0 ? <p className="empty">No leads yet.</p> : (
             <table><thead><tr><th>Role</th><th>Leads</th><th>Contacted</th><th>Replied</th><th>Interested</th></tr></thead>
-              <tbody>{d.personas.map((p) => <tr key={p.persona}><td>{role(p.persona)}</td><td>{p.leads}</td><td>{p.contacted}</td><td>{p.replied} <small>({p.reply_rate}%)</small></td><td>{p.interested}</td></tr>)}</tbody></table>
+              <tbody>{d.personas.map((p) => <tr key={p.persona}><td>{role(p.persona)}</td><td>{p.leads}</td><td>{p.contacted}</td><td>{p.replied}{p.contacted > 0 && <small> ({p.reply_rate}%)</small>}</td><td>{p.interested}</td></tr>)}</tbody></table>
           )}
         </div>
       </div>
@@ -89,7 +89,7 @@ export default function Intelligence({ range, embedded = false }) {
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Team activity ({range ? "this period" : "30 days"})</h3>
           {d.team.length === 0 ? <p className="empty">No actions with a name on them yet.</p> : d.team.map((m) => (
-            <div key={m.who}><b>{m.who}</b> <small className="sub-inline">{m.total} action{m.total === 1 ? "" : "s"} · {Object.entries(m.by_kind).map(([k, v]) => `${v} ${k}`).join(", ")}</small></div>
+            <div key={m.who}><b>{m.who}</b> <small className="sub-inline">{m.total} action{m.total === 1 ? "" : "s"} · {Object.entries(m.by_kind).map(([k, v]) => `${v} ${k.replace(/_/g, " ")}`).join(", ")}</small></div>
           ))}
         </div>
         <div className="card">

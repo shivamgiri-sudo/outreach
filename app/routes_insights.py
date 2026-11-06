@@ -11,7 +11,7 @@ TOP_LEADS = 10
 INTERESTED_STAGES = ("interested", "whatsapp_active", "call_done", "trial", "customer", "advocate")
 CUSTOMER_STAGES = ("customer", "advocate")
 CLOSED_STAGES = ("unsubscribed", "disqualified")            # never a "top lead" to chase
-NOT_SENT = ("failed", "provider_error")                     # outbox rows for attempts that never went out
+NOT_SENT = ("failed", "provider_error", "dry_run")          # outbox rows that never went out (dry_run = practice mode)
 
 
 def _pct(part: int, whole: int) -> float:
