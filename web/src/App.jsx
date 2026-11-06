@@ -29,6 +29,8 @@ import Hygiene from "./pages/Hygiene.jsx";
 import Campaigns from "./pages/Campaigns.jsx";
 import HiringEngine from "./pages/HiringEngine.jsx";
 import { THEMES, getTheme, setTheme } from "./theme.js";
+import { DialogProvider } from "./Dialog.jsx";
+import { useModalFocus } from "./DrawerShell.jsx";
 
 // [id, label, component, icon]
 const PAGES = [
@@ -40,9 +42,9 @@ const PAGES = [
   ["campaigns", "Campaigns", Campaigns, "rocket"],
   ["engine", "Hiring engine", HiringEngine, "workflow"],
   ["signals", "Buying signals", Signals, "bell"],
-  ["sources", "Data sources", DataSources, "chart"],
+  ["sources", "Data sources", DataSources, "layers"],
   ["insights", "Insights", Insights, "chart"],
-  ["intelligence", "Intelligence", Intelligence, "bell"],
+  ["intelligence", "Intelligence", Intelligence, "eye"],
   ["growth", "Free experience", Growth, "gift"],
   ["flows", "Flow builder", FlowBuilder, "workflow"],
   ["workflows", "Simple rules", Workflows, "rules"],
@@ -51,7 +53,7 @@ const PAGES = [
   ["meetings", "Meetings", Meetings, "calendar"],
   ["replies", "Replies", Replies, "inbox"],
   ["tasks", "Tasks & follow-ups", Tasks, "tasks"],
-  ["linkedin", "LinkedIn outreach", LinkedInQueue, "users"],
+  ["linkedin", "LinkedIn outreach", LinkedInQueue, "linkedin"],
   ["templates", "Sequences & templates", Templates, "mail"],
   ["stories", "Success stories", Stories, "star"],
   ["prompts", "Prompt generator", PromptGenerator, "wand"],
@@ -59,21 +61,42 @@ const PAGES = [
   ["integrations", "Integrations", Integrations, "plug"],
 ];
 
-const GROUPS = [
-  ["Overview", ["dashboard"]],
-  ["Pipeline", ["leads", "companies", "lists", "campaigns", "engine", "signals", "hygiene", "sources", "insights", "intelligence", "growth"]],
-  ["Outreach", ["replies", "tasks", "outbox", "linkedin", "flows", "workflows", "templates", "calls", "meetings"]],
-  ["Library", ["stories", "prompts"]],
-  ["Admin", ["setup", "integrations"]],
+// Menu groups. Ids that are not in PAGES yet (myday, companies, analytics) are skipped, so a new page only needs its
+// PAGES entry; when Analytics replaces Insights + Intelligence, drop those two from PAGES and alias them below.
+const GROUPS_ALL = [
+  ["Today", ["myday", "dashboard"]],
+  ["Pipeline", ["leads", "companies", "lists", "campaigns", "growth"]],
+  ["Conversations", ["replies", "calls", "linkedin", "tasks", "meetings", "outbox"]],
+  ["Content & automation", ["templates", "flows", "workflows", "stories", "prompts"]],
+  ["Analytics", ["analytics", "insights", "intelligence"]],
+  ["Data", ["sources", "signals", "hygiene", "engine"]],
+  ["Settings", ["setup", "integrations"]],
 ];
 const BY_ID = Object.fromEntries(PAGES.map((p) => [p[0], p]));
+const GROUPS = GROUPS_ALL.map(([g, ids]) => [g, ids.filter((id) => BY_ID[id])]).filter(([, ids]) => ids.length);
 // Old links to the separate Go live page now open the checklist inside Setup.
 const ALIASES = { golive: "setup" };
+const HOME = BY_ID.myday ? "myday" : "dashboard";
+// Phone bottom bar: the four pages people open most, plus "More" for the full menu.
+const BOTTOM = [HOME, "leads", "replies", "tasks"].filter((id) => BY_ID[id]);
+const SHORT = { myday: "My day", dashboard: "Home", tasks: "Tasks", replies: "Replies", leads: "Leads" };
 
 function pageFromHash() {
   const id = window.location.hash.replace(/^#\/?/, "").split(/[/?]/)[0];
   const resolved = ALIASES[id] || id;
-  return BY_ID[resolved] ? resolved : "dashboard";
+  return BY_ID[resolved] ? resolved : HOME;
+}
+
+const PHONE = "(max-width: 760px)";
+function useIsPhone() {
+  const [phone, setPhone] = useState(() => window.matchMedia(PHONE).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(PHONE);
+    const on = () => setPhone(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return phone;
 }
 
 // Reminders bell: unread task and meeting reminders, checked every minute.
@@ -87,7 +110,7 @@ function Bell({ onOpen }) {
     return () => clearInterval(timer);
   }, []);
   return (
-    <div className="bell-wrap">
+    <div className="bell-wrap" onKeyDown={(e) => { if (e.key === "Escape" && open) { e.stopPropagation(); setOpen(false); } }}>
       <button className="bell" aria-label={`Reminders: ${items.length} unread`} aria-expanded={open} onClick={() => setOpen(!open)}>
         <Icon name="bell" size={18} />{items.length > 0 && <span className="badge-dot">{items.length}</span>}
       </button>
@@ -149,9 +172,20 @@ function QuickSearch({ onClose, onPage, onLead }) {
 }
 
 export default function App() {
+  return <DialogProvider><Shell /></DialogProvider>;
+}
+
+function Shell() {
   const [page, setPage] = useState(pageFromHash);
-  const [focusLead, setFocusLead] = useState(null);
   const [searching, setSearching] = useState(false);
+  const [menuOpen, setMenuOpenState] = useState(false);
+  const [menuUsed, setMenuUsed] = useState(false);       // slide animation only after the first open (no flash when resizing)
+  const setMenuOpen = (open) => { if (open) setMenuUsed(true); setMenuOpenState(open); };
+  const phone = useIsPhone();
+  const navRef = useRef(null);
+  const closeMenu = () => setMenuOpen(false);
+  useModalFocus(navRef, closeMenu, phone && menuOpen);
+  useEffect(() => { if (!phone) setMenuOpen(false); }, [phone]);
   const [theme, setThemeState] = useState(getTheme());
   const cycleTheme = () => {
     const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
@@ -161,11 +195,14 @@ export default function App() {
   const [auth, setAuth] = useState({ checked: false, required: false, signedIn: false });
   const [me, setMe] = useState(null);
 
+  // go("leads") or go("leads?lead=<id>"): the part after "?" is kept in the hash for the page to read.
   const go = (id) => {
-    const target = ALIASES[id] || id;
-    setFocusLead(null);
+    const [base, qs] = String(id).split("?");
+    const target = ALIASES[base] || base;
+    const full = qs ? `${target}?${qs}` : target;
+    setMenuOpen(false);
     setPage(target);
-    if (pageFromHash() !== target) window.location.hash = target;
+    if (window.location.hash.replace(/^#\/?/, "") !== full) window.location.hash = full;
   };
 
   const checkAuth = () => api.authStatus()
@@ -178,10 +215,12 @@ export default function App() {
     const onKey = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearching(true); } };
     window.addEventListener("auth-expired", expired);
     window.addEventListener("hashchange", onHash);
+    window.addEventListener("popstate", onHash);
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("auth-expired", expired);
       window.removeEventListener("hashchange", onHash);
+      window.removeEventListener("popstate", onHash);
       window.removeEventListener("keydown", onKey);
     };
   }, []);
@@ -208,55 +247,87 @@ export default function App() {
   if (!auth.signedIn) return <Login onSignedIn={() => setAuth((a) => ({ ...a, required: true, signedIn: true }))} />;
   if (!me) return <p className="empty">Loading…</p>;
   const Current = BY_ID[page][2];
+  const spacePicker = (cls) => spaces.length > 1 && (
+    <select className={cls} aria-label="Workspace" value={space} onChange={(e) => pickSpace(e.target.value)}>
+      {(!me.workspaces || me.workspaces.length !== 1) && <option value="">All workspaces</option>}
+      {spaces.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.leads})</option>)}
+    </select>
+  );
   return (
-    <div className="layout">
-      <nav className="side" aria-label="Main">
+    <div className={`layout${phone ? " is-phone" : ""}${menuOpen ? " menu-open" : ""}${menuUsed ? " menu-anim" : ""}`}>
+      {phone && (
+        <header className="topbar">
+          <button className="icon-btn" aria-label="Open menu" aria-expanded={menuOpen} aria-controls="main-nav" onClick={() => setMenuOpen(true)}>
+            <Icon name="menu" size={22} />
+          </button>
+          <img className="brand-mark" src="/mcn-logo.png" width="28" height="28" alt="MCN Outreach" />
+          <span className="topbar-page" aria-hidden="true">{BY_ID[page][1]}</span>
+          {spacePicker("ws-mini")}
+          <button className="icon-btn" aria-label="Quick search" onClick={() => setSearching(true)}><Icon name="search" size={20} /></button>
+          <Bell onOpen={() => go("tasks")} />
+        </header>
+      )}
+      {phone && menuOpen && <div className="scrim nav-scrim" onClick={closeMenu} aria-hidden="true" />}
+      <nav className="side" id="main-nav" aria-label="Main" ref={navRef} role={phone ? "dialog" : undefined}
+        aria-modal={phone && menuOpen ? "true" : undefined} aria-hidden={phone && !menuOpen ? "true" : undefined}>
         <div className="brand">
           <img className="brand-mark" src="/mcn-logo.png" width="34" height="34" alt="" />
           <div className="brand-text"><h1>MCN Outreach</h1><span className="brand-sub">by Mas Callnet</span></div>
-          <Bell onOpen={() => go("tasks")} />
+          {phone ? <button className="icon-btn nav-close" aria-label="Close menu" onClick={closeMenu}><Icon name="close" size={22} /></button>
+            : <Bell onOpen={() => go("tasks")} />}
         </div>
-        {spaces.length > 1 && (
+        {!phone && spaces.length > 1 && (
           <label className="ws-pick" style={{ display: "block", margin: "0 12px 10px" }}>
             <span className="nav-title">Workspace</span>
-            <select aria-label="Workspace" value={space} onChange={(e) => pickSpace(e.target.value)} style={{ width: "100%" }}>
-              {(!me.workspaces || me.workspaces.length !== 1) && <option value="">All workspaces</option>}
-              {spaces.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.leads})</option>)}
-            </select>
+            {spacePicker("")}
           </label>
         )}
-        <button className="search-trigger" onClick={() => setSearching(true)} aria-label="Quick search (Ctrl K)">
-          <Icon name="wand" size={16} /><span>Search…</span><kbd>Ctrl K</kbd>
-        </button>
+        {!phone && (
+          <button className="search-trigger" onClick={() => setSearching(true)} aria-label="Quick search (Ctrl K)">
+            <Icon name="search" size={16} /><span>Search…</span><kbd>Ctrl K</kbd>
+          </button>
+        )}
         {GROUPS.map(([group, ids]) => (
-          <div className="nav-group" key={group}>
-            <span className="nav-title">{group}</span>
+          <div className="nav-group" key={group} role="group" aria-label={group}>
+            <span className="nav-title" aria-hidden="true">{group}</span>
             {ids.map((id) => (
               <button key={id} className={page === id ? "on" : ""} aria-current={page === id ? "page" : undefined}
                 aria-label={BY_ID[id][1]} title={BY_ID[id][1]} onClick={() => go(id)}>
                 <Icon name={BY_ID[id][3]} />
-                {BY_ID[id][1]}
+                <span className="nav-label">{BY_ID[id][1]}</span>
                 {id === "setup" && pending > 0 && <span className="badge-dot" aria-label={`${pending} steps left`}>{pending}</span>}
               </button>
             ))}
           </div>
         ))}
         <button className="theme-toggle" onClick={cycleTheme} title="Switch between light, dark and the system setting" aria-label={`Colour theme: ${theme}. Click to change.`}>
-          <Icon name={theme === "dark" ? "moon" : theme === "light" ? "sun" : "monitor"} />Theme: {theme === "system" ? "Auto" : theme === "dark" ? "Dark" : "Light"}
+          <Icon name={theme === "dark" ? "moon" : theme === "light" ? "sun" : "monitor"} /><span className="nav-label">Theme: {theme === "system" ? "Auto" : theme === "dark" ? "Dark" : "Light"}</span>
         </button>
         {auth.required && (
           <button className="signout" onClick={signOut} title={me.email ? `${me.name} (${me.role})` : `Signed in as ${me.role}`}>
-            <Icon name="logout" />Sign out
+            <Icon name="logout" /><span className="nav-label">Sign out</span>
           </button>
         )}
       </nav>
       <main>
-        <Current key={`${page}:${space}`} go={go} onSetupChanged={refreshPending} focusLead={page === "leads" ? focusLead : undefined} role={me.role} />
+        <Current key={`${page}:${space}`} go={go} onSetupChanged={refreshPending} role={me.role} />
       </main>
+      {phone && (
+        <nav className="bottombar" aria-label="Quick links">
+          {BOTTOM.map((id) => (
+            <button key={id} className={page === id ? "on" : ""} aria-current={page === id ? "page" : undefined} onClick={() => go(id)}>
+              <Icon name={BY_ID[id][3]} size={20} /><span>{SHORT[id] || BY_ID[id][1]}</span>
+            </button>
+          ))}
+          <button aria-label="More pages" aria-expanded={menuOpen} aria-controls="main-nav" onClick={() => setMenuOpen(true)}>
+            <Icon name="menu" size={20} /><span>More</span>
+          </button>
+        </nav>
+      )}
       {searching && (
         <QuickSearch onClose={() => setSearching(false)}
           onPage={(id) => { setSearching(false); go(id); }}
-          onLead={(id) => { setSearching(false); go("leads"); setFocusLead(id); }} />
+          onLead={(id) => { setSearching(false); go(`leads?lead=${encodeURIComponent(id)}`); }} />
       )}
     </div>
   );

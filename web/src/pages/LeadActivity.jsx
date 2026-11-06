@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { istLabel } from "../time.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import { useConfirm } from "../Dialog.jsx";
 
 const TYPES = [["call", "Call"], ["meeting", "Meeting"], ["note", "Note"], ["email", "Email (sent outside the app)"],
   ["whatsapp", "WhatsApp (sent outside the app)"], ["linkedin", "LinkedIn message"], ["other", "Other"]];
@@ -57,9 +58,10 @@ function Composer({ lead, onDone, onCancel }) {
     if (t.subject) setSubject(t.subject);
     setBody(kind === "s" ? t.body.replace(/\n\nRegards,[\s\S]*$/, "") : t.body);
   };
+  const confirm = useConfirm();
   const send = async (e) => {
     e.preventDefault();
-    if (!window.confirm(`Send this email to ${lead.email} now? (It goes for real if real sending is on; an unsubscribe line is added.)`)) return;
+    if (!(await confirm({ message: `Send this email to ${lead.email} now? (It goes for real if real sending is on; an unsubscribe line is added.)`, confirmLabel: "Send" }))) return;
     setBusy(true); setMsg("");
     try { const r = await api.emailCompose(lead.id, { subject, body }); onDone(`${r.mode === "live" ? "Sent" : "Practised (not sent)"}: “${r.subject}” to ${r.to}.`); }
     catch (err) { setMsg(err.message); } finally { setBusy(false); }
@@ -226,9 +228,9 @@ export default function LeadActivity({ lead, onChanged }) {
         <DownloadButton path={exportPath("activity", { lead_id: lead.id })} label="Download activity" testId="download-activity"
           title="Every email, reply, call, meeting, task and note for this lead, with full text" />
       </div>
-      <div className="chips" role="tablist" aria-label="Filter activity">
+      <div className="tab-chips" role="tablist" aria-label="Filter activity">
         {FILTERS.map(([v, l]) => (
-          <button key={v} role="tab" aria-selected={filter === v} className={`chip ${filter === v ? "on" : ""}`} onClick={() => setFilter(v)}>{l}</button>
+          <button key={v} role="tab" aria-selected={filter === v} className={`tab-chip${filter === v ? " on" : ""}`} onClick={() => setFilter(v)}>{l}</button>
         ))}
       </div>
       {shown.length === 0 ? <p className="sub">Nothing here yet.</p> : (

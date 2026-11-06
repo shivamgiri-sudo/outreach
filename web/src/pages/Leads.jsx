@@ -5,6 +5,8 @@ import { BAND_LABELS, STAGE_LABELS, STAGE_ORDER, sourceId, sourceLabel, sourceOp
 import LeadDrawer from "./LeadDrawer.jsx";
 import ImportWizard from "./ImportWizard.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import { useHashParam } from "../route.js";
+import { useConfirm, usePrompt } from "../Dialog.jsx";
 import FindLeadsDrawer, { FindLeadsCard, takePendingLeadIds } from "./FindLeads.jsx";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
@@ -58,9 +60,11 @@ async function downloadApolloList() {
   URL.revokeObjectURL(a.href);
 }
 
-export default function Leads({ focusLead, go }) {
+export default function Leads({ go }) {
   const [leads, setLeads] = useState([]);
-  const [open, setOpen] = useState(focusLead || null);
+  const [open, setOpen] = useHashParam("lead");          // #leads?lead=<id>: refresh, Back and shared links keep the drawer
+  const confirm = useConfirm();
+  const ask = usePrompt();
   const [query, setQuery] = useState("");
   const [stage, setStage] = useState("");
   const [band, setBand] = useState("");
@@ -72,7 +76,6 @@ export default function Leads({ focusLead, go }) {
   const [busy, setBusy] = useState("");
   const [finding, setFinding] = useState(false);
   const [onlyIds, setOnlyIds] = useState(() => takePendingLeadIds());
-  useEffect(() => { if (focusLead) setOpen(focusLead); }, [focusLead]);
   const [showImport, setShowImport] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const [csv, setCsv] = useState(SAMPLE);
@@ -190,13 +193,13 @@ export default function Leads({ focusLead, go }) {
   const moveTo = async (id) => {
     if (!id) return;
     const name = spaces.find((w) => w.id === id)?.name || id;
-    if (!window.confirm(`Move ${picked.length} lead(s) to workspace “${name}”? It is logged on each lead.`)) return;
+    if (!(await confirm(`Move ${picked.length} lead(s) to workspace “${name}”? It is logged on each lead.`))) return;
     setBusy("ws");
     try { const r = await api.moveToWorkspace(id, picked); setMessage(`${r.moved} lead(s) moved to ${name}.`); setPicked([]); load(); }
     catch (e) { setMessage(e.message); } finally { setBusy(""); }
   };
   const saveAsList = async () => {
-    const name = window.prompt("Name this list (for example: Noida BPOs, Nov)", `Selected ${picked.length} leads`);
+    const name = await ask("Name this list (for example: Noida BPOs, Nov)", `Selected ${picked.length} leads`);
     if (!name) return;
     setBusy("list");
     try {
@@ -350,15 +353,15 @@ export default function Leads({ focusLead, go }) {
         ) : (
           <table className="leads-table">
             <thead><tr>
-              <th><input type="checkbox" aria-label="Select all shown" checked={allPicked}
-                onChange={() => setPicked(allPicked ? [] : shown.map((l) => l.id))} /></th>
+              <th><label className="pick-hit"><input type="checkbox" aria-label="Select all shown" checked={allPicked}
+                onChange={() => setPicked(allPicked ? [] : shown.map((l) => l.id))} /></label></th>
               {header("company", "Company")}<th>Contact</th>{header("stage", "Stage")}{header("score", "Score")}<th>Source</th><th>Next step</th>
             </tr></thead>
             <tbody>
               {visible.map((l) => (
                 <tr key={l.id} className="click" onClick={() => setOpen(l.id)}>
                   <td className="pick" onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" aria-label={`Select ${l.company || l.domain || l.contact_name}`} checked={picked.includes(l.id)} onChange={() => togglePick(l.id)} />
+                    <label className="pick-hit"><input type="checkbox" aria-label={`Select ${l.company || l.domain || l.contact_name}`} checked={picked.includes(l.id)} onChange={() => togglePick(l.id)} /></label>
                   </td>
                   <td data-label="Company"><button className="linkish" onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{l.company || l.domain || l.contact_name}</b></button>{l.is_test && <span className="pill warn" style={{ marginLeft: 6 }}>Test</span>}</td>
                   <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small></td>

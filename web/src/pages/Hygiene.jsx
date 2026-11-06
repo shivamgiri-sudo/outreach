@@ -4,6 +4,7 @@ import { api } from "../api.js";
 import { stageLabel, sourceLabel } from "../labels.js";
 import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import { useConfirm } from "../Dialog.jsx";
 
 const GROUPS_SHOWN = 20;
 const FIELD_NAMES = {
@@ -123,9 +124,10 @@ export default function Hygiene({ go }) {
     try { await work(); setMessage(done); await load(); } catch (e) { setMessage(e.message); }
     setBusy(false);
   };
-  const merge = (keep, others) => {
+  const confirm = useConfirm();
+  const merge = async (keep, others) => {
     const names = others.map((o) => o.company || o.contact_name || o.id).join(", ");
-    if (!window.confirm(`Merge ${names} into ${keep.company || keep.id}? The others are removed; their history, people, phones and messages move to this lead. The strictest status (unsubscribed, disqualified) is kept.`)) return;
+    if (!(await confirm({ message: `Merge ${names} into ${keep.company || keep.id}? The others are removed; their history, people, phones and messages move to this lead. The strictest status (unsubscribed, disqualified) is kept.`, confirmLabel: "Merge" }))) return;
     act(() => api.hygieneMerge(keep.id, others.map((o) => o.id)), `Merged ${others.length} lead(s) into ${keep.company || keep.id}.`);
   };
   const resolve = (c, choice) => act(() => api.resolveConflict(c.lead_id, c.id, choice), choice === "keep" ? "Kept the current value." : "Used the new value.");

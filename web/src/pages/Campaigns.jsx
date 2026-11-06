@@ -7,6 +7,8 @@ import CampaignWizard from "./CampaignWizard.jsx";
 import { PreviewTable, RunReport, StatusPill } from "./CampaignReport.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import { useHashParam } from "../route.js";
+import { useConfirm } from "../Dialog.jsx";
 
 function lastRunText(run) {
   if (!run) return "Not run yet";
@@ -17,7 +19,8 @@ function CampaignDetail({ id, go, onBack, onEdit }) {
   const [campaign, setCampaign] = useState(null);
   const [runs, setRuns] = useState([]);
   const [leads, setLeads] = useState([]);
-  const [open, setOpen] = useState(null);
+  const [open, setOpen] = useHashParam("lead");
+  const confirm = useConfirm();
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -32,7 +35,7 @@ function CampaignDetail({ id, go, onBack, onEdit }) {
       if (kind === "resume") await api.resumeCampaign(id);
       if (kind === "pause") await api.pauseCampaign(id);
       if (kind === "delete") {
-        if (!window.confirm("Delete this campaign? Its leads stay in your lead list.")) { setBusy(""); return; }
+        if (!(await confirm({ message: "Delete this campaign? Its leads stay in your lead list.", confirmLabel: "Delete", danger: true }))) { setBusy(""); return; }
         await api.deleteCampaign(id); onBack(); return;
       }
       await load();
@@ -104,17 +107,18 @@ function CampaignDetail({ id, go, onBack, onEdit }) {
 
 export default function Campaigns({ go }) {
   const [list, setList] = useState(null);
-  const [view, setView] = useState({ mode: "list" });
+  const [view, setView] = useState({ mode: "list" });     // the wizard; the detail view lives in the address (#campaigns?campaign=<id>)
+  const [openId, setOpenId] = useHashParam("campaign");
   const [error, setError] = useState("");
   const load = () => api.campaigns().then(setList).catch((e) => setError(e.message));
   useEffect(() => { load(); }, []);
 
   if (view.mode === "wizard") {
     return <CampaignWizard initial={view.campaign} go={go} onSaved={load}
-      onOpenLeads={(id) => setView({ mode: "detail", id })} onCancel={() => { load(); setView({ mode: "list" }); }} />;
+      onOpenLeads={(id) => { setView({ mode: "list" }); setOpenId(id); }} onCancel={() => { load(); setView({ mode: "list" }); }} />;
   }
-  if (view.mode === "detail") {
-    return <CampaignDetail id={view.id} go={go} onBack={() => { load(); setView({ mode: "list" }); }}
+  if (openId) {
+    return <CampaignDetail key={openId} id={openId} go={go} onBack={() => { load(); setOpenId(null); }}
       onEdit={(campaign) => setView({ mode: "wizard", campaign })} />;
   }
   return (
@@ -135,7 +139,7 @@ export default function Campaigns({ go }) {
               <p className="sub" style={{ margin: "6px 0 10px" }}>{lastRunText(c.last_run)}</p>
               <small className="sub-inline">{[c.target?.industries?.join(", "), c.target?.cities?.join(", "), c.target?.roles_hiring?.length ? `hiring ${c.target.roles_hiring.join(", ")}` : ""].filter(Boolean).join(" · ")}</small>
               <div className="row" style={{ marginTop: 10 }}>
-                <button className="btn ghost" onClick={() => setView({ mode: "detail", id: c.id })}>Open</button>
+                <button className="btn ghost" onClick={() => setOpenId(c.id)}>Open</button>
               </div>
             </div>
           ))}

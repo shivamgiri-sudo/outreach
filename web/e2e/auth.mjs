@@ -34,7 +34,7 @@ await step("Reload keeps the session", async () => {
   await page.getByRole("heading", { name: "Dashboard" }).waitFor();
 });
 await step("Owner adds a caller login on the Setup page", async () => {
-  await page.getByRole("button", { name: "Setup" }).first().click();
+  await page.locator("nav.side").getByRole("button", { name: "Setup" }).click();
   await page.getByRole("tab", { name: "Team & workspaces" }).click();
   const card = page.getByTestId("users-card");
   await card.getByLabel("Email").fill("caller@e2e.invalid");
@@ -63,7 +63,7 @@ await step("A caller signs in with email; settings stay owner-only", async () =>
   await page.getByLabel("Password").fill("caller-password-1");
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByRole("button", { name: "Sign out" }).waitFor();          // reopens the last page (Setup)
-  await page.getByRole("button", { name: "Setup" }).first().click();
+  await page.locator("nav.side").getByRole("button", { name: "Setup" }).click();
   await page.getByRole("tab", { name: "Connections" }).click();
   await page.getByText("Integrations page").first().waitFor();
   if (await page.getByTestId("users-card").count()) throw new Error("caller sees the Team logins card");

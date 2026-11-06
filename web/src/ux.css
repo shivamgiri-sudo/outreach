@@ -1,0 +1,97 @@
+/* Mobile shell, dialogs and small UX building blocks (2026-11-06). Loaded after styles.css, so equal selectors win here.
+   Phone = up to 760px: top bar + slide-in menu + bottom bar. Touch targets are 44px on phone; motion is 150-250ms and
+   switched off by the prefers-reduced-motion rule in styles.css. */
+
+.icon-btn { display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px;
+  background: none; color: var(--ink); cursor: pointer; transition: background-color .18s; }
+.icon-btn:hover { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.topbar, .bottombar { display: none; }
+.table-wrap { overflow-x: auto; max-width: 100%; }
+
+/* ---------- page header: title + description on the left, the main action on the right ---------- */
+.page-head, main > .row:has(> div > h2:first-child) { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-start; justify-content: space-between; }
+.page-head > div:first-child, main > .row:has(> div > h2:first-child) > div:first-child { flex: 1 1 320px; min-width: 0; }
+main > .row:has(> div > h2:first-child) > .btn, main > .row:has(> div > h2:first-child) > .row { margin-top: 4px; }
+
+/* ---------- activity filters and other chip-shaped tabs ---------- */
+.tab-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.tab-chip { border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 6px 14px; min-height: 34px;
+  font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.2; cursor: pointer; transition: background-color .18s, color .18s, border-color .18s; }
+.tab-chip:hover { color: var(--ink); border-color: color-mix(in srgb, var(--brand) 35%, var(--line)); }
+.tab-chip.on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); }
+
+/* ---------- compact KPI tiles (Replies) ---------- */
+.kpi-row.kpi-mini { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 640px; }
+.kpi-mini .kpi { padding: 10px 12px; }
+.kpi-mini .kpi b { font-size: 22px; }
+
+/* ---------- lead table checkbox: the whole cell corner is the tap target ---------- */
+label.pick-hit { display: inline-grid; place-items: center; margin: 0; min-width: 32px; min-height: 32px; cursor: pointer; }
+label.pick-hit input { margin: 0; }
+
+/* ---------- in-app confirm / prompt / alert (Dialog.jsx) ---------- */
+.dialog-scrim { z-index: 65; }
+.dialog { position: fixed; z-index: 70; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px); overflow: auto; background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 18px; box-shadow: var(--shadow-up); padding: 20px; animation: dialog-in .18s ease both; }
+.dialog-title { font-size: 18px; margin: 0 0 8px; letter-spacing: -.01em; }
+.dialog-msg { display: block; margin: 0 0 14px; font-size: 15px; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
+.dialog input { margin-bottom: 14px; }
+.dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+@keyframes dialog-in { from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)); } to { opacity: 1; transform: translate(-50%, -50%); } }
+
+/* ---------- phone ---------- */
+@media (max-width: 760px) {
+  .layout.is-phone { display: block; }
+  .topbar { display: flex; align-items: center; gap: 2px; position: sticky; top: 0; z-index: 40; height: 56px; padding: 6px 6px;
+    background: var(--panel); border-bottom: 1px solid var(--line); }
+  .topbar .brand-mark { width: 28px; height: 28px; margin: 0 6px 0 2px; }
+  .topbar-page { flex: 1 1 auto; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ws-mini { flex: 0 1 120px; width: auto; min-width: 0; min-height: 40px; padding: 6px 8px; font-size: 14px; }
+  .topbar .bell-wrap { margin: 0; position: static; }
+  .topbar .bell { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; }
+  .topbar .bell .badge-dot { top: 4px; right: 2px; }
+  .bell-panel, .topbar .bell-panel { position: fixed; top: 60px; left: 8px; right: 8px; width: auto; max-height: calc(100dvh - 140px); }
+
+  /* the menu: the same <nav class="side">, slid in from the left */
+  .layout.is-phone .side { position: fixed; top: 0; left: 0; bottom: 0; z-index: 60; display: block; width: min(320px, 86vw); height: 100dvh;
+    padding: 12px 12px 24px; overflow-x: hidden; overflow-y: auto; gap: 0; border-right: 1px solid var(--line); border-bottom: 0;
+    box-shadow: var(--shadow-up); transform: translateX(-100%); visibility: hidden; transition: none; }
+  .layout.is-phone.menu-anim .side { transition: transform .25s ease, visibility 0s linear .25s; }
+  .layout.is-phone.menu-open .side { transform: none; visibility: visible; }
+  .layout.is-phone.menu-anim.menu-open .side { transition: transform .25s ease, visibility 0s; }
+  .nav-scrim { z-index: 55; }
+  .layout.is-phone .side .brand { flex-direction: row; align-items: center; gap: 10px; margin: 0 0 14px 4px; }
+  .layout.is-phone .side .brand-mark { width: 32px; height: 32px; }
+  .layout.is-phone .brand-text { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  .layout.is-phone .nav-group { display: block; margin: 0 0 12px; }
+  .layout.is-phone .nav-title { display: block; font-size: 11px; margin: 0 12px 4px; }
+  .layout.is-phone .side button { width: 100%; justify-content: flex-start; gap: 12px; padding: 10px 12px; min-height: 44px; font-size: 15px; white-space: normal; }
+  .layout.is-phone .side button.on::before { display: block; }
+  .layout.is-phone .side .badge-dot { position: static; margin: 0 0 0 auto; }
+  .layout.is-phone .side .nav-close { width: 44px; margin-left: auto; padding: 0; justify-content: center; }
+
+  main { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .bottombar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); background: var(--panel); border-top: 1px solid var(--line); }
+  .bottombar button { display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 54px; padding: 6px 2px; border: 0; border-radius: 12px;
+    background: none; color: var(--muted); font-family: inherit; font-size: 11.5px; font-weight: 600; line-height: 1.2; cursor: pointer; transition: background-color .18s, color .18s; }
+  .bottombar button.on { color: var(--brand); background: var(--brand-soft); }
+  .bottombar span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* touch targets */
+  .btn { min-height: 44px; }
+  .tab-chip { min-height: 40px; }
+  .tabs button { min-height: 44px; }
+  .leads-table td.pick { right: 4px; top: 4px; }
+  label.pick-hit { min-width: 44px; min-height: 44px; }
+  label.pick-hit input { width: 22px; height: 22px; }
+  .dialog-actions .btn { flex: 1 1 0; justify-content: center; }
+
+  /* nothing scrolls the page sideways: tab rows wrap, wide tables scroll inside their card */
+  .tabs { flex-wrap: wrap; row-gap: 0; }
+  .tabs button { white-space: nowrap; }
+  .card > table:not(.leads-table):not(.map-table):not(.stack-table):not(.source-table) { display: block; overflow-x: auto; }
+  .card table td:first-child:not(.pick) { min-width: 0; }
+  .grid.g4 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 10px; }
+}
