@@ -99,3 +99,15 @@ def test_ai_names_the_company_when_connected(tmp_path):
     c.post("/api/signals/watch", json={"kind": "keyword", "text": "BPO hiring"})
     c.post("/api/signals/run")
     assert {i["company"] for i in c.get("/api/signals").json()["items"]} == {"Alpha BPO"}
+
+
+def test_article_about_a_company_already_found_from_its_job_pages_joins_that_lead(tmp_path):
+    """QA: a Wipro lead made by Read job pages is keyed by wipro.com; adding a Wipro article made a second Wipro lead."""
+    c, _ = make(tmp_path)
+    c.post("/api/jobs/ingest", json={"csv": "company,title,location,date_posted,website\nWipro Limited,Analyst,Pune,2026-11-01,https://wipro.com\n"})
+    c.post("/api/signals/watch", json={"kind": "keyword", "text": "BPO hiring"})
+    c.post("/api/signals/run")
+    item = c.get("/api/signals").json()["items"][0]
+    r = c.post(f"/api/signals/items/{item['id']}/lead", json={"company": "Wipro"}).json()
+    assert r["new"] is False
+    assert [l["company"] for l in c.get("/api/leads").json()] == ["Wipro Limited"]

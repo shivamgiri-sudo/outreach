@@ -19,6 +19,7 @@ from typing import Callable, Optional
 from .ai import _AI_ERRORS, _call_llm, _llm_config, _untrusted
 from .http_util import post_json
 from .lead_model import build_lead, event
+from .standardise import company_key
 
 KEY = "signals"
 FEED = "https://news.google.com/rss/search"
@@ -192,7 +193,9 @@ def add_as_lead(store, item_id: str, company: str) -> dict:
     made = {}
 
     def add(rows: list) -> list:
-        existing = next((l for l in rows if l.get("dedupe_key") == lead["dedupe_key"]), None)
+        name = company_key(company)                 # "Wipro" found from job pages is keyed by its domain, not its name
+        existing = next((l for l in rows if l.get("dedupe_key") == lead["dedupe_key"]), None) or \
+            next((l for l in rows if name and company_key(l.get("company")) == name), None)
         if existing:
             made["lead_id"], made["new"] = existing["id"], False
             return [{**l, "timeline": [*l["timeline"], lead["timeline"][-1]]} if l is existing else l for l in rows]
