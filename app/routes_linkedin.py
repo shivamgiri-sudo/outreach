@@ -4,11 +4,11 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import audit, linkedin_bridge, linkedin_seq as li, opener_lab
+from . import audit, linkedin_bridge, linkedin_config, linkedin_seq as li, opener_lab
 
 
 class SentBody(BaseModel):
-    step: int = Field(ge=1, le=7)
+    step: int = Field(ge=1, le=10)
 
 
 class ReplyBody(BaseModel):
@@ -41,6 +41,23 @@ class GenerateBody(BaseModel):
     n: int = Field(default=4, ge=2, le=6)
 
 
+class SequenceBody(BaseModel):
+    steps: Optional[list] = None
+    personas: Optional[list] = None
+    default_hook: Optional[str] = Field(default=None, max_length=600)
+    variant_b: Optional[str] = Field(default=None, max_length=600)
+
+
+class SequencePreviewBody(BaseModel):
+    text: str = Field(max_length=4000)
+    kind: str = "message"
+    lead_id: Optional[str] = None
+    title: str = Field(default="", max_length=200)
+
+
+SAMPLE_LEAD = {"id": "sample", "contact_name": "Venkataraghavan Iyer", "company": "Example Realty Pvt Ltd", "title": "Founder"}
+
+
 class SettingsBody(BaseModel):
     case_study_url: Optional[str] = None
     linkedin_daily_connections: Optional[int] = Field(default=None, ge=1, le=40)
@@ -71,7 +88,56 @@ def make_router(store) -> APIRouter:
     @router.get("/api/linkedin/steps")
     def steps():
         settings = store.read("settings")
-        return [{**s, "skipped": bool(s.get("needs") and not settings.get(s["needs"]))} for s in li.STEPS]
+        return [{**s, "skipped": bool(s.get("needs") and not settings.get(s["needs"]))} for s in li.current_steps(settings)]
+
+    @router.get("/api/linkedin/sequence")
+    def get_sequence():
+        settings = store.read("settings")
+        cfg = linkedin_config.current(settings)
+        notes = linkedin_config.variants(settings)
+        steps = [{**s, "text": notes["A"]} if s["n"] == 1 else s for s in cfg["steps"]]
+        return {**{k: v for k, v in cfg.items() if k != "history"}, "steps": steps, "variant_b": notes["B"],
+                "history_versions": [h["version"] for h in cfg.get("history") or []], "note_limit": li.NOTE_LIMIT,
+                "placeholders": {"single": list(linkedin_config.SINGLE)},
+                "in_flight": len(linkedin_config.leads_in_flight(store))}
+
+    @router.put("/api/linkedin/sequence")
+    def put_sequence(body: SequenceBody, request: Request):
+        try:
+            saved = linkedin_config.save(store, body.model_dump(), audit.actor_of(getattr(request.state, "user", None))["name"])
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from None
+        audit.record(store, getattr(request.state, "user", None), "settings.save", "LinkedIn sequence",
+                     f"{len(saved['steps'])} steps, {len(saved['personas'])} personas, version {saved['version']}")
+        return {k: v for k, v in saved.items() if k != "history"}
+
+    @router.post("/api/linkedin/sequence/reset")
+    def reset_sequence(request: Request):
+        cfg = linkedin_config.reset(store)
+        audit.record(store, getattr(request.state, "user", None), "settings.save", "LinkedIn sequence", "reset to built-in")
+        return {k: v for k, v in cfg.items() if k != "history"}
+
+    @router.post("/api/linkedin/sequence/preview")
+    def preview_sequence_step(body: SequencePreviewBody):
+        """A step's text filled in for a sample lead (or a real one), with its length against LinkedIn's 300 limit."""
+        settings = store.read("settings")
+        lead = next((l for l in store.read("leads") if l["id"] == body.lead_id), None) if body.lead_id else None
+        lead = lead or {**SAMPLE_LEAD, "title": body.title or SAMPLE_LEAD["title"]}
+        from .lead_fields import sample_custom
+        if not body.lead_id:
+            lead = {**lead, "custom": sample_custom(store)}
+        problem = ""
+        try:
+            linkedin_config.check_placeholders(body.text, "This text")
+        except ValueError as exc:
+            problem = str(exc)
+        kind = "connect" if body.kind == "connect" else "message"
+        step = {"n": 1 if kind == "connect" else 2, "kind": kind, "text": body.text}
+        text = li.render(step, {**lead, "linkedin_seq": {}}, settings)
+        worst = linkedin_config.stand_in_length(body.text, max([p[2] for p in linkedin_config.personas(settings)[0]]
+                                                              + [linkedin_config.personas(settings)[1]], key=len))
+        return {"text": text, "length": len(text), "longest_length": worst, "limit": li.NOTE_LIMIT if kind == "connect" else None,
+                "persona": li.persona(lead.get("title", ""), settings)[0], "problem": problem}
 
     @router.post("/api/leads/{lead_id}/linkedin/start")
     def start(lead_id: str):

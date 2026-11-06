@@ -48,6 +48,7 @@ PROBLEM_TEXT = {
     "source_opt_out": "The source file says this person opted out of email ({v}), so this row is skipped.",
     "do_not_call": "The source file says do not call ({v}), so the phone numbers were left out.",
     "email_flagged": "The source marked the email {v}; check it before emailing.",
+    "custom_unreadable": "{v}: the value could not be read for this custom field and was left out.",
 }
 # CRM / vendor columns that carry a person's "no" or a vendor's verdict on the email. A "no" is never a "yes".
 _OPT_OUT_COLUMNS = {loose_header(h) for h in ("Email Opt Out", "Unsubscribed from all email", "Do Not Email",
@@ -135,7 +136,27 @@ def _linkedin(row: dict, columns: list, field: str, kind: str) -> str:
     return sorted(found, key=lambda u: u.rsplit("/", 1)[-1].startswith("ACw"))[0] if found else ""
 
 
-def extract_record(row: dict, columns: list, today: date) -> tuple:
+def custom_values(row: dict, columns: list, custom_fields: Optional[list]) -> tuple:
+    """({key: stored value}, [(problem, text)]) for columns mapped to the owner's custom lead fields."""
+    from .lead_fields import coerce_soft
+    by_key = {f["key"]: f for f in custom_fields or []}
+    values, problems = {}, []
+    for c in columns:
+        field = str(c.get("field") or "")
+        if not field.startswith("custom:") or field[7:] not in by_key:
+            continue
+        raw = clean_text(row.get(c["column"]))
+        if not raw or field[7:] in values:
+            continue
+        value = coerce_soft(by_key[field[7:]], raw)
+        if value is None:
+            problems.append(("custom_unreadable", f"{by_key[field[7:]]['label']} '{raw}'"))
+        elif value != "":
+            values[field[7:]] = value
+    return values, problems
+
+
+def extract_record(row: dict, columns: list, today: date, custom_fields: Optional[list] = None) -> tuple:
     """One row -> (standardised record, [(problem kind, value)])."""
     get = lambda f: _first(row, columns, f)
     problems = []
@@ -191,7 +212,8 @@ def extract_record(row: dict, columns: list, today: date) -> tuple:
         "job_links": [u for u in (safe_http_url(v) for v in _values(row, columns, "job_link")) if u],
         "source_detail": get("source_detail"), "lead_status": get("lead_status"), "notes": notes,
     }
-    return rec, problems
+    rec["custom"], custom_problems = custom_values(row, columns, custom_fields)
+    return rec, problems + custom_problems
 
 
 def _set_emails(rec: dict, emails: list) -> None:
@@ -235,6 +257,7 @@ def lead_from_record(rec: dict, source: str, import_id: str, at: str, taken: set
         "max_job_age_days": rec["max_job_age_days"], "repost_count": 0,
         **{k: rec[k] for k in OPTIONAL_KEYS if rec.get(k)},
         "field_sources": {f: source for f in SOURCED_FIELDS if rec.get(f)},
+        **({"custom": dict(rec["custom"])} if rec.get("custom") else {}),
     }
     if import_id:
         lead["import_id"] = import_id
@@ -250,7 +273,7 @@ SAMPLE_FIELDS = ("company", "contact_name", "title", "seniority", "department", 
 
 
 def run_import(leads: list, table: list, columns: list, source: str, suppressed: set, options: dict,
-               import_id: str = "", today: Optional[date] = None, at: Optional[str] = None) -> dict:
+               import_id: str = "", today: Optional[date] = None, at: Optional[str] = None, custom_fields: Optional[list] = None) -> dict:
     """Dedupe and merge `table` rows into `leads` (changed in place). Returns what happened to every row."""
     today, at = today or date.today(), at or now_iso()
     index = LeadIndex(leads)
@@ -261,7 +284,7 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
     counts = Counter()
 
     for n, row in table:
-        rec, problems = extract_record(row, columns, today)
+        rec, problems = extract_record(row, columns, today, custom_fields)
         warn = lambda kind, value, n=n: out["warnings"].append(
             {"row": n, "kind": kind, "text": PROBLEM_TEXT[kind].format(v=value)})
         for kind, value in problems:
@@ -333,6 +356,10 @@ def _place(leads, index, rec, n, source, import_id, at, created, touched, out, w
     i, who, reason = hit
     before = leads[i]
     merged, info = merge_record(before, rec, who, source, import_id, at, index.keys)
+    extra = {k: v for k, v in (rec.get("custom") or {}).items() if (merged.get("custom") or {}).get(k) in (None, "")}
+    if extra:                                  # custom values fill gaps only; a value already on the lead is kept
+        merged = {**merged, "custom": {**(merged.get("custom") or {}), **extra}}
+        info = {**info, "filled": [*info["filled"], *(f"custom.{k}" for k in extra)], "changed": True}
     status = [f"Lead status in {source}: {rec['lead_status']}"] if rec.get("lead_status") else []   # stage is never changed
     notes = [t for t in [*rec["notes"], *status] if t not in {e.get("text") for e in merged["timeline"]}]
     if notes:
@@ -370,9 +397,12 @@ def trim_lists(result: dict) -> dict:
 
 
 # ---------------------------------------------------------------- quick paste (POST /api/leads/import)
-def quick_rows(csv_text: str) -> list:
-    """Rows for the simple importer: the original columns, plus known fields found under other column names."""
+def quick_rows(csv_text: str, custom_fields: Optional[list] = None) -> list:
+    """Rows for the simple importer: the original columns, plus known fields found under other column names. A column
+    whose header matches one of the owner's custom lead fields (label or key) is kept as "custom:<key>"."""
+    from .lead_fields import coerce_soft, match_header
     headers, table = read_table(csv_text)
+    custom_cols = [(h, f) for h in headers for f in [match_header(custom_fields or [], h)] if f]
     columns = map_columns(headers, [r for _, r in table[:25]], detect_format(headers))
     rows = []
     for _, row in table:
@@ -399,5 +429,9 @@ def quick_rows(csv_text: str) -> list:
         if base.get("phone") and not normalise_phone(base["phone"]):
             mobiles = [e for e, kind in parse_phones(base["phone"])["numbers"] if kind == "mobile"]
             base["phone"] = mobiles[0] if mobiles else base["phone"]
+        for header, field in custom_cols:
+            value = coerce_soft(field, row.get(header))
+            if value not in (None, "") and f"custom:{field['key']}" not in base:
+                base[f"custom:{field['key']}"] = value
         rows.append(base)
     return rows

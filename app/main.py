@@ -77,8 +77,10 @@ from .routes_capture import make_router as make_capture_router
 from .routes_import import make_router as make_import_router
 from .routes_exports import make_router as make_exports_router
 from .lead_import import quick_rows
+from . import lead_fields as lead_fields_mod
 from .routes_outreach import make_router
 from .routes_sequences import make_router as make_sequences_router
+from .routes_lead_fields import make_router as make_lead_fields_router
 from .routes_lead_ops import make_router as make_lead_ops_router
 from .lead_ops import with_list_extras
 from .store import Store
@@ -305,7 +307,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     def import_leads(body: ImportBody):
         """Quick paste: the simple importer, now reading Apollo, Sales Navigator and other column names too."""
         try:
-            rows = quick_rows(body.csv) if body.csv.strip() else []
+            rows = quick_rows(body.csv, lead_fields_mod.list_fields(store)) if body.csv.strip() else []
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
         stats = {}
@@ -467,6 +469,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_jobs_router(store, _build_lead, _present))
     app.include_router(make_growth_router(store, _build_lead, _present))
     app.include_router(make_sequences_router(store))
+    app.include_router(make_lead_fields_router(store, _present))
     app.include_router(make_enrich_router(store, fetcher, apollo_transport))
     app.include_router(make_workflows_router(store, ai_transport))
     app.include_router(make_flows_router(store, email_sender, channel_transport, resolver, ai_transport))

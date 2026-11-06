@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { PLACEHOLDERS, humanDay, lintStep } from "./lint.js";
+import { useLeadFields } from "../LeadCustomFields.jsx";
 
 const MAX_VARIANTS = 3;
 const NEXT_NAMES = ["B", "C", "D"];
@@ -19,6 +20,7 @@ function Lint({ items }) {
 
 // One step: day, name, subject, body, A/B variants, checks. `readOnly` shows the same fields disabled.
 export default function StepEditor({ step, index, prev, readOnly, onChange, onRemove, canRemove, previewVariant, onPreviewVariant }) {
+  const { fields: customFields } = useLeadFields();
   const bodyRef = useRef(null);
   const set = (patch) => onChange({ ...step, ...patch });
   const insert = (name) => {
@@ -55,7 +57,7 @@ export default function StepEditor({ step, index, prev, readOnly, onChange, onRe
       </label>
       {!readOnly && (
         <div className="row" style={{ flexWrap: "wrap", gap: 6, margin: "4px 0 8px" }} aria-label="Insert a placeholder">
-          {PLACEHOLDERS.map((p) => <button type="button" key={p} className="chip" onClick={() => insert(p)}>{`{{${p}}}`}</button>)}
+          {[...PLACEHOLDERS, ...customFields.map((f) => `custom.${f.key}`)].map((p) => <button type="button" key={p} className="chip" onClick={() => insert(p)}>{`{{${p}}}`}</button>)}
         </div>
       )}
       <details open={variants.length > 0}>

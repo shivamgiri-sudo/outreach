@@ -40,7 +40,8 @@ def _linkedin(raw, kind: str) -> str:
 
 
 def build_lead(row: dict, source: str, allow_company_key: bool = False) -> Optional[dict]:
-    row = {k.strip().lower(): (v or "").strip() for k, v in row.items() if k}
+    row = {k.strip().lower(): (v.strip() if isinstance(v, str) else "" if v is None else v) for k, v in row.items() if k}
+    custom = {k[7:]: v for k, v in row.items() if k.startswith("custom:") and v not in ("", None)}   # see lead_import.quick_rows
     email = normalise_email(row.get("email"))
     lead = {
         "id": uuid.uuid4().hex[:10],
@@ -64,6 +65,7 @@ def build_lead(row: dict, source: str, allow_company_key: bool = False) -> Optio
         **{k: v for k, v in {"linkedin_url": _linkedin(row.get("linkedin_url"), "in"), "company_linkedin_url": _linkedin(row.get("company_linkedin_url"), "company"),
                              "city": row.get("city", "")[:80], "state": row.get("state", "")[:80], "sector": row.get("sector", "")[:120],
                              "role": row.get("role", "")[:120]}.items() if v},
+        **({"custom": custom} if custom else {}),
     }
     lead["dedupe_key"] = dedupe_key(lead) or (f"company:{lead['company'].lower()}" if allow_company_key and lead["company"] else None)
     if not lead["dedupe_key"]:

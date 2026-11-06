@@ -1,5 +1,8 @@
 // Checks shown while a sequence step is edited. "error" blocks saving (the server refuses it too); "warn" is advice.
 export const PLACEHOLDERS = ["greeting", "first_name", "company", "role", "sender", "unsub_link", "offer_line", "demo_link"];
+// Brand placeholders (Brand settings) and the owner's custom lead fields ({{custom.<key>}}) are accepted too.
+export const BRAND_PLACEHOLDERS = ["my_company", "my_product", "my_tagline", "my_value_1", "my_value_2", "my_value_3", "my_cta", "my_website", "sign_off"];
+const known = (p) => PLACEHOLDERS.includes(p) || BRAND_PLACEHOLDERS.includes(p) || /^custom\.[a-z][a-z0-9_]{0,39}$/.test(p);
 export const SPAM_WORDS = ["free", "guarantee", "guaranteed", "act now", "urgent", "limited time", "risk-free", "risk free", "100%",
   "winner", "cash", "click here", "buy now", "no obligation", "order now", "special promotion", "earn money", "lowest price",
   "congratulations", "exclusive deal", "dear friend", "once in a lifetime", "!!!", "$$$"];
@@ -12,7 +15,7 @@ export const humanDay = (day) => Number(day) + 1;
 // The default step names end in "(Day N)"; the day is shown once, from the number.
 export const stepTitle = (name) => String(name || "").replace(/\s*\(Day \d+\)\s*$/, "");
 
-const placeholdersIn = (text) => [...String(text || "").matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]);
+const placeholdersIn = (text) => [...String(text || "").matchAll(/\{\{(\w+(?:\.\w+)?)\}\}/g)].map((m) => m[1]);
 
 export function lintText(subject, body, { needsUnsub = true } = {}) {
   const out = [];
@@ -22,9 +25,9 @@ export function lintText(subject, body, { needsUnsub = true } = {}) {
   else if (subj.length > LONG_SUBJECT) out.push({ level: "warn", text: `Subject is ${subj.length} characters; phones cut it off after about ${LONG_SUBJECT}.` });
   if (subj && subj === subj.toUpperCase() && /[A-Z]{4,}/.test(subj)) out.push({ level: "warn", text: "Subject in capitals reads as shouting and trips spam filters." });
   if (needsUnsub && text && !text.includes("{{unsub_link}}")) out.push({ level: "error", text: "The body must contain {{unsub_link}} (every cold email carries the unsubscribe link)." });
-  const unknown = [...new Set([...placeholdersIn(subj), ...placeholdersIn(text)].filter((p) => !PLACEHOLDERS.includes(p)))];
+  const unknown = [...new Set([...placeholdersIn(subj), ...placeholdersIn(text)].filter((p) => !known(p)))];
   if (unknown.length) out.push({ level: "error", text: `Unknown placeholder(s): ${unknown.map((p) => `{{${p}}}`).join(", ")}.` });
-  const stripped = (subj + text).replace(/\{\{\w+\}\}/g, "");
+  const stripped = (subj + text).replace(/\{\{\w+(?:\.\w+)?\}\}/g, "");
   if (stripped.includes("{{") || stripped.includes("}}")) out.push({ level: "error", text: "Write placeholders exactly like {{company}} (no spaces, both braces)." });
   const lower = `${subj} ${text}`.toLowerCase();
   const spam = SPAM_WORDS.filter((w) => (/^[a-z -]+$/.test(w) ? new RegExp(`\\b${w}\\b`).test(lower) : lower.includes(w)));

@@ -204,7 +204,7 @@ def lead_card(lead: dict, presented: Optional[dict] = None) -> dict:
             "title": lead.get("title") or "", "role": lead.get("role") or "", "phone": lead.get("phone") or "",
             "phone_ok": phone_ok(lead), "email": lead.get("email") or "", "stage": lead.get("stage"),
             "score": presented.get("score"), "band": presented.get("band"), "consent": bool(lead.get("consent")),
-            "owner": lead.get("owner"), "last_touch": _last_touch(lead),
+            "owner": lead.get("owner"), "last_touch": _last_touch(lead), "custom": lead.get("custom") or {},
             "recent_notes": [{"at": e.get("at"), "kind": e.get("kind"), "text": (e.get("text") or "")[:300], "by": e.get("by", "")} for e in reversed(notes)]}
 
 

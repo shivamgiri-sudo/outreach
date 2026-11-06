@@ -13,6 +13,7 @@ import LeadFlows from "./flows/LeadFlows.jsx";
 import LeadStage from "./LeadStage.jsx";
 import { EditDetails, InlineForm, LeadOrigin, PrivacyActions, SIGNAL_LABELS, linkedinDrafts, replyMeaning, sequenceStatus } from "./LeadDrawerParts.jsx";
 import LeadAssign from "./LeadAssign.jsx";
+import { LeadCustomData } from "./LeadCustomFields.jsx";
 
 // The lead drawer is a header (name, score, stage, prev/next) over five tabs. HOW TO ADD A SMALL PANEL:
 //   - lead-level facts / ownership / tags / other contacts  -> the OVERVIEW tab, at the "SLOT: overview panels" line;
@@ -257,6 +258,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
 
   const data = (
     <>
+      <LeadCustomData lead={lead} onSaved={(r) => setLead(r)} />
       <h3>Buying signals — {lead.score}/100 ({lead.band})</h3>
       {Object.entries(SIGNAL_LABELS).map(([key, [label, max]]) => (
         <div className="funnel-row" key={key}>

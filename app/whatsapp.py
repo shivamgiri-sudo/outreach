@@ -9,6 +9,7 @@ from .growth_core import ensure_demo
 from .privacy import is_blocked
 from .sequence_runner import NO_EMAIL_STAGES, get_settings
 from .sequences import lead_variables, render
+from .template_vars import brand_variables
 
 SESSION_WINDOW = timedelta(hours=24)
 
@@ -39,7 +40,14 @@ TEMPLATES = {
                              "paas is role ke applicants pehle se hain, toh main unhe aapke free first role mein add "
                              "karne mein help kar sakti hoon, taaki aap dekh sakein screen aapke candidates ko kaise "
                              "rank karta hai. Help chahiye? " + OPT_OUT),
+    # Industry-neutral templates used by the industry presets' flows (app/preset_data): the brand name comes from the
+    # Brand settings, nothing here mentions a product.
+    "generic_follow_up": ("{{greeting}} this is {{sender}} from {{my_company}}, following up on my email. Would a short "
+                          "call this week be useful? " + OPT_OUT),
+    "generic_after_yes": ("{{greeting}} this is {{sender}} from {{my_company}}. Thanks for replying to my email. When is a "
+                          "good time for a short call? " + OPT_OUT),
 }
+GENERIC_TEMPLATES = ("generic_follow_up", "generic_after_yes")
 
 
 
@@ -118,7 +126,8 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
     else:
         raise WhatsAppError("Unknown template")
     variables = lead_variables(lead, sender.strip() or get_settings(store)["sender_name"], base_url,
-                               {"demo_link": f"{base_url}/demo/{lead['demo_token']}"}, secret=server_secret(store))
+                               {**brand_variables(get_settings(store)), "demo_link": f"{base_url}/demo/{lead['demo_token']}"},
+                               secret=server_secret(store))
     body, missing = render(raw, variables)
     if missing:
         raise WhatsAppError(f"This message needs details the lead doesn't have yet: {', '.join(missing)}")

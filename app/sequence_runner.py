@@ -16,6 +16,7 @@ import uuid
 from datetime import date, datetime, timedelta
 from typing import Optional
 
+from .template_vars import brand_variables
 from . import sequence_library, sequences
 from .channels.security import server_secret
 from .growth_core import ensure_demo, get_offer, offer_line
@@ -249,7 +250,7 @@ def _ready(seq: dict, now: datetime, last_key: str = "last_sent_at") -> bool:
 def _compose(lead: dict, step: dict, cfg: dict, offer: dict, base_url: str, now: datetime, today: date):
     """Return (message, demo fields), or None when a {{placeholder}} would be left unfilled."""
     lead = ensure_demo(lead, now)
-    extra = {"offer_line": offer_line(offer), "demo_link": f"{base_url}/demo/{lead['demo_token']}",
+    extra = {**brand_variables(cfg), "offer_line": offer_line(offer), "demo_link": f"{base_url}/demo/{lead['demo_token']}",
              "include_link": bool(cfg.get(getattr(sequences, "INCLUDE_LINK_SETTING", "email1_include_link")))}
     variables = lead_variables(lead, cfg["sender_name"], base_url, extra, secret=cfg.get("server_secret", ""))
     pick = getattr(sequences, "pick_variant", None)
@@ -420,7 +421,7 @@ def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, bas
     live = bool(cfg["live_sending"]) and bool(email_ready(store))
     if live and (pause := sending_paused(store, now)):
         raise ValueError(f"Sending is paused: {pause['reason']}")
-    variables = lead_variables(lead, cfg["sender_name"], base_url, {}, secret=server_secret(store))
+    variables = lead_variables(lead, cfg["sender_name"], base_url, brand_variables(cfg), secret=server_secret(store))
     subject, _ = render(subject, variables)
     body, missing = render(body, variables)
     if missing or re.search(r"\{\{|\}\}", subject + body):

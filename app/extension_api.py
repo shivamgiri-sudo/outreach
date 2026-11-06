@@ -237,6 +237,7 @@ def queue(store, account: str = "") -> dict:
     """Today's due steps with a verified http(s) profile link, for the popup list. With an account: only its own leads
     and leads no account has contacted yet."""
     q = li.queue(store)
+    settings = store.read("settings")
     leads = {l["id"]: l for l in store.read("leads")}
     mine = lambda lead: not account or owner_of(lead) in ("", account)
     due = []
@@ -244,7 +245,7 @@ def queue(store, account: str = "") -> dict:
         lead = leads.get(d["lead_id"]) or {}
         if lead.get("stage") in ("unsubscribed", "disqualified") or not mine(lead):
             continue
-        kind = next((s["kind"] for s in li.STEPS if s["n"] == d["step"]), None)
+        kind = next((s["kind"] for s in li.lead_steps(lead, settings) if s["n"] == d["step"]), None)
         due.append({"lead_id": d["lead_id"], "name": d["name"], "company": d["company"], "title": d["title"], "step": d["step"],
                     "kind": kind, "due_at": d["due_at"], "profile_url": safe_http_url(d.get("linkedin_url"))})
     waiting = [{"lead_id": w["lead_id"], "name": w["name"], "company": w["company"], "since": w["since"],

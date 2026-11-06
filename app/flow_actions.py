@@ -22,7 +22,7 @@ from .activities import add_task, caller_name, next_call_slot, on_became_interes
 from .channels.http import request
 from .channels.netguard import check_public_url
 from .channels.sms_send import send_sms
-from .flows import IF_FIELDS, title_of
+from .flows import CUSTOM_FIELD_PREFIX, IF_FIELDS, is_custom_field, title_of
 from .growth_core import ensure_demo, get_offer
 from .hygiene import business_domain
 from .privacy import is_blocked
@@ -32,6 +32,7 @@ from .senders import email_ready
 from .sequence_runner import (EARLY_STAGES, MAX_ATTEMPTS, NO_EMAIL_STAGES, RETRY_AFTER, effective_daily_cap,
                               get_settings, sending_paused)
 from .sequences import BUSINESS_START_HOUR, IST, in_business_hours, lead_variables, render
+from .template_vars import brand_variables
 from .stages import CONSENT_REQUIRED, can_move
 from .whatsapp import WhatsAppError, send as send_whatsapp_message
 
@@ -109,7 +110,24 @@ def lead_facts(lead: dict) -> dict:
             "has_consent": bool(lead.get("consent")), "has_replied": replied,
             "has_meeting": any(m.get("status") in ("scheduled", "done") for m in lead.get("meetings") or []),
             "linkedin_accepted": bool((lead.get("linkedin_seq") or {}).get("accepted_at")),
-            "linkedin_status": (lead.get("linkedin_seq") or {}).get("status") or "not_started"}
+            "linkedin_status": (lead.get("linkedin_seq") or {}).get("status") or "not_started", **custom_facts(lead)}
+
+
+_ISO_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def custom_facts(lead: dict) -> dict:
+    """The owner's custom lead fields as "custom:<key>" facts, plus "_kinds" telling evaluate how to compare them
+    (numbers as numbers, YYYY-MM-DD dates as dates, the rest as text)."""
+    facts, kinds = {}, {}
+    for key, value in (lead.get("custom") or {}).items():
+        name = CUSTOM_FIELD_PREFIX + str(key)
+        facts[name] = value
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            kinds[name] = "number"
+        elif isinstance(value, str) and _ISO_DAY.match(value):
+            kinds[name] = "date"
+    return {**facts, "_kinds": kinds} if facts else {}
 
 
 def _items(value) -> list:
@@ -127,8 +145,21 @@ def _num(value) -> float:
 def evaluate(config: dict, facts: dict) -> tuple:
     """(True/False, plain explanation) for an If step."""
     field, op, value = config.get("field"), config.get("op"), config.get("value")
-    kind, actual = IF_FIELDS.get(field, "text"), facts.get(field)
+    kind, actual = IF_FIELDS.get(field) or (facts.get("_kinds") or {}).get(field, "text"), facts.get(field)
     shown = ", ".join(actual) if isinstance(actual, list) else actual
+    if is_custom_field(field):
+        label = field[len(CUSTOM_FIELD_PREFIX):].replace("_", " ")
+        if op == "exists":
+            filled = actual not in (None, "", [])
+            return filled, f"{label} is {'filled in' if filled else 'empty'}"
+        if op in ("gt", "lt") and kind == "text":
+            kind = "date" if _ISO_DAY.match(str(value or "").strip()) else "number"
+        if actual in (None, "") and op in ("gt", "lt"):
+            return False, f"{label} is empty"
+        if kind == "date":
+            a, v = str(actual or "")[:10], str(value or "").strip()[:10]
+            result = {"gt": a > v, "lt": a < v, "eq": a == v, "ne": a != v, "in": a in _items(value), "contains": v in a}.get(op, False)
+            return result, f"{label} is {actual or 'empty'}"
     if kind == "bool":
         want = str(value).lower() in ("true", "yes", "1")
         result = bool(actual) if op == "exists" else (bool(actual) == want) if op == "eq" else (bool(actual) != want)
@@ -193,7 +224,8 @@ def compose_email(store, flow: dict, node: dict, lead: dict, now: datetime, base
 
 def text_for(store, lead: dict, text: str, base_url: str, now: datetime) -> tuple:
     lead = ensure_demo(lead, now)
-    variables = lead_variables(lead, get_settings(store)["sender_name"], base_url, {"demo_link": f"{base_url}/demo/{lead['demo_token']}"})
+    cfg = get_settings(store)
+    variables = lead_variables(lead, cfg["sender_name"], base_url, {**brand_variables(cfg), "demo_link": f"{base_url}/demo/{lead['demo_token']}"})
     return render(apply_vars(text, CURRENT_VARS.get()), variables)
 
 

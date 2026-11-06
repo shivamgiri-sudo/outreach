@@ -65,13 +65,18 @@ export const IF_FIELDS = {
   has_meeting: ["Has a meeting", "bool"], has_replied: ["Has replied", "bool"],
   linkedin_accepted: ["LinkedIn invite accepted", "bool"], linkedin_status: ["LinkedIn sequence status", "text"],
 };
+// The owner's custom lead fields (Setup → Industry & fields) can be checked too, as "custom:<key>".
+export function addCustomFields(fields = []) {
+  Object.keys(IF_FIELDS).filter((k) => k.startsWith("custom:")).forEach((k) => delete IF_FIELDS[k]);
+  fields.forEach((f) => { IF_FIELDS[`custom:${f.key}`] = [`${f.label} (custom)`, f.type === "number" ? "number" : f.type === "date" ? "date" : "text"]; });
+}
 export const IF_OPS = {
   eq: "is", ne: "is not", gt: "is more than", lt: "is less than", contains: "contains", in: "is one of", exists: "is filled in",
 };
 export const PERSONAS = ["ceo_founder", "chro", "ta_head", "recruitment_head", "business_head", "general"];
 export const opsFor = (kind) => ({
   number: ["gt", "lt", "eq", "ne", "in"], bool: ["eq"], tags: ["contains", "ne", "in", "exists"],
-  stage: ["eq", "ne", "in"], band: ["eq", "ne"], persona: ["eq", "ne", "in"],
+  stage: ["eq", "ne", "in"], band: ["eq", "ne"], persona: ["eq", "ne", "in"], date: ["gt", "lt", "eq", "ne", "exists"],
 }[kind] || ["eq", "ne", "contains", "in", "exists"]);
 
 const EMAIL_BODY = "{{greeting}}\n\n\n\n— {{sender}}\n\nNot relevant? Unsubscribe: {{unsub_link}}";
