@@ -102,9 +102,10 @@ def candidates(store, context: str = "", n: int = 4, transport=post_json) -> dic
 
 
 def current(store) -> dict:
-    from .linkedin_seq import CONNECT_VARIANTS
-    saved = store.read("settings").get("linkedin_connect_variants") or {}
-    notes = {v: saved.get(v) or CONNECT_VARIANTS[v] for v in ("A", "B")}
+    from .linkedin_config import variants
+    settings = store.read("settings")
+    saved = settings.get("linkedin_connect_variants") or {}
+    notes = variants(settings)                  # saved notes, else step 1 of the (editable) sequence and the built-in B
     return {"notes": {v: {"text": t, **score_note(t)} for v, t in notes.items()},
             "changed_at": saved.get("changed_at"), "changed_by": saved.get("changed_by")}
 

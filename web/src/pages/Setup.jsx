@@ -8,6 +8,7 @@ import AuditLog from "./AuditLog.jsx";
 import SystemHealth from "./SystemHealth.jsx";
 import { FieldHint, GuideButton, useTouched } from "../GuidePanel.jsx";
 import { fieldHelp, useGuides } from "../guides.js";
+import IndustrySetup from "./IndustrySetup.jsx";
 
 const STATUS = { configured: ["ok", "Connected"], incomplete: ["warn", "Missing details"], not_configured: ["", "Not set up"] };
 
@@ -273,6 +274,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
       <div className="tabs scroll" role="tablist" aria-label="Setup sections">
         <button role="tab" aria-selected={tab === "checklist"} className={tab === "checklist" ? "on" : ""} onClick={() => setTab("checklist")}>Go-live checklist</button>
         <button role="tab" aria-selected={tab === "connections"} className={tab === "connections" ? "on" : ""} onClick={() => setTab("connections")}>Connections</button>
+        {role === "owner" && <button role="tab" aria-selected={tab === "industry"} className={tab === "industry" ? "on" : ""} onClick={() => setTab("industry")}>Industry &amp; fields</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "team"} className={tab === "team" ? "on" : ""} onClick={() => setTab("team")}>Team &amp; workspaces</button>}
         <button role="tab" aria-selected={tab === "backup"} className={tab === "backup" ? "on" : ""} onClick={() => setTab("backup")}>Backup &amp; restore</button>
         {role === "owner" && <button role="tab" aria-selected={tab === "audit"} className={tab === "audit" ? "on" : ""} onClick={() => setTab("audit")}>Audit</button>}
@@ -283,6 +285,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
       {tab === "audit" && role === "owner" && <AuditLog />}
       {tab === "health" && role === "owner" && <SystemHealth />}
       {tab === "team" && role === "owner" && <><Workspaces /><Users /><ScoringCard /></>}
+      {tab === "industry" && role === "owner" && <IndustrySetup />}
       {tab === "connections" && (
         <>
           <div className="tip" style={{ marginBottom: 16 }}>

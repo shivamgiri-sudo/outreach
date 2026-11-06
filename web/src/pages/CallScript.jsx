@@ -6,7 +6,8 @@ import { api, isOwner } from "../api.js";
 export function fillScript(text, lead, rep) {
   const first = (lead?.contact_name || "").replace(/^(mr|mrs|ms|dr)\.?\s+/i, "").trim().split(/\s+/)[0] || "there";
   return String(text || "").replaceAll("{{rep}}", rep || "your name").replaceAll("{{first_name}}", first)
-    .replaceAll("{{role}}", lead?.role || "your open roles").replaceAll("{{company}}", lead?.company || "your company");
+    .replaceAll("{{role}}", lead?.role || "your open roles").replaceAll("{{company}}", lead?.company || "your company")
+    .replace(/\{\{custom\.(\w+)\}\}/g, (_, key) => String(lead?.custom?.[key] ?? ""));   // the owner's custom lead fields
 }
 
 function Editor({ data, onSaved, onCancel }) {

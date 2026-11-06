@@ -8,6 +8,7 @@ before any message, stops on a reply, and hands "yes to a meeting" to the meetin
 Sequence (from BookMyInterview_LinkedIn_Apollo_Sequence.xlsx): connection note on day 1; after acceptance,
 messages on days 3, 7, 12, 16, 21 and 28 (spaced from the acceptance / previous message). Step 4 offers a case study:
 it is skipped until a real case-study link is set, because no message may promise material that doesn't exist.
+STEPS / PERSONAS below are the built-in defaults; the owner can replace them on the LinkedIn page (app/linkedin_config.py).
 """
 import hashlib
 import re
@@ -106,7 +107,11 @@ def pick_variant(lead_id: str) -> str:
     return "A" if int(hashlib.sha1(str(lead_id).encode()).hexdigest()[:6], 16) % 2 == 0 else "B"
 
 
-def persona(title: str) -> tuple:
+def persona(title: str, settings: Optional[dict] = None) -> tuple:
+    """(persona key, hook) for a job title: the owner's personas when saved (settings "linkedin_sequence"), else the built-in ones."""
+    if settings is not None:
+        from .linkedin_config import persona_of
+        return persona_of(title, settings)
     text = (title or "").lower()
     for key, pattern, hook in PERSONAS:
         if re.search(pattern, text):
@@ -114,14 +119,27 @@ def persona(title: str) -> tuple:
     return "general", DEFAULT_HOOK
 
 
+def lead_steps(lead: dict, settings: dict) -> list:
+    """The steps this lead follows (its own version of the sequence; see app/linkedin_config.py)."""
+    from .linkedin_config import steps_for
+    return steps_for(lead.get("linkedin_seq") or {}, settings)
+
+
+def current_steps(settings: dict) -> list:
+    from .linkedin_config import current
+    return current(settings)["steps"]
+
+
 def render(step: dict, lead: dict, settings: dict) -> str:
+    from .linkedin_config import fill, variants
     first = clean_first_name(lead.get("contact_name")) or "there"
-    _, hook = persona(lead.get("title", ""))
+    _, hook = persona(lead.get("title", ""), settings)
     template = step["text"]
     if step["n"] == 1 and step["kind"] == "connect":
         chosen = (lead.get("linkedin_seq") or {}).get("variant")
-        template = (settings.get("linkedin_connect_variants") or {}).get(chosen) or CONNECT_VARIANTS.get(chosen, template)
-    text = template.format(first_name=first, hook=hook, case_study_url=settings.get("case_study_url", ""))
+        if chosen:
+            template = variants(settings, [step]).get(chosen) or template
+    text = fill(template, lead, settings, first, hook)
     if step["kind"] == "connect" and len(text) > NOTE_LIMIT:
         text = text[: NOTE_LIMIT - 1].rsplit(" ", 1)[0] + "…"
     return text
@@ -133,13 +151,14 @@ def render_branch(key: str, lead: dict, settings: dict, **values) -> str:
     return BRANCHES[key].format(first_name=first, **{**defaults, **values})
 
 
-def _active_steps(settings: dict) -> list:
-    return [s for s in STEPS if not s.get("needs") or settings.get(s["needs"])]
+def _active_steps(settings: dict, steps: Optional[list] = None) -> list:
+    return [s for s in (steps if steps is not None else current_steps(settings)) if not s.get("needs") or settings.get(s["needs"])]
 
 
 def _next_step(state: dict, settings: dict) -> Optional[dict]:
+    from .linkedin_config import steps_for
     done = set(state.get("done", []))
-    for step in _active_steps(settings):
+    for step in _active_steps(settings, steps_for(state, settings)):
         if step["n"] not in done and step["n"] > max(done, default=0):     # a skipped step never comes back later
             return step
     return None
@@ -170,11 +189,13 @@ def start(store, lead_id: str, now: Optional[datetime] = None) -> dict:
     if lead.get("linkedin_seq"):
         raise ValueError("This lead is already on the LinkedIn sequence; it is never restarted.")
     settings = store.read("settings")
-    state = {"started_at": iso(now), "done": [], "status": "waiting_to_connect", "persona": persona(lead.get("title", ""))[0],
-             "variant": pick_variant(lead_id)}
+    from .linkedin_config import current
+    cfg = current(settings)
+    state = {"started_at": iso(now), "done": [], "status": "waiting_to_connect", "persona": persona(lead.get("title", ""), settings)[0],
+             "variant": pick_variant(lead_id), "steps_version": cfg.get("version", 1)}
     saved = store.update_lead(lead_id, lambda l: None if l.get("linkedin_seq") else {
         **l, "linkedin_seq": state, "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin", "text": "Started LinkedIn sequence"}]})
-    task = _schedule(store, saved, STEPS[0], now, settings)
+    task = _schedule(store, saved, cfg["steps"][0], now, settings)
     return {"lead": saved, "task": task}
 
 
@@ -277,7 +298,7 @@ def queue(store, now: Optional[datetime] = None) -> dict:
                          and l.get("stage") not in ("unsubscribed", "disqualified", "customer", "advocate")),
                         key=lambda l: -(l.get("open_roles") or 0))
         suggestions = [{"lead_id": l["id"], "company": l.get("company"), "name": l.get("contact_name"), "title": l.get("title"),
-                        "persona": persona(l.get("title", ""))[0]} for l in ranked[: limit - started_today]]
+                        "persona": persona(l.get("title", ""), settings)[0]} for l in ranked[: limit - started_today]]
     waiting = [{"lead_id": l["id"], "company": l.get("company"), "name": l.get("contact_name"), "linkedin_url": l.get("linkedin_url"),
                 "since": l["linkedin_seq"].get("last_sent_at")}
                for l in leads.values() if (l.get("linkedin_seq") or {}).get("status") == "waiting_for_acceptance"]

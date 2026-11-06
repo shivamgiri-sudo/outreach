@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from .activation import EVENT_STEP
 from .channels.netguard import check_public_url
 from .stages import ALL_STAGES
+from .template_vars import BRAND_PLACEHOLDERS, CUSTOM_KEY, is_custom_placeholder
 from .whatsapp import TEMPLATES as WHATSAPP_TEMPLATES
 
 COLLECTIONS = ("flows", "flow_runs")
@@ -27,8 +28,8 @@ MAX_SUBJECT, MAX_BODY, MAX_SMS, MAX_NOTE = 200, 5000, 480, 1000
 
 TRIGGER_REPLY_LABELS = ("interested", "not_interested", "question", "not_now", "wrong_person", "any")
 REPLY_OUTPUTS = ("interested", "not_interested", "question", "not_now", "wrong_person", "other", "any", "timeout")
-EMAIL_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "unsub_link", "demo_link", "offer_line")
-TEXT_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "demo_link")
+EMAIL_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "unsub_link", "demo_link", "offer_line", *BRAND_PLACEHOLDERS)
+TEXT_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "demo_link", *BRAND_PLACEHOLDERS)
 IF_FIELDS = {
     "score": "number", "open_roles": "number", "band": "text", "stage": "text", "city": "text", "country": "text",
     "title": "text", "persona": "text", "source": "text", "campaign_id": "text", "tag": "tags",
@@ -37,7 +38,12 @@ IF_FIELDS = {
 }
 IF_OPS = ("eq", "ne", "gt", "lt", "contains", "in", "exists")
 LINKEDIN_MODES = ("start_sequence", "task")
-_PLACEHOLDER = re.compile(r"\{\{\s*(\w+)\s*\}\}")
+CUSTOM_FIELD_PREFIX = "custom:"          # If / Switch on an owner-defined lead field: "custom:<key>"
+
+
+def is_custom_field(field) -> bool:
+    return isinstance(field, str) and field.startswith(CUSTOM_FIELD_PREFIX) and bool(CUSTOM_KEY.match(field[len(CUSTOM_FIELD_PREFIX):]))
+_PLACEHOLDER = re.compile(r"\{\{\s*(\w+(?:\.\w+)?)\s*\}\}")   # {{custom.<key>}} too
 
 # type -> (group, default title, outputs). Outputs ending in "?" are optional extras (the error path).
 NODE_TYPES = {
@@ -164,7 +170,7 @@ def _placeholders(text) -> set:
 
 
 def _check_text_placeholders(text, allowed, what: str) -> list:
-    unknown = sorted(_placeholders(text) - set(allowed))
+    unknown = sorted(p for p in _placeholders(text) - set(allowed) if not is_custom_placeholder(p))
     if unknown:
         return [f"{what} uses unknown placeholder(s): " + ", ".join("{{%s}}" % u for u in unknown)
                 + ". Use: " + ", ".join("{{%s}}" % a for a in allowed) + "."]
@@ -252,7 +258,7 @@ def _new_step_errors(t: str, c: dict) -> list:
                     out.append(f"Keep each field value under {MAX_VAR_VALUE} characters.")
     elif t == "switch":
         field = str(c.get("field") or "")
-        if not (field in IF_FIELDS or (field.startswith("var:") and VAR_NAME.match(field[4:]))):
+        if not (field in IF_FIELDS or (field.startswith("var:") and VAR_NAME.match(field[4:])) or is_custom_field(field)):
             out.append("Pick what to switch on: a lead detail (stage, band, city…) or a field made earlier in the flow.")
         cases = [str(v).strip() for v in c.get("cases") or [] if str(v).strip()]
         if not 1 <= len(cases) <= MAX_SWITCH_CASES:
@@ -359,11 +365,16 @@ def _owner_errors(c: dict, team_names, key: str = "owner") -> list:
 
 def _if_errors(c: dict) -> list:
     field, op = c.get("field"), c.get("op")
-    if field not in IF_FIELDS:
+    custom = is_custom_field(field)
+    if field not in IF_FIELDS and not custom:
         return ["Pick what to check (score, stage, city, has consent…)."]
     if op not in IF_OPS:
         return ["Pick how to compare (is, is not, more than, less than, contains, is one of, is filled in)."]
-    kind, value = IF_FIELDS[field], c.get("value")
+    kind, value = ("custom" if custom else IF_FIELDS[field]), c.get("value")
+    if op in ("gt", "lt") and kind == "custom":
+        if not re.match(r"^-?\d+(\.\d+)?$|^\d{4}-\d{2}-\d{2}$", str(value or "").strip()):
+            return ["Type a number (for example 50) or a date (YYYY-MM-DD) to compare this field with."]
+        return []
     if op in ("gt", "lt") and kind != "number":
         return ["'More than' and 'less than' only work with numbers (score, open roles)."]
     if op in ("gt", "lt"):

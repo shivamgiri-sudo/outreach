@@ -2,6 +2,8 @@
 import re
 from datetime import datetime, timedelta, timezone
 
+from .template_vars import custom_variables, is_custom_placeholder
+
 IST = timezone(timedelta(hours=5, minutes=30))
 BUSINESS_START_HOUR, BUSINESS_END_HOUR = 9, 18
 DEFAULT_DAILY_CAP = 20
@@ -69,7 +71,7 @@ DEFAULT_SEQUENCE = [
               "show you how BookMyInterview.ai approaches this.\n\nWould a brief conversation be worthwhile?" + _SIGN_OFF)},
 ]
 
-_VAR = re.compile(r"\{\{(\w+)\}\}")
+_VAR = re.compile(r"\{\{(\w+(?:\.\w+)?)\}\}")   # {{name}} or {{custom.<key>}}
 
 # ---- variable cleaning ----
 ACRONYMS = {"BPO", "KPO", "IT", "ITES", "HR", "AI", "CRM", "ERP", "SAP", "MIS", "QA", "UI", "UX", "FMCG", "BFSI",
@@ -170,6 +172,8 @@ def render(text: str, variables: dict) -> tuple:
         key = match.group(1)
         if variables.get(key) and not re.search(r"\{\{|\}\}", str(variables[key])):   # a leftover {{x}} in the data
             return str(variables[key])
+        if is_custom_placeholder(key):
+            return ""                                  # a custom lead field the lead has no value for: safe fallback
         missing.append(key)
         return match.group(0)
 
@@ -255,5 +259,6 @@ def lead_variables(lead: dict, sender: str, base_url: str, extra: dict = None, s
         "company": clean_company(lead.get("company")) or lead.get("domain") or "your company",
         "role": role or ROLE_FALLBACK, "has_role": bool(role), "sender": sender,
         "unsub_link": f"{base_url}/u/{lead['id']}" + (f".{signature(secret, str(lead['id']))}" if secret else ""),
+        **custom_variables(lead),
         **(extra or {}),
     }

@@ -23,13 +23,15 @@ import uuid
 from datetime import datetime, timezone
 
 from .sequences import DEFAULT_SEQUENCE
+from .template_vars import BRAND_PLACEHOLDERS, VAR, is_custom_placeholder
 
 DEFAULT_ID = "default"
 DEFAULT_NAME = "Default (6 emails)"
 MAX_STEPS, MAX_SUBJECT, MAX_BODY, MAX_NAME, MAX_NOTES, MAX_VARIANTS = 10, 200, 6000, 120, 500, 3
 MAX_SEQUENCES, MAX_SNIPPETS = 100, 500
 # Placeholders the sequence engine fills (sequences.lead_variables + the runner's extras).
-KNOWN_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "unsub_link", "offer_line", "demo_link")
+KNOWN_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "unsub_link", "offer_line", "demo_link",
+                      *BRAND_PLACEHOLDERS)   # plus {{custom.<key>}} for the owner's custom lead fields
 UNSUB_TOKEN = "{{unsub_link}}"
 UNSUB_LINE = "\n\nNot relevant? Unsubscribe: {{unsub_link}}"
 SNIPPET_CHANNELS = ("email", "whatsapp", "linkedin", "sms")
@@ -37,7 +39,7 @@ MIN_SENDS_PER_VARIANT = 30
 MIN_WINNER_REPLIES = 3
 MIN_LEAD_POINTS = 2.0
 WIN_RATIO = 1.5
-_VAR = re.compile(r"\{\{(\w+)\}\}")   # same as sequences.render: no spaces inside
+_VAR = VAR   # same as sequences.render: no spaces inside; {{custom.<key>}} allowed
 _REPLY_SKIP = ("[auto_reply]", "[bounce]")
 
 
@@ -103,7 +105,8 @@ def leads_in_flight(store, seq_id: str) -> list:
 
 # ---- validation ----
 def unknown_placeholders(text: str) -> list:
-    return sorted({m.group(1) for m in _VAR.finditer(text or "")} - set(KNOWN_PLACEHOLDERS))
+    return sorted({m.group(1) for m in _VAR.finditer(text or "")} - set(KNOWN_PLACEHOLDERS)
+                  - {n for n in (m.group(1) for m in _VAR.finditer(text or "")) if is_custom_placeholder(n)})
 
 
 def _text(value, limit: int, what: str, required: bool = True) -> str:
@@ -119,7 +122,7 @@ def _check_placeholders(text: str, where: str) -> None:
     bad = unknown_placeholders(text)
     if bad:
         raise ValueError(f"{where}: unknown placeholder(s) " + ", ".join("{{" + b + "}}" for b in bad)
-                         + ". Use only " + ", ".join("{{" + k + "}}" for k in KNOWN_PLACEHOLDERS) + ".")
+                         + ". Use only " + ", ".join("{{" + k + "}}" for k in KNOWN_PLACEHOLDERS) + " or {{custom.<field>}}.")
     if "{{" in _VAR.sub("", text) or "}}" in _VAR.sub("", text):
         raise ValueError(f"{where}: write placeholders exactly like {{{{company}}}} (no spaces, both braces).")
 

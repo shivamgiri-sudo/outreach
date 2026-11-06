@@ -59,7 +59,6 @@ def tool_rows(store, params: Optional[dict] = None) -> list:
     raw = params.get("ids")
     wanted = {str(i).strip() for i in (raw if isinstance(raw, list) else str(raw or "").split(",")) if str(i).strip()}
     campaign = str(params.get("campaign_id") or "").strip()
-    steps = [s for s in li.STEPS if s["n"] == 1 or (s["n"] in MESSAGE_STEPS and (not s.get("needs") or settings.get(s["needs"])))]
     rows = []
     for lead in store.read("leads"):
         link = safe_http_url(lead.get("linkedin_url"))
@@ -69,6 +68,7 @@ def tool_rows(store, params: Optional[dict] = None) -> list:
         first, last = _names(lead.get("contact_name"))
         row = {"firstName": first, "lastName": last, "companyName": lead.get("company") or lead.get("domain") or "",
                "title": lead.get("title") or "", "profileUrl": link, **{c: "" for c in MESSAGE_COLUMNS}}
+        steps = [s for s in li.lead_steps(lead, settings) if s["n"] == 1 or (s["n"] in MESSAGE_STEPS and (not s.get("needs") or settings.get(s["needs"])))]
         for column, step in zip(MESSAGE_COLUMNS, steps):
             row[column] = li.render(step, lead, settings)
         rows.append(row)

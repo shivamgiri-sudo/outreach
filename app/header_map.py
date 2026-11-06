@@ -317,10 +317,14 @@ def sniff_values(samples: list):
 VALUE_FIELDS = frozenset({"email", "phone", "linkedin_url", "company_linkedin_url", "website", "job_link"})
 
 
-def map_columns(headers: list, sample_rows: list, fmt: dict, saved: dict = None, overrides: dict = None) -> list:
-    """[{column, field, confidence, how, samples}] for each header, in file order. field None means not imported."""
+def map_columns(headers: list, sample_rows: list, fmt: dict, saved: dict = None, overrides: dict = None,
+                custom_fields: list = None) -> list:
+    """[{column, field, confidence, how, samples}] for each header, in file order. field None means not imported.
+    A column named like one of the owner's custom lead fields (key or label) maps to "custom:<key>"."""
+    from .lead_fields import match_header
     rules = FORMAT_BY_KEY.get(fmt.get("key"), {}).get("overrides", {})
     saved, overrides = saved or {}, overrides or {}
+    custom_keys = {f"custom:{f['key']}" for f in custom_fields or []}
     out = []
     for header in headers:
         loose = loose_header(header)
@@ -329,8 +333,10 @@ def map_columns(headers: list, sample_rows: list, fmt: dict, saved: dict = None,
         if header in overrides:
             choice = overrides[header]
             field, conf, how = (None if choice == "ignore" else choice), 1.0, "you chose"
-        elif loose in saved:
+        elif loose in saved and (not str(saved[loose]).startswith("custom:") or saved[loose] in custom_keys):
             field, conf, how = (None if saved[loose] == "ignore" else saved[loose]), 1.0, "saved mapping"
+        elif custom_fields and (custom := match_header(custom_fields, header)):
+            field, conf, how = f"custom:{custom['key']}", 1.0, "your custom field"
         elif loose in rules:
             field, conf, how = rules[loose], 0.98, f"{fmt['name']} rule"
         elif loose in ALIAS:
@@ -345,7 +351,7 @@ def map_columns(headers: list, sample_rows: list, fmt: dict, saved: dict = None,
         else:
             field, conf = _fuzzy_field(loose)
             how = "similar name" if field else ""
-        if how not in ("you chose", "saved mapping", "extra column, not lead data"):
+        if how not in ("you chose", "saved mapping", "extra column, not lead data", "your custom field"):
             sniffed = sniff_values(samples)
             if sniffed == "phone" and not field and "id" in loose.split():
                 sniffed = None

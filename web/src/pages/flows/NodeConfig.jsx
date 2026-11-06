@@ -3,8 +3,9 @@ import { api } from "../../api.js";
 import { STAGE_ORDER, stageLabel } from "../../labels.js";
 import {
   ACTIVATION_EVENTS, BRANCH_HEADINGS, EMAIL_PLACEHOLDERS, IF_FIELDS, IF_OPS, PERSONAS, REPLY_LABELS, REPLY_OUTPUTS,
-  TEXT_PLACEHOLDERS, helpOf, isTrigger, labelOf, opsFor, outputLabel, outputsOf, titleOf,
+  TEXT_PLACEHOLDERS, addCustomFields, helpOf, isTrigger, labelOf, opsFor, outputLabel, outputsOf, titleOf,
 } from "./catalog.js";
+import { useLeadFields } from "../LeadCustomFields.jsx";
 
 const pretty = (s) => String(s).replace(/_/g, " ");
 
@@ -96,6 +97,8 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
     .filter((v) => v && /^[a-z][a-z0-9_]{0,29}$/.test(v)))];
   const withVars = (names) => [...names, ...flowVars];
   const owner = (key, label) => select(key, label, [["", `${catalog?.caller || "Sales team"} (the caller)`], ...team.filter((t) => t !== catalog?.caller).map((t) => [t, t])]);
+  const { fields: customFields } = useLeadFields();
+  addCustomFields(customFields);
   const kind = IF_FIELDS[c.field]?.[1] || "text";
   const valueInput = () => {
     if (c.op === "exists") return null;
@@ -104,6 +107,7 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
     if (kind === "band") return select("value", "Value", [["hot", "Hot"], ["warm", "Warm"], ["cold", "Cold"]]);
     if (kind === "persona" && c.op !== "in") return select("value", "Value", PERSONAS.map((p) => [p, pretty(p)]));
     const hint = c.op === "in" ? "Separate several values with commas." : undefined;
+    if (kind === "date") return text("value", "Value", { placeholder: "2026-12-31", hint: "A date as YYYY-MM-DD." });
     const placeholder = { number: "60", text: c.field === "city" ? "Pune, Bengaluru, Gurugram" : c.field === "country" ? "IN" : "", tags: "diwali-hiring" }[kind] || "";
     return text("value", "Value", { hint, placeholder });
   };

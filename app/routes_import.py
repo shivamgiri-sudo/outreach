@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from . import lead_fields
 from .header_map import FIELDS, detect_format, loose_header, map_columns
 from .hygiene_report import apply_standardise, report, standardise_changes
 from .lead_import import fingerprint, read_table, run_import, trim_lists
@@ -83,7 +84,9 @@ def make_router(store) -> APIRouter:
             raise HTTPException(400, "Paste a CSV or upload a file first.")
         if body.rows is not None and len(body.rows) > 20000:
             raise HTTPException(400, "Import at most 20000 rows at a time.")
-        bad = [f"{k} -> {v}" for k, v in body.mapping.items() if v != "ignore" and v not in FIELDS]
+        custom_fields = lead_fields.list_fields(store)
+        custom_choices = {f"custom:{f['key']}" for f in custom_fields}
+        bad = [f"{k} -> {v}" for k, v in body.mapping.items() if v != "ignore" and v not in FIELDS and v not in custom_choices]
         if bad:
             raise HTTPException(400, "Unknown field in the column choices: " + ", ".join(map(str, bad[:5])))
         try:
@@ -93,8 +96,8 @@ def make_router(store) -> APIRouter:
         fmt = detect_format(headers)
         saved = (store.read("settings").get("import_mappings") or {}).get(fmt["key"]) or {}
         overrides = {k: v for k, v in body.mapping.items() if k in headers}
-        columns = map_columns(headers, [r for _, r in table[:25]], fmt, saved, overrides)
-        return {"headers": headers, "table": table, "format": {**fmt, "saved_mapping": bool(saved)},
+        columns = map_columns(headers, [r for _, r in table[:25]], fmt, saved, overrides, custom_fields)
+        return {"headers": headers, "table": table, "format": {**fmt, "saved_mapping": bool(saved)}, "custom_fields": custom_fields,
                 "columns": columns, "source": _source_name(body.source, fmt["source"]),
                 "options": body.options.model_dump()}
 
@@ -102,7 +105,8 @@ def make_router(store) -> APIRouter:
         columns = ctx["columns"]
         return {"format": ctx["format"], "source": ctx["source"], "columns": columns,
                 "mapping": {c["column"]: c["field"] or "ignore" for c in columns},
-                "unmapped": [c["column"] for c in columns if not c["field"]], "fields": FIELDS,
+                "unmapped": [c["column"] for c in columns if not c["field"]],
+                "fields": {**FIELDS, **{f"custom:{f['key']}": f"{f['label']} (custom)" for f in ctx["custom_fields"]}},
                 "rows": result["sample"], **{k: v for k, v in trim_lists(result).items()
                                              if k not in ("sample", "created_ids", "merged_ids")}}
 
@@ -111,7 +115,7 @@ def make_router(store) -> APIRouter:
         """Dry run: what would happen, with nothing saved."""
         ctx = prepare(body)
         result = run_import(store.read("leads"), ctx["table"], ctx["columns"], ctx["source"],
-                            _not_again(store, ctx["table"]), ctx["options"])
+                            _not_again(store, ctx["table"]), ctx["options"], custom_fields=ctx["custom_fields"])
         return {**answer(ctx, result), "dry_run": True}
 
     @router.post("/api/import/commit")
@@ -123,7 +127,7 @@ def make_router(store) -> APIRouter:
 
         def apply(leads: list) -> list:
             holder["result"] = run_import(leads, ctx["table"], ctx["columns"], ctx["source"], suppressed, ctx["options"],
-                                          import_id=import_id)
+                                          import_id=import_id, custom_fields=ctx["custom_fields"])
             created = set(holder["result"]["created_ids"])
             holder["fingerprints"] = {lead["id"]: fingerprint(lead) for lead in leads if lead["id"] in created}
             return leads

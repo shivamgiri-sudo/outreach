@@ -127,7 +127,8 @@ def _lead_row(lead: dict, owners: dict) -> dict:
             "sequence_status": _sequence_status(seq), "emails_sent": len(seq.get("sent_days") or []),
             "last_activity_at": _last_activity(lead), "owner": lead.get("owner") or owners.get(lead["id"]) or "",
             "linkedin_status": str((lead.get("linkedin_seq") or {}).get("status") or "").replace("_", " "),
-            "replies": (lead.get("engagement") or {}).get("replies", 0), "created_at": lead.get("created_at")}
+            "replies": (lead.get("engagement") or {}).get("replies", 0), "created_at": lead.get("created_at"),
+            "_custom": lead.get("custom") or {}}
 
 
 def _ids(params: dict) -> set:
@@ -390,10 +391,16 @@ def build(store, dataset: str, params: dict, present) -> tuple:
     builder, columns, _ = DATASETS[dataset]
     if dataset == "outbox" and _flag(params, "include_body"):
         columns = [*columns, "body"]
+    custom = {}
+    if dataset in ("leads", "campaign_leads"):          # the owner's custom lead fields, one column each (named by key)
+        from .lead_fields import list_fields
+        custom = {(f["key"] if f["key"] not in columns else f"custom_{f['key']}"): f["key"] for f in list_fields(store)}
+        columns = [*columns, *custom]
     rows = builder(store, params, present)
     out = []
     for row in rows:
-        out.append({c: (ist_text(row.get(c[:-4])) if c.endswith("_ist") and c not in row else row.get(c)) for c in columns})
+        out.append({c: ((row.get("_custom") or {}).get(custom[c]) if c in custom else
+                        ist_text(row.get(c[:-4])) if c.endswith("_ist") and c not in row else row.get(c)) for c in columns})
     return columns, out
 
 

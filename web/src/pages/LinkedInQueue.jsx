@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, isOwner } from "../api.js";
+import LinkedInSequenceEditor from "./LinkedInSequenceEditor.jsx";
 import { copyText } from "../clipboard.js";
 import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
@@ -293,6 +294,7 @@ export default function LinkedInQueue() {
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
       <ToolBridge onDone={load} />
       <LinkedInAgent onMessage={setMessage} />
+      <LinkedInSequenceEditor onMessage={setMessage} />
       <ConnectionNotes onMessage={setMessage} />
       <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />
       <ChromeAssistant onMessage={setMessage} />
@@ -308,7 +310,7 @@ export default function LinkedInQueue() {
         <div className="card" key={d.task_id} style={{ marginBottom: 10 }}>
           <div className="row" style={{ justifyContent: "space-between" }}>
             <b>{d.name || "Contact"} · {d.company}{d.open_profile && <span className="pill" title="Premium member who accepts messages from anyone" style={{ marginLeft: 6 }}>Open Profile: message without connecting</span>}</b>
-            <span className="sub">Step {d.step} · {PERSONA[d.persona] || ""}{d.due_at ? ` · ${istLabel(d.due_at)}` : ""}</span>
+            <span className="sub">Step {d.step} · {PERSONA[d.persona] || d.persona || ""}{d.due_at ? ` · ${istLabel(d.due_at)}` : ""}</span>
           </div>
           <p className="trail-text">{d.message}</p>
           <div className="row">
@@ -338,7 +340,7 @@ export default function LinkedInQueue() {
       {q && q.suggestions.length === 0 ? <p className="sub">No suggestions: either today's limit is reached or no lead has a LinkedIn profile link yet.</p> : (
         <ul className="task-list">{q?.suggestions.map((s) => (
           <li key={s.lead_id}><div><b>{s.name || "Contact"}</b> · {s.company}{s.title ? ` · ${s.title}` : ""}</div>
-            <div className="sub">Angle: {PERSONA[s.persona]}</div>
+            <div className="sub">Angle: {PERSONA[s.persona] || s.persona}</div>
             <div className="row"><button className="btn ghost" onClick={() => act(() => api.linkedinStart(s.lead_id), "Added. Step 1 is in today's list.")}>Start LinkedIn sequence</button></div></li>))}
         </ul>
       )}
