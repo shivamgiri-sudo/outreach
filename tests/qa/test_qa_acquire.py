@@ -72,3 +72,18 @@ def test_duplicate_group_suggests_a_named_persons_address_not_abuse_at(tmp_path)
              {"id": "c", "company": "Zoho", "email": "jessica.loo@zohocorp.com", "website": "https://www.zoho.com", "stage": "new", "timeline": [{}]}]
     [group] = duplicate_clusters(leads)
     assert group["suggested_keep"] == "c"
+
+
+def test_find_and_enrich_careers_links_use_the_full_job_reader():
+    """A Lever board link in Find & enrich found 0 jobs (only page JSON-LD was read) while Read job pages found 309."""
+    from app.campaign_sources import careers_postings
+    from tests.test_job_discover import LEVER_HTML
+    pages = {"https://jobs.lever.co/acmerobotics": LEVER_HTML}
+
+    def fetch(url, **_):
+        if url not in pages:
+            raise OSError("not found")
+        return pages[url]
+    out = careers_postings(["https://jobs.lever.co/acmerobotics"], [], fetch)
+    assert [p["title"] for p, _ in out["postings"]] == ["Sales Development Rep", "Field Engineer & Trainer"]
+    assert out["errors"] == [] and out["pages"] == 1

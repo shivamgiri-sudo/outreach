@@ -234,7 +234,8 @@ def test_careers_page_without_jobposting_and_job_boards():
     io = FakeIO(pages={"https://deccan-pharma.example/careers/": page("careers_no_jobposting.html")})
     out = src.careers_postings(["https://deccan-pharma.example/careers/", "https://www.foundit.in/srp/results?query=deccan",
                                 "https://in.linkedin.com/jobs/view/123"], [], io.fetch)
-    assert io.urls() == ["https://deccan-pharma.example/careers/"]          # job boards never fetched
+    assert io.urls()[0] == "https://deccan-pharma.example/careers/"          # then its robots.txt / job sitemap
+    assert all(u.startswith("https://deccan-pharma.example/") for u in io.urls())   # job boards never fetched
     assert out["postings"] == [] and len(out["errors"]) == 3
     assert any("no job listings found" in e for e in out["errors"])
 

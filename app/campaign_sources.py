@@ -14,6 +14,7 @@ from typing import Optional
 
 from .apollo import APOLLO_BASE
 from .hygiene import business_domain, company_domain, normalise_email, normalise_phone, safe_http_url
+from .job_discover import discover_jobs
 from .jobs import is_job_board, job_age_days, parse_job_postings
 from .lead_model import to_int
 
@@ -181,14 +182,19 @@ def apollo_hiring(target: dict, key: str, post, get, max_results: int, now: date
 # ---------- careers pages ----------
 def careers_postings(urls: list, pasted: list, fetch) -> dict:
     """JobPosting entries from each company's own careers page (fetched or pasted). Returns pages, postings and errors."""
-    pages, errors = [], []
+    pages, errors, found, read = [], [], [], 0
     for url in urls:
         host = company_domain(url)
         if is_job_board(host):
             errors.append(f"{url}: job boards are not read. Add the company's own careers page instead.")
             continue
-        try:
-            pages.append((url, fetch(url)))
+        try:                                     # same reader as Read job pages: page data, Careers link, job sitemap,
+            jobs, _note = discover_jobs(url, fetch)   # Greenhouse / Lever boards
+            if jobs:
+                found += [(p, url) for p in jobs]
+                read += 1
+            else:
+                errors.append(f"{url}: no job listings found (no job data on the page, its Careers link or its job sitemap).")
         except PermissionError as exc:
             errors.append(f"{url}: not read ({exc}).")
         except (OSError, ValueError) as exc:
@@ -202,13 +208,12 @@ def careers_postings(urls: list, pasted: list, fetch) -> dict:
             pages.append((url, html))
         else:
             errors.append(f"{url or 'Pasted page'}: no job listings found in the pasted HTML (no JobPosting data).")
-    found = []
     for url, html in pages:
         postings = parse_job_postings(html, url)
         if not postings:
             errors.append(f"{url or 'Pasted page'}: no job listings found (the page has no JobPosting data).")
         found += [(p, url) for p in postings]
-    return {"postings": found, "errors": errors, "pages": len(pages)}
+    return {"postings": found, "errors": errors, "pages": len(pages) + read}
 
 
 # ---------- Google Places ----------

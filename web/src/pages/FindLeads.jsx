@@ -178,7 +178,7 @@ export default function FindLeadsDrawer({ onClose, go, onOpenLeads }) {
   const live = run && LIVE.includes(run.status);
 
   const body = useCallback((dry_run) => ({
-    mode, cities, titles, industries, careers_pages: careers.split(/\s+/).filter(Boolean), dry_run,
+    mode, cities, titles, industries, careers_pages: careers.split(/[\r\n,]+/).map((s) => s.trim()).filter(Boolean), dry_run,
     max_new: Number(limits.max_new) || 0, max_enrich: Number(limits.max_enrich) || 0, max_credits: Number(limits.max_credits) || 0,
   }), [mode, cities, titles, industries, careers, limits]);
 
