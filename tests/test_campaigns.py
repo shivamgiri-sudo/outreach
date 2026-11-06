@@ -30,7 +30,7 @@ def test_dry_run_discovers_and_scores_but_writes_nothing(tmp_path):
     assert report["dry_run"] and report["discovered"] == 3 and report["new"] == 2
     rows = {r["company"]: r for r in report["preview"]}
     acme = rows["Acme Retail Pvt Ltd"]                                   # Apollo person + careers page merged into one
-    assert acme["would"] == "add" and acme["email"] == "asha@acme-retail.in" and acme["score"] == 70 and acme["qualified"]
+    assert acme["would"] == "add" and acme["email"] == "asha@acme-retail.in" and acme["score"] == 58 and acme["qualified"]   # 10 roles: 18.3 of 30 on the log scale (was full marks)
     assert acme["sources"] == ["Apollo people search", "Careers page"] and not acme["would_enrol"]   # auto_enrol is off
     zeta = rows["Zeta Foods"]
     assert zeta["qualified"] is False and "no email yet (the real run looks for one)" in zeta["reasons"]

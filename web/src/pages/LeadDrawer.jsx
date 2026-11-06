@@ -7,6 +7,7 @@ import LeadMeetings from "./LeadMeetings.jsx";
 import LeadActivity from "./LeadActivity.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
 import LeadFlows from "./flows/LeadFlows.jsx";
+import LeadAssign from "./LeadAssign.jsx";
 
 const SIGNAL_LABELS = {
   hiring_volume: ["Hiring volume", 30], hiring_pain: ["Hiring pain", 25], fit: ["Fit", 15],
@@ -253,6 +254,7 @@ export default function LeadDrawer({ id, onClose }) {
         <br /><small>Source: {sourceLabel(lead)}</small></p>
       {canEditContacts() && <EditDetails lead={lead} onSaved={(r) => setLead(r)} />}
       {error && <div className="tip error" role="alert">{error}</div>}
+      <LeadAssign lead={lead} onChanged={setLead} />
 
       <LeadOrigin lead={lead} />
 

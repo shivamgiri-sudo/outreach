@@ -75,6 +75,8 @@ from .routes_import import make_router as make_import_router
 from .routes_exports import make_router as make_exports_router
 from .lead_import import quick_rows
 from .routes_outreach import make_router
+from .routes_lead_ops import make_router as make_lead_ops_router
+from .lead_ops import with_list_extras
 from .store import Store
 from .suggest import suggest_next
 from .unsubscribe import ensure_cutover
@@ -283,7 +285,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
 
     @app.get("/api/leads")
     def list_leads():
-        return sorted((_present(lead) for lead in workspaces_mod.filter_rows(store.read("leads"))), key=lambda x: -x["score"])
+        return with_list_extras(store, sorted((_present(lead) for lead in workspaces_mod.filter_rows(store.read("leads"))), key=lambda x: -x["score"]))
 
     @app.get("/api/leads/{lead_id}")
     def get_lead(lead_id: str):
@@ -436,6 +438,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                     "note": "The AI writer is not connected or did not answer, so the standard template was used."}
         return {"prompt": build_prompt(spec), "ai": False}
 
+    app.include_router(make_lead_ops_router(store, _present))     # before the outreach routes: /api/leads/bulk
     app.include_router(make_router(store, _build_lead, _present, email_sender, ai_transport))
     app.include_router(make_jobs_router(store, _build_lead, _present))
     app.include_router(make_growth_router(store, _build_lead, _present))

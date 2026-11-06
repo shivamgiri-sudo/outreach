@@ -220,13 +220,14 @@ def test_scores_bands_and_india_fit_on_the_500(data):
         assert 0 <= lead["score"] <= 100
         assert lead["band"] == ("hot" if lead["score"] >= 70 else "warm" if lead["score"] >= 40 else "cold")
         assert lead["score"] == min(100, round(sum(lead["signals"].values())))
-    legacy_india = [l for l in presented if l["country"] in ("India", "india", "IND") and 20 <= (l.get("company_size") or 0) <= 2000]
+    legacy_india = [l for l in presented if l["country"] in ("India", "india", "IND") and 20 <= (l.get("company_size") or 0)]
     assert legacy_india and all(l["signals"]["fit"] == 15 for l in legacy_india)
     foreign = [l for l in presented if l["country"] in ("US", "AE", "United Kingdom")]
     assert foreign and all(l["signals"]["fit"] <= 9 for l in foreign)
     yes = [l for l in presented if l.get("consent")]
     assert yes and all(l["signals"]["intent"] == 10 for l in yes)
-    assert Counter(l["band"] for l in presented)["hot"] > 50
+    # Open roles are log-scaled (full marks from 50, not 10), so fewer of the fixture's 10-15-role leads reach hot (43).
+    assert Counter(l["band"] for l in presented)["hot"] > 35
 
 
 def test_dashboard_counts_funnel_and_reminders(client, data):

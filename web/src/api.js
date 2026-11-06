@@ -302,4 +302,15 @@ export const api = {
   bookMeeting: (id, body) => request(`/api/leads/${id}/meetings`, { method: "POST", body }),
   cancelMeeting: (meetingId) => request(`/api/meetings/${meetingId}/cancel`, { method: "POST" }),
   meetingDone: (meetingId) => request(`/api/meetings/${meetingId}/done`, { method: "POST" }),
+  // Lead owner, tags, bulk actions, saved views, scoring settings
+  leadOwners: () => request("/api/lead-owners"),
+  setLeadOwner: (id, owner) => request(`/api/leads/${id}/owner`, { method: "POST", body: { owner } }),
+  changeLeadTags: (id, add = [], remove = []) => request(`/api/leads/${id}/tags`, { method: "POST", body: { add, remove } }),
+  leadTags: () => request("/api/lead-tags"),
+  bulkLeads: (leadIds, action, value = null, force = false) => request("/api/leads/bulk", { method: "POST", body: { lead_ids: leadIds, action, value, force } }),
+  leadViews: () => request("/api/lead-views"),
+  saveLeadView: (name, filters) => request("/api/lead-views", { method: "POST", body: { name, filters } }),
+  deleteLeadView: (id) => request(`/api/lead-views/${id}`, { method: "DELETE" }),
+  scoring: () => request("/api/scoring"),
+  saveScoring: (body) => request("/api/scoring", { method: "PUT", body }),
 };

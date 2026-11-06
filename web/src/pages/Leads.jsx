@@ -6,6 +6,9 @@ import LeadDrawer from "./LeadDrawer.jsx";
 import ImportWizard from "./ImportWizard.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import FindLeadsDrawer, { FindLeadsCard, takePendingLeadIds } from "./FindLeads.jsx";
+import LeadBulkBar from "./LeadBulkBar.jsx";
+import LeadViews from "./LeadViews.jsx";
+import { istDateLabel, istLabel } from "../time.js";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
 const SHEET_SOURCES = { "team sheet — Leads tab": "leads", "team sheet — Demo Shared tab": "demo", "team sheet — Decision Makers tab": "decision_makers" };
@@ -14,13 +17,24 @@ const SORTS = {
   score: (a, b) => b.score - a.score,
   company: (a, b) => (a.company || a.domain || "").localeCompare(b.company || b.domain || ""),
   stage: (a, b) => STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage),
+  activity: (a, b) => (b.last_activity_at || "").localeCompare(a.last_activity_at || ""),
+  due: (a, b) => (a.next_task_due || "9999").localeCompare(b.next_task_due || "9999"),
 };
 
-function matches(lead, query, stage, band, onlyIds, sources = [], inboundOnly = false) {
+// Owner filter values: "" everyone, "__me" the signed-in person, "__none" nobody yet, else a name.
+function ownerMatches(lead, owner, me) {
+  if (!owner) return true;
+  if (owner === "__none") return !lead.owner;
+  if (owner === "__me") return Boolean(lead.owner) && (lead.owner === me.name || lead.owner === me.email);
+  return lead.owner === owner;
+}
+
+function matches(lead, query, stage, band, onlyIds, sources = [], inboundOnly = false, owner = "", tag = "", me = {}) {
   const q = query.trim().toLowerCase();
   const text = [lead.company, lead.domain, lead.contact_name, lead.email, lead.phone, lead.role].join(" ").toLowerCase();
   return (!q || text.includes(q)) && (!stage || lead.stage === stage) && (!band || lead.band === band) && (!onlyIds || onlyIds.includes(lead.id))
-    && (!sources.length || sources.includes(sourceId(lead))) && (!inboundOnly || Boolean(lead.inbound));
+    && (!sources.length || sources.includes(sourceId(lead))) && (!inboundOnly || Boolean(lead.inbound)) && ownerMatches(lead, owner, me)
+    && (!tag || (lead.tags || []).some((t) => String(t).toLowerCase() === tag.toLowerCase()));
 }
 
 // A short plain-English line about the campaign, ad or form behind a lead (shown as a tooltip and in the drawer).
@@ -66,10 +80,17 @@ export default function Leads({ focusLead, go }) {
   const [band, setBand] = useState("");
   const [srcFilter, setSrcFilter] = useState([]);
   const [inboundOnly, setInboundOnly] = useState(false);
+  const [ownerFilter, setOwnerFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+  const [owners, setOwners] = useState([]);
+  const [me, setMe] = useState({ name: "", email: "" });
+  useEffect(() => {
+    api.leadOwners().then((r) => setOwners(r.owners)).catch(() => {});
+    api.me().then((r) => setMe({ name: r.name, email: r.email })).catch(() => {});
+  }, []);
   useSourceRegistry();
   const [sort, setSort] = useState("score");
   const [picked, setPicked] = useState([]);
-  const [busy, setBusy] = useState("");
   const [finding, setFinding] = useState(false);
   const [onlyIds, setOnlyIds] = useState(() => takePendingLeadIds());
   useEffect(() => { if (focusLead) setOpen(focusLead); }, [focusLead]);
@@ -165,59 +186,28 @@ export default function Leads({ focusLead, go }) {
 
   const readFile = (file) => file && file.text().then(setCsv);
 
-  const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly)).sort(SORTS[sort]),
-    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly]);
+  const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me)).sort(SORTS[sort]),
+    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me]);
+  const allTags = useMemo(() => [...new Set(leads.flatMap((l) => l.tags || []).map(String))].sort((a, b) => a.localeCompare(b)), [leads]);
+  const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, sort };
+  const applyView = (f) => {
+    setQuery(f.query || ""); setStage(f.stage || ""); setBand(f.band || ""); setSrcFilter(f.sources || []); setInboundOnly(Boolean(f.inbound));
+    setOwnerFilter(f.owner || ""); setTagFilter(f.tag || ""); setSort(SORTS[f.sort] ? f.sort : "score"); setOnlyIds(null);
+  };
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const safePage = Math.min(page, pages - 1);
-  useEffect(() => { setPage(0); }, [query, stage, band, sort, onlyIds, srcFilter, inboundOnly, pageSize]);
+  useEffect(() => { setPage(0); }, [query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, pageSize]);
   const visible = shown.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const togglePick = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const allPicked = shown.length > 0 && shown.every((l) => picked.includes(l.id));
 
-  const bulkEnroll = async () => {
-    setBusy("enroll");
-    const results = await Promise.allSettled(picked.map((id) => api.enroll(id)));
-    const ok = results.filter((r) => r.status === "fulfilled").length;
-    const rest = picked.length - ok;
-    setMessage(`Started the email sequence for ${ok} of ${picked.length}.${rest ? " The rest have no email, are already in it, or cannot be emailed." : ""}`);
-    setPicked([]); setBusy(""); load();
-  };
-
   const [spaces, setSpaces] = useState([]);
   useEffect(() => { api.workspaces().then(setSpaces).catch(() => {}); }, []);
-  const moveTo = async (id) => {
-    if (!id) return;
-    const name = spaces.find((w) => w.id === id)?.name || id;
-    if (!window.confirm(`Move ${picked.length} lead(s) to workspace “${name}”? It is logged on each lead.`)) return;
-    setBusy("ws");
-    try { const r = await api.moveToWorkspace(id, picked); setMessage(`${r.moved} lead(s) moved to ${name}.`); setPicked([]); load(); }
-    catch (e) { setMessage(e.message); } finally { setBusy(""); }
-  };
-  const saveAsList = async () => {
-    const name = window.prompt("Name this list (for example: Noida BPOs, Nov)", `Selected ${picked.length} leads`);
-    if (!name) return;
-    setBusy("list");
-    try {
-      const r = await api.createList({ name, lead_ids: picked });
-      setMessage(`Saved “${r.name}” with ${r.lead_ids.length} leads. Open Lists to start email or LinkedIn for it only.`);
-      setPicked([]);
-    } catch (e) { setMessage(e.message); }
-    setBusy("");
-  };
-  const bulkLinkedIn = async () => {
-    setBusy("li");
-    try {
-      const list = await api.createList({ name: `LinkedIn ${new Date().toISOString().slice(0, 10)} (${picked.length})`, lead_ids: picked });
-      const r = await api.listStartLinkedIn(list.id);
-      setMessage(`Started LinkedIn outreach for ${r.started} of ${r.asked}.${r.refused.length ? " Left out: " + r.refused.map((x) => `${x.count} (${x.reason})`).join("; ") : ""}`);
-      setPicked([]); load();
-    } catch (e) { setMessage(e.message); }
-    setBusy("");
-  };
 
-  const filtered = Boolean(query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly);
+  const filtered = Boolean(query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter);
+  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); };
 
   const header = (key, label) => (
     <th aria-sort={sort === key ? (key === "score" ? "descending" : "ascending") : "none"}>
@@ -320,39 +310,42 @@ export default function Leads({ focusLead, go }) {
             {Object.entries(BAND_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <SourceFilter leads={leads} value={srcFilter} onChange={setSrcFilter} />
+          <select aria-label="Filter by owner" value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
+            <option value="">All owners</option>
+            <option value="__me">My leads</option>
+            <option value="__none">Unassigned</option>
+            {owners.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+          {allTags.length > 0 && <select aria-label="Filter by tag" value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
+            <option value="">All tags</option>
+            {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>}
           <label className="row" style={{ margin: 0 }}><input type="checkbox" checked={inboundOnly} onChange={(e) => setInboundOnly(e.target.checked)} /> Inbound only</label>
+          <LeadViews filters={viewFilters} onApply={applyView} />
           <span className="sub" style={{ margin: 0 }}>Showing {shown.length} of {leads.length}</span>
           <span className="dl-group">
             <DownloadButton path={exportPath("leads")} label="Download all" title="Every lead as a CSV that opens in Excel" testId="download-leads-all" />
-            {filtered && <DownloadButton path={exportPath("leads", { q: query.trim(), stage, band, source: srcFilter.join(","), inbound: inboundOnly ? "1" : "" })} body={onlyIds ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
+            {filtered && <DownloadButton path={exportPath("leads", { q: query.trim(), stage, band, source: srcFilter.join(","), inbound: inboundOnly ? "1" : "", tag: tagFilter })} body={onlyIds || ownerFilter ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
               title="Only the leads that match the search and filters" testId="download-leads-shown" />}
           </span>
         </div>
       )}
       {picked.length > 0 && (
-        <div className="bulkbar" role="region" aria-label="Actions for selected leads">
-          <b>{picked.length} selected</b>
-          <button className="btn" disabled={busy === "enroll"} onClick={bulkEnroll}>{busy === "enroll" ? "Starting…" : "Start email sequence"}</button>
-          <button className="btn ghost" disabled={busy === "li"} onClick={bulkLinkedIn}>{busy === "li" ? "Starting…" : "Start LinkedIn outreach"}</button>
-          <button className="btn ghost" disabled={busy === "list"} onClick={saveAsList}>Save as list</button>
-          {spaces.length > 1 && <select aria-label="Move selected leads to a workspace" value="" disabled={busy === "ws"} onChange={(e) => moveTo(e.target.value)}>
-            <option value="">Move to workspace…</option>{spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>}
-          {isOwner() && <DownloadButton path={exportPath("leads")} body={{ ids: picked }} label="Download CSV" testId="download-leads-picked" />}
-          <button className="btn ghost" onClick={() => setPicked([])}>Clear</button>
-        </div>
+        <LeadBulkBar picked={picked} pageIds={visible.map((l) => l.id)} owners={owners} spaces={spaces} onClear={() => setPicked([])}
+          onDone={(msg, changed) => { setMessage(msg); if (changed) { setPicked([]); load(); } }} />
       )}
 
       <div className="card table-card">
         {leads.length === 0 ? (
           <div className="empty"><EmptyArt name="leads" /><p>No leads yet. Click “Import leads” to add your first list.</p></div>
         ) : shown.length === 0 ? (
-          <p className="empty">No leads match. <button className="linkish" onClick={() => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); }}>Clear the filters</button></p>
+          <p className="empty">No leads match. <button className="linkish" onClick={clearFilters}>Clear the filters</button></p>
         ) : (
           <table className="leads-table">
             <thead><tr>
               <th><input type="checkbox" aria-label="Select all shown" checked={allPicked}
                 onChange={() => setPicked(allPicked ? [] : shown.map((l) => l.id))} /></th>
-              {header("company", "Company")}<th>Contact</th>{header("stage", "Stage")}{header("score", "Score")}<th>Source</th><th>Next step</th>
+              {header("company", "Company")}<th>Contact</th>{header("stage", "Stage")}{header("score", "Score")}<th>Owner</th><th>Tags</th><th>Source</th>{header("activity", "Last activity")}{header("due", "Next task due")}<th>Next step</th>
             </tr></thead>
             <tbody>
               {visible.map((l) => (
@@ -364,10 +357,14 @@ export default function Leads({ focusLead, go }) {
                   <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small></td>
                   <td data-label="Stage">{stageLabel(l.stage)}</td>
                   <td data-label="Score"><span className={`pill ${l.band}`}>{l.score} · {l.band}</span></td>
+                  <td data-label="Owner">{l.owner || <small className="sub">—</small>}</td>
+                  <td data-label="Tags">{(l.tags || []).length ? (l.tags || []).map((t) => <span key={t} className="pill rec" style={{ margin: "0 4px 2px 0" }}>{t}</span>) : <small className="sub">—</small>}</td>
                   <td data-label="Source" title={attributionText(l.attribution) || undefined}>
                     {sourceLabel(l)}{l.inbound && <span className="pill ok" style={{ marginLeft: 6 }}>Inbound</span>}
                     {attributionText(l.attribution) && <><br /><small>{attributionText(l.attribution)}</small></>}
                   </td>
+                  <td data-label="Last activity"><small title={istLabel(l.last_activity_at)}>{istDateLabel(l.last_activity_at) || "—"}</small></td>
+                  <td data-label="Next task due"><small className={l.next_task_due && new Date(l.next_task_due) < new Date() ? "pill err" : ""}>{l.next_task_due ? istLabel(l.next_task_due) : "—"}</small></td>
                   <td data-label="Next step">{l.suggestion.action}</td>
                 </tr>
               ))}
