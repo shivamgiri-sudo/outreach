@@ -48,6 +48,7 @@ from .routes_activities import make_router as make_activities_router
 from .routes_linkedin import make_router as make_linkedin_router
 from .routes_lists import make_router as make_lists_router
 from .routes_companies import make_router as make_companies_router
+from .routes_prospects import make_router as make_prospects_router
 from .routes_analytics import make_router as make_analytics_router
 from . import extension_api
 from .routes_extension import make_router as make_extension_router
@@ -510,6 +511,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     campaign_io = {"post": apollo_transport, "get": get_json, "fetch": fetcher, **(campaign_transports or {})}
     app.include_router(make_campaigns_router(store, campaign_io, _present, transactional_sender))
     app.include_router(make_find_leads_router(store, campaign_io, transactional_sender))
+    app.include_router(make_prospects_router(store, campaign_io))
     app.include_router(make_hiring_engine_router(store, campaign_io))
     app.include_router(make_reply_inbox_router(store))
     app.include_router(make_rep_router(store, _present))

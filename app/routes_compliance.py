@@ -93,6 +93,10 @@ def make_router(store) -> APIRouter:
                 {**run, "lead_ids": [i for i in run.get("lead_ids") or [] if i != lead_id],
                  "rows": {pid: [r for r in rows if r.get("lead_id") != lead_id] for pid, rows in (run.get("rows") or {}).items()}}
                 for run in runs])
+        from . import prospect_db
+        from .prospect_ingest import safely
+        safely(prospect_db.erase_contacts, store, [lead.get("email")] + [c.get("email") for c in lead.get("other_contacts") or []],
+               [lead.get("phone")], [lead.get("linkedin_url")])
         record_consent(store, ref, "withdrawn", "any", "", "data erased on request")
         from . import audit                              # no name, email or company: only the erased reference
         audit.record(store, getattr(request.state, "user", None), "lead.erase", ref,

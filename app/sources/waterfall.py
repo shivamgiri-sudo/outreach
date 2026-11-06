@@ -8,11 +8,16 @@ For one lead (domain + optional contact name):
   3. stop at the first verified email; otherwise keep the best unverified one (marked as such), never an invalid one.
 Never touched: suppressed addresses, addresses another lead already has, and anything at a different domain.
 Credits are capped per run; a source that fails is skipped for the rest of the run.
+
+Cost-aware (app/prospect_waterfall.py): the prospect DB is asked first (a fresh verified email costs nothing), providers run
+in the owner's priority/cost order, every lookup is written to the spend ledger (spend counted only on a usable answer),
+paid lookups stop at the owner's monthly budget, and every email found is stored in the prospect DB with its provider.
 """
 from ..campaign_sources import DEFAULT_PERSON_TITLES
 from ..hygiene import business_domain, is_role_address, normalise_email
 from ..lead_model import event, now_iso
 from ..providers import valid_domain
+from .. import prospect_waterfall as cost
 from . import registry
 from .base import CreditCapReached, KeyRejected, RateLimited, split_name
 from .runner import credit_cap, describe_error
@@ -43,6 +48,8 @@ class Run:
                 self.off.add(spec.id)
                 self.errors[spec.id] = f"Not connected: {conn['reason']}"
         self.finders, self.verifiers = finders, verifiers
+        self.meter = cost.Meter(store, now)
+        self.found = []                               # (person, status, domain, company) for the prospect DB
 
     def guard(self, spec, fn, default):
         if spec.id in self.off:
@@ -63,7 +70,13 @@ class Run:
         """Best verdict for one address across the verifiers: 'valid' or 'invalid' ends the chain at once."""
         best = None
         for spec in self.verifiers:
+            if spec.id in self.off:
+                continue
+            if not self.meter.can_spend(spec.id):
+                self.errors.setdefault("budget", self.meter.message())
+                continue
             v = self.guard(spec, lambda c: spec.verify(c, email), None)
+            self.meter.record(spec.id, "verify", bool(v and v["status"] in ("valid", "invalid")), email)
             if not v:
                 continue
             if v["status"] in ("valid", "invalid"):
@@ -79,12 +92,25 @@ def find_one(run: Run, lead: dict, titles: list, taken: set, suppressed: set):
     company = lead.get("company", "")
     first, last = split_name(lead.get("contact_name"))
     candidates, extras = [], {}
+    cached = run.meter.cached_email(domain, lead.get("contact_name") or "", titles)
+    if cached and cached["email"] not in suppressed and f"email:{cached['email']}" not in taken and _same_company(cached["email"], domain):
+        run.meter.record("prospect_db", "email", True, domain, cached=True)
+        return {"person": cached, "status": "valid", "provider": "prospect_db", "reason": "fresh in the prospect database"}, extras
     for spec in run.finders:
-        hits = []
+        hits, called = [], False
+        if spec.id in run.off:
+            continue
+        if (first and spec.find_email) or (spec.find_people and not lead.get(MARKERS.get(spec.id, ""))):
+            if not run.meter.can_spend(spec.id):
+                run.errors.setdefault("budget", run.meter.message())
+                continue
         if first and spec.find_email:
-            hits = run.guard(spec, lambda c: spec.find_email(c, first, last, domain, company), [])
+            hits, called = run.guard(spec, lambda c: spec.find_email(c, first, last, domain, company), []), True
         elif spec.find_people and not lead.get(MARKERS.get(spec.id, "")):         # the Hunter/Apollo checkboxes already did this search
-            hits = run.guard(spec, lambda c: spec.find_people(c, domain, company, titles, 5), [])
+            hits, called = run.guard(spec, lambda c: spec.find_people(c, domain, company, titles, 5), []), True
+        if called:
+            usable = any(_same_company(normalise_email(h.get("email")) or "", domain) for h in hits or [])
+            run.meter.record(spec.id, "email", usable, domain)
         if spec.id == "website_deep" and spec.id in run.bound:                  # cached by the call above: no new fetch
             page = run.guard(spec, lambda c: crawl(c, domain), {})
             if page.get("company_linkedin"):
@@ -101,6 +127,7 @@ def find_one(run: Run, lead: dict, titles: list, taken: set, suppressed: set):
                 continue
             candidates.append({"person": {**hit, "email": email}, "status": verdict["status"], "provider": verdict.get("provider", ""),
                                "reason": verdict.get("reason", "")})
+            run.found.append(({**hit, "email": email}, verdict["status"], domain, company))
             if verdict["status"] == "valid":
                 return candidates[-1], extras
     candidates.sort(key=lambda c: (RANK.get(c["status"], 1), is_role_address(c["person"]["email"])))
@@ -114,8 +141,8 @@ def enrich_campaign(store, campaign: dict, transports: dict, report: dict, scope
         return
     finders = [s for s in registry.plan("find_email", chosen)]
     finders += [s for s in registry.plan("discover_people", chosen) if s not in finders and s.find_people]
-    finders.sort(key=lambda s: (not s.free, s.cost, s.id))
-    verifiers = registry.plan("verify_email", chosen)
+    finders = cost.order_specs(store, finders)            # owner's priority, then cost per lookup (free first by default)
+    verifiers = cost.order_specs(store, registry.plan("verify_email", chosen))
     if not finders:
         return
     run = Run(store, campaign, transports, report, finders, verifiers, now)
@@ -153,8 +180,11 @@ def enrich_campaign(store, campaign: dict, transports: dict, report: dict, scope
             found_count += 1
         patches[lead["id"]] = {"set": changes, "events": [event("enrichment", f"Campaign {campaign['name']}, source waterfall: " + ", ".join(notes))] if notes else []}
     store.patch_leads(patches)
+    run.meter.flush()
+    from ..prospect_ingest import safely
+    safely(cost.save_hits, store, run.found)
     report["enriched_emails"] += found_count
     report["source_credits"] = run.ctx.budget.spent
     run.ctx.cache.flush()
     for sid, message in run.errors.items():
-        add_error(report, sid if sid in registry.BY_ID else "sequence", message)
+        add_error(report, sid if sid in registry.BY_ID else ("Lookup budget" if sid == "budget" else "sequence"), message)
