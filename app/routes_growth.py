@@ -16,6 +16,7 @@ from .auth import PRIVATE_SETTINGS
 from .activation import STEPS, apply_event, conversion_due, next_nudge
 from .capacity import capacity_plan
 from .demo import draft_kit, render_demo_html
+from .brand import get_brand, sender_name
 from .growth_core import ensure_demo, get_offer, offer_line, public_base_url, webhook_secret
 from .hygiene import normalise_email
 from .sequences import DEFAULT_SEQUENCE
@@ -135,11 +136,11 @@ def make_router(store, build_lead, present) -> APIRouter:
             raise HTTPException(404, "No such step")
         base = public_base_url(store, BASE_URL)
         sample = {"id": "sample", "contact_name": "Alex Example", "company": "Example Retail", "role": "Store Manager"}
-        variables = lead_variables(sample, "BookMyInterview team", base, {"offer_line": offer_line(get_offer(store)), "demo_link": f"{base}/demo/sample"})
+        variables = lead_variables(sample, sender_name(store), base, {"offer_line": offer_line(get_offer(store)), "demo_link": f"{base}/demo/sample"}, brand=store)
         step = DEFAULT_SEQUENCE[index]
         subject = fill(step["subject"], variables)[0]
         body = fill(step["body"], variables)[0]
-        return {"subject": subject, "text": body, "html": render_html(body, base)}
+        return {"subject": subject, "text": body, "html": render_html(body, base, brand=store)}
 
     @router.post("/api/sequence/{index}/send-preview")
     def send_preview(index: int, body: PreviewBody):
@@ -179,7 +180,7 @@ def make_router(store, build_lead, present) -> APIRouter:
         lead = lead_by_token(token)
         offer = get_offer(store)
         html = render_demo_html(lead, draft_kit(lead.get("role", "")), offer, claim_url(ensure_demo(lead, _now()), offer),
-                                unsub_path(store, lead["id"]))
+                                unsub_path(store, lead["id"]), brand=get_brand(store))
         nonce = secrets.token_urlsafe(16)                  # only this one script may run (Content-Security-Policy)
         target = json.dumps(f"/demo/{token}/opened").replace("<", "\\u003c")
         beacon = f"<script nonce=\"{nonce}\">fetch({target},{{method:'POST'}}).catch(function(){{}});</script>"

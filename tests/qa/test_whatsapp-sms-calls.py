@@ -129,7 +129,7 @@ def test_hinglish_templates_render_with_opt_out_and_hinglish_names(c, no_network
     bodies = [r["body"] for r in c.get("/api/whatsapp/outbox").json()]
     assert len(bodies) == 4
     for body in bodies:
-        assert "BookMyInterview se" in body and body.endswith(OPT_OUT) and "{{" not in body
+        assert "BookMyInterview.ai se" in body and body.endswith(OPT_OUT) and "{{" not in body
     assert all(t.endswith(OPT_OUT) for t in TEMPLATES.values())
 
 

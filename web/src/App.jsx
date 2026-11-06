@@ -33,6 +33,8 @@ import Analytics from "./pages/Analytics.jsx";
 import { THEMES, getTheme, setTheme } from "./theme.js";
 import { DialogProvider } from "./Dialog.jsx";
 import { useModalFocus } from "./DrawerShell.jsx";
+import { loadBrand, loadPublicBrand, useBrand } from "./brand.js";
+import Onboarding from "./pages/Onboarding.jsx";
 
 // [id, label, component, icon]
 const PAGES = [
@@ -198,6 +200,15 @@ function Shell() {
   const [pending, setPending] = useState(0);
   const [auth, setAuth] = useState({ checked: false, required: false, signedIn: false });
   const [me, setMe] = useState(null);
+  const brand = useBrand().public;
+  const [wizard, setWizard] = useState(false);
+  useEffect(() => { loadPublicBrand(); }, []);
+  useEffect(() => {
+    if (!auth.signedIn || !me) return;
+    loadBrand();
+    // The first-run wizard: owners only, until they finish or skip it (an install that already has leads is past it).
+    if (me.role === "owner") api.onboarding().then((o) => o.show && setWizard(true)).catch(() => {});
+  }, [auth.signedIn, me]);
 
   // go("leads") or go("leads?lead=<id>"): the part after "?" is kept in the hash for the page to read.
   const go = (id) => {
@@ -267,7 +278,7 @@ function Shell() {
           <button className="icon-btn" aria-label="Open menu" aria-expanded={menuOpen} aria-controls="main-nav" onClick={() => setMenuOpen(true)}>
             <Icon name="menu" size={22} />
           </button>
-          <img className="brand-mark" src="/mcn-logo.png" width="28" height="28" alt="MCN Outreach" />
+          <img className="brand-mark" src={brand.header_logo} width="28" height="28" alt={brand.app_name} />
           <span className="topbar-page" aria-hidden="true">{BY_ID[page][1]}</span>
           {spacePicker("ws-mini")}
           <button className="icon-btn" aria-label="Quick search" onClick={() => setSearching(true)}><Icon name="search" size={20} /></button>
@@ -278,8 +289,8 @@ function Shell() {
       <nav className="side" id="main-nav" aria-label="Main" ref={navRef} role={phone ? "dialog" : undefined}
         aria-modal={phone && menuOpen ? "true" : undefined} aria-hidden={phone && !menuOpen ? "true" : undefined}>
         <div className="brand">
-          <img className="brand-mark" src="/mcn-logo.png" width="34" height="34" alt="" />
-          <div className="brand-text"><h1>MCN Outreach</h1><span className="brand-sub">by Mas Callnet</span></div>
+          <img className="brand-mark" src={brand.header_logo} width="34" height="34" alt="" />
+          <div className="brand-text"><h1>{brand.app_name}</h1><span className="brand-sub">by {brand.company_name}</span></div>
           {phone ? <button className="icon-btn nav-close" aria-label="Close menu" onClick={closeMenu}><Icon name="close" size={22} /></button>
             : <Bell onOpen={() => go("tasks")} />}
         </div>
@@ -317,7 +328,7 @@ function Shell() {
         )}
       </nav>
       <main>
-        <Current key={`${page}:${space}`} go={go} onSetupChanged={refreshPending} role={me.role} />
+        <Current key={`${page}:${space}`} go={go} onSetupChanged={refreshPending} role={me.role} onOpenWizard={me.role === "owner" ? () => setWizard(true) : undefined} />
       </main>
       {phone && (
         <nav className="bottombar" aria-label="Quick links">
@@ -331,6 +342,7 @@ function Shell() {
           </button>
         </nav>
       )}
+      {wizard && <Onboarding go={go} onClose={() => { setWizard(false); loadBrand(); refreshPending(); }} />}
       {searching && (
         <QuickSearch onClose={() => setSearching(false)}
           onPage={(id) => { setSearching(false); go(id); }}

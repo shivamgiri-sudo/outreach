@@ -15,6 +15,7 @@ Reminder emails go to `transactional_outbox`, never the cold-email outbox, so th
 import uuid
 from datetime import datetime, timedelta
 
+from .brand import get_brand
 from .activities import add_task, caller_name, iso, team, update_task
 from .growth_core import public_base_url
 from .privacy import is_blocked
@@ -98,7 +99,7 @@ def _meeting_email(store, lead: dict, meeting: dict, which: str, base_url: str =
     to = meeting.get("attendee_email") or lead.get("email")
     person = next((o for o in lead.get("other_contacts") or [] if isinstance(o, dict) and o.get("email") == to), lead)
     lines = [f"Hi {(person.get('contact_name') or '').split(' ')[0] or 'there'},", "",
-             f"A reminder of our call {_when_phrase(meeting['start'], which, now)}: {meeting.get('title') or 'BookMyInterview.ai demo — ' + company}",
+             f"A reminder of our call {_when_phrase(meeting['start'], which, now)}: {meeting.get('title') or get_brand(store)['product_name'] + ' demo — ' + company}",
              f"When: {when}"]
     if meeting.get("join_url"):
         lines.append(f"Join: {meeting['join_url']}")

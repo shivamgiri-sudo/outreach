@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { copyText } from "../clipboard.js";
 import { istDate, istLabel, outsideBusinessHours } from "../time.js";
+import { getBrand } from "../brand.js";
 
 const DURATIONS = [15, 30, 45, 60];
 const OWN_INVITE = ["zoom", "custom_http", "booking_link"];      // these don't email the lead, so we send an .ics invite
@@ -9,7 +10,8 @@ const SENDS_OWN = ["google", "microsoft"];                          // these ema
 
 function defaultTitle(lead) {
   const company = (lead.company || lead.domain || "").replace(/\s*\(.*?\)/g, "").replace(/\s+(pvt|private|ltd|limited|llp|inc)\.?(?=\s|$)/gi, "").trim();
-  return company ? `BookMyInterview.ai demo — ${company}` : "BookMyInterview.ai demo";
+  const product = getBrand().public.product_name;
+  return company ? `${product} demo — ${company}` : `${product} demo`;
 }
 
 // "Book a meeting" inside the lead panel: uses the active calendar provider; times are entered and shown in IST.

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { istLabel } from "../time.js";
 import { ErrorState } from "../states.jsx";
-import { stageLabel } from "../labels.js";
+import { leadTerm, stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
 
@@ -96,7 +96,7 @@ function CompanyDetail({ companyKey, onClose }) {
               <Stat label="Contacts" value={d.contacts} />
               <Stat label="Touches" value={d.touches} />
               <Stat label="Replies" value={d.replies} />
-              <Stat label="Open roles" value={d.open_roles} />
+              <Stat label={leadTerm("open_roles")} value={d.open_roles} />
               <Stat label="LinkedIn accepted" value={d.linkedin_accepted} />
               <Stat label="Open tasks" value={d.open_tasks} />
             </div>
@@ -202,7 +202,7 @@ export default function Companies() {
       ) : (
         <div className="card" style={{ overflowX: "auto", padding: 0 }}>
           <table data-testid="companies-table">
-            <thead><tr><th>Company</th><th>Status</th><th>Contacts</th><th>Touches</th><th>Replies</th><th>Last touch</th><th>Open roles</th><th>LinkedIn accepted</th><th>Owner</th></tr></thead>
+            <thead><tr><th>Company</th><th>Status</th><th>Contacts</th><th>Touches</th><th>Replies</th><th>Last touch</th><th>{leadTerm("open_roles")}</th><th>LinkedIn accepted</th><th>Owner</th></tr></thead>
             <tbody>
               {items.map((c) => (
                 <tr key={c.key}>

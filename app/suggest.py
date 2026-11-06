@@ -8,7 +8,7 @@ _BY_STAGE = {
     "new": ("Check the email and phone, then enrich", "email", "Nothing to say yet. Clean the data first."),
     "verified": ("Find the hiring decision maker", "email", "Look for the HR head or founder before writing."),
     "enriched": ("Send the first human note", "email",
-                 "Mention the open role, say in one line what BookMyInterview does, that it is in beta and the first "
+                 "Mention the open role, say in one line what {product} does, that it is in beta and the first "
                  "role is free, and offer to draft a sample screen."),
     "contacted": ("Wait for a reply, follow up on day 3", "email",
                   "Share one useful tip about screening high-volume roles. No link, no pitch."),
@@ -31,12 +31,39 @@ _BY_STAGE = {
 }
 
 
-def suggest_next(stage: str, band: str, claim_url: str = DEFAULT_CLAIM_URL) -> dict:
-    """What to do next for a lead; call actions always carry the PD-only rule."""
+# For a rebranded install (any industry): the same rhythm without the hiring playbook.
+_GENERIC_BY_STAGE = {
+    "new": ("Check the email and phone, then enrich", "email", "Nothing to say yet. Clean the data first."),
+    "verified": ("Find the decision maker", "email", "Look for the person who decides before writing."),
+    "enriched": ("Send the first human note", "email",
+                 "Say in one line what {product} does and who it helps, and ask one easy question."),
+    "contacted": ("Wait for a reply, follow up on day 3", "email", "Share one useful tip. No link, no pitch."),
+    "engaged": ("Ask permission to continue on WhatsApp", "email",
+                "Ask whether you may send details on WhatsApp. Record their yes as consent."),
+    "interested": ("Send the details on WhatsApp and alert the representative", "whatsapp",
+                   "Thank them for the yes, send the details and offer the next step."),
+    "whatsapp_active": ("Representative to call within 24 hours", "call",
+                        "Ask for 2 minutes, ask what they need, explain {product} in one line, agree one next step."),
+    "call_done": ("Send a recap and the next step", "email", "Recap the call in 3 lines and link to {claim_url}."),
+    "trial": ("Help them get started", "whatsapp", "Offer a 10-minute walkthrough."),
+    "customer": ("Ask how it is going", "email",
+                 "Ask what worked and what to improve. If they are happy, ask whether you may quote one line, "
+                 "only with their OK."),
+    "advocate": ("Ask for a referral", "email", "Ask who else they know who could use {product}."),
+    "not_now": ("Re-nurture in about 2 months", "email", "Share one useful tip, no ask."),
+    "disqualified": ("Do not contact again unless something changes", "none", ""),
+}
+
+
+def suggest_next(stage: str, band: str, claim_url: str = DEFAULT_CLAIM_URL, product: str = "BookMyInterview",
+                 generic: bool = False) -> dict:
+    """What to do next for a lead; call actions always carry the PD-only rule. `generic` (a rebranded install) uses
+    the playbook without hiring words, naming `product`."""
     if stage == "unsubscribed":
         return {"action": "Do not contact again. They opted out.", "channel": "none", "pitch": "", "priority": "none"}
-    action, channel, pitch = _BY_STAGE.get(stage, ("Review lead", "email", ""))
+    action, channel, pitch = (_GENERIC_BY_STAGE if generic else _BY_STAGE).get(stage, ("Review lead", "email", ""))
     priority = "high" if band == "hot" else "normal" if band == "warm" else "low"
     action = action + CALL_RULE if channel == "call" else action
-    return {"action": action, "channel": channel, "pitch": pitch.format(claim_url=claim_url or DEFAULT_CLAIM_URL),
+    link = claim_url or ("" if generic else DEFAULT_CLAIM_URL) or "your booking link"
+    return {"action": action, "channel": channel, "pitch": pitch.format(claim_url=link, product=product),
             "priority": priority}

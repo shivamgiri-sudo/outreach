@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { SEQUENCE_STOPPED, sourceLabel, useSourceRegistry } from "../labels.js";
 import { istLabel } from "../time.js";
+import { getBrand } from "../brand.js";
 
 export const SIGNAL_LABELS = {
   hiring_volume: ["Hiring volume", 30], hiring_pain: ["Hiring pain", 25], fit: ["Fit", 15],
@@ -38,6 +39,16 @@ export function linkedinDrafts(lead) {
   const company = (lead.company || lead.domain || "your team").replace(/\s*\(.*?\)/g, "").replace(/\s+(pvt|private|ltd|limited|llp)\.?/gi, "").trim();
   const role = lead.role ? lead.role.toLowerCase() : "";
   const hiring = role ? `hiring a ${role}` : "hiring";
+  const { public: brand, full } = getBrand();
+  if (!brand.is_default) {
+    // A rebranded install: honest, neutral notes naming the owner's own company and first value point.
+    const value = full?.offer?.value_1 ? ` We help with: ${full.offer.value_1}.` : "";
+    return [
+      ["Connection note", `${hi}, I came across ${company} and thought it would be good to connect. I work at ${brand.company_name}. Happy to connect.`.slice(0, 300)],
+      ["First message (after they accept)", `${hi}, thanks for connecting. I'm with ${brand.product_name}.${value} Would a short chat be useful? No pressure either way.`],
+      ["Comment on their post", `Useful post, thanks for sharing. Curious how ${company} approaches this.`],
+    ];
+  }
   return [
     ["Connection note", `${hi}, I saw ${company} is ${hiring}. I work on BookMyInterview, which screens applicants once so you only interview the right few. Happy to connect.`.slice(0, 300)],
     ["First message (after they accept)", `${hi}, thanks for connecting. If ${role || "your open role"} is bringing more CVs than you can read, I can draft a free sample screen for it. Want me to send it? No pressure either way.`],

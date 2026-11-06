@@ -104,7 +104,7 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
     if (kind === "band") return select("value", "Value", [["hot", "Hot"], ["warm", "Warm"], ["cold", "Cold"]]);
     if (kind === "persona" && c.op !== "in") return select("value", "Value", PERSONAS.map((p) => [p, pretty(p)]));
     const hint = c.op === "in" ? "Separate several values with commas." : undefined;
-    const placeholder = { number: "60", text: c.field === "city" ? "Pune, Bengaluru, Gurugram" : c.field === "country" ? "IN" : "", tags: "diwali-hiring" }[kind] || "";
+    const placeholder = { number: "60", text: c.field === "city" ? "Pune, Bengaluru, Gurugram" : c.field === "country" ? "IN" : "", tags: "diwali-offer" }[kind] || "";
     return text("value", "Value", { hint, placeholder });
   };
 
@@ -128,7 +128,7 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
     </>),
     ai: () => (<>
       {select("mode", "What should Claude do", [["draft", "Write a draft"], ["classify", "Choose one of my options"], ["extract", "Pull out one detail"]])}
-      {text("prompt", "Instruction", { long: true, rows: 5, placeholder: "Write a two-line opening for {{first_name}} at {{company}} about their {{role}} hiring.",
+      {text("prompt", "Instruction", { long: true, rows: 5, placeholder: "Write a two-line opening for {{first_name}} at {{company}} about how {{my_product}} could help them.",
         hint: "Claude also sees the lead's company, title, city and stage. It is told to use only these facts." })}
       <Chips names={withVars(TEXT_PLACEHOLDERS)} onInsert={insert} />
       {c.mode === "classify" && (
@@ -144,7 +144,7 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
         <fieldset key={i} className="fb-fieldset"><legend>Field {i + 1}</legend>
           <Field id={id(`n${i}`)} label="Name"><input id={id(`n${i}`)} value={row.name ?? ""} placeholder="pitch" onChange={(e) => setRow(i, { name: e.target.value })} /></Field>
           <Field id={id(`v${i}`)} label="Value" hint="Can use {{company}}, {{role}}, {{first_name}} and earlier fields.">
-            <textarea id={id(`v${i}`)} rows={2} value={row.value ?? ""} placeholder="Hiring for {{role}} at {{company}}" onChange={(e) => setRow(i, { value: e.target.value })} /></Field>
+            <textarea id={id(`v${i}`)} rows={2} value={row.value ?? ""} placeholder="{{my_product}} for {{company}}" onChange={(e) => setRow(i, { value: e.target.value })} /></Field>
           {listOf("values").length > 1 && <button type="button" className="btn ghost" onClick={() => set("values", listOf("values").filter((_, j) => j !== i))}>Remove this field</button>}
         </fieldset>
       ))}
@@ -211,11 +211,11 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
       </fieldset>
     </>),
     email: () => (<>
-      {text("subject", "Subject", { placeholder: "{{role}} hiring at {{company}}" })}
+      {text("subject", "Subject", { placeholder: "A quick idea for {{company}}" })}
       {text("body", "Email text", { long: true, rows: 8, hint: "Short and honest. Keep {{unsub_link}}: every email needs an unsubscribe." })}
       <Chips names={withVars(EMAIL_PLACEHOLDERS)} onInsert={insert} />
       <details className="section"><summary>Version for leads without a role (optional)</summary>
-        {text("subject_no_role", "Subject without a role", { placeholder: "Hiring at {{company}}" })}
+        {text("subject_no_role", "Subject without a role", { placeholder: "For {{company}}" })}
         {text("body_no_role", "Text without a role", { long: true, rows: 5 })}
       </details>
     </>),
@@ -233,7 +233,7 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
     call_task: () => (<>{owner("owner", "Who calls")}{text("note", "Note for the caller", { long: true, rows: 3, placeholder: "They said yes. Call through PD only, before 18:55." })}</>),
     meeting_link: () => (<>{owner("owner", "Who sends the link")}{text("note", "Note (optional)", { long: true, rows: 3 })}</>),
     set_stage: () => select("stage", "Move to stage", STAGE_ORDER.map((s) => [s, stageLabel(s)]), "Only if the stage rules allow it; closed leads stay closed."),
-    add_tag: () => text("tag", "Tag", { placeholder: "diwali-hiring" }),
+    add_tag: () => text("tag", "Tag", { placeholder: "diwali-offer" }),
     notify: () => (<>{owner("to", "Who to notify")}{text("message", "Message", { long: true, rows: 3, placeholder: "No meeting two days after their yes. Follow up today." })}</>),
     webhook: () => (<>
       {text("url", "Address (https only)", { placeholder: "https://hooks.example.com/outreach" })}

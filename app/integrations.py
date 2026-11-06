@@ -12,13 +12,13 @@ CATALOGUE = [
         "modes": ["api"],
         "fields": [
             {"key": "domain", "label": "Sending domain", "required": True, "placeholder": "mail.yourbrand.in"},
-            {"key": "from_name", "label": "From name", "required": True, "placeholder": "Your name from BookMyInterview"},
+            {"key": "from_name", "label": "From name", "required": True, "placeholder": "Your name from your company"},
             {"key": "from_email", "label": "From email", "required": True, "placeholder": "hello@mail.yourbrand.in"},
             {"key": "smtp_host", "label": "SMTP host", "required": False, "placeholder": "smtp.resend.com"},
             {"key": "api_key", "label": "Email provider API key", "required": True, "secret": True},
         ],
         "steps": [
-            "Buy a look-alike domain (not bookmyinterview.ai).",
+            "Buy a look-alike domain (not your main company domain).",
             "Add it to your email provider (Resend, Google Workspace or similar).",
             "Add the SPF, DKIM and DMARC records they show you at your domain registrar.",
             "Warm up the mailbox for 2 weeks (start at 20 emails a day).",

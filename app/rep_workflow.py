@@ -26,8 +26,8 @@ NEXT_DAY_CALL = time(11, 0)
 # The default call script. {{first_name}}, {{rep}}, {{role}} and {{company}} are filled in per lead. Owners edit it in the
 # call desk (settings.call_script); nothing here claims results the business does not have.
 DEFAULT_SCRIPT = [
-    {"title": "Opener", "text": "Hi {{first_name}}, this is {{rep}} from BookMyInterview. You replied about screening for {{role}} at {{company}} — is this a good minute?"},
-    {"title": "Opener (Hinglish)", "text": "Hi {{first_name}}, main {{rep}}, BookMyInterview se. Aapne {{role}} ki screening ke baare mein reply kiya tha — kya abhi ek minute baat ho sakti hai?"},
+    {"title": "Opener", "text": "Hi {{first_name}}, this is {{rep}} from {{my_product}}. You replied about screening for {{role}} at {{company}} — is this a good minute?"},
+    {"title": "Opener (Hinglish)", "text": "Hi {{first_name}}, main {{rep}}, {{my_product}} se. Aapne {{role}} ki screening ke baare mein reply kiya tha — kya abhi ek minute baat ho sakti hai?"},
     {"title": "Ask", "text": "How is hiring for {{role}} going right now — what takes most of your team's time?"},
     {"title": "Why us", "text": "We screen every applicant once with a few role-specific questions, so you only interview the right few. Your first role is free, so you can judge it on your own candidates."},
     {"title": "Next step", "text": "Shall I set up your first role with you now? It's free and takes a few minutes."},
@@ -42,6 +42,20 @@ DEFAULT_OBJECTIONS = [
     {"q": "AI can't judge people", "a": "Agreed. The AI ranks, you decide, and every score comes with a reason you can check."},
     {"q": "How did you get my number?", "a": "From your public job post or company website. If you'd rather not hear from us, I'll delete it right now."},
     {"q": "We're not hiring now", "a": "No problem. Shall I check back in about 2 months?"},
+]
+# What a rebranded install starts from (no hiring words): the owner's own value points and call to action.
+GENERIC_SCRIPT = [
+    {"title": "Opener", "text": "Hi {{first_name}}, this is {{rep}} from {{my_company}}. You replied to our message about {{company}} — is this a good minute?"},
+    {"title": "Ask", "text": "What are you looking for right now, and what takes most of your team's time?"},
+    {"title": "Why us", "text": "{{my_value_1}}. {{my_value_2}}. {{my_value_3}}."},
+    {"title": "Next step", "text": "{{my_cta}}"},
+]
+GENERIC_OBJECTIONS = [
+    {"q": "No time", "a": "Understood. When is a better time? I'll call back then."},
+    {"q": "Send details", "a": "Of course. Shall I send them on WhatsApp or email?"},
+    {"q": "What does it cost?", "a": "I don't want to guess on the call. I'll send the current prices in writing."},
+    {"q": "How did you get my number?", "a": "From your public website or listing. If you'd rather not hear from us, I'll delete it right now."},
+    {"q": "Not now", "a": "No problem. Shall I check back in about 2 months?"},
 ]
 PD_NOTE = "Calls are placed by a person, never by a bot or an auto-dialler. Redial missed leads the same day, before 18:55."
 
@@ -325,8 +339,15 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
 
 # ---------------------------------------------------------------- call script
 def call_script(store) -> dict:
-    saved = store.read("settings").get("call_script") or {}
-    return {"script": saved.get("script") or DEFAULT_SCRIPT, "objections": saved.get("objections") or DEFAULT_OBJECTIONS,
+    """The script and answers; `variables` holds the brand values ({{my_company}}, {{my_value_1}}, …) the call desk
+    fills in next to the lead's own."""
+    from .brand import brand_is_default, brand_variables
+    settings = store.read("settings")
+    saved = settings.get("call_script") or {}
+    default = brand_is_default(settings)
+    return {"script": saved.get("script") or (DEFAULT_SCRIPT if default else GENERIC_SCRIPT),
+            "objections": saved.get("objections") or (DEFAULT_OBJECTIONS if default else GENERIC_OBJECTIONS),
+            "variables": brand_variables(settings), "role_fallback": "your open roles" if default else "your needs",
             "note": PD_NOTE, "custom": bool(saved), "updated_by": saved.get("updated_by"), "updated_at": saved.get("updated_at")}
 
 

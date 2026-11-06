@@ -121,6 +121,8 @@ def render(step: dict, lead: dict, settings: dict) -> str:
     if step["n"] == 1 and step["kind"] == "connect":
         chosen = (lead.get("linkedin_seq") or {}).get("variant")
         template = (settings.get("linkedin_connect_variants") or {}).get(chosen) or CONNECT_VARIANTS.get(chosen, template)
+    from .brand import fill_brand_placeholders           # {{my_company}} etc. work here too (app/brand.py)
+    template = fill_brand_placeholders(template, settings, braces_for_format=True)
     text = template.format(first_name=first, hook=hook, case_study_url=settings.get("case_study_url", ""))
     if step["kind"] == "connect" and len(text) > NOTE_LIMIT:
         text = text[: NOTE_LIMIT - 1].rsplit(" ", 1)[0] + "…"
@@ -130,7 +132,8 @@ def render(step: dict, lead: dict, settings: dict) -> str:
 def render_branch(key: str, lead: dict, settings: dict, **values) -> str:
     first = clean_first_name(lead.get("contact_name")) or "there"
     defaults = {"option_1": "", "option_2": "", "date": "", "time": "", "case_study_url": settings.get("case_study_url", "")}
-    return BRANCHES[key].format(first_name=first, **{**defaults, **values})
+    from .brand import fill_brand_placeholders
+    return fill_brand_placeholders(BRANCHES[key], settings, braces_for_format=True).format(first_name=first, **{**defaults, **values})
 
 
 def _active_steps(settings: dict) -> list:

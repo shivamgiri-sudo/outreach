@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { api, isOwner } from "../api.js";
 
-export function fillScript(text, lead, rep) {
+// `vars` are the brand values from the server ({{my_company}}, {{my_value_1}}, …), filled the same way.
+export function fillScript(text, lead, rep, vars = {}, roleFallback = "your open roles") {
   const first = (lead?.contact_name || "").replace(/^(mr|mrs|ms|dr)\.?\s+/i, "").trim().split(/\s+/)[0] || "there";
-  return String(text || "").replaceAll("{{rep}}", rep || "your name").replaceAll("{{first_name}}", first)
-    .replaceAll("{{role}}", lead?.role || "your open roles").replaceAll("{{company}}", lead?.company || "your company");
+  const filled = String(text || "").replaceAll("{{rep}}", rep || "your name").replaceAll("{{first_name}}", first)
+    .replaceAll("{{role}}", lead?.role || roleFallback).replaceAll("{{company}}", lead?.company || "your company");
+  return filled.replace(/\{\{(my_[a-z0-9_]+|sign_off|sender)\}\}/g, (m, key) => vars[key] || m);
 }
 
 function Editor({ data, onSaved, onCancel }) {
@@ -24,7 +26,7 @@ function Editor({ data, onSaved, onCancel }) {
   };
   return (
     <form className="inline-form" onSubmit={save} aria-label="Edit the call script">
-      <p className="sub" style={{ margin: 0 }}>Use {"{{first_name}}"}, {"{{rep}}"}, {"{{role}}"} and {"{{company}}"}; they are filled in for each lead. Only say what is true today.</p>
+      <p className="sub" style={{ margin: 0 }}>Use {"{{first_name}}"}, {"{{rep}}"}, {"{{role}}"} and {"{{company}}"}; they are filled in for each lead. Your own details ({"{{my_company}}"}, {"{{my_product}}"}, {"{{my_value_1}}"}…{"{{my_value_3}}"}, {"{{my_cta}}"}) come from Setup → Brand &amp; offer. Only say what is true today.</p>
       {script.map((s, i) => (
         <div key={i} className="row" style={{ alignItems: "flex-start" }}>
           <input aria-label={`Line ${i + 1} title`} value={s.title} style={{ maxWidth: 160 }} onChange={(e) => set(script, setScript, i, "title", e.target.value)} />
@@ -61,11 +63,11 @@ export default function CallScript({ data, lead, rep, onChanged }) {
         <h3 style={{ margin: 0 }}>Call script{lead ? ` for ${lead.contact_name || lead.company}` : ""}</h3>
         {isOwner() && <button className="btn ghost" onClick={() => setEditing(true)}>Edit script</button>}
       </div>
-      {data.script.map((s, i) => <p key={i}><b>{s.title}:</b> {fillScript(s.text, lead, rep)}</p>)}
+      {data.script.map((s, i) => <p key={i}><b>{s.title}:</b> {fillScript(s.text, lead, rep, data.variables, data.role_fallback)}</p>)}
       <button className="link" onClick={() => setShowObjections(!showObjections)} aria-expanded={showObjections}>
         {showObjections ? "Hide answers to objections" : `If they say… (${data.objections.length} answers)`}
       </button>
-      {showObjections && data.objections.map((o, i) => <p key={i}><b>“{o.q}”</b> — {fillScript(o.a, lead, rep)}</p>)}
+      {showObjections && data.objections.map((o, i) => <p key={i}><b>“{o.q}”</b> — {fillScript(o.a, lead, rep, data.variables, data.role_fallback)}</p>)}
       {data.custom && data.updated_by && <p className="sub">Edited by {data.updated_by}.</p>}
     </div>
   );

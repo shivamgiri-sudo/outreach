@@ -110,12 +110,17 @@ def make_router(store, email_transport=post_json, ai_transport=post_json, apollo
         connected = lambda i: ints[i]["status"] == "configured"
         base = public_base_url(store, default_base_url)
         stories_ok = any(s.get("permission") for s in store.read("stories"))
+        from .brand import brand_is_default, get_brand, prompt_profile
+        default_brand = brand_is_default(settings)
+        product = prompt_profile(settings)["product"]
 
         def row(item_id, title, done, detail, page, required=False):
             return {"id": item_id, "title": title, "status": "done" if done else ("todo" if required else "optional"),
                     "detail": detail, "page": page, "required": required}
 
         items = [
+            row("brand", "Add your business name, logo and what you sell", not default_brand,
+                f"Emails, the demo page and the app header use it. Now showing: {get_brand(settings)['product_name']}.", "setup"),
             row("leads", "Load your leads", bool(store.read("leads")), "Import your sheet or an Apollo export.", "leads", True),
             row("public_url", "Set your public web address", _public_url_ok(base),
                 f"Unsubscribe and demo links use {base}. Recipients can't open a localhost address.", "setup", True),
@@ -123,8 +128,8 @@ def make_router(store, email_transport=post_json, ai_transport=post_json, apollo
                 "A separate domain, with the email provider's API key.", "setup", True),
             row("test_email", "Send yourself a test email", bool(settings.get("test_email_ok_at")),
                 "Use the test button on the sending domain card.", "setup", True),
-            row("bmi_limits", "Confirm the free limits are set inside BookMyInterview", bool(settings.get("confirm_bmi_limits")),
-                "Otherwise free use has no ceiling.", "setup", True),
+            row("bmi_limits", f"Confirm the free limits are set inside {product}", bool(settings.get("confirm_bmi_limits")),
+                "Otherwise free use has no ceiling.", "setup", default_brand),
             {"id": "live_sending", "title": "Switch on real sending", "status": "done" if settings.get("live_sending") else "todo",
              "detail": "A deliberate last step: switch on 'Send for real' on the Outbox page.", "page": "outbox", "required": False},
             row("login", "Turn on login", bool(auth_required()), "Set OUTREACH_ADMIN_PASSWORD before sharing the app.", "setup"),
@@ -132,7 +137,7 @@ def make_router(store, email_transport=post_json, ai_transport=post_json, apollo
                 "Saved keys are encrypted but OUTREACH_SECRET_KEY is missing or wrong, so they can't be used. Set the right key "
                 "and restart." if getattr(store, "secret_errors", 0) else "Set OUTREACH_SECRET_KEY to encrypt saved keys.", "setup"),
             row("webhook", "Let the product report activity", bool(webhook_secret(store, default_webhook_secret)),
-                "A secret the BookMyInterview product sends with each event.", "setup"),
+                f"A secret the {product} product sends with each event.", "setup"),
             row("ai_writer", "Connect the AI writer", bool(_llm_config(store)), "Gives tailored reply drafts.", "setup"),
             row("apollo", "Connect Apollo", ints["apollo"]["mode"] == "api" and connected("apollo"), "Automatic email lookups.", "setup"),
             row("whatsapp", "Connect WhatsApp", connected("whatsapp"), "Messages stay in practice mode until sending is added.", "setup"),

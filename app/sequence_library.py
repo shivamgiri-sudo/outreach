@@ -29,7 +29,10 @@ DEFAULT_NAME = "Default (6 emails)"
 MAX_STEPS, MAX_SUBJECT, MAX_BODY, MAX_NAME, MAX_NOTES, MAX_VARIANTS = 10, 200, 6000, 120, 500, 3
 MAX_SEQUENCES, MAX_SNIPPETS = 100, 500
 # Placeholders the sequence engine fills (sequences.lead_variables + the runner's extras).
-KNOWN_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "unsub_link", "offer_line", "demo_link")
+KNOWN_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "unsub_link", "offer_line", "demo_link",
+                      # brand placeholders (app/brand.py), filled the same way in every channel
+                      "my_company", "my_product", "my_tagline", "my_value_1", "my_value_2", "my_value_3", "my_cta",
+                      "my_website", "sign_off")
 UNSUB_TOKEN = "{{unsub_link}}"
 UNSUB_LINE = "\n\nNot relevant? Unsubscribe: {{unsub_link}}"
 SNIPPET_CHANNELS = ("email", "whatsapp", "linkedin", "sms")

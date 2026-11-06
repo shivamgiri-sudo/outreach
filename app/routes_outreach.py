@@ -11,6 +11,7 @@ from html import escape
 from urllib.parse import quote, urlparse
 
 from .auth import PRIVATE_SETTINGS
+from .brand import get_brand
 from .growth_core import public_base_url
 from .inbound import _rates, apply_reply, suppress as _suppress_email
 from .scraper import extract_contacts, fetch_page
@@ -242,11 +243,11 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         if "public_base_url" in changes:
             changes["public_base_url"] = changes["public_base_url"].strip().rstrip("/")
         if "whatsapp_template_params" in changes:
-            from .whatsapp import PARAM_ORDER
+            from .whatsapp import NAMED_PARAMS, PARAM_ORDER
             ok = lambda v: (isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= len(PARAM_ORDER)) or (
-                isinstance(v, list) and all(n in PARAM_ORDER for n in v))
+                isinstance(v, list) and all(n in NAMED_PARAMS for n in v))
             if not all(isinstance(k, str) and ok(v) for k, v in (changes["whatsapp_template_params"] or {}).items()):
-                raise HTTPException(400, "WhatsApp template values must be a count (0-4) or a list of: " + ", ".join(PARAM_ORDER))
+                raise HTTPException(400, "WhatsApp template values must be a count (0-4) or a list of: " + ", ".join(NAMED_PARAMS))
         if "privacy_url" in changes:
             changes["privacy_url"] = changes["privacy_url"].strip()
             parsed = urlparse(changes["privacy_url"])
@@ -402,7 +403,7 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         action = escape(f"/u/{quote(token, safe='.')}", quote=True)
         return ("<!doctype html><meta name='viewport' content='width=device-width,initial-scale=1'>"
                 "<div style='font-family:sans-serif;max-width:420px;margin:15vh auto;text-align:center'>"
-                "<p>Stop all emails from BookMyInterview outreach?</p>"
+                f"<p>Stop all emails from {escape(get_brand(store)['product_name'])}?</p>"
                 f"<form method='post' action='{action}'><button style='padding:10px 18px;font-size:16px'>Yes, unsubscribe me</button></form>"
                 "</div>")
 

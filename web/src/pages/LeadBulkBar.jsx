@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, getRole, isOwner } from "../api.js";
-import { STAGE_LABELS } from "../labels.js";
+import { STAGE_LABELS, stageLabel } from "../labels.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import ConfirmDialog from "./ConfirmDialog.jsx";
 import { usePrompt } from "../Dialog.jsx";
@@ -83,9 +83,9 @@ export default function LeadBulkBar({ picked, pageIds, owners, spaces, onDone, o
           {busy === "enroll" ? "Starting…" : "Start email sequence"}</button>
         <button className="btn ghost" disabled={busy === "li"} onClick={bulkLinkedIn}>{busy === "li" ? "Starting…" : "Start LinkedIn outreach"}</button>
         <button className="btn ghost" disabled={busy === "list"} onClick={saveAsList}>Save as list</button>
-        <select aria-label="Change stage of selected leads" value="" onChange={(e) => e.target.value && confirmThen("stage", e.target.value, `Move to ${STAGE_LABELS[e.target.value]}?`, "Yes, move them")} style={{ width: "auto" }}>
+        <select aria-label="Change stage of selected leads" value="" onChange={(e) => e.target.value && confirmThen("stage", e.target.value, `Move to ${stageLabel(e.target.value)}?`, "Yes, move them")} style={{ width: "auto" }}>
           <option value="">Change stage…</option>
-          {Object.entries(STAGE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          {Object.keys(STAGE_LABELS).map((k) => <option key={k} value={k}>{stageLabel(k)}</option>)}
         </select>
         <select aria-label="Assign selected leads to" value="" onChange={(e) => e.target.value && confirmThen("owner", e.target.value === "__none" ? "" : e.target.value,
           e.target.value === "__none" ? "Remove the owner?" : `Assign to ${e.target.value}?`, "Yes, assign")} style={{ width: "auto" }}>

@@ -27,8 +27,10 @@ MAX_SUBJECT, MAX_BODY, MAX_SMS, MAX_NOTE = 200, 5000, 480, 1000
 
 TRIGGER_REPLY_LABELS = ("interested", "not_interested", "question", "not_now", "wrong_person", "any")
 REPLY_OUTPUTS = ("interested", "not_interested", "question", "not_now", "wrong_person", "other", "any", "timeout")
-EMAIL_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "unsub_link", "demo_link", "offer_line")
-TEXT_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "demo_link")
+BRAND_PLACEHOLDERS = ("my_company", "my_product", "my_tagline", "my_value_1", "my_value_2", "my_value_3", "my_cta",
+                      "my_website", "sign_off")      # app/brand.py; {{sender}} is already in both lists
+EMAIL_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "unsub_link", "demo_link", "offer_line", *BRAND_PLACEHOLDERS)
+TEXT_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "demo_link", *BRAND_PLACEHOLDERS)
 IF_FIELDS = {
     "score": "number", "open_roles": "number", "band": "text", "stage": "text", "city": "text", "country": "text",
     "title": "text", "persona": "text", "source": "text", "campaign_id": "text", "tag": "tags",

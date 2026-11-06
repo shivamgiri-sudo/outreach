@@ -30,7 +30,7 @@ OWNER_ROUTES = {
     ("PUT", "/api/insights/source-spend"), ("GET", "/api/inbound/log"), ("POST", "/api/inbound/{connector_id}/test"), ("POST", "/api/inbound/{connector_id}/sync"),
 }
 OWNER_PREFIXES = ("/api/users", "/api/compliance", "/api/backup", "/api/export/", "/api/capture", "/api/hiring-engine", "/api/linkedin-agent", "/api/audit", "/api/system")    # any method (exports: no CSV for callers)
-OWNER_WRITE_PREFIXES = ("/api/integrations", "/api/channels", "/api/workflows", "/api/flows")   # anything but GET
+OWNER_WRITE_PREFIXES = ("/api/integrations", "/api/channels", "/api/workflows", "/api/flows", "/api/brand", "/api/labels", "/api/onboarding")   # anything but GET
 READ_METHODS = ("GET", "HEAD", "OPTIONS")
 
 

@@ -13,10 +13,25 @@ TOKEN_BYTES = 8
 
 
 def get_offer(store) -> dict:
-    return {**DEFAULT_OFFER, **store.read("settings")}
+    """The free-experience numbers plus, under "offer", what is sold (app/brand.py). The booking link the owner sets
+    for the offer is the claim link unless an older claim_url setting exists."""
+    from .brand import brand_is_default, get_offer_profile
+    settings = store.read("settings")
+    profile = get_offer_profile(settings)
+    claim = profile["booking_link"] or (DEFAULT_OFFER["claim_url"] if brand_is_default(settings) else "")
+    return {**DEFAULT_OFFER, "claim_url": claim, **settings, "offer": profile}
+
+
+def get_offer_profile(store) -> dict:
+    """What is sold, to whom, the three value points, the call to action and the demo / booking link."""
+    from .brand import get_offer_profile as profile
+    return profile(store)
 
 
 def offer_line(offer: dict) -> str:
+    custom = str(((offer or {}).get("offer") or {}).get("offer_line") or "").strip()
+    if custom:
+        return custom
     return (f"Your first role is free for {offer['trial_days']} days (up to {offer['candidate_cap']} candidates "
             f"screened and {offer['booking_cap']} interviews booked). Paid plans only if you choose to continue.")
 

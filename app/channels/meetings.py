@@ -11,6 +11,7 @@ import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from ..brand import get_brand
 from ..hygiene import normalise_email
 from .calendar import LINK_PROVIDERS, booking_link, cancel_event, create_event
 from .config import active_provider, config_for, entry_of
@@ -67,10 +68,11 @@ def find_lead(store, lead_id: str) -> dict:
     return lead
 
 
-def default_title(lead: dict) -> str:
+def default_title(lead: dict, product: str = "BookMyInterview.ai") -> str:
+    """'<product> demo — <company>'; the product name comes from the brand (app/brand.py)."""
     company = re.sub(r"\s*\(.*?\)", "", lead.get("company") or lead.get("domain") or "").strip()
     company = LEGAL_SUFFIX.sub("", company).strip()
-    return f"BookMyInterview.ai demo — {company}" if company else "BookMyInterview.ai demo"
+    return f"{product} demo — {company}" if company else f"{product} demo"
 
 
 def book(store, lead_id: str, body: dict, transport=request, resolver=None, now: datetime = None, sender=None) -> dict:
@@ -105,7 +107,7 @@ def book(store, lead_id: str, body: dict, transport=request, resolver=None, now:
     if start < now - timedelta(minutes=5):
         raise ValueError("Pick a time in the future.")
     end = start + timedelta(minutes=duration)
-    title = (body.get("title") or "").strip()[:200] or default_title(lead)
+    title = (body.get("title") or "").strip()[:200] or default_title(lead, get_brand(store)["product_name"])
     spec = {"start": start, "end": end, "title": title, "attendee_email": attendee or "",
             "notes": (body.get("notes") or "").strip()[:2000], "name": lead.get("contact_name", ""),
             "company": lead.get("company", "")}

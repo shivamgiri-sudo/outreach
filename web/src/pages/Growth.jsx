@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
+import { getBrand } from "../brand.js";
 
 const STEP_LABELS = {
   invited: "Invited", opened: "Opened demo", drafted: "Drafted a role", published: "Published role",
@@ -51,7 +52,7 @@ export default function Growth() {
           <input value={offer.claim_url} onChange={(e) => setOffer({ ...offer, claim_url: e.target.value })} />
           <button className="btn" style={{ marginTop: 12 }} onClick={saveOffer}>Save offer</button>
           <p className="sub" style={{ marginTop: 10 }}>
-            These numbers appear in emails and demo pages. The limits themselves must also be set inside BookMyInterview, or free use has no ceiling.
+            These numbers appear in emails and demo pages. The limits themselves must also be set inside {getBrand().public.product_name}, or free use has no ceiling.
           </p>
         </div>
 

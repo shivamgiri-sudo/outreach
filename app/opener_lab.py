@@ -80,6 +80,25 @@ WRITER_SYSTEM = "\n".join([
 ])
 
 
+def writer_system(store) -> str:
+    """The note writer's brief, describing the seller from the brand and offer (app/brand.py); the default brand
+    keeps the original wording."""
+    from .brand import brand_is_default, get_brand, get_offer_profile, prompt_profile
+    settings = store.read("settings")
+    if brand_is_default(settings):
+        return WRITER_SYSTEM
+    brand, offer, profile = get_brand(settings), get_offer_profile(settings), prompt_profile(settings)
+    return "\n".join([
+        f"You write LinkedIn connection-request notes for {profile['seller']} ({brand['product_name']}) reaching "
+        f"{offer['who'] or 'business owners and decision makers'}.",
+        "Each note: at most 240 characters, starts with 'Hi {first_name},', warm and plain,",
+        f"about the reader's world ({offer['topic'] or 'their work'}), NO pitch, NO product name, NO link, NO invented facts, "
+        "numbers or customers,",
+        "no flattery that pretends you read something specific. Write each note in a different style.",
+        'Return only JSON: {"notes": ["...", "..."]}',
+    ])
+
+
 def candidates(store, context: str = "", n: int = 4, transport=post_json) -> dict:
     """Up to n scored candidate notes, best first. Claude writes them when connected; otherwise the built-in set."""
     n = max(2, min(int(n or 4), 6))
@@ -88,7 +107,7 @@ def candidates(store, context: str = "", n: int = 4, transport=post_json) -> dic
     if cfg:
         user = f"Write {n} notes." + (f"\n<context>\n{ai._untrusted(context)[:500]}\n</context>" if context.strip() else "")
         try:
-            raw = ai._call_llm(cfg, WRITER_SYSTEM, user, 900, transport)
+            raw = ai._call_llm(cfg, writer_system(store), user, 900, transport)
             found = re.search(r"\{.*\}", raw, re.S)
             notes = [str(x).strip() for x in (json.loads(found.group(0)).get("notes") or [])] if found else []
             source = "claude" if notes else source

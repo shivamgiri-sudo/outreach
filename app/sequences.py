@@ -12,7 +12,7 @@ MAX_ROLE_CHARS = 40
 
 # Executive outreach sequence supplied by the owner (BookMyInterview_Executive_Email_Sequence.docx): Day 1, 4, 8, 12, 16, 21.
 # `day` counts from the first send, so Day 1 is 0. The website link sits in the identity footer every email carries.
-_SIGN_OFF = "\n\nRegards,\nTeam BookMyInterview.ai\n\nNot relevant? Unsubscribe: {{unsub_link}}"
+_SIGN_OFF = "\n\n{{sign_off}}\n\nNot relevant? Unsubscribe: {{unsub_link}}"
 
 DEFAULT_SEQUENCE = [
     {"day": 0, "name": "Email 1 — compromised hiring (Day 1)",
@@ -48,8 +48,8 @@ DEFAULT_SEQUENCE = [
               "invested.\n\nHas your organisation considered using technology to streamline these stages?" + _SIGN_OFF)},
     {"day": 15, "name": "Email 5 — introducing BookMyInterview.ai (Day 16)",
      "subject": "Technology for more informed hiring decisions",
-     "body": ("{{greeting}}\n\nThis is the problem BookMyInterview.ai is designed to address.\n\n"
-              "BookMyInterview.ai is a recruitment technology platform focused on candidate assessment and interview "
+     "body": ("{{greeting}}\n\nThis is the problem {{my_product}} is designed to address.\n\n"
+              "{{my_product}} is a recruitment technology platform focused on candidate assessment and interview "
               "management.\n\nIt brings together:\n"
               "- Job description and resume parsing: assess candidate-role alignment.\n"
               "- Role-specific tests: evaluate relevant skills and competencies.\n"
@@ -66,7 +66,7 @@ DEFAULT_SEQUENCE = [
               "create consequences long after the vacancy is closed.\n\nThe objective should not simply be to hire faster. "
               "It should be to make better-informed hiring decisions within the required timelines.\n\n"
               "If improving candidate evaluation and interview management is on your organisation's agenda, I'd be happy to "
-              "show you how BookMyInterview.ai approaches this.\n\nWould a brief conversation be worthwhile?" + _SIGN_OFF)},
+              "show you how {{my_product}} approaches this.\n\nWould a brief conversation be worthwhile?" + _SIGN_OFF)},
 ]
 
 _VAR = re.compile(r"\{\{(\w+)\}\}")
@@ -243,14 +243,18 @@ def in_business_hours(now: datetime) -> bool:
     return local.weekday() < 5 and BUSINESS_START_HOUR <= local.hour < BUSINESS_END_HOUR
 
 
-def lead_variables(lead: dict, sender: str, base_url: str, extra: dict = None, secret: str = "") -> dict:
+def lead_variables(lead: dict, sender: str, base_url: str, extra: dict = None, secret: str = "", brand=None) -> dict:
     """Cleaned per-lead values for templates. `first_name` keeps 'there' as a fallback for old custom templates.
 
-    With the server secret, unsub_link is the signed form (/u/<id>.<signature>) that every real message uses."""
+    With the server secret, unsub_link is the signed form (/u/<id>.<signature>) that every real message uses.
+    `brand` is the store (or settings) whose brand/offer fill {{my_company}}, {{sign_off}} and the other brand
+    placeholders (app/brand.py); without it the default brand is used."""
+    from .brand import brand_variables
     from .unsubscribe import signature
     first = clean_first_name(lead.get("contact_name"))
     role = clean_role(lead.get("role"))
     return {
+        **brand_variables(brand if brand is not None else {}),
         "first_name": first or "there", "greeting": greeting_for(first),
         "company": clean_company(lead.get("company")) or lead.get("domain") or "your company",
         "role": role or ROLE_FALLBACK, "has_role": bool(role), "sender": sender,

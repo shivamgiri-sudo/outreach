@@ -6,6 +6,8 @@ import { useConfirm, usePrompt } from "../Dialog.jsx";
 import ScoringCard from "./ScoringCard.jsx";
 import AuditLog from "./AuditLog.jsx";
 import SystemHealth from "./SystemHealth.jsx";
+import BrandSettings from "./BrandSettings.jsx";
+import { useBrand } from "../brand.js";
 
 const STATUS = { configured: ["ok", "Connected"], incomplete: ["warn", "Missing details"], not_configured: ["", "Not set up"] };
 
@@ -81,6 +83,7 @@ function Connector({ item, onSaved }) {
 
 function Basics({ onSaved }) {
   const [cfg, setCfg] = useState(null);
+  const product = useBrand().public.product_name;
   const [message, setMessage] = useState("");
   useEffect(() => { api.settings().then(setCfg); }, []);
   if (!cfg) return null;
@@ -121,10 +124,10 @@ function Basics({ onSaved }) {
       </p>
       <label className="row" style={{ fontWeight: 400 }}>
         <input type="checkbox" style={{ width: "auto" }} checked={!!cfg.confirm_bmi_limits} onChange={(e) => setCfg({ ...cfg, confirm_bmi_limits: e.target.checked })} />
-        The free limits (candidates, interviews, days) are set inside BookMyInterview itself
+        The free limits (candidates, interviews, days) are set inside {product} itself
       </label>
       <label htmlFor="privacy-url">Privacy notice link (optional)</label>
-      <input id="privacy-url" value={cfg.privacy_url || ""} placeholder="https://bookmyinterview.ai/privacy" onChange={(e) => setCfg({ ...cfg, privacy_url: e.target.value })} />
+      <input id="privacy-url" value={cfg.privacy_url || ""} placeholder="https://yourcompany.com/privacy" onChange={(e) => setCfg({ ...cfg, privacy_url: e.target.value })} />
       <p className="sub" style={{ margin: "4px 0" }}>Added to the footer of every email (India's DPDP Act asks for a clear notice).</p>
       <label htmlFor="retention">Review cold leads after (days)</label>
       <input id="retention" type="number" min={30} max={3650} style={{ maxWidth: 140 }} value={cfg.retention_days_cold || 365}
@@ -240,7 +243,7 @@ function Users() {
   );
 }
 
-export default function Setup({ onSetupChanged, go, tab: initialTab, role = "owner" }) {
+export default function Setup({ onSetupChanged, go, tab: initialTab, role = "owner", onOpenWizard }) {
   const [items, setItems] = useState([]);
   const [tab, setTab] = useState(initialTab || (/[?&]tab=([a-z]+)/.exec(window.location.hash) || [])[1] || "checklist");
   const load = () => api.integrations().then((list) => { setItems(list); onSetupChanged?.(); });
@@ -254,6 +257,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
       <p className="sub">{done} of {items.length} connected. Everything works without these; connect each one when you're ready. Keys are stored on your server and shown masked.</p>
       <div className="tabs scroll" role="tablist" aria-label="Setup sections">
         <button role="tab" aria-selected={tab === "checklist"} className={tab === "checklist" ? "on" : ""} onClick={() => setTab("checklist")}>Go-live checklist</button>
+        {role === "owner" && <button role="tab" aria-selected={tab === "brand"} className={tab === "brand" ? "on" : ""} onClick={() => setTab("brand")}>Brand &amp; offer</button>}
         <button role="tab" aria-selected={tab === "connections"} className={tab === "connections" ? "on" : ""} onClick={() => setTab("connections")}>Connections</button>
         {role === "owner" && <button role="tab" aria-selected={tab === "team"} className={tab === "team" ? "on" : ""} onClick={() => setTab("team")}>Team &amp; workspaces</button>}
         <button role="tab" aria-selected={tab === "backup"} className={tab === "backup" ? "on" : ""} onClick={() => setTab("backup")}>Backup &amp; restore</button>
@@ -261,6 +265,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
         {role === "owner" && <button role="tab" aria-selected={tab === "health"} className={tab === "health" ? "on" : ""} onClick={() => setTab("health")}>System health</button>}
       </div>
       {tab === "checklist" && <GoLive embedded go={(page) => (page === "setup" ? setTab("connections") : go?.(page))} />}
+      {tab === "brand" && role === "owner" && <BrandSettings onOpenWizard={onOpenWizard} />}
       {tab === "backup" && <BackupRestore />}
       {tab === "audit" && role === "owner" && <AuditLog />}
       {tab === "health" && role === "owner" && <SystemHealth />}

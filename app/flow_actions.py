@@ -193,7 +193,7 @@ def compose_email(store, flow: dict, node: dict, lead: dict, now: datetime, base
 
 def text_for(store, lead: dict, text: str, base_url: str, now: datetime) -> tuple:
     lead = ensure_demo(lead, now)
-    variables = lead_variables(lead, get_settings(store)["sender_name"], base_url, {"demo_link": f"{base_url}/demo/{lead['demo_token']}"})
+    variables = lead_variables(lead, get_settings(store)["sender_name"], base_url, {"demo_link": f"{base_url}/demo/{lead['demo_token']}"}, brand=store)
     return render(apply_vars(text, CURRENT_VARS.get()), variables)
 
 

@@ -13,6 +13,8 @@ CHANNEL_RULES["chat"] = CHANNEL_RULES["whatsapp"]
 CHANNEL_RULES["email_reply"] = ("Write a plain-text email reply in an existing thread: short, one clear next step. "
                                 "A reply needs no unsubscribe line.")
 
+# The default seller (the original single business). app/brand.py prompt_profile builds the same keys from the
+# owner's brand and offer.
 PRODUCT = ("BookMyInterview (bookmyinterview.ai) is in beta. Describe it only like this: candidates are screened once "
            "by a short voice answer and a few MCQs, and the best ones book their own interview slot.")
 NO_STORIES = "You have no customer stories. Do not mention any."
@@ -36,20 +38,33 @@ def _facts_line(spec: dict) -> str:
     return f"Facts you may use (nothing else): {facts}" if facts else NO_STORIES
 
 
-def build_prompt(spec: dict, task_rules: str = "") -> str:
-    """A system prompt from the form fields. `task_rules` is for internal callers and sits before the guardrails."""
+DEFAULT_PROFILE = {"seller": "an Indian hiring-tech team", "audience": "employers", "need_label": "hiring for",
+                   "goal": "offer to draft a free sample screen for their open role", "pain": "their hiring problem",
+                   "product_line": PRODUCT, "honesty": GUARDRAILS[2]}
+
+
+def guardrails(profile: dict = None) -> tuple:
+    """The fixed honesty rules, naming the seller's own product."""
+    honesty = (profile or {}).get("honesty") or DEFAULT_PROFILE["honesty"]
+    return (*GUARDRAILS[:2], honesty, *GUARDRAILS[3:])
+
+
+def build_prompt(spec: dict, task_rules: str = "", profile: dict = None) -> str:
+    """A system prompt from the form fields. `task_rules` is for internal callers and sits before the guardrails.
+    `profile` describes the seller (app/brand.py prompt_profile); without it the default seller is used."""
+    p = {**DEFAULT_PROFILE, **(profile or {})}
     channel = spec.get("channel") or "email"
     industry = (spec.get("industry") or "any").strip()
     where = "in India" if industry.lower() == "any" else f"in the {industry} industry"
     lines = [
-        f"You help an Indian hiring-tech team start friendly conversations with employers {where}.",
-        f"The lead is hiring for: {spec.get('role') or 'various roles'}.",
+        f"You help {p['seller']} start friendly conversations with {p['audience']} {where}.",
+        f"The lead is {p['need_label']}: {spec.get('role') or 'various roles'}.",
         f"Channel: {channel}. {CHANNEL_RULES.get(channel, CHANNEL_RULES['email'])}",
         f"Tone: {spec.get('tone') or 'warm'}. Language: {spec.get('language') or 'English'}, unless the lead writes "
         f"in another language or script.",
-        f"Goal: {spec.get('goal') or 'offer to draft a free sample screen for their open role'}.",
-        "Style: sound like a helpful person, not a salesperson. Lead with their hiring problem. Keep it short.",
-        PRODUCT,
+        f"Goal: {spec.get('goal') or p['goal']}.",
+        f"Style: sound like a helpful person, not a salesperson. Lead with {p['pain']}. Keep it short.",
+        p["product_line"],
         _facts_line(spec),
     ]
     if task_rules:
@@ -58,15 +73,15 @@ def build_prompt(spec: dict, task_rules: str = "") -> str:
         lines.append(f"Do: {spec['dos']}")
     if spec.get("donts"):
         lines.append(f"Don't: {spec['donts']}")
-    return "\n".join([*lines, *GUARDRAILS])
+    return "\n".join([*lines, *guardrails(p)])
 
 
-def build_prompt_body(spec: dict, task_rules: str = "") -> str:
+def build_prompt_body(spec: dict, task_rules: str = "", profile: dict = None) -> str:
     """The form-derived part of the prompt without the fixed honesty rules (what the AI writer may rewrite)."""
-    full = build_prompt(spec, task_rules)
+    full = build_prompt(spec, task_rules, profile)
     return full[: full.rindex(GUARDRAILS[0])].rstrip()
 
 
-def with_guardrails(body: str) -> str:
+def with_guardrails(body: str, profile: dict = None) -> str:
     """Any prompt body, with the fixed honesty rules always appended last."""
-    return "\n".join([body.rstrip(), *GUARDRAILS])
+    return "\n".join([body.rstrip(), *guardrails(profile)])

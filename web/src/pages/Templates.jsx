@@ -10,7 +10,7 @@ const UNSUB = "\n\nPrefer no more emails? {{unsub_link}}";
 const email = (text) => `{{greeting}}\n\n${text}\n\n— {{sender}}${UNSUB}`;
 const OTHERS = [
   { channel: "LinkedIn (send by hand)", name: "Comment on a job post", body: "Hiring for {{role}} usually means a lot of CV reading. One thing that helps: ask every applicant the same 3 short questions before any call, then compare the answers side by side." },
-  { channel: "LinkedIn (send by hand)", name: "Connection note", body: "Hi {{first_name}}, I'm {{sender}} from BookMyInterview. We're building a simpler way to screen high-volume hiring (in beta). Saw you're hiring for {{role}}, happy to connect." },
+  { channel: "LinkedIn (send by hand)", name: "Connection note", body: "Hi {{first_name}}, I'm {{sender}} from {{my_product}}. We're building a simpler way to screen high-volume hiring (in beta). Saw you're hiring for {{role}}, happy to connect." },
   { channel: "Email", name: "Help with existing applicants", body: email("If you already have applicants for {{role}}, I can help you add them to your free first role, so you see how the screen ranks your own candidates.") },
   { channel: "Email", name: "Honest heads-up (free allowance nearly used)", body: email("A quick heads-up: you're close to the free limit on your first role. As a reminder: {{offer_line}}\n\nI'd rather you hear it from me early. If it has been useful, reply and I'll send what continuing costs. If not, no problem.") },
   { channel: "Email", name: "After call recap", body: email("Thanks for your time today. Recap: [3 lines from the call].\n\nHere is the sample screen for your role: {{demo_link}}") },

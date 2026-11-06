@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import Icon from "../icons.jsx";
 import { ErrorState } from "../states.jsx";
-import { STAGE_LABELS, sourceLabel, useSourceRegistry } from "../labels.js";
+import { stageLabel, sourceLabel, useSourceRegistry } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import FindLeadsDrawer, { FindLeadsCard, setPendingLeadIds } from "./FindLeads.jsx";
 import DashboardPeriod from "./DashboardPeriod.jsx";
@@ -143,7 +143,7 @@ export default function Dashboard({ go }) {
           <h3 style={{ marginTop: 0 }}>Funnel</h3>
           {data.funnel.map((f) => (
             <div className="funnel-row" key={f.stage}>
-              <span>{f.stage === "interested" ? "Interested (said yes)" : STAGE_LABELS[f.stage]}</span>
+              <span>{f.stage === "interested" && stageLabel("interested") === "Interested" ? "Interested (said yes)" : stageLabel(f.stage)}</span>
               <div className="bar" role="img" aria-label={`${f.count} leads`} style={{ width: `${(f.count / max) * 100}%` }} />
               <b>{f.count}</b>
             </div>

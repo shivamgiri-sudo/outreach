@@ -1,6 +1,6 @@
 // Flow builder: every step type with its words, icon, outputs, starting settings and one-line summary.
 // The server validates the same types (app/flows.py); this file only decides how they look and read.
-import { stageLabel } from "../../labels.js";
+import { leadTerm, stageLabel } from "../../labels.js";
 
 export const GRID = 20;
 export const NODE_W = 220;
@@ -43,8 +43,9 @@ export const REPLY_LABELS = ["interested", "question", "not_now", "wrong_person"
 export const REPLY_OUTPUTS = ["interested", "question", "not_interested", "not_now", "wrong_person", "other", "any", "timeout"];
 export const DEFAULT_BRANCHES = ["interested", "question", "not_interested", "timeout"];
 export const ACTIVATION_EVENTS = ["demo_opened", "role_drafted", "role_published", "candidate_screened", "interview_booked", "converted"];
-export const EMAIL_PLACEHOLDERS = ["greeting", "first_name", "company", "role", "sender", "unsub_link", "demo_link", "offer_line"];
-export const TEXT_PLACEHOLDERS = ["greeting", "first_name", "company", "role", "sender", "demo_link"];
+const BRAND_PLACEHOLDERS = ["my_company", "my_product", "my_tagline", "my_value_1", "my_value_2", "my_value_3", "my_cta", "my_website", "sign_off"];
+export const EMAIL_PLACEHOLDERS = ["greeting", "first_name", "company", "role", "sender", "unsub_link", "demo_link", "offer_line", ...BRAND_PLACEHOLDERS];
+export const TEXT_PLACEHOLDERS = ["greeting", "first_name", "company", "role", "sender", "demo_link", ...BRAND_PLACEHOLDERS];
 
 export const OUTPUT_LABELS = {
   next: "", yes: "yes", no: "no", a: "A", b: "B", error: "if refused", interested: "interested", question: "question",
@@ -60,7 +61,7 @@ export const BRANCH_HEADINGS = {
 export const IF_FIELDS = {
   score: ["Score (0–100)", "number"], band: ["Temperature (hot / warm / cold)", "band"], stage: ["Stage", "stage"],
   city: ["City", "text"], country: ["Country", "text"], title: ["Job title", "text"], persona: ["Persona (from title)", "persona"],
-  open_roles: ["Open roles", "number"], source: ["Source", "text"], campaign_id: ["Campaign id", "text"], tag: ["Tag", "tags"],
+  get open_roles() { return [leadTerm("open_roles"), "number"]; }, source: ["Source", "text"], campaign_id: ["Campaign id", "text"], tag: ["Tag", "tags"],
   has_email: ["Has an email", "bool"], has_phone: ["Has a phone number", "bool"], has_consent: ["Has said yes (consent)", "bool"],
   has_meeting: ["Has a meeting", "bool"], has_replied: ["Has replied", "bool"],
   linkedin_accepted: ["LinkedIn invite accepted", "bool"], linkedin_status: ["LinkedIn sequence status", "text"],
@@ -83,7 +84,7 @@ export const TYPES = {
   "trigger.reply": ["trigger", "They reply", "reply", ["next"], { label: "interested" }, "Starts when a reply is read and acted on (email, WhatsApp, SMS, LinkedIn)."],
   "trigger.stage_changed": ["trigger", "Stage changes", "flag", ["next"], { stage: "interested" }, "Starts when someone moves the lead to this stage."],
   "trigger.meeting_booked": ["trigger", "Meeting booked", "calendar", ["next"], {}, "Starts when a meeting is booked in the lead panel or through Cal.com / Calendly."],
-  "trigger.activation_event": ["trigger", "Product activity", "rocket", ["next"], { event: "role_published" }, "Starts when BookMyInterview reports this activity for the lead."],
+  "trigger.activation_event": ["trigger", "Product activity", "rocket", ["next"], { event: "role_published" }, "Starts when your product reports this activity for the lead."],
   "trigger.no_reply_days": ["trigger", "No reply for some days", "clock", ["next"], { days: 14 }, "Starts for leads still in the cold stages who got an email and haven't replied for this many days."],
   if: ["logic", "If / else", "branch", ["yes", "no"], { field: "score", op: "gt", value: 60 }, "Checks the lead and goes down the yes or no path."],
   split: ["logic", "A/B split", "split", ["a", "b"], { percent_a: 50 }, "Sends a share of leads down path A, the rest down B. A lead always gets the same variant."],
@@ -91,7 +92,7 @@ export const TYPES = {
   wait_for_reply: ["logic", "Wait for a reply", "chat", null, { days: 3, branches: DEFAULT_BRANCHES }, "Waits up to N days. A reply goes down its path (or 'any reply'); no reply goes down 'no reply'."],
   email: ["action", "Send email", "mail", ["next", "error"], { subject: "", body: EMAIL_BODY }, "Goes through the email sequence engine: practice mode, daily cap, warm-up, one email per company a day, Mon–Fri 9–18 IST."],
   whatsapp: ["action", "Send WhatsApp", "whatsapp", ["next", "error"], { template: "first_after_yes" }, "Only with recorded consent. Approved templates only. Practice until WhatsApp is connected and switched on."],
-  sms: ["action", "Send SMS", "sms", ["next", "error"], { text: "Hi {{first_name}}, {{sender}} from BookMyInterview. Reply STOP to opt out." }, "Only with recorded consent. Must match your DLT template. Practice until SMS is connected and switched on."],
+  sms: ["action", "Send SMS", "sms", ["next", "error"], { text: "Hi {{first_name}}, {{sender}} from {{my_company}}. Reply STOP to opt out." }, "Only with recorded consent. Must match your DLT template. Practice until SMS is connected and switched on."],
   linkedin_task: ["action", "LinkedIn task", "linkedin", ["next", "error"], { mode: "task", message: "Hi {{first_name}}, came across your profile and would be glad to connect." }, "A person sends LinkedIn messages by hand; the flow only makes the task."],
   call_task: ["action", "Call task", "phone", ["next"], {}, "A task for the caller, due at the next call slot (same day before 18:30 IST, else next weekday 11:00)."],
   meeting_link: ["action", "Meeting link", "calendar", ["next", "error"], {}, "With a booking-link calendar (Cal.com, Calendly, any link) it prepares the link and asks a person to send it; otherwise a 'book a meeting' task."],
@@ -107,7 +108,7 @@ export const TYPES = {
   ai: ["action", "Ask Claude", "sparkles", ["next", "error"], { mode: "draft", prompt: "", save_as: "answer", options: [] },
     "Claude writes a draft, picks one of your options, or pulls out a detail. The answer is saved under a name you can use as {{name}} in later steps."],
   set_vars: ["action", "Set fields", "sliders", ["next"], { values: [{ name: "pitch", value: "" }] },
-    "Make named fields from the lead's details, for example pitch = Hiring for {{role}} at {{company}}. Use them as {{pitch}} in later steps."],
+    "Make named fields from the lead's details, for example pitch = {{my_product}} for {{company}}. Use them as {{pitch}} in later steps."],
   loop: ["logic", "Repeat", "clock", ["again", "done"], { times: 3 },
     "Sends the lead down 'again' this many times, then down 'done'. Put a Wait inside the loop (days or hours)."],
   switch: ["logic", "Switch", "split", null, { field: "band", cases: ["hot", "warm"] },

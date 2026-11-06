@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 from ..privacy import is_blocked
 from ..reminders import _log_transactional, ist_text
+from ..brand import get_brand, sender_name
 from ..sequences import identity_footer
 from ..unsubscribe import unsub_url
 
@@ -66,11 +67,12 @@ def _one_line(value) -> str:
 
 
 def build_ics(meeting: dict, organizer_email: str, organizer_name: str, attendee_email: str, attendee_name: str = "",
-              method: str = "REQUEST", sequence: int = 0, now: datetime = None, domain: str = "outreach.local") -> str:
+              method: str = "REQUEST", sequence: int = 0, now: datetime = None, domain: str = "outreach.local",
+              product: str = "BookMyInterview.ai") -> str:
     join = _one_line(meeting.get("join_url"))
     cancelled = method == "CANCEL"
     description = "\n".join(p for p in (f"Join: {join}" if join else "", meeting.get("notes") or "",
-                                        "Booked from Outreach OS (BookMyInterview.ai).") if p)
+                                        f"Booked from Outreach OS ({product}).") if p)
     lines = [
         "BEGIN:VCALENDAR", f"PRODID:{PRODID}", "VERSION:2.0", "CALSCALE:GREGORIAN", f"METHOD:{method}",
         "BEGIN:VEVENT",
@@ -96,7 +98,7 @@ def _organizer(store) -> tuple:
     cfg = email_ready(store) or {}
     settings = store.read("settings")
     return (cfg.get("from_email") or DEFAULT_ORGANIZER,
-            cfg.get("from_name") or settings.get("sender_name") or "BookMyInterview.ai")
+            cfg.get("from_name") or sender_name(settings))
 
 
 def _body(store, lead: dict, meeting: dict, cancel: bool, organizer_name: str) -> str:
@@ -128,7 +130,8 @@ def send_invite(store, lead: dict, meeting: dict, sender=None, method: str = "RE
     organizer_email, organizer_name = _organizer(store)
     cancel = method == "CANCEL"
     ics = build_ics(meeting, organizer_email, organizer_name, to, lead.get("contact_name", ""), method,
-                    sequence=1 if cancel else 0, domain=organizer_email.rpartition("@")[2] or "outreach.local")
+                    sequence=1 if cancel else 0, domain=organizer_email.rpartition("@")[2] or "outreach.local",
+                    product=get_brand(store)["product_name"])
     title = _one_line(meeting.get("title")) or "our meeting"
     subject = f"Cancelled: {title}" if cancel else f"Invitation: {title} — {ist_text(meeting['start'])}"
     message = {"to": to, "subject": subject, "body": _body(store, lead, meeting, cancel, organizer_name),
