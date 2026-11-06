@@ -98,12 +98,14 @@ GUIDES = [
     guide("linkedin_agent", "LinkedIn agent (runs on your computer)", CAT,
           "Sends your LinkedIn connection requests and messages from your own computer, slowly and within limits.",
           ["Read first: LinkedIn does not allow automation and can restrict accounts that use it. Keep numbers low and use an "
-           "account you can live without.", "On the LinkedIn outreach page open 'Chrome assistant' and press 'Create pairing "
+           "account you can live without.", "No installation wanted? Use 'Cloud agent (no installation)' at the top of the LinkedIn "
+           "outreach page instead: add an account, log it in there, and the server does the work. The steps below are for "
+           "running it on your own computer.", "On the LinkedIn outreach page open 'Chrome assistant' and press 'Create pairing "
            "token'. Copy the token (starts with mcnx_); it is shown only once.",
            "On the computer that will do the work, install Node.js (version 18 or newer) from nodejs.org.",
            "Get the project folder onto that computer (ask whoever installed the app). Open a terminal in that folder and run "
            "once: cd web && npm ci && npx playwright install chromium && cd ..",
-           "On the LinkedIn outreach page press 'Copy the command' under 'Set it up on your computer'. Paste it into the "
+           "On the LinkedIn outreach page open 'Advanced: run on your own computer' and press 'Copy the command'. Paste it into the "
            "terminal, replace PASTE_THE_TOKEN with your token and press Enter. Add --dry at the end first to try without "
            "sending anything.", "A Chrome window opens. Log in to LinkedIn in that window yourself. Leave the window and the "
            "terminal open while you want it to work.", "On the LinkedIn outreach page press 'Switch on'. The status shows Running."],

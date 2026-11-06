@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Deploy the current checkout to the server:  deploy/deploy.sh ubuntu@<ip> <public-host>
-# Builds the web app locally, copies code (no data, no secrets), restarts the service.
+# Builds the web app locally, copies code (no data, no secrets), restarts the service (and the cloud LinkedIn agent
+# service outreach-linkedin, only when deploy/setup_cloud_linkedin.sh installed it).
 set -euo pipefail
 TARGET="${1:?usage: deploy.sh ubuntu@<ip> <public-host>}"; HOST="${2:?public host}"
 KEY="${SSH_KEY:-$HOME/.ssh/oracle_outreach}"
@@ -13,5 +14,8 @@ ssh -i "$KEY" "$TARGET" "sudo mkdir -p /opt/outreach/app && sudo tar -xzf /tmp/o
   (test -x /opt/outreach/app/.venv/bin/uvicorn || sudo bash /opt/outreach/app/deploy/setup_server.sh '$HOST') && \
   sudo /opt/outreach/app/.venv/bin/pip install -q -r /opt/outreach/app/requirements.txt && \
   sudo chown -R outreach:outreach /opt/outreach && sudo systemctl restart outreach && \
+  if [ -f /etc/systemd/system/outreach-linkedin.service ]; then \
+    sudo cp /opt/outreach/app/deploy/outreach-linkedin.service /etc/systemd/system/outreach-linkedin.service && \
+    sudo systemctl daemon-reload && sudo systemctl restart outreach-linkedin; fi && \
   for i in \$(seq 1 30); do curl -fsS http://127.0.0.1:8000/api/auth/status && exit 0; sleep 1; done; exit 1"
 echo; echo "Deployed. Open https://$HOST"

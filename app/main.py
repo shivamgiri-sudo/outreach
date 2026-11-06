@@ -68,6 +68,7 @@ from .routes_icp import make_router as make_icp_router
 from .routes_mcp import make_router as make_mcp_router
 from .routes_signals import make_router as make_signals_router
 from .routes_linkedin_agent import make_router as make_linkedin_agent_router
+from .routes_linkedin_cloud import make_router as make_linkedin_cloud_router
 from .providers import get_json
 from .senders import make_transactional_sender
 from .routes_channels import make_router as make_channels_router
@@ -516,6 +517,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_mcp_router(store))
     app.include_router(make_signals_router(store, signal_fetch, ai_transport))
     app.include_router(make_linkedin_agent_router(store, transactional_sender))
+    cloud_router = make_linkedin_cloud_router(store, data_file)
+    app.state.linkedin_cloud = cloud_router
+    app.include_router(cloud_router)
     app.include_router(make_sources_router(store, campaign_io))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender, capture_runner=lambda: run_sheet_syncs(store, capture_sheet_fetcher),

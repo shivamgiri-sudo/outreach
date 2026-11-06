@@ -31,6 +31,8 @@ ALLOWED = (                             # (method, path regex) an extension toke
     ("POST", re.compile(r"^/api/extension/leads/[^/]+/(sent|accepted|replied|profile|claim)$")),
     ("GET", re.compile(r"^/api/extension/agent$")),                  # the LinkedIn agent program on your computer
     ("POST", re.compile(r"^/api/extension/agent/event$")),
+    ("GET", re.compile(r"^/api/extension/cloud/(login-job|code)$")),  # the cloud agent on this server (linkedin_cloud);
+    ("POST", re.compile(r"^/api/extension/cloud/state$")),            # the routes refuse any token that is not a cloud slot's
     ("POST", re.compile(r"^/api/mcp$")),                              # Claude / MCP clients: read-only tools (see mcp_server)
 )
 GRACE = timedelta(hours=12)             # same "due" window as the web queue
@@ -58,7 +60,7 @@ def tokens(store) -> list:
     return [t for t in store.read("settings").get(SETTINGS_KEY) or [] if isinstance(t, dict) and t.get("hash")]
 
 
-def create_token(store, user: dict, label: str = "") -> tuple:
+def create_token(store, user: dict, label: str = "", days: int = TOKEN_DAYS) -> tuple:
     """(raw token, public row). The raw value exists only in this return value."""
     sub = user.get("sub", "")
     mine = [t for t in tokens(store) if t.get("sub") == sub]
@@ -68,7 +70,7 @@ def create_token(store, user: dict, label: str = "") -> tuple:
     now = _now()
     row = {"id": secrets.token_hex(6), "hash": _hash(raw), "label": (label or "").strip()[:60] or "Chrome", "sub": sub,
            "owner": user.get("name") or user.get("email") or sub, "created_at": iso(now),
-           "expires_at": iso(now + timedelta(days=TOKEN_DAYS)), "last_used_at": None, "hint": raw[-4:]}
+           "expires_at": iso(now + timedelta(days=days)), "last_used_at": None, "hint": raw[-4:]}
     store.update("settings", lambda s: {**s, SETTINGS_KEY: [*(s.get(SETTINGS_KEY) or []), row]})
     return raw, public_token(row)
 

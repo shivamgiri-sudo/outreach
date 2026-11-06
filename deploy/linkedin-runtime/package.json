@@ -1,0 +1,9 @@
+{
+  "name": "mcn-linkedin-cloud-runtime",
+  "private": true,
+  "description": "Only what the cloud LinkedIn agent needs on the server (deploy/setup_cloud_linkedin.sh installs it with npm ci).",
+  "type": "module",
+  "dependencies": {
+    "playwright": "1.49.1"
+  }
+}

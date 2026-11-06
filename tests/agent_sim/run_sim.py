@@ -24,7 +24,7 @@ import uvicorn  # noqa: E402
 from app import linkedin_agent as agent, linkedin_seq as li  # noqa: E402
 from app.main import create_app  # noqa: E402
 
-PORTAL_PORT, PORT_A, PORT_B = 8811, 8797, 8796
+PORTAL_PORT, PORT_A, PORT_B = (int(p) for p in os.environ.get("AGENT_SIM_PORTS", "8811,8797,8796").split(","))   # override when busy
 PORTAL, FAKE, FAKE_B = f"http://127.0.0.1:{PORTAL_PORT}", f"http://localhost:{PORT_A}", f"http://localhost:{PORT_B}"
 BASE = {}
 WORK = Path(tempfile.mkdtemp(prefix="agent-sim-"))

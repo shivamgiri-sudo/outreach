@@ -1,0 +1,35 @@
+[Unit]
+Description=Outreach OS cloud LinkedIn agent (supervisor + one headless Chromium per cloud account)
+After=network-online.target outreach.service
+Wants=network-online.target
+
+[Service]
+User=outreach
+Group=outreach
+WorkingDirectory=/opt/outreach/app
+# Same file as the app: OUTREACH_CLOUD_LI_MAX / OUTREACH_CLOUD_LI_DIR. The supervisor passes only what the agent needs
+# (its slot token, PATH, the Playwright paths) to each agent, never the rest of this file.
+EnvironmentFile=/etc/outreach/outreach.env
+Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/outreach/ms-playwright
+Environment=MCN_PLAYWRIGHT_DIR=/opt/outreach/linkedin-runtime
+Environment=HOME=/var/lib/outreach/linkedin-cloud/home
+Environment=OUTREACH_CLOUD_LI_PORTAL=http://127.0.0.1:8000
+Environment=NODE_OPTIONS=--max-old-space-size=128
+ExecStartPre=/bin/mkdir -p /var/lib/outreach/linkedin-cloud/home
+ExecStart=/usr/bin/node /opt/outreach/app/tools/linkedin_cloud_supervisor.mjs
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+# ~950 MB machine: one Chromium (~300-450 MB) plus Node. Above MemoryHigh the kernel reclaims/swaps; MemoryMax is the hard stop.
+MemoryHigh=520M
+MemoryMax=600M
+TasksMax=512
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/outreach/linkedin-cloud
+
+[Install]
+WantedBy=multi-user.target

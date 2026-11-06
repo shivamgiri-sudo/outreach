@@ -50,10 +50,13 @@ def make_router(store) -> APIRouter:
     @router.get("/api/extension/tokens")
     def list_tokens(request: Request):
         user = person(request)
-        return [ext.public_token(t) for t in ext.tokens(store) if user.get("role") == "owner" or t.get("sub") == user.get("sub")]
+        return [ext.public_token(t) for t in ext.tokens(store) if (user.get("role") == "owner" or t.get("sub") == user.get("sub"))
+                and not str(t.get("label") or "").startswith("cloud:")]      # cloud-agent tokens are managed with their cloud account
 
     @router.delete("/api/extension/tokens/{token_id}")
     def revoke(token_id: str, request: Request):
+        if any(t.get("id") == token_id and str(t.get("label") or "").startswith("cloud:") for t in ext.tokens(store)):
+            raise HTTPException(400, "This token belongs to a cloud LinkedIn account. Remove the cloud account instead.")
         if not ext.revoke_token(store, token_id, person(request)):
             raise HTTPException(404, "No such pairing token.")
         return {"ok": True}

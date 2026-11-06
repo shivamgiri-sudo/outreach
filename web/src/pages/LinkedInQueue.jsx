@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, isOwner } from "../api.js";
 import LinkedInSequenceEditor from "./LinkedInSequenceEditor.jsx";
+import LinkedInCloud from "./LinkedInCloud.jsx";
 import { copyText } from "../clipboard.js";
 import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
@@ -54,7 +55,7 @@ function ToolBridge({ onDone }) {
       </div>
       <div className="tip" style={{ marginTop: 10 }} role="note">
         Automating LinkedIn is against LinkedIn's terms and can get an account restricted. If you use a tool, that is your own decision and risk;
-        use a separate LinkedIn account, not the one you rely on. The portal never logs in to LinkedIn; the LinkedIn agent below works from your own computer in a window you log in to yourself.
+        use a separate LinkedIn account, not the one you rely on. The portal only logs in to LinkedIn if you add a cloud account above; otherwise the LinkedIn agent below works from your own computer in a window you log in to yourself.
       </div>
       {error && <div className="tip error" role="alert" style={{ marginTop: 10 }}>{error}</div>}
       {result && (
@@ -121,8 +122,8 @@ function LinkedInAgent({ onMessage }) {
             : <button className="btn" onClick={() => save({ enabled: true }, "Switched on. Start the agent program on your computer if it is not running.")}>Switch on</button>}
         </span>
       </div>
-      <p className="sub">Sends the connection requests and follow-up messages from this page for you, from <b>your own computer</b>, in a Chrome window you log in
-        to yourself. Your LinkedIn password never reaches this portal. It sends one action at a time, with a fixed gap, inside working hours and your daily and weekly
+      <p className="sub">Sends the connection requests and follow-up messages from this page for you, either from the <b>cloud agent</b> above (nothing to install) or
+        from <b>your own computer</b> in a Chrome window you log in to yourself (see "Advanced" below; then your password never reaches this portal). The switch, limits and hours here apply to both. It sends one action at a time, with a fixed gap, inside working hours and your daily and weekly
         caps, and it stops by itself if LinkedIn shows a security check, a login wall or the weekly invitation limit.</p>
       <p className="tip">LinkedIn does not allow automation and can restrict accounts that use it, even at low volume. Keep the numbers low and use an account you
         can live without if the worst happens.</p>
@@ -149,7 +150,7 @@ function LinkedInAgent({ onMessage }) {
         </div>
       )}
       <p><GuideButton keys="app:linkedin_agent" label="How do I set up the agent? (step-by-step guide)" testId="agent-guide" /></p>
-      <details className="section"><summary>Set it up on your computer (once)</summary>
+      <details className="section" data-testid="local-agent-advanced"><summary>Advanced: run on your own computer</summary>
         <ol className="steps">
           <li>Create a pairing token in the Chrome assistant box below and copy it.</li>
           <li>On the computer where you are logged in to LinkedIn, open a terminal in the project folder and run, one time:<br /><code>cd web && npm ci && npx playwright install chromium && cd ..</code></li>
@@ -287,11 +288,12 @@ export default function LinkedInQueue() {
   return (
     <>
       <h2>LinkedIn outreach</h2>
-      <p className="sub">Send by hand from this list, or switch on the LinkedIn agent below to have your own computer do the sending for you (LinkedIn does not allow
+      <p className="sub">Send by hand from this list, or switch on the LinkedIn agent below to have the server (cloud agent) or your own computer do the sending for you (LinkedIn does not allow
         automation, so keep the numbers low). This page gives the day's list with every message already written. Mark each one sent and the next step is scheduled. Messages only start after
         they accept the connection, and any reply stops the sequence.</p>
       {error && <ErrorState message="The LinkedIn queue could not load." detail={error} onRetry={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
+      {isOwner() && <LinkedInCloud onMessage={setMessage} />}
       <ToolBridge onDone={load} />
       <LinkedInAgent onMessage={setMessage} />
       <LinkedInSequenceEditor onMessage={setMessage} />

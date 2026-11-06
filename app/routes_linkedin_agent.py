@@ -62,6 +62,8 @@ def make_router(store, notify_sender=None) -> APIRouter:
     @router.get("/api/extension/agent")
     def control(request: Request):
         account = request.headers.get("x-linkedin-account", "")
+        from . import linkedin_cloud
+        linkedin_cloud.touch(store, getattr(request.state, "user", None))
         agent.heartbeat(store, "asking", account=account, name=unquote(request.headers.get("x-linkedin-name", ""))[:80])
         return agent.control(store, account=account)
 

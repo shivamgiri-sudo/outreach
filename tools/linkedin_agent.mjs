@@ -11,12 +11,22 @@
 // LinkedIn forbids automation and restricts accounts that do it. This agent keeps the volume low and FIXED and stops at once on
 // any sign of trouble (login wall, checkpoint, CAPTCHA, weekly invitation limit). It does not hide itself: no stealth plugins,
 // no spoofed browser identity, no proxies, no randomised "human" delays. Use it on an account you can afford to have restricted.
+//
+// --cloud: the same agent running headless on the portal's server (started by tools/linkedin_cloud_supervisor.mjs). It is
+// logged in from the portal (tools/linkedin_cloud_login.mjs) instead of by a person at the window.
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { cloudLogin } from "./linkedin_cloud_login.mjs";
 
 let chromium;
 try { ({ chromium } = await import("playwright")); }
-catch { ({ chromium } = await import(new URL("../web/node_modules/playwright/index.mjs", import.meta.url).href)); }
+catch {
+  const dir = process.env.MCN_PLAYWRIGHT_DIR;        // the server keeps Playwright in its own small folder (deploy/setup_cloud_linkedin.sh)
+  const where = dir ? pathToFileURL(path.join(dir, "node_modules", "playwright", "index.mjs")).href
+    : new URL("../web/node_modules/playwright/index.mjs", import.meta.url).href;
+  ({ chromium } = await import(where));
+}
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) => {
   if (a.startsWith("--")) acc.push([a.slice(2), all[i + 1] && !all[i + 1].startsWith("--") ? all[i + 1] : true]);
@@ -29,9 +39,11 @@ const LINKEDIN = String(args["linkedin-base"] || "https://www.linkedin.com").rep
 const DRY = !!args.dry;                 // look at the page and say what would be clicked, click nothing
 const ONCE = !!args.once;               // do at most one action and exit (tests, or a first check)
 const ALLOW_NO_NOTE = !!args["allow-no-note"];      // send a request without a note when LinkedIn will not allow one
-const HEADLESS = !!args.headless;       // tests only; real use needs the window so you can log in
+const CLOUD = !!args.cloud;             // on the server: headless, logged in from the portal
+const HEADLESS = !!args.headless || CLOUD;   // local use needs the window so you can log in
 const SETTLE = Number(args.settle || 1500);          // fixed wait after a page changes
 const POLL = Number(args.poll || 20) * 1000;
+const LOGIN_POLL = Number(args["login-poll"] || 3);
 
 if (!PORTAL || !TOKEN) { console.error("Usage: node tools/linkedin_agent.mjs --portal https://your-portal --token mcnx_..."); process.exit(2); }
 const log = (...a) => console.log(new Date().toLocaleTimeString(), ...a);
@@ -50,12 +62,17 @@ async function api(pathname, method = "GET", body) {
 const event = (kind, extra = {}) => api("/api/extension/agent/event", "POST", { kind, ...extra }).catch((e) => log("could not report:", e.message));
 
 class Fatal extends Error {}
+class LoginNeeded extends Fatal {}        // a login wall: locally a stop, in the cloud a new login from the portal
+const cloudState = (state, note = "") => api("/api/extension/cloud/state", "POST", { state, note, account: ME.account, name: ME.name })
+  .catch((e) => log("could not report state:", e.message));
 
 const TROUBLE = [/security (check|verification)/i, /quick security check/i, /weekly invitation limit/i, /reached the weekly/i,
   /unusual activity/i, /restricted your account|account (has been )?restricted/i, /verify (that )?you('| a)re (not )?a (human|robot)/i];
 async function checkTrouble(page) {
   const url = page.url();
-  if (/\/(checkpoint|authwall|uas\/login|login)/.test(new URL(url).pathname) && !/\/feed/.test(url)) throw new Fatal(`LinkedIn asked for a login or checkpoint (${new URL(url).pathname})`);
+  const where = new URL(url).pathname;
+  if (/\/checkpoint/.test(where) && !/\/feed/.test(url)) throw new Fatal(`LinkedIn asked for a checkpoint (${where})`);
+  if (/\/(authwall|uas\/login|login)/.test(where) && !/\/feed/.test(url)) throw new LoginNeeded(`LinkedIn asked for a login (${where})`);
   const text = (await page.locator("body").innerText({ timeout: 5000 }).catch(() => "")).slice(0, 6000);
   const hit = TROUBLE.find((rx) => rx.test(text));
   if (hit) throw new Fatal(`LinkedIn showed: ${text.match(hit)?.[0]}`);
@@ -66,6 +83,13 @@ async function ensureLoggedIn(page) {
   await sleep(SETTLE);
   const loggedIn = () => !/(login|authwall|signup|checkpoint)/.test(new URL(page.url()).pathname);
   if (loggedIn()) return;
+  if (CLOUD) {
+    await cloudLogin({ page, api, base: LINKEDIN, log, sleep, settle: SETTLE, pollSeconds: LOGIN_POLL });
+    await page.goto(LINKEDIN + "/feed/", { waitUntil: "domcontentloaded" });
+    await sleep(SETTLE);
+    if (!loggedIn()) throw new LoginNeeded("LinkedIn sent the browser back to the login page right after logging in");
+    return;
+  }
   log("Please log in to LinkedIn in the open window (including any code LinkedIn sends you). Waiting up to 10 minutes…");
   await event("paused", { state: "waiting_for_login", note: "waiting for you to log in to LinkedIn in the agent window" });
   for (let i = 0; i < 120 && !loggedIn(); i++) await sleep(5000);
@@ -267,22 +291,63 @@ async function oneCycle(page, state) {
   return { idle: "nothing due that is allowed right now" };
 }
 
+// After a fatal stop in the cloud the agent does not exit (the supervisor would only start it again): it reports the
+// pause and waits, touching nothing on LinkedIn, until the owner presses Resume for this account in the portal.
+async function waitForResume() {
+  for (;;) {
+    await sleep(Math.max(POLL, 15000));
+    const ctl = await api("/api/extension/agent").catch(() => null);
+    if (ctl && ctl.enabled && !/paused/.test(ctl.why_not || "")) return;
+  }
+}
+
+async function launch() {
+  const options = { headless: HEADLESS, viewport: { width: 1280, height: 900 } };
+  if (CLOUD) options.args = ["--disable-dev-shm-usage", "--disable-gpu", "--disable-extensions", "--mute-audio", "--no-first-run",
+    "--renderer-process-limit=2", "--js-flags=--max-old-space-size=256"];
+  const context = await chromium.launchPersistentContext(PROFILE_DIR, options);
+  if (CLOUD) await context.route("**/*", (route) => route.request().resourceType() === "media" ? route.abort() : route.continue());   // videos only cost memory
+  return context;
+}
+
 async function main() {
-  const context = await chromium.launchPersistentContext(PROFILE_DIR, { headless: HEADLESS, viewport: { width: 1280, height: 900 } });
+  const context = await launch();
+  for (const signal of ["SIGTERM", "SIGINT"]) {                 // the supervisor (or Ctrl+C) stops it: close the browser cleanly
+    process.on(signal, async () => { log(`${signal}: closing the browser`); await context.close().catch(() => {}); process.exit(0); });
+  }
   const page = context.pages()[0] || await context.newPage();
   const state = { checked: {}, noNotes: false, profiled: {} };
   let exitCode = 0;
   try {
-    await event("started", { state: "running", note: DRY ? "started in dry-run mode" : "agent started" });
-    if (!args["skip-login-check"]) await ensureLoggedIn(page);
-    if (!args["no-account"]) { await whoAmI(page); log(`Logged in to LinkedIn as ${ME.name || ME.account} (${ME.account}).`); }
-    log(DRY ? "Dry run: nothing will be clicked." : "Running. Press Ctrl+C to stop.");
+    await event("started", { state: "running", note: DRY ? "started in dry-run mode" : CLOUD ? "cloud agent started" : "agent started" });
+    if (CLOUD) await cloudState("starting", "the cloud browser started");
     for (;;) {
-      const outcome = await oneCycle(page, state);
-      if (outcome.idle) log(outcome.idle);
-      if (ONCE && outcome.acted) break;
-      if (ONCE && outcome.idle) break;
-      await sleep(outcome.acted ? 1000 : POLL);
+      try {
+        if (!args["skip-login-check"]) await ensureLoggedIn(page);
+        if (!args["no-account"]) { await whoAmI(page); log(`Logged in to LinkedIn as ${ME.name || ME.account} (${ME.account}).`); }
+        if (CLOUD) await cloudState("connected", `Logged in as ${ME.name || ME.account}. Works inside the hours and limits set below.`);
+        log(DRY ? "Dry run: nothing will be clicked." : CLOUD ? "Running in the cloud." : "Running. Press Ctrl+C to stop.");
+        for (;;) {
+          const outcome = await oneCycle(page, state);
+          if (outcome.idle) log(outcome.idle);
+          if (ONCE && outcome.acted) break;
+          if (ONCE && outcome.idle) break;
+          await sleep(outcome.acted ? 1000 : POLL);
+        }
+        break;
+      } catch (e) {
+        if (!CLOUD || !(e instanceof Fatal)) throw e;
+        if (e instanceof LoginNeeded) {
+          log("LinkedIn wants a new login:", e.message);
+          await event("paused", { state: "needs_login", note: e.message });
+          continue;                       // ensureLoggedIn reports needs_login and waits for the portal
+        }
+        log("PAUSED:", e.message);
+        await event("error", { fatal: true, note: e.message, state: "stopped" });
+        await cloudState("paused", `stopped itself: ${e.message}. Sort it out on LinkedIn, then press Resume for this account.`);
+        await waitForResume();
+        log("Resumed from the portal.");
+      }
     }
   } catch (e) {
     if (e instanceof Fatal) {
@@ -290,6 +355,7 @@ async function main() {
       await event("error", { fatal: true, note: e.message, state: "stopped" });
       exitCode = 3;
     } else { log("error:", e.message); await event("error", { note: e.message.slice(0, 200), state: "error" }); exitCode = 1; }
+    if (CLOUD) await cloudState("error", e.message.slice(0, 200));
   } finally {
     await context.close();
   }
