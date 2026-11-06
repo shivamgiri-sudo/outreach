@@ -43,6 +43,7 @@ from .routes_providers import make_router as make_providers_router
 from .routes_activities import make_router as make_activities_router
 from .routes_linkedin import make_router as make_linkedin_router
 from .routes_lists import make_router as make_lists_router
+from .routes_companies import make_router as make_companies_router
 from .routes_analytics import make_router as make_analytics_router
 from . import extension_api
 from .routes_extension import make_router as make_extension_router
@@ -451,6 +452,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_activities_router(store, transactional_sender))
     app.include_router(make_linkedin_router(store))
     app.include_router(make_lists_router(store, _present))
+    app.include_router(make_companies_router(store))
     app.include_router(make_workspaces_router(store))
     app.include_router(make_analytics_router(store))
     app.include_router(make_extension_router(store))

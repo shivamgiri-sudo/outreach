@@ -6,6 +6,7 @@ import { istLabel } from "../time.js";
 import LeadMeetings from "./LeadMeetings.jsx";
 import LeadActivity from "./LeadActivity.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
+import OtherContacts from "./OtherContacts.jsx";
 import LeadFlows from "./flows/LeadFlows.jsx";
 
 const SIGNAL_LABELS = {
@@ -300,6 +301,7 @@ export default function LeadDrawer({ id, onClose }) {
 
       <LeadMeetings lead={lead} onChanged={load} />
       <CompanyHealth lead={lead} />
+      <OtherContacts lead={lead} />
       <LeadActivity lead={lead} onChanged={load} />
       <LeadFlows lead={lead} onChanged={load} />
       {isOwner() && <PrivacyActions lead={lead} onErased={onClose} />}
