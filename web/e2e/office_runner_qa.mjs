@@ -126,7 +126,7 @@ async function width(browser, w, h, full) {
     await page.getByLabel("Password").waitFor();
     await page.getByLabel("Password").fill(PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.getByRole("button", { name: "Sign out" }).waitFor();
+    await page.getByLabel("Password").waitFor({ state: "detached" });          // Sign out sits in the menu on a phone
     ownerToken = await page.evaluate(() => sessionStorage.getItem("outreach-token"));
     const later = page.getByRole("button", { name: "Later", exact: true });          // first-run setup wizard
     if (await later.waitFor({ timeout: 4000 }).then(() => true, () => false)) await later.click();
@@ -353,12 +353,18 @@ async function width(browser, w, h, full) {
   });
   await step("Server → office: the server idles again, the office computer restarts both accounts already logged in", async () => {
     const attempts = (await mock("/_qa/login")).attempts.length;
+    const starts = {};
+    for (const label of ["Asha", "Bala"]) starts[label] = agentPids("runner1", (await slotByLabel(label)).id).length;
     await page.getByTestId("cloud-where").getByRole("radio", { name: /Office computer/ }).click();
     await okDialog();
     await see("LinkedIn now runs on the office computer.");
     await until(() => /stop /.test(fs.readFileSync(path.join(CLOUD, "events.log"), "utf8")), 20000, "the server supervisor stopping its agents");
-    await waitState("Asha", /Connected as Asha|Paused/, 90000);
-    await waitState("Bala", /Connected as Bala|Paused/, 90000);
+    for (const label of ["Asha", "Bala"]) {                // a NEW agent must report the account as logged in, without a login
+      const id = (await slotByLabel(label)).id;
+      await until(() => { const after = readLog("runner1").split(`started agent for ${id} (${label}), pid ${agentPids("runner1", id).at(-1)}`)[1] || "";
+        if (after.includes("Not logged in")) throw new Error(`${label} lost its LinkedIn session`);
+        return agentPids("runner1", id).length > starts[label] && after.includes("Logged in to LinkedIn as"); }, 90000, `${label} restarted and logged in`);
+    }
     if ((await mock("/_qa/login")).attempts.length !== attempts) throw new Error("the accounts had to log in again (sessions lost)");
     globalThis.supervisor.kill("SIGTERM");
   });
