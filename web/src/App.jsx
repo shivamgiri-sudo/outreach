@@ -81,6 +81,8 @@ const GROUPS_ALL = [
   ["Settings", ["setup", "integrations", "help"]],
 ];
 const BY_ID = Object.fromEntries(PAGES.map((p) => [p[0], p]));
+// Pages whose every API call is owner-only: hidden from callers and viewers, and a short note if they open the link.
+const OWNER_PAGES = new Set(["engine"]);
 const GROUPS = GROUPS_ALL.map(([g, ids]) => [g, ids.filter((id) => BY_ID[id])]).filter(([, ids]) => ids.length);
 // Old links to the separate Go live page now open the checklist inside Setup.
 const ALIASES = { golive: "setup" };
@@ -254,10 +256,16 @@ function Shell() {
   }, [auth.signedIn]);
   const [spaces, setSpaces] = useState([]);
   const [space, setSpace] = useState(getWorkspace());
+  const [spacesTick, setSpacesTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setSpacesTick((n) => n + 1);           // leads moved or a workspace added/removed
+    window.addEventListener("workspaces-changed", bump);
+    return () => window.removeEventListener("workspaces-changed", bump);
+  }, []);
   useEffect(() => { if (auth.signedIn && me) api.workspaces().then((w) => {
     setSpaces(w);
     if (getWorkspace() && !w.some((x) => x.id === getWorkspace())) { setWorkspace(""); setSpace(""); }
-  }).catch(() => {}); }, [auth.signedIn, me, page, space]);
+  }).catch(() => {}); }, [auth.signedIn, me, page, space, spacesTick]);
   const pickSpace = (id) => { setWorkspace(id); setSpace(id); };
   const signOut = () => api.logout().catch(() => {}).finally(() => {
     setToken(""); setRole("owner"); setAuth((a) => ({ ...a, signedIn: false }));
@@ -307,7 +315,7 @@ function Shell() {
             <Icon name="search" size={16} /><span>Search…</span><kbd>Ctrl K</kbd>
           </button>
         )}
-        {GROUPS.map(([group, ids]) => (
+        {GROUPS.map(([group, all]) => [group, all.filter((id) => me.role === "owner" || !OWNER_PAGES.has(id))]).filter(([, ids]) => ids.length).map(([group, ids]) => (
           <div className="nav-group" key={group} role="group" aria-label={group}>
             <span className="nav-title" aria-hidden="true">{group}</span>
             {ids.map((id) => (
@@ -330,7 +338,10 @@ function Shell() {
         )}
       </nav>
       <main>
-        <Current key={`${page}:${space}`} go={go} onSetupChanged={refreshPending} role={me.role} onOpenWizard={me.role === "owner" ? () => setWizard(true) : undefined} />
+        {me.role === "viewer" && <p className="tip" role="note" data-testid="viewer-note" style={{ marginBottom: 12 }}>You have a view-only login: you can look at everything, but changes are refused. Ask an owner if you need to change something.</p>}
+        {me.role !== "owner" && OWNER_PAGES.has(page)
+          ? <><h2>{BY_ID[page][1]}</h2><p className="empty" role="status">Only an owner can open this page.</p></>
+          : <Current key={`${page}:${space}`} go={go} onSetupChanged={refreshPending} role={me.role} onOpenWizard={me.role === "owner" ? () => setWizard(true) : undefined} />}
       </main>
       {phone && (
         <nav className="bottombar" aria-label="Quick links">

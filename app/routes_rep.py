@@ -60,8 +60,11 @@ def make_router(store, present) -> APIRouter:
         now = now_utc()
         today = now.astimezone(IST).date().isoformat()
         ensure_task_ids(store)
-        leads = {l["id"]: l for l in store.read("leads")}
-        open_tasks = [t for t in store.read("tasks") if t.get("status", "open") == "open" and not t.get("done")]
+        from . import workspaces
+        all_leads = store.read("leads")
+        hidden = workspaces.hidden_ids(all_leads)            # another workspace's leads, and their tasks, stay out
+        leads = {l["id"]: l for l in all_leads if l["id"] not in hidden}
+        open_tasks = [t for t in store.read("tasks") if t.get("status", "open") == "open" and not t.get("done") and t.get("lead_id") not in hidden]
         task_owner = {t.get("lead_id"): t.get("owner") for t in open_tasks if t.get("lead_id") and t.get("owner")}
         lead_owner = lambda lead: lead.get("owner") or task_owner.get(lead["id"])      # no owner field yet: the task owner
 

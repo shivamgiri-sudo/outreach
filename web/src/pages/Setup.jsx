@@ -195,7 +195,7 @@ function Workspaces({ onChanged }) {
   const [rows, setRows] = useState([]);
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
-  const load = () => api.workspaces().then((w) => { setRows(w); onChanged?.(w); }).catch((e) => setMessage(e.message));
+  const load = () => api.workspaces().then((w) => { setRows(w); onChanged?.(w); window.dispatchEvent(new Event("workspaces-changed")); }).catch((e) => setMessage(e.message));
   useEffect(() => { load(); }, []);
   const run = (fn, done) => fn().then(() => { setMessage(done); load(); }).catch((e) => setMessage(e.message));
   const confirm = useConfirm();
@@ -310,7 +310,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
         <button role="tab" aria-selected={tab === "connections"} className={tab === "connections" ? "on" : ""} onClick={() => setTab("connections")}>Connections</button>
         {role === "owner" && <button role="tab" aria-selected={tab === "industry"} className={tab === "industry" ? "on" : ""} onClick={() => setTab("industry")}>Industry &amp; fields</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "team"} className={tab === "team" ? "on" : ""} onClick={() => setTab("team")}>Team &amp; workspaces</button>}
-        <button role="tab" aria-selected={tab === "backup"} className={tab === "backup" ? "on" : ""} onClick={() => setTab("backup")}>Backup &amp; restore</button>
+        {role === "owner" && <button role="tab" aria-selected={tab === "backup"} className={tab === "backup" ? "on" : ""} onClick={() => setTab("backup")}>Backup &amp; restore</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "audit"} className={tab === "audit" ? "on" : ""} onClick={() => setTab("audit")}>Audit</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "health"} className={tab === "health" ? "on" : ""} onClick={() => setTab("health")}>System health</button>}
         <button role="tab" aria-selected={tab === "account"} className={tab === "account" ? "on" : ""} onClick={() => setTab("account")}>My password</button>
@@ -318,7 +318,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
       {tab === "account" && <OwnPassword />}
       {tab === "checklist" && <GoLive embedded go={(page) => (page === "setup" ? setTab("connections") : go?.(page))} />}
       {tab === "brand" && role === "owner" && <BrandSettings onOpenWizard={onOpenWizard} />}
-      {tab === "backup" && <><p><GuideButton keys="app:backup" label="How do backups work?" testId="backup-guide" /></p><BackupRestore /></>}
+      {tab === "backup" && role === "owner" && <><p><GuideButton keys="app:backup" label="How do backups work?" testId="backup-guide" /></p><BackupRestore /></>}
       {tab === "audit" && role === "owner" && <AuditLog />}
       {tab === "health" && role === "owner" && <SystemHealth />}
       {tab === "team" && role === "owner" && <><Workspaces /><Users /><ScoringCard /></>}

@@ -16,7 +16,8 @@ from .hygiene import normalise_email
 from .web_security import client_ip
 
 LOCAL_OWNER = {"sub": "local", "email": "", "name": "This computer", "role": "owner", "claims": None}
-ANYONE = {("POST", "/api/logout"), ("POST", "/api/me/password")}
+ANYONE = {("POST", "/api/logout"), ("POST", "/api/me/password"),
+          ("POST", "/api/linkedin/sequence/preview")}     # a preview changes nothing, so viewers may see it
 OWNER_ROUTES = {
     ("PUT", "/api/settings"), ("POST", "/api/settings/live-sending"), ("PUT", "/api/offer"), ("PUT", "/api/team"), ("POST", "/api/workspaces"), ("DELETE", "/api/workspaces/{ws_id}"), ("POST", "/api/sequence/{index}/send-preview"),
     ("GET", "/api/channels/webhooks"), ("GET", "/api/flows/{flow_id}/webhook"), ("PUT", "/api/icp"), ("POST", "/api/signals/run"), ("POST", "/api/signals/watch"), ("DELETE", "/api/signals/watch/{watch_id}"), ("POST", "/api/icp/score"), ("GET", "/api/oauth/{provider}/start"),

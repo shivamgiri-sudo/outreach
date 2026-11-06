@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, isOwner } from "../api.js";
+import { api, getRole, isOwner } from "../api.js";
 import LinkedInSequenceEditor from "./LinkedInSequenceEditor.jsx";
 import LinkedInCloud from "./LinkedInCloud.jsx";
 import { copyText } from "../clipboard.js";
@@ -295,11 +295,11 @@ export default function LinkedInQueue() {
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
       {isOwner() && <LinkedInCloud onMessage={setMessage} />}
       <ToolBridge onDone={load} />
-      <LinkedInAgent onMessage={setMessage} />
+      {isOwner() && <LinkedInAgent onMessage={setMessage} />}
       <LinkedInSequenceEditor onMessage={setMessage} />
       <ConnectionNotes onMessage={setMessage} />
       <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />
-      <ChromeAssistant onMessage={setMessage} />
+      {getRole() !== "viewer" && <ChromeAssistant onMessage={setMessage} />}
       {q && !q.case_study_set && <p className="sub">Step 4 (case study) is skipped until you add a real case-study link in the settings above.</p>}
 
       <div className="row dl-head">

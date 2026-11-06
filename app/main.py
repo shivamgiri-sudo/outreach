@@ -205,7 +205,22 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     password = admin_password if admin_password is not None else os.environ.get("OUTREACH_ADMIN_PASSWORD", "")
     limiter = auth.LoginLimiter()
     docs = os.environ.get("OUTREACH_ENABLE_DOCS") == "1"
-    app = FastAPI(title="Outreach OS", dependencies=[Depends(role_guard), Depends(workspaces_mod.scope_dependency)], docs_url="/docs" if docs else None,
+    def lead_scope_guard(request: Request) -> None:
+        """A login limited to some workspaces gets 404 for any /…/{lead_id} route of a lead outside them (read or write),
+        so knowing an id is not enough to call, note or move another client's lead."""
+        lead_id, task_id = request.path_params.get("lead_id"), request.path_params.get("task_id")
+        _, allowed = getattr(request.state, "workspace_scope", (None, None))
+        if not (lead_id or task_id) or allowed is None:
+            return
+        if task_id and not lead_id:                     # a task belongs to its lead's workspace
+            lead_id = next((t.get("lead_id") for t in store.read("tasks") if t.get("id") == task_id), None)
+            if not lead_id:
+                return
+        lead = next((l for l in store.read("leads") if l.get("id") == lead_id), None)
+        if lead is not None and workspaces_mod.ws_of(lead) not in allowed:
+            raise HTTPException(404, "Not found")
+
+    app = FastAPI(title="Outreach OS", dependencies=[Depends(role_guard), Depends(workspaces_mod.scope_dependency), Depends(lead_scope_guard)], docs_url="/docs" if docs else None,
                   redoc_url="/redoc" if docs else None, openapi_url="/openapi.json" if docs else None)
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
                        allow_methods=["*"], allow_headers=["*"], expose_headers=["X-Renewed-Token"])
@@ -280,7 +295,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
 
     @app.get("/api/dashboard")
     def dashboard():
-        leads = source_stats.real([_present(lead) for lead in store.read("leads")])     # labelled test leads are not counted
+        leads = source_stats.real([_present(lead) for lead in workspaces_mod.filter_rows(store.read("leads"))])     # labelled test leads are not counted
         by_stage = {s: 0 for s in ALL_STAGES}
         for lead in leads:
             by_stage[lead["stage"]] += 1

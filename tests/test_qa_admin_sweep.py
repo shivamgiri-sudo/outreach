@@ -43,3 +43,32 @@ def test_every_login_changes_its_own_password(tmp_path, monkeypatch):
     # the server admin password cannot be changed from the app; no sign-in, no change
     assert c.post("/api/me/password", json={"current": "admin-pass-123", "new": "brand-new-pass-1"}, headers=h(admin)).status_code == 400
     assert c.post("/api/me/password", json={"current": PW, "new": "brand-new-pass-1"}).status_code == 401
+
+
+def test_a_workspace_limited_login_never_sees_another_clients_tasks_or_calls(tmp_path, monkeypatch):
+    from tests.flow_helpers import CSV
+    from tests.test_workspaces import CSV2
+    c, h, login, admin = rig(tmp_path, monkeypatch)
+    c.post("/api/leads/import", json={"csv": CSV + "Konkan Realty,Suresh Naik,Sales Head,suresh@konkan.test,https://konkan.test\n", "source": "apollo"}, headers=h(admin))
+    w = c.post("/api/workspaces", json={"name": "Acme Staffing"}, headers=h(admin)).json()
+    c.post("/api/leads/import", json={"csv": CSV2, "source": "apollo"}, headers={**h(admin), "X-Workspace": w["id"]})
+    ids = {l["company"]: l["id"] for l in c.get("/api/leads", headers=h(admin)).json()}
+    for company in ("Konkan Realty", "ClientCo"):           # each says yes: an Interested lead with a call task
+        r = c.post(f"/api/leads/{ids[company]}/consent", json={"text": "Yes, call me", "channel": "any", "move_to_interested": True}, headers=h(admin))
+        assert r.status_code == 200, r.text
+    assert c.put("/api/users/cal@example.com", json={"workspaces": [w["id"]]}, headers=h(admin)).status_code == 200
+    cal = login("cal@example.com").json()["token"]
+    for path in ("/api/tasks", "/api/tasks/board", "/api/notifications", "/api/today", "/api/dashboard", "/api/my-day", "/api/call-queue"):
+        body = c.get(path, headers=h(cal)).text
+        assert "Konkan" not in body, path
+    assert [t["lead_id"] for t in c.get("/api/tasks", headers=h(cal)).json()] == [ids["ClientCo"]]
+    assert c.get("/api/dashboard", headers=h(cal)).json()["total_leads"] == 1
+    # knowing the id is not enough: reads and writes on the other client's lead answer 404
+    assert c.post(f"/api/leads/{ids['Konkan Realty']}/note", json={"text": "hello"}, headers=h(cal)).status_code == 404
+    assert c.post(f"/api/leads/{ids['Konkan Realty']}/call-outcome", json={"outcome": "no_answer"}, headers=h(cal)).status_code == 404
+    konkan_task = next(t["id"] for t in c.get("/api/tasks", headers=h(admin)).json() if t["lead_id"] == ids["Konkan Realty"])
+    assert c.post(f"/api/tasks/{konkan_task}/done", json={"note": ""}, headers=h(cal)).status_code == 404
+    assert c.put(f"/api/tasks/{konkan_task}", json={"snooze_minutes": 60}, headers=h(cal)).status_code == 404
+    assert c.post(f"/api/leads/{ids['ClientCo']}/note", json={"text": "called"}, headers=h(cal)).status_code == 200
+    # owners still see everything
+    assert "Konkan" in c.get("/api/tasks", headers=h(admin)).text and c.get("/api/dashboard", headers=h(admin)).json()["total_leads"] >= 2

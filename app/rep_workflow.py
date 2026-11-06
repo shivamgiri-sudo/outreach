@@ -228,10 +228,13 @@ def call_queue(store, present, now: datetime, names: Optional[set] = None) -> li
     With `names`, only tasks owned by them (or nobody) and leads owned by them (or nobody) are kept."""
     ensure_task_ids(store)
     today = now.astimezone(IST).date().isoformat()
-    leads = {l["id"]: l for l in store.read("leads")}
+    from . import workspaces
+    all_leads = store.read("leads")
+    hidden = workspaces.hidden_ids(all_leads)                # another workspace's leads, and their tasks, stay out
+    leads = {l["id"]: l for l in all_leads if l["id"] not in hidden}
     suppressed = set(store.read("suppressed"))
     activities = store.read("activities")
-    open_tasks = [t for t in store.read("tasks") if t.get("status", "open") == "open" and not t.get("done")]
+    open_tasks = [t for t in store.read("tasks") if t.get("status", "open") == "open" and not t.get("done") and t.get("lead_id") not in hidden]
     task_owner = {t.get("lead_id"): t.get("owner") for t in open_tasks if t.get("lead_id")}
 
     def usable(lead: Optional[dict]) -> bool:
