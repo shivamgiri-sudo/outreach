@@ -304,7 +304,13 @@ async function waitForResume() {
 }
 
 async function launch() {
-  const options = { headless: HEADLESS, viewport: { width: 1280, height: 900 } };
+  // handleSIGTERM/SIGINT off: Playwright would kill Chromium at once on those signals, before our close() lets it write
+  // the profile (main() closes the browser cleanly on them instead).
+  const options = { headless: HEADLESS, viewport: { width: 1280, height: 900 }, handleSIGTERM: false, handleSIGINT: false };
+  // Headless cloud agents use Chromium's new headless mode (the full browser): the old headless shell does not write the
+  // profile's cookies to disk, so every agent restart (switch off/on, Restart, office/server switch, a runner without a
+  // desktop) logged the LinkedIn account out and needed a new login with a code.
+  if (CLOUD && HEADLESS && process.env.MCN_HEADLESS_SHELL !== "1") options.channel = "chromium";
   if (CLOUD && HEADLESS) options.args = ["--disable-dev-shm-usage", "--disable-gpu", "--disable-extensions", "--mute-audio", "--no-first-run",
     "--renderer-process-limit=2", "--js-flags=--max-old-space-size=256"];
   const context = await chromium.launchPersistentContext(PROFILE_DIR, options);
@@ -314,10 +320,25 @@ async function launch() {
 
 async function main() {
   const context = await launch();
-  const close = async (why) => { log(`${why}: closing the browser`); await context.close().catch(() => {}); process.exit(0); };
+  let closing = false, closed = null;
+  // Once only: the pool sends "stop" and SIGTERM together, and a second close() must not exit before Chromium has
+  // written its cookies (that logged the account out of LinkedIn on every switch-off, Restart or runner stop).
+  const close = (why) => {
+    if (closed) return closed;
+    closing = true;
+    log(`${why}: closing the browser`);
+    closed = context.close().catch(() => {}).then(() => process.exit(0));
+    return closed;
+  };
   for (const signal of ["SIGTERM", "SIGINT"]) process.on(signal, () => close(signal));   // the supervisor (or Ctrl+C) stops it
+  // The browser went away (its window was closed, or it crashed): stop with an error so the runner / supervisor starts a
+  // new window (it restarts a crashed agent). Without this the agent could sit waiting for a login with no browser at all.
+  context.on("close", () => { if (!closing) { console.error("The browser was closed; stopping so it is opened again."); process.exit(1); } });
   if (process.channel) {                // started by the agent pool: "stop" over IPC (on Windows a signal cannot be caught)
     process.on("message", (m) => { if (m === "stop") close("stop requested"); });
+    // The runner / supervisor itself died (killed, crashed): stop too, or the restarted runner would start a second agent
+    // on the same LinkedIn account while this orphan kept going.
+    process.on("disconnect", () => close("the office runner or supervisor stopped"));
     process.channel.unref();
   }
   const page = context.pages()[0] || await context.newPage();
@@ -362,6 +383,7 @@ async function main() {
     } else { log("error:", e.message); await event("error", { note: e.message.slice(0, 200), state: "error" }); exitCode = 1; }
     if (CLOUD) await cloudState("error", e.message.slice(0, 200));
   } finally {
+    closing = true;
     await context.close();
   }
   process.exit(exitCode);

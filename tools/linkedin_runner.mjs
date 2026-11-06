@@ -105,17 +105,33 @@ async function pairWith(portal, code) {
 }
 
 // One runner per computer: a second copy (auto-start plus a manual start) would drive the same LinkedIn accounts twice.
+// The running copy touches runner.lock every few seconds, so a lock that is not fresh is stale even when its pid is alive:
+// after a reboot the old pid can belong to another program (Windows reuses pids quickly), and that must not block auto-start.
+const LOCK_FRESH = 30000;
 function takeLock() {
   const lock = path.join(HOME, "runner.lock");
-  try {
-    const pid = Number(fs.readFileSync(lock, "utf8"));
-    if (pid && pid !== process.pid) {
-      try { process.kill(pid, 0); log(`The office runner is already running on this computer (process ${pid}). Not starting a second copy.`); process.exit(0); }
-      catch { /* stale lock */ }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const fd = fs.openSync(lock, "wx", 0o600);         // exclusive: two copies starting at once cannot both get it
+      fs.writeSync(fd, String(process.pid));
+      fs.closeSync(fd);
+      break;
+    } catch (e) {
+      if (e.code !== "EEXIST") throw e;
     }
-  } catch { /* no lock */ }
-  fs.writeFileSync(lock, String(process.pid), { mode: 0o600 });
-  return () => { try { if (Number(fs.readFileSync(lock, "utf8")) === process.pid) fs.rmSync(lock); } catch { /* gone */ } };
+    let pid = 0, age = Infinity;
+    try { pid = Number(fs.readFileSync(lock, "utf8")); age = Date.now() - fs.statSync(lock).mtimeMs; } catch { /* just removed */ }
+    let running = false;
+    if (pid && pid !== process.pid && age < LOCK_FRESH) { try { process.kill(pid, 0); running = true; } catch { /* gone */ } }
+    if (running) {
+      log(`The office runner is already running on this computer (process ${pid}). Not starting a second copy.`);
+      process.exit(0);
+    }
+    try { fs.rmSync(lock); } catch { /* another copy removed it */ }
+  }
+  const touch = setInterval(() => { try { const t = new Date(); fs.utimesSync(lock, t, t); } catch { /* removed */ } }, 5000);
+  touch.unref();
+  return () => { clearInterval(touch); try { if (Number(fs.readFileSync(lock, "utf8")) === process.pid) fs.rmSync(lock); } catch { /* gone */ } };
 }
 
 async function main() {

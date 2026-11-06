@@ -65,6 +65,7 @@ class CloudJobs:
 
     def __init__(self, clock=time.monotonic):
         self._clock = clock
+        self.started_at = now_utc().replace(microsecond=0)    # memory-only jobs: a "logging_in" set before this lost its job
         self._lock = threading.Lock()
         self._login, self._code = {}, {}
         self._attempts = {}
@@ -347,6 +348,23 @@ def supervisor_status(base: Path) -> dict:
         return {"running": False, "at": None, "agents": {}}
 
 
+LOGIN_LOST = "The login did not reach the LinkedIn agent (the portal restarted, or the agent never picked it up). Log in again."
+LOGIN_STUCK_SECONDS = JOB_TTL + 120          # the agent types a login and settles within minutes; a job lives JOB_TTL
+
+
+def login_lost(st: dict, jobs: CloudJobs, pending: dict, now: datetime) -> bool:
+    """A "logging_in" state whose login / code job is gone: set before this portal process started (jobs are memory-only,
+    so a restart drops them), or older than any job can live. Shown as "needs login" so the owner can log in again
+    instead of watching "Logging in..." forever."""
+    if pending.get("login") or pending.get("code"):
+        return False
+    try:
+        at = datetime.fromisoformat(st.get("at") or "")
+    except (TypeError, ValueError):
+        return False
+    return at < jobs.started_at or (now - at).total_seconds() > LOGIN_STUCK_SECONDS
+
+
 def describe(store, base: Path, jobs: CloudJobs) -> dict:
     now = now_utc()
     states, held = _states(store), agent.paused(store)
@@ -360,7 +378,10 @@ def describe(store, base: Path, jobs: CloudJobs) -> dict:
         seen = st.get("seen_at")
         online = bool(seen) and (now - datetime.fromisoformat(seen)).total_seconds() < ONLINE_SECONDS
         state = st.get("state") or "starting"
+        note = st.get("note", "")
         account = st.get("account", "")
+        if state == "logging_in" and login_lost(st, jobs, jobs.pending(s["id"]), now):
+            state, note = "needs_login", LOGIN_LOST
         if not s.get("enabled"):
             state = "stopped"
         elif account and held.get(account) and state == "connected":
@@ -368,7 +389,7 @@ def describe(store, base: Path, jobs: CloudJobs) -> dict:
         elif state not in ("needs_manual", "logging_out") and not online and seen:
             state = "stopped"
         out.append({"id": s["id"], "label": s.get("label", ""), "enabled": bool(s.get("enabled")), "created_by": s.get("created_by", ""),
-                    "created_at": s.get("created_at"), "state": state, "note": st.get("note", ""), "account": account,
+                    "created_at": s.get("created_at"), "state": state, "note": note, "account": account,
                     "name": st.get("name", ""), "last_seen": seen, "online": online, "paused": held.get(account) if account else None,
                     "pending": jobs.pending(s["id"]), "runner": office_agents.get(s["id"]) if office else (sup["agents"] or {}).get(s["id"])})
     return {"max": max_slots(store), "slots": out, "supervisor": {"running": sup["running"], "at": sup["at"]}, **run}
