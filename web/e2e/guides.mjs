@@ -75,6 +75,7 @@ async function capture(page, size) {
     if (i > 0) { await page.getByTestId("add-capture").click(); }
     await page.locator("input[name=capture-type]").nth(i).check();
     await openGuide(page, page.getByTestId("add-capture-guide"), `${size} add capture type ${i}`);
+    await page.locator("#new-cap-name").fill(`Guide check ${size} ${i} ${Date.now()}`);   // unique, so a re-run never clashes
     await page.getByRole("button", { name: "Create connector" }).click();
     const panel = page.getByTestId("capture-panel");
     await panel.waitFor();

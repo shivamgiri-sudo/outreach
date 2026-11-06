@@ -61,7 +61,7 @@ DNS = guide(
     safety="Do not delete existing MX records for a domain that already receives email; you would stop your own mail. "
            "That is one more reason to use a separate domain for cold email.",
     links=[["Google: email sender guidelines", "https://support.google.com/a/answer/81126"]],
-    attach=["integration:sending_domain"], keywords="spf dkim dmarc mx txt cname godaddy hostinger cloudflare namecheap dns verify domain")
+    attach=["integration:sending_domain", "setup:sending_domain"], keywords="spf dkim dmarc mx txt cname godaddy hostinger cloudflare namecheap dns verify domain")
 
 RESEND = guide(
     "resend", "Resend (email sending)", CAT, "Sends your sequence emails from your own domain. Easiest to set up.",
@@ -228,4 +228,4 @@ OUTLOOK = _mailbox("smtp_outlook", "Outlook / Microsoft 365 (SMTP)", "Send from 
                    extra_err=[["'SmtpClientAuthentication is disabled'", "Ask your admin to tick Authenticated SMTP for the "
                                "mailbox (see step 2)."]], keywords="outlook office 365 microsoft smtp hotmail")
 
-GUIDES = [DNS, RESEND, SENDGRID, POSTMARK, SES, GMAIL, SMTP, ZOHO, HOSTINGER, GODADDY, OUTLOOK]
+GUIDES = [RESEND, DNS, SENDGRID, POSTMARK, SES, GMAIL, SMTP, ZOHO, HOSTINGER, GODADDY, OUTLOOK]

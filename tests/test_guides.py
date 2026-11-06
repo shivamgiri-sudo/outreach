@@ -104,3 +104,12 @@ def test_openai_key_in_ai_writer_gets_a_plain_warning():
 def test_gmail_app_password_spaces_are_ignored():
     s = smtp_settings("gmail_smtp", {"smtp_username": "a@b.in", "app_password": "abcd efgh ijkl mnop"})
     assert s["password"] == "abcdefghijklmnop"
+
+
+def test_a_providers_own_guide_comes_first():
+    """Shared guides (DNS, DLT, custom) may be attached too, but a provider's own guide opens first."""
+    for c, plist in registry.PROVIDERS.items():
+        for p in plist:
+            ids = guides.ATTACH[f"hub:{c}:{p['id']}"]
+            if p["id"] in guides.BY_ID:
+                assert ids[0] == p["id"], (c, p["id"], ids)
