@@ -231,7 +231,7 @@ await step("Drawer: reopen Acme for the sequence steps", async () => {
 });
 await step("Drawer: start sequence, log note and reply", async () => {
   await page.getByRole("button", { name: "Start 6-step email sequence" }).click();
-  await expectText("Running — steps sent on day(s): none yet");
+  await expectText("Running — no email sent yet");
   await page.locator("textarea").last().fill("Spoke to Ravi on the phone");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expectText("Spoke to Ravi on the phone");

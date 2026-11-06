@@ -37,7 +37,9 @@ def _rows(store) -> list:
 
 
 def _is_manual(m: dict) -> bool:
-    return bool(m.get("manual")) or m.get("variant") == "manual"
+    """A one-off email a person wrote. "Send email now" also marks its row manual (a person chose it), but that row is a
+    sequence step with its own step name, so it stays under "Sequence only"."""
+    return m.get("variant") == "manual" or (bool(m.get("manual")) and m.get("step") in (None, "", "One-off email"))
 
 
 def _summary(key: str, m: dict, lead: Optional[dict], campaigns: dict) -> dict:

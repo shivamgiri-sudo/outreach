@@ -60,7 +60,11 @@ export function sequenceStatus(seq) {
   if (seq.stopped) return `Stopped (${seq.stopped}) — ${SEQUENCE_STOPPED[seq.stopped] || "no more emails"}`;
   if (seq.in_flight) return "Needs a check: the app stopped mid-send. Look in the outbox before anything else is sent.";
   if (seq.blocked) return `Waiting: ${seq.blocked}.`;
-  return `Running — steps sent on day(s): ${seq.sent_days.join(", ") || "none yet"}`;
+  // Days are stored from 0; people count the first email as Day 1 (as in the sequence editor).
+  const days = (list) => (list || []).map((d) => Number(d) + 1).join(", ");
+  const practised = days(seq.practice_days);
+  const sent = days(seq.sent_days);
+  return `Running — ${sent ? `emails sent on day ${sent}` : "no email sent yet"}${practised ? ` · practised (not sent) on day ${practised}` : ""}`;
 }
 
 // A small inline form instead of a browser pop-up: labelled fields, Save and Cancel.

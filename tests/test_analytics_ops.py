@@ -314,3 +314,15 @@ def test_list_rates_and_csv_export(tmp_path):
     assert (stats["open_rate"], stats["reply_rate"], stats["accept_rate"]) == (50.0, 50.0, 100.0)
     r = c.get("/api/export/lists.csv")
     assert r.status_code == 200 and "open_rate" in r.text.splitlines()[0] and "Both" in r.text
+
+
+def test_outbox_send_now_row_stays_a_sequence_email(tmp_path):
+    # QA sweep: "Send email now" marks its row manual (a person chose it); the Outbox listed it as "one-off" and the
+    # "Sequence only" filter hid it.
+    c, a, b = seeded(tmp_path)
+    store_of(c).update("outbox", lambda rows: [*rows, outbox_row(a["id"], "2026-11-05T06:00:00+00:00", step="Email 3", variant="A",
+                                                               manual=True, by="Meena")])
+    q = lambda s: c.get("/api/outbox?page=1&" + s).json()
+    assert q("kind=manual")["total"] == 1 and q("kind=sequence")["total"] == 5
+    row = next(x for x in q("step=Email%203")["items"])
+    assert row["manual"] is False and row["by"] == "Meena"
