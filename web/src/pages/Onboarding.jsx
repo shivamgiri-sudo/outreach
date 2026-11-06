@@ -171,7 +171,7 @@ export default function Onboarding({ onClose, go }) {
             </>
           )}
           {step === "done" && (
-            <p>You are set. {data.public.product_name} now appears in the app header, on emails and on the demo page. Change anything later in Setup → Brand &amp; offer.</p>
+            <p>You are set. {data.public.company_name || data.public.product_name} now appears in the app header, on emails and on the demo page. Change anything later in Setup → Brand &amp; offer.</p>
           )}
           {msg && <p className="error" role="alert">{msg}</p>}
         </div>

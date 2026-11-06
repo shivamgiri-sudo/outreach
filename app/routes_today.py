@@ -50,8 +50,11 @@ def make_router(store, present) -> APIRouter:
         now = datetime.now(timezone.utc)
         today_ist = now.astimezone(IST).date().isoformat()
         ensure_task_ids(store)
-        leads = {lead["id"]: lead for lead in store.read("leads")}
-        open_tasks = [t for t in store.read("tasks") if t.get("status", "open") == "open" and not t.get("done")]
+        from . import workspaces
+        all_leads = store.read("leads")
+        hidden = workspaces.hidden_ids(all_leads)            # another workspace's leads, and their tasks, stay out
+        leads = {lead["id"]: lead for lead in all_leads if lead["id"] not in hidden}
+        open_tasks = [t for t in store.read("tasks") if t.get("status", "open") == "open" and not t.get("done") and t.get("lead_id") not in hidden]
         call_task_leads = {t.get("lead_id") for t in open_tasks if t.get("kind") == "call"}
         name = lambda lid: (leads.get(lid) or {}).get("company") or (leads.get(lid) or {}).get("domain") or "a lead"
         problems, tasks, calls, nudges, starts = [], [], [], [], []
@@ -67,7 +70,7 @@ def make_router(store, present) -> APIRouter:
                               "detail": "Said yes. Dial through PD only, before 18:55."})
         for index, task in enumerate(store.read("tasks")):
             stage = (leads.get(task.get("lead_id")) or {}).get("stage")
-            if task.get("done") or task.get("status", "open") != "open" or (
+            if task.get("lead_id") in hidden or task.get("done") or task.get("status", "open") != "open" or (
                     stage == "unsubscribed" and task.get("kind") not in KEEP_IF_UNSUBSCRIBED) or (
                     stage == "disqualified" and task.get("kind") == "call"):          # they said no after the yes
                 continue

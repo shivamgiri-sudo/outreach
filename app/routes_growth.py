@@ -246,7 +246,8 @@ def make_router(store, build_lead, present) -> APIRouter:
 
     @router.get("/api/tasks")
     def tasks():
-        return list(reversed(store.read("tasks")))
+        from . import workspaces
+        return workspaces.filter_tasks(list(reversed(store.read("tasks"))), store.read("leads"))
 
     # ---- partners ----
     @router.get("/api/partners")

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { istLabel } from "../time.js";
-import { api } from "../api.js";
+import { api, isOwner } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import LiveSendingSwitch from "./LiveSendingSwitch.jsx";
@@ -49,7 +49,7 @@ function SendingBanner({ status, onResume, onClearPractice }) {
         Last 7 days: {status.rates.sent} sent · {status.rates.bounces} bounced ({pct(status.rates.bounce_rate)}) · {status.rates.complaints} spam
         complaints. Sending pauses by itself above 2% bounces or 0.3% complaints.
       </p>
-      {status.mode !== "live" && (
+      {status.mode !== "live" && isOwner() && (
         <button className="btn ghost" style={{ marginTop: 8 }} onClick={onClearPractice}>Clear practice runs</button>
       )}
     </div>
@@ -118,10 +118,12 @@ export default function Outbox({ go }) {
         </div>
         <label>Postal address (optional; needed only to email leads in the US or Canada)</label>
         <input value={cfg.sender_address || ""} placeholder="Office address, city, PIN" onChange={(e) => setCfg({ ...cfg, sender_address: e.target.value })} />
-        <div className="row" style={{ marginTop: 10 }}>
-          <button className="btn ghost" onClick={save}>Save settings</button>
-          <button className="btn" onClick={run}>Run sequences now</button>
-        </div>
+        {isOwner() ? (
+          <div className="row" style={{ marginTop: 10 }}>
+            <button className="btn ghost" onClick={save}>Save settings</button>
+            <button className="btn" onClick={run}>Run sequences now</button>
+          </div>
+        ) : <p className="sub" style={{ marginTop: 10 }}>Only an owner changes these settings or runs the sequences by hand.</p>}
       </div>
       {status && (status.send_failed.length > 0 || status.stuck.length > 0) && (
         <div className="card" style={{ marginBottom: 14 }}>

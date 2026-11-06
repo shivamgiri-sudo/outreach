@@ -102,9 +102,11 @@ def make_router(store, transactional_sender=None) -> APIRouter:
     @router.get("/api/tasks/board")
     def board(owner: Optional[str] = None):
         ensure_task_ids(store)
-        leads = {l["id"]: l for l in store.read("leads")}
+        from . import workspaces
+        all_leads = store.read("leads")
+        leads = {l["id"]: l for l in all_leads}
         rows = []
-        for t in store.read("tasks"):
+        for t in workspaces.filter_tasks(store.read("tasks"), all_leads):    # another workspace's tasks stay out
             if owner and t.get("owner") != owner:
                 continue
             lead = leads.get(t.get("lead_id")) or {}
@@ -169,7 +171,9 @@ def make_router(store, transactional_sender=None) -> APIRouter:
 
     @router.get("/api/notifications")
     def notifications(unread: bool = False, owner: Optional[str] = None):
-        rows = [n for n in store.read("notifications") if (not unread or not n.get("read")) and (not owner or n.get("to") in (owner, None))]
+        from . import workspaces
+        rows = [n for n in workspaces.filter_tasks(store.read("notifications"), store.read("leads"))
+                if (not unread or not n.get("read")) and (not owner or n.get("to") in (owner, None))]
         return list(reversed(rows))[:200]
 
     @router.post("/api/notifications/read")

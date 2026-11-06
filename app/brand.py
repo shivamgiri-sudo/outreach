@@ -214,6 +214,13 @@ def contrast_ratio(a: str, b: str) -> float:
     return round((la + 0.05) / (lb + 0.05), 2)
 
 
+def with_scheme(text: str) -> str:
+    """People type "skylinehomes.in" or "www.cal.com/you"; add https:// to a bare domain instead of refusing it."""
+    if re.match(r"^(?![a-z][a-z0-9+.-]*://)[a-z0-9-]+(\.[a-z0-9-]+)+(/\S*)?$", text, re.I):
+        return "https://" + text
+    return text
+
+
 def validate_brand(changes: dict) -> dict:
     """Cleaned brand fields; raises ValueError with a sentence a person can act on."""
     out = {}
@@ -230,6 +237,7 @@ def validate_brand(changes: dict) -> dict:
                 raise ValueError("Colours must be hex codes such as #0369a1.")
             text = text.lower()
         if key == "website" and text:
+            text = with_scheme(text)
             if not re.match(r"^https?://[^\s/]+\.[^\s]+$", text):
                 raise ValueError("The website must be a full address such as https://yourcompany.com.")
         if key == "support_email" and text and not _EMAIL.match(text):
@@ -251,6 +259,8 @@ def validate_offer(changes: dict) -> dict:
             raise ValueError(f"{key.replace('_', ' ').capitalize()} is too long (at most {_limit(key)} characters).")
         if "{{" in text or "}}" in text or "<" in text:
             raise ValueError(f"{key.replace('_', ' ').capitalize()} cannot contain {{{{ }}}} or < characters.")
+        if key == "booking_link" and text:
+            text = with_scheme(text)
         if key == "booking_link" and text and not re.match(r"^https?://[^\s/]+\.[^\s]+$", text):
             raise ValueError("The demo / booking link must be a full address such as https://cal.com/you.")
         if key == "demo_kind" and text not in DEMO_KINDS:

@@ -93,13 +93,16 @@ def test_viewer_gets_403_on_every_mutating_api_route(tmp_path):
     viewer = team(c)["viewer"]
     leaked = []
     for method, path in all_routes(c.app):
-        if method in READ or not path.startswith("/api/") or path in ("/api/login", "/api/logout") or path in RUNNER_PUBLIC_PATHS:
-            continue                          # office-runner pairing: no session at all, it checks its one-time code itself
+        # also allowed: office-runner pairing (checks its one-time code), changing your own password (current one asked)
+        # and the read-only LinkedIn text preview
+        if (method in READ or not path.startswith("/api/") or path in ("/api/login", "/api/logout", "/api/me/password", "/api/linkedin/sequence/preview")
+                or path in RUNNER_PUBLIC_PATHS):
+            continue
         r = call(c, method, path, viewer)
         if r.status_code != 403:
             leaked.append((method, path, r.status_code))
     assert leaked == []
-    assert c.post("/api/logout", headers=bearer(viewer)).status_code == 200       # the one write a viewer may do
+    assert c.post("/api/logout", headers=bearer(viewer)).status_code == 200       # the writes a viewer may do: sign out, own password
 
 
 def test_caller_gets_403_on_every_owner_route(tmp_path):

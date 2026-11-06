@@ -54,7 +54,10 @@ export default function LeadBulkBar({ picked, pageIds, owners, spaces, onDone, o
   };
   const doMove = async (id) => {
     setBusy("ws");
-    try { const r = await api.moveToWorkspace(id, picked); onDone(`${r.moved} lead(s) moved.`, true); } catch (e) { onDone(e.message, false); }
+    try {
+      const r = await api.moveToWorkspace(id, picked); onDone(`${r.moved} lead(s) moved.`, true);
+      window.dispatchEvent(new Event("workspaces-changed"));          // the menu's workspace counts follow
+    } catch (e) { onDone(e.message, false); }
     setBusy(""); setAsk(null);
   };
   const saveAsList = async () => {

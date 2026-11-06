@@ -33,14 +33,19 @@ export default function Growth() {
   const max = Math.max(1, ...Object.values(g.activation_funnel));
   const num = (k, v) => setOffer({ ...offer, [k]: Number(v) });
 
-  const saveOffer = async () => { await api.saveOffer(offer); setMessage("Saved. New emails and demo pages use these numbers."); load(); };
-  const addPartner = async () => { await api.addPartner(newPartner); setNewPartner({ name: "", kind: "community", contact: "" }); load(); };
+  // A refused save (callers and viewers cannot change the offer) shows the server's sentence instead of failing silently.
+  const saveOffer = async () => {
+    try { await api.saveOffer(offer); setMessage("Saved. New emails and demo pages use these numbers."); load(); } catch (e) { setMessage(e.message); }
+  };
+  const addPartner = async () => {
+    try { await api.addPartner(newPartner); setNewPartner({ name: "", kind: "community", contact: "" }); setMessage(""); load(); } catch (e) { setMessage(e.message); }
+  };
 
   return (
     <>
       <h2>Free experience</h2>
       <p className="sub">Let employers try it first. Give a real, capped taste, track whether they reach a result, and talk about paying only after.</p>
-      {message && <div className="tip" style={{ marginBottom: 12 }}>{message}</div>}
+      {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
 
       <div className="grid g2">
         <div className="card">
@@ -100,7 +105,7 @@ export default function Growth() {
           {partners.map((p) => (
             <div className="row" key={p.id} style={{ marginBottom: 6 }}>
               <span style={{ flex: 1 }}><b>{p.name}</b> <small>{p.kind} · {p.contact}</small></span>
-              <select style={{ width: "auto" }} value={p.status} onChange={(e) => api.partnerStatus(p.id, e.target.value).then(load)}>
+              <select style={{ width: "auto" }} value={p.status} onChange={(e) => api.partnerStatus(p.id, e.target.value).then(load).catch((err) => setMessage(err.message))}>
                 {PARTNER_STATUSES.map((s) => <option key={s}>{s}</option>)}
               </select>
             </div>

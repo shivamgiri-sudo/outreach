@@ -21,6 +21,17 @@ IMPLIED_ACTIVE = {"email_send": ("resend", ("api_key", "from_email", "domain", "
 FETCHED_URL_KEYS = ("url", "api_endpoint", "api_base")        # the server calls these: full SSRF check
 HEADER_NAME = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 PHONE = re.compile(r"^\+?[0-9 ()\-]{6,20}$")
+# A click-to-call link is put into an <a href> on the Call desk, so only dialler schemes are allowed (never javascript:).
+DIAL_LINK = re.compile(r"^(https?://[^\s]+|tel:|sip:|callto:)", re.I)
+
+
+def dial_link_problem(url: str) -> str:
+    url = str(url or "").strip()
+    if "{phone}" not in url:
+        return "The link must contain {phone} where the number goes."
+    if not DIAL_LINK.match(url):
+        return "The link must start with https://, http://, tel:, sip: or callto:."
+    return ""
 MAX_HEADERS = 20
 MAX_VALUE_CHARS = 8000
 
@@ -176,8 +187,8 @@ def validate(provider: dict, values: dict, resolver=None) -> None:
     for f in provider["fields"]:
         if eff.get(f["key"]) not in (None, "", []):
             _check_field(f, eff[f["key"]], resolver)
-    if provider["id"] == "click_to_call" and "{phone}" not in eff.get("click_to_call_url", ""):
-        raise ValueError("The link must contain {phone} where the number goes.")
+    if provider["id"] == "click_to_call" and dial_link_problem(eff.get("click_to_call_url", "")):
+        raise ValueError(dial_link_problem(eff.get("click_to_call_url", "")))
     if provider.get("custom") and provider["id"] == "custom_http":
         from .custom_http import validate_template
         validate_template(eff, provider.get("placeholders", ()))

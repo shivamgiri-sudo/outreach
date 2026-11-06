@@ -72,8 +72,9 @@ def make_router(store) -> APIRouter:
         return health.build(store)
 
     @router.get("/api/change-log.csv")
-    def change_log_csv():
+    def change_log_csv(request: Request):
         rows = audit.log_for(store, "", 20000)
+        audit.record(store, getattr(request.state, "user", None), "export.download", "change-log.csv", f"{len(rows)} rows")
         fields = list(dict.fromkeys(k for r in rows for k in r)) or ["at", "by", "field", "old", "new"]
         out = io.StringIO()
         writer = csv.writer(out)

@@ -23,7 +23,9 @@ function useDialLink() {
       setDialUrl(t && t.mode === "api" ? t.values.click_to_call_url || "" : "");
     }).catch(() => {});
   }, []);
-  return (phone) => (dialUrl.includes("{phone}") ? dialUrl.replace("{phone}", encodeURIComponent(phone)) : `tel:${phone}`);
+  // Only dialler schemes are used as a link (a saved javascript: address would run in the app when clicked).
+  const usable = dialUrl.includes("{phone}") && /^(https?:\/\/|tel:|sip:|callto:)/i.test(dialUrl.trim());
+  return (phone) => (usable ? dialUrl.replace("{phone}", encodeURIComponent(phone)) : `tel:${phone}`);
 }
 
 function Summary({ s }) {

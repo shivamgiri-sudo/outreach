@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, setToken } from "../api.js";
 import GoLive from "./GoLive.jsx";
 import BackupRestore from "./BackupRestore.jsx";
 import { useConfirm, usePrompt } from "../Dialog.jsx";
@@ -158,6 +158,36 @@ function Basics({ onSaved }) {
   );
 }
 
+// Anyone with their own login changes their own password here; afterwards every session of theirs signs out.
+function OwnPassword() {
+  const [me, setMe] = useState(null);
+  const [form, setForm] = useState({ current: "", next: "", again: "" });
+  const [message, setMessage] = useState("");
+  useEffect(() => { api.me().then(setMe).catch((e) => setMessage(e.message)); }, []);
+  if (!me) return <p className="sub">{message || "Loading…"}</p>;
+  if (!me.email) return <div className="card"><b>My password</b><p className="sub">You signed in with the server admin password. Change it on the server (OUTREACH_ADMIN_PASSWORD), or sign in with your own login to change that one here.</p></div>;
+  const save = (e) => {
+    e.preventDefault();
+    if (form.next !== form.again) { setMessage("The two new passwords do not match."); return; }
+    setMessage("");
+    api.changeOwnPassword(form.current, form.next).then(() => {
+      setMessage("Password changed. Sign in again with the new password.");
+      setTimeout(() => { setToken(""); window.dispatchEvent(new Event("auth-expired")); }, 1500);
+    }).catch((err) => setMessage(err.message));
+  };
+  return (
+    <form className="card inline-form" style={{ maxWidth: 480 }} onSubmit={save} data-testid="own-password">
+      <b>My password</b>
+      <p className="sub" style={{ margin: "2px 0 8px" }}>Signed in as {me.name} ({me.email}). Changing it signs you out everywhere.</p>
+      <label>Current password<input type="password" required autoComplete="current-password" value={form.current} onChange={(e) => setForm({ ...form, current: e.target.value })} /></label>
+      <label>New password (10+ characters)<input type="password" required minLength={10} autoComplete="new-password" value={form.next} onChange={(e) => setForm({ ...form, next: e.target.value })} /></label>
+      <label>New password again<input type="password" required minLength={10} autoComplete="new-password" value={form.again} onChange={(e) => setForm({ ...form, again: e.target.value })} /></label>
+      <button className="btn" type="submit">Change password</button>
+      {message && <p className="sub" role="status">{message}</p>}
+    </form>
+  );
+}
+
 const ROLE_HELP = { owner: "everything", caller: "leads, calls, meetings, tasks", viewer: "read only" };
 
 // Workspaces (owner only): one per client, so their leads, lists and numbers stay apart.
@@ -165,7 +195,7 @@ function Workspaces({ onChanged }) {
   const [rows, setRows] = useState([]);
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
-  const load = () => api.workspaces().then((w) => { setRows(w); onChanged?.(w); }).catch((e) => setMessage(e.message));
+  const load = () => api.workspaces().then((w) => { setRows(w); onChanged?.(w); window.dispatchEvent(new Event("workspaces-changed")); }).catch((e) => setMessage(e.message));
   useEffect(() => { load(); }, []);
   const run = (fn, done) => fn().then(() => { setMessage(done); load(); }).catch((e) => setMessage(e.message));
   const confirm = useConfirm();
@@ -234,7 +264,7 @@ function Users() {
                   onChange={(e) => run(() => api.changeUser(u.email, { can_edit_contacts: e.target.checked }), e.target.checked ? "May edit contact details." : "Can no longer edit contact details.")} /> Can edit contacts</label>}
                 {u.role !== "owner" && spaces.length > 1 && <span className="row" title="Tick to limit this login to these workspaces; none ticked = all">
                   <small>Workspaces:</small>{spaces.map((w) => <label key={w.id} className="check-row"><input type="checkbox" checked={(u.workspaces || []).includes(w.id)} onChange={(e) => toggleSpace(u, w.id, e.target.checked)} /> {w.name}</label>)}</span>}
-                <button className="btn ghost" onClick={() => reset(u.email)}>Reset password</button>
+                {(isSuper || u.role !== "owner") && <button className="btn ghost" onClick={() => reset(u.email)}>Reset password</button>}
                 {!u.super_admin && (isSuper || u.role !== "owner") && <button className="btn ghost danger" onClick={async () => (await confirm({ message: `Remove ${u.email}?`, confirmLabel: "Remove", danger: true })) && run(() => api.removeUser(u.email), "Login removed.")}>Remove</button>}
               </span>
             </li>
@@ -280,13 +310,15 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
         <button role="tab" aria-selected={tab === "connections"} className={tab === "connections" ? "on" : ""} onClick={() => setTab("connections")}>Connections</button>
         {role === "owner" && <button role="tab" aria-selected={tab === "industry"} className={tab === "industry" ? "on" : ""} onClick={() => setTab("industry")}>Industry &amp; fields</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "team"} className={tab === "team" ? "on" : ""} onClick={() => setTab("team")}>Team &amp; workspaces</button>}
-        <button role="tab" aria-selected={tab === "backup"} className={tab === "backup" ? "on" : ""} onClick={() => setTab("backup")}>Backup &amp; restore</button>
+        {role === "owner" && <button role="tab" aria-selected={tab === "backup"} className={tab === "backup" ? "on" : ""} onClick={() => setTab("backup")}>Backup &amp; restore</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "audit"} className={tab === "audit" ? "on" : ""} onClick={() => setTab("audit")}>Audit</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "health"} className={tab === "health" ? "on" : ""} onClick={() => setTab("health")}>System health</button>}
+        <button role="tab" aria-selected={tab === "account"} className={tab === "account" ? "on" : ""} onClick={() => setTab("account")}>My password</button>
       </div>
+      {tab === "account" && <OwnPassword />}
       {tab === "checklist" && <GoLive embedded go={(page) => (page === "setup" ? setTab("connections") : go?.(page))} />}
       {tab === "brand" && role === "owner" && <BrandSettings onOpenWizard={onOpenWizard} />}
-      {tab === "backup" && <><p><GuideButton keys="app:backup" label="How do backups work?" testId="backup-guide" /></p><BackupRestore /></>}
+      {tab === "backup" && role === "owner" && <><p><GuideButton keys="app:backup" label="How do backups work?" testId="backup-guide" /></p><BackupRestore /></>}
       {tab === "audit" && role === "owner" && <AuditLog />}
       {tab === "health" && role === "owner" && <SystemHealth />}
       {tab === "team" && role === "owner" && <><Workspaces /><Users /><ScoringCard /></>}

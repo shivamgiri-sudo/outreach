@@ -58,6 +58,20 @@ def filter_rows(rows) -> list:
     return [r for r in rows if visible(r)]
 
 
+def hidden_ids(leads) -> set:
+    """Ids of leads outside this request's scope, so tasks, call queues and summaries tied to them can be left out
+    (a task for a deleted lead, or one with no lead, is not hidden)."""
+    selected, allowed = _SCOPE.get()
+    if selected is None and allowed is None:
+        return set()
+    return {lead["id"] for lead in leads if isinstance(lead, dict) and lead.get("id") and not visible(lead)}
+
+
+def filter_tasks(tasks, leads) -> list:
+    hidden = hidden_ids(leads)
+    return [t for t in tasks if t.get("lead_id") not in hidden] if hidden else list(tasks)
+
+
 def for_new_lead() -> str:
     selected, allowed = _SCOPE.get()
     return selected or (sorted(allowed)[0] if allowed else MAIN)

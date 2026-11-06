@@ -133,6 +133,7 @@ ACTIONS = {
     "prospects.export": "Prospects exported", "prospects.import": "Prospects imported", "prospects.suppress": "Prospect suppressed",
     "prospects.erase": "Prospect erased", "prospects.edit": "Prospect edited", "prospects.settings": "Prospect sources changed",
     "prospects.enrich": "Prospect emails looked up", "prospects.spend": "Lookup budget changed",
+    "export.download": "Data downloaded", "backup.download": "Backup downloaded", "backup.restore": "Backup restored",
 }
 MAX_DETAIL = 500
 
