@@ -18,6 +18,7 @@ export function usePeriod() {
   return [period, setPeriod];
 }
 
+const MAX_DAYS = 731;
 const dayLabel = (d) => istDateLabel(`${d}T12:00:00+05:30`);
 export function rangeText(range) {
   if (!range) return "";
@@ -28,7 +29,11 @@ export default function PeriodPicker({ value, onChange, range }) {
   const custom = !value.days;
   const [from, setFrom] = useState(value.from || istDate(-29));
   const [to, setTo] = useState(value.to || istDate(0));
-  const apply = () => { if (from && to && from <= to) onChange({ from, to }); };
+  // The server takes at most 731 days (analytics_range.MAX_DAYS); say so here instead of a failed page load.
+  const span = from && to ? Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1 : 0;
+  const tooLong = span > MAX_DAYS;
+  const ok = from && to && from <= to && !tooLong;
+  const apply = () => { if (ok) onChange({ from, to }); };
   return (
     <div className="card" style={{ marginBottom: 14, padding: 12 }} data-testid="period-picker">
       <div className="row" style={{ flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -41,8 +46,9 @@ export default function PeriodPicker({ value, onChange, range }) {
           <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
             <input type="date" aria-label="From (IST day)" value={from} max={to} onChange={(e) => setFrom(e.target.value)} style={{ width: "auto" }} />
             <span>to</span>
-            <input type="date" aria-label="To (IST day)" value={to} min={from} onChange={(e) => setTo(e.target.value)} style={{ width: "auto" }} />
-            <button className="btn ghost" disabled={!from || !to || from > to} onClick={apply}>Apply</button>
+            <input type="date" aria-label="To (IST day)" value={to} min={from} max={istDate(0)} onChange={(e) => setTo(e.target.value)} style={{ width: "auto" }} />
+            <button className="btn ghost" disabled={!ok} onClick={apply}>Apply</button>
+            {tooLong && <small className="sub-inline" role="alert">Pick at most {MAX_DAYS} days (about two years).</small>}
           </span>
         )}
       </div>

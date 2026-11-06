@@ -94,8 +94,9 @@ def test_insights_summarise_sources_sectors_and_outreach(client):
     client.post("/api/sequences/run", json={"now": T0.isoformat()})
     client.post(f"/api/leads/{lid}/reply", json={"text": "Yes please send the story"})
     ins = client.get("/api/insights").json()
-    assert ins["totals"]["leads"] == 2 and ins["totals"]["emails_sent"] == 1
-    assert ins["outreach"]["reply_rate"] == 100.0 and ins["outreach"]["interested"] == 1
+    # a practice run sends nothing: 0 emails sent, as on the Dashboard and the Analytics overview
+    assert ins["totals"]["leads"] == 2 and ins["totals"]["emails_sent"] == 0
+    assert ins["outreach"]["reply_rate"] == 0.0 and ins["outreach"]["interested"] == 1
     src = {s["source"]: s for s in ins["by_source"]}
     assert src["apollo"]["leads"] == 2 and src["apollo"]["interested"] == 1
     assert {"hot", "warm", "cold"} == set(ins["by_band"])

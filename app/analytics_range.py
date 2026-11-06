@@ -10,6 +10,7 @@ from statistics import median
 from typing import Optional
 
 from . import workspaces
+from .replies import is_person_reply
 from .source_stats import real
 
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -91,12 +92,19 @@ def _stage_target(event: dict) -> Optional[str]:
     return match.group(1) if match else None
 
 
+def _is_unsubscribe(event: dict) -> bool:
+    """The unsubscribe link ("unsubscribe" event), a pasted or inbound reply read as one ("[unsubscribe] ..."), or a
+    person moving the lead to Unsubscribed. Only the link was counted, so pasted "please remove me" replies were not."""
+    return (event.get("kind") == "unsubscribe" or _stage_target(event) == "unsubscribed"
+            or (event.get("kind") == "reply" and str(event.get("text") or "").startswith("[unsubscribe]")))
+
+
 def milestones(lead: dict) -> dict:
     """When this lead first reached each funnel step (None when it never did)."""
     events = _events(lead)
     first = lambda test: next((at for at, e in events if test(e)), None)
     out = {"contacted": first(lambda e: e.get("kind") in CONTACT_KINDS),
-           "replied": first(lambda e: e.get("kind") == "reply"),
+           "replied": first(is_person_reply),
            "interested": first(lambda e: _stage_target(e) in INTERESTED),
            "meeting": first(lambda e: _stage_target(e) in MEETING or (e.get("kind") == "meeting" and "booked" in str(e.get("text", "")).lower())),
            "customer": first(lambda e: _stage_target(e) in CUSTOMER)}
@@ -150,8 +158,8 @@ def _delta(value, previous) -> dict:
 def _period_numbers(leads: list, marks: dict, sent: list, start: datetime, end: datetime) -> dict:
     created = sum(1 for l in leads if _in(_t(l.get("created_at")), start, end))
     reach = {step: sum(1 for l in leads if _in(marks[l["id"]][step], start, end)) for step in FUNNEL}
-    replies = sum(1 for l in leads if any(e.get("kind") == "reply" and _in(at, start, end) for at, e in _events(l)))
-    unsub = sum(1 for l in leads if any(e.get("kind") == "unsubscribe" and _in(at, start, end) for at, e in _events(l)))
+    replies = sum(1 for l in leads if any(is_person_reply(e) and _in(at, start, end) for at, e in _events(l)))
+    unsub = sum(1 for l in leads if any(_is_unsubscribe(e) and _in(at, start, end) for at, e in _events(l)))
     emails = [m for m in sent if _in(_t(m.get("sent_at")), start, end)]
     emailed = {m["lead_id"] for m in emails}
     by_id = {l["id"]: l for l in leads}

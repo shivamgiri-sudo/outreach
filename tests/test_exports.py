@@ -185,7 +185,7 @@ def test_duplicates_insights_linkedin(seeded):
     assert "same email" in dupes[0]["why"] and sorted(r["suggested_keep"] for r in dupes) == ["no", "yes"]
     insights = read_csv(get(client, "insights"))
     lookup = {(r["section"], r["item"], r["metric"]): r["value"] for r in insights}
-    assert lookup[("totals", "", "leads")] == "4" and lookup[("totals", "", "emails_sent")] == "2"   # the failed send is not counted
+    assert lookup[("totals", "", "leads")] == "4" and lookup[("totals", "", "emails_sent")] == "1"   # failed and practice sends are not counted
     assert lookup[("by_source", "manual", "leads")] == "2" and lookup[("by_band", "hot", "leads")] == "1"
     linkedin = read_csv(get(client, "linkedin_queue"))
     assert [(r["section"], r["lead_id"]) for r in linkedin] == [("waiting for acceptance", "l1")]
@@ -251,3 +251,13 @@ def test_csv_streams_in_chunks(seeded):
     columns, rows = exports.build(store, "leads", {}, lambda lead: {**lead, "score": 1, "band": "cold"})
     chunks = list(exports.csv_chunks(columns, rows * 400))
     assert len(chunks) > 2 and chunks[0].startswith(BOM) and json.dumps(chunks[0]).count("\\r\\n") == 1
+
+
+def test_phone_typed_with_spaces_finds_the_lead():
+    """QA sweep: searching Leads for '+91 98907 79946' found nothing (stored '+919890779946'); the export agrees now."""
+    from app.exports import _lead_matches
+    lead = {"id": "x", "company": "Bharat Freight Movers", "phone": "+919890779946"}
+    for q in ("+91 98907 79946", "098907-79946", "9890779946", "(989) 077 9946"):
+        assert _lead_matches(lead, {"q": q}, set()), q
+    assert not _lead_matches(lead, {"q": "98907 1"}, set())          # too short to be a phone
+    assert not _lead_matches(lead, {"q": "2026"}, set())

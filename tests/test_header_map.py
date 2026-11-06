@@ -150,3 +150,20 @@ def test_read_table_handles_tabs_semicolons_bom_and_duplicate_headers():
     assert table[0] == (2, {"Company": "Acme", "City": "Pune"})
     with pytest.raises(ValueError):
         read_table("")
+
+
+def test_plain_sheet_with_mobile_phone_is_not_a_hubspot_export():
+    """QA sweep: a 300-row team sheet with a "Mobile Phone" column was detected as HubSpot, so every lead's source
+    (Dashboard 'Where leads come from', Insights 'By lead source') said HubSpot."""
+    plain = ["Company Name", "First Name", "Last Name", "Job Title", "Email", "Mobile Phone", "Website", "City", "State",
+             "Country", "Industry", "Employees"]
+    assert detect_format(plain)["source"] != "hubspot"
+    real = ["Record ID", "First Name", "Last Name", "Email", "Phone Number", "Mobile Phone Number", "Lifecycle Stage",
+            "Company Name", "Website URL", "City", "State/Region", "Country/Region"]
+    assert detect_format(real)["key"] == "hubspot"
+
+
+def test_xlsx_workbook_gets_a_plain_message():
+    """QA sweep: uploading an .xlsx through the Import wizard said 'looks like UTF-16'."""
+    with pytest.raises(ValueError, match="Excel workbook"):
+        read_table("PK\x03\x04\x14\x00\x06\x00[Content_Types].xml\x00\x00")

@@ -110,7 +110,8 @@ def test_intelligence_and_insights_honour_the_period(tmp_path):
     old = c.get("/api/intelligence?from=2026-01-01&to=2026-01-07").json()
     assert old["channels"]["email"]["enrolled"] == 0 and old["team"] == []
     ins = c.get(f"/api/insights?from={FROM}&to={TO}").json()
-    assert ins["totals"]["leads"] == 1 and ins["totals"]["emails_sent"] == 4 and ins["range"]["days"] == 7
+    # the practice (dry_run) row is not an email sent: Insights agrees with the Analytics overview (3)
+    assert ins["totals"]["leads"] == 1 and ins["totals"]["emails_sent"] == 3 and ins["range"]["days"] == 7
 
 
 def test_analytics_respect_workspace_scope(tmp_path):
@@ -326,3 +327,32 @@ def test_outbox_send_now_row_stays_a_sequence_email(tmp_path):
     assert q("kind=manual")["total"] == 1 and q("kind=sequence")["total"] == 5
     row = next(x for x in q("step=Email%203")["items"])
     assert row["manual"] is False and row["by"] == "Meena"
+
+
+def test_out_of_office_is_not_a_reply_anywhere(tmp_path):
+    """QA sweep: an out-of-office pasted on a lead counted as 'Replied' on the Dashboard/Analytics (7) and made the
+    company an 'Engaged account', while Insights and Intelligence said 6. Practice emails counted as 'sent' on Insights
+    (15) but not on the Dashboard (0)."""
+    c = TestClient(create_app(data_file=tmp_path / "s.json"))
+    c.post("/api/leads/import", json={"csv": "company,email,website\nTele Hub,ravi@telehub.in,telehub.in\nAcme,asha@acme.in,acme.in\n",
+                                      "source": "manual"})
+    ids = {l["company"]: l["id"] for l in c.get("/api/leads").json()}
+    c.post(f"/api/leads/{ids['Tele Hub']}/reply", json={"text": "I am out of office until 15 November."})
+    c.post(f"/api/leads/{ids['Acme']}/reply", json={"text": "Not interested, thanks."})
+    over = c.get("/api/analytics/overview?days=7").json()
+    assert over["kpis"]["replied"]["value"] == 1
+    comp = {x["name"]: x for x in c.get("/api/companies").json()["items"]}
+    assert comp["Tele Hub"]["replies"] == 0 and comp["Tele Hub"]["engaged"] is False
+    assert comp["Acme"]["replies"] == 1 and comp["Acme"]["engaged"] is False       # everyone there said no
+    assert c.get("/api/intelligence").json()["timing"]["replies_measured"] == 1
+
+
+def test_pasted_unsubscribe_reply_counts_as_unsubscribed(tmp_path):
+    """QA sweep: 'Please remove me from your list' pasted on a lead moved it to Unsubscribed, but the Analytics
+    overview said Unsubscribed 0 (only the unsubscribe link was counted)."""
+    c = TestClient(create_app(data_file=tmp_path / "s.json"))
+    c.post("/api/leads/import", json={"csv": "company,email,website\nSundaram,ravi@sundaram.in,sundaram.in\n", "source": "manual"})
+    lid = c.get("/api/leads").json()[0]["id"]
+    c.post(f"/api/leads/{lid}/reply", json={"text": "Please remove me from your list and do not email again."})
+    assert c.get(f"/api/leads/{lid}").json()["stage"] == "unsubscribed"
+    assert c.get("/api/analytics/overview?days=7").json()["kpis"]["unsubscribed"]["value"] == 1

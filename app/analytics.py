@@ -8,6 +8,7 @@ from typing import Optional
 from . import lists as lists_mod
 from . import workspaces
 from .linkedin_seq import persona
+from .replies import is_person_reply
 from .source_stats import real
 
 WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -41,7 +42,7 @@ def reply_timing(leads) -> dict:
     for l in leads:
         sent = _first(l, ("email", "sent", "linkedin", "whatsapp"))
         for e in l.get("timeline", []):
-            if e.get("kind") != "reply":
+            if not is_person_reply(e):
                 continue
             at = _t(e.get("at"))
             if not at:
@@ -50,7 +51,7 @@ def reply_timing(leads) -> dict:
             weekday[local.weekday()] += 1
             hour[local.hour] += 1
             break
-        first_reply = _first(l, ("reply",))
+        first_reply = min((t for t in (_t(e.get("at")) for e in l.get("timeline", []) if is_person_reply(e)) if t), default=None)
         if sent and first_reply and first_reply >= sent:
             gaps.append((first_reply - sent).total_seconds() / 3600)
     best_day = weekday.most_common(1)

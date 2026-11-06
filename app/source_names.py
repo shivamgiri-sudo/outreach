@@ -36,11 +36,21 @@ SOURCES = (
     ("job_board", "Job board", "outbound"),
     ("careers_page", "Careers page", "outbound"),
     ("web_scraper", "Website contact finder", "outbound"),
+    # the other tool exports the Import wizard recognises (app/header_map.py FORMATS): without these a HubSpot or
+    # Kaspr file showed "Unknown" on Leads but "Hubspot" on the Dashboard
+    ("kaspr", "Kaspr", "outbound"),
+    ("dux_soup", "Dux-Soup", "outbound"),
+    ("seamless", "Seamless.AI", "outbound"),
+    ("rocketreach", "RocketReach", "outbound"),
     ("enrichment", "Website lookup", "outbound"),
     ("prospect_db", "Prospect database", "outbound"),
     # imports and hand entry
     ("bmi_sheet", "Team sheet", "import"),
     ("sheet", "Spreadsheet import", "import"),
+    ("hubspot", "HubSpot", "import"),
+    ("salesforce", "Salesforce", "import"),
+    ("zoho_crm", "Zoho CRM", "import"),
+    ("pipedrive", "Pipedrive", "import"),
     ("referral", "Referral", "referral"),
     ("manual", "Added by hand", "manual"),
     ("linkedin_manual", "Saved from LinkedIn", "manual"),          # a rep pressed "Save to portal" in the Chrome assistant

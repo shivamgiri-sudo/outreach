@@ -62,3 +62,11 @@ def test_summary_counts_the_day(tmp_path):
     c.post(f"/api/leads/{by_company(c, 'Beta')['id']}/reply", json={"text": "How much does it cost?"})
     summary = c.get("/api/today").json()["summary"]
     assert "1 call" in summary and "1 reply" in summary
+
+
+def test_task_without_a_lead_names_no_company(tmp_path):
+    """QA sweep: a task typed on the Tasks page showed '· a lead' and an 'Open lead' button that opened nothing."""
+    c = make(tmp_path)
+    c.post("/api/tasks", json={"title": "Prepare Monday call notes", "due_at": "2026-11-06T06:00:00+00:00"})
+    item = next(i for i in c.get("/api/today").json()["items"] if i["title"] == "Prepare Monday call notes")
+    assert item["lead_id"] in (None, "") and item["company"] == ""

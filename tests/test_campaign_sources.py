@@ -127,10 +127,26 @@ def test_careers_pages_use_the_jobposting_parser_and_never_read_job_boards():
     out = src.careers_postings(["https://acme-retail.in/careers", "https://www.naukri.com/acme-jobs", "https://gone.example/jobs"],
                                [{"url": "https://zeta-foods.in/careers", "html": ZETA_JOBS},
                                 {"url": "https://in.indeed.com/x", "html": ZETA_JOBS}], io.fetch)
-    assert io.urls() == ["https://acme-retail.in/careers", "https://gone.example/jobs"]   # the job board was never fetched
+    assert io.urls()[:2] == ["https://acme-retail.in/careers", "https://gone.example/jobs"]
+    assert not io.urls("naukri") and not io.urls("indeed")                                   # job boards are never fetched
     assert len(out["postings"]) == 12 and out["pages"] == 2
     assert any("job boards are not read" in e for e in out["errors"]) and any("could not read it" in e for e in out["errors"])
     assert any("job board pages are not used" in e for e in out["errors"])
+
+
+def test_careers_homepage_follows_careers_link_and_job_sitemap():
+    """A campaign given a company homepage (https://www.wipro.com/ style) reads jobs the way "Read job pages" does."""
+    home = '<html><head><title>Wipro</title></head><body><a href="https://careers.wipro.com/">Careers</a></body></html>'
+    careers = "<html><body><div id=app></div></body></html>"                       # a script-only careers site
+    sitemap = ("<urlset><url><loc>https://careers.wipro.com/job/Pune-Customer-Support-Executive/123/</loc>"
+               "<lastmod>2026-11-01</lastmod></url><url><loc>https://careers.wipro.com/about/</loc></url></urlset>")
+    io = FakeIO(pages={"https://www.wipro.com/": home, "https://careers.wipro.com/": careers,
+                       "https://careers.wipro.com/sitemap.xml": sitemap})
+    out = src.careers_postings(["https://www.wipro.com/"], [], io.fetch)
+    assert [p["title"] for p, _ in out["postings"]] == ["Customer Support Executive"]
+    assert out["postings"][0][1] == "https://www.wipro.com/" and out["errors"] == [] and out["pages"] == 1
+    empty = src.careers_postings(["https://acme.example/"], [], FakeIO(pages={"https://acme.example/": "<p>hi</p>"}).fetch)
+    assert empty["postings"] == [] and "no job listings found" in empty["errors"][0] and "Naukri" not in empty["errors"][0]
 
 
 # ---------- email verifiers ----------

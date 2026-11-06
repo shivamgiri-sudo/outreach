@@ -143,6 +143,12 @@ def _ids(params: dict) -> set:
     return ids
 
 
+def _phone_matches(phone, q: str) -> bool:
+    """Same as phoneMatches on the Leads page: "+91 98907 79946" finds "+919890779946", so "Download these N" agrees."""
+    want = re.sub(r"\D", "", q).lstrip("0")
+    return len(want) >= 6 and bool(re.fullmatch(r"[\d\s()+.-]+", q.strip())) and want in re.sub(r"\D", "", str(phone or ""))
+
+
 def _lead_matches(lead: dict, params: dict, ids: set) -> bool:
     q = _text(params, "q").lower()
     source = _text(params, "source").lower()
@@ -151,7 +157,7 @@ def _lead_matches(lead: dict, params: dict, ids: set) -> bool:
     wanted = {part.strip().lower() for part in source.split(",") if part.strip()}
     lead_sid = str(lead.get("source_id") or source_names.canonical(lead.get("source"))[0]).lower()
     inbound = _text(params, "inbound").lower() in ("1", "true", "yes")
-    return ((not ids or lead["id"] in ids) and (not q or q in text)
+    return ((not ids or lead["id"] in ids) and (not q or q in text or _phone_matches(lead.get("phone"), q))
             and (not inbound or bool(lead.get("inbound")))
             and (not _text(params, "stage") or lead.get("stage") == _text(params, "stage"))
             and (not _text(params, "band") or lead.get("band") == _text(params, "band"))

@@ -222,9 +222,12 @@ FORMATS = (
     _fmt("rocketreach", "RocketReach export", "rocketreach", ["Email Grade", "Country Code", "Work Phone", "Employer"],
          ["Name", "Title", "Company", "Company Domain", "Email", "Personal Email", "Mobile Phone", "LinkedIn", "Location"]),
     _fmt("hubspot", "HubSpot contacts export", "hubspot",
-         ["Record ID", "Phone Number", "Mobile Phone Number", "Website URL", "State/Region", "Country/Region",
+         # "Phone Number" / "Mobile Phone Number" shorten to "phone" / "mobile phone", which plain sheets have too: weak
+         # evidence only, or a team sheet with a "Mobile Phone" column was taken for HubSpot and its leads credited to it
+         ["Record ID", "Website URL", "State/Region", "Country/Region",
           "Lifecycle Stage", "Unsubscribed from all email", "Marketing contact status", "Associated Company"],
-         ["First Name", "Last Name", "Email", "Job Title", "Company Name", "City", "Lead Status", "Contact owner"]),
+         ["First Name", "Last Name", "Email", "Job Title", "Company Name", "City", "Lead Status", "Contact owner",
+          "Phone Number", "Mobile Phone Number"]),
     _fmt("salesforce", "Salesforce contact / lead report", "salesforce",
          ["Company / Account", "Account Name", "Mailing City", "Mailing State/Province", "Mailing Country",
           "State/Province", "Lead Owner", "Email Opt Out", "Do Not Call", "Salutation"],

@@ -78,7 +78,7 @@ def make_router(store, present) -> APIRouter:
             overdue = bool(due) and datetime.fromisoformat(due) < now
             is_call = task.get("kind") == "call"
             tasks.append({"kind": "call" if is_call else "task", "task_index": index, "task_id": task.get("id"), "lead_id": task.get("lead_id"),
-                          "company": name(task.get("lead_id")), "due_at": due, "overdue": overdue, "owner": task.get("owner"),
+                          "company": name(task.get("lead_id")) if task.get("lead_id") else "", "due_at": due, "overdue": overdue, "owner": task.get("owner"),
                           "priority": task.get("priority", "normal"),
                           "title": task.get("title") or TASK_TITLES.get(task.get("kind"), "Follow up"), "detail": task.get("text", ""),
                           "action": "Open call desk" if is_call else "Open lead"})

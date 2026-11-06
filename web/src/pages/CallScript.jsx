@@ -8,9 +8,29 @@ export function fillScript(text, lead, rep, vars = {}, roleFallback = "your open
   const first = (lead?.contact_name || "").replace(/^(mr|mrs|ms|dr)\.?\s+/i, "").trim().split(/\s+/)[0] || "there";
   const filled = String(text || "").replaceAll("{{rep}}", rep || "your name").replaceAll("{{first_name}}", first)
     .replaceAll("{{role}}", lead?.role || roleFallback).replaceAll("{{company}}", lead?.company || "your company");
-  // a brand value left blank in Setup is left out (never read out as "{{my_value_1}}")
-  return filled.replace(/\{\{(my_[a-z0-9_]+|sign_off|sender)\}\}/g, (m, key) => vars[key] || "")
+  // A brand value that is not set yet is left out (a caller must never read "{{my_value_1}}" aloud); missingBrand()
+  // names it so the script can say where to add it.
+  let gaps = false;
+  const out = filled.replace(BRAND_RE, (m, key) => vars[key] || ((gaps = true), ""))
     .replace(/\{\{custom\.(\w+)\}\}/g, (_, key) => String(lead?.custom?.[key] ?? ""));   // the owner's custom lead fields
+  return gaps ? out.replace(/(\s*[.,;:]){2,}/g, ".").replace(/^\s*[.,;:]\s*/, "").replace(/\s{2,}/g, " ").trim() : out;
+}
+
+const BRAND_RE = /\{\{(my_[a-z0-9_]+|sign_off|sender)\}\}/g;
+const BRAND_NAMES = { my_value_1: "selling points", my_value_2: "selling points", my_value_3: "selling points", my_cta: "next step (call to action)",
+  my_company: "company name", my_product: "product", my_tagline: "tagline", my_website: "website", sign_off: "sign-off", sender: "sender name" };
+export function missingBrand(text, vars = {}) {
+  const keys = [...String(text || "").matchAll(BRAND_RE)].map((m) => m[1]).filter((k) => !vars[k]);
+  return [...new Set(keys.map((k) => BRAND_NAMES[k] || k.replace(/^my_/, "").replace(/_/g, " ")))];
+}
+
+function Line({ label, text, lead, rep, data }) {
+  const filled = fillScript(text, lead, rep, data.variables, data.role_fallback);
+  const missing = missingBrand(text, data.variables);
+  return (
+    <>{label}{filled}{missing.length > 0 && <small className="sub-inline" data-testid="script-gap">
+      {filled ? " " : ""}(Add your {missing.join(", ")} in Setup → Brand &amp; offer.)</small>}</>
+  );
 }
 
 function Editor({ data, onSaved, onCancel }) {
@@ -65,13 +85,11 @@ export default function CallScript({ data, lead, rep, onChanged }) {
         <h3 style={{ margin: 0 }}>Call script{lead ? ` for ${lead.contact_name || lead.company}` : ""}</h3>
         {isOwner() && <button className="btn ghost" onClick={() => setEditing(true)}>Edit script</button>}
       </div>
-      {data.script.map((s, i) => ({ s, i, text: fillScript(s.text, lead, rep, data.variables, data.role_fallback) }))
-        .filter(({ text }) => /[\p{L}\p{N}]/u.test(text))          // a line whose values are all blank has nothing to say
-        .map(({ s, i, text }) => <p key={i}><b>{s.title}:</b> {text}</p>)}
+      {data.script.map((s, i) => <p key={i}><Line label={<><b>{s.title}:</b> </>} text={s.text} lead={lead} rep={rep} data={data} /></p>)}
       <button className="link" onClick={() => setShowObjections(!showObjections)} aria-expanded={showObjections}>
         {showObjections ? "Hide answers to objections" : `If they say… (${data.objections.length} answers)`}
       </button>
-      {showObjections && data.objections.map((o, i) => <p key={i}><b>“{o.q}”</b> — {fillScript(o.a, lead, rep, data.variables, data.role_fallback)}</p>)}
+      {showObjections && data.objections.map((o, i) => <p key={i}><Line label={<><b>“{o.q}”</b> — </>} text={o.a} lead={lead} rep={rep} data={data} /></p>)}
       {data.custom && data.updated_by && <p className="sub">Edited by {data.updated_by}.</p>}
     </div>
   );

@@ -6,7 +6,7 @@ like) never identify a company, so two strangers on gmail are never put together
 domain nor a company name stands alone.
 
 Rollup rules: the company's stage is the furthest stage any contact reached; it is an "engaged account" once anyone
-replied; and it warns when two contacts are both in an active sequence and were touched (or enrolled) on the same IST
+replied (a person, not an out-of-office) and not everyone there has left (not now, unsubscribed, disqualified); and it warns when two contacts are both in an active sequence and were touched (or enrolled) on the same IST
 day, so one employer is not hit twice in a day.
 """
 from datetime import datetime, timezone
@@ -15,6 +15,7 @@ from typing import Optional
 from . import company_health, workspaces
 from .activities import _normalise_task, lead_activity
 from .hygiene import business_domain
+from .replies import is_person_reply
 from .scoring import score_lead
 from .sequences import IST
 from .stages import EXIT_STAGES, STAGES
@@ -133,7 +134,7 @@ class Index:
         out = list(self.out.get(lid, []))
         out += [(e.get("at"), "linkedin") for e in lead.get("timeline", []) if e.get("kind") == "linkedin"]
         inn = list(self.inn.get(lid, []))
-        timeline_replies = [e.get("at") for e in lead.get("timeline", []) if e.get("kind") == "reply"]
+        timeline_replies = [e.get("at") for e in lead.get("timeline", []) if is_person_reply(e)]
         replies = max(len(inn), len(timeline_replies), int((lead.get("engagement") or {}).get("replies") or 0))
         stamps = [parse_when(at) for at, _ in out + inn] + [parse_when(at) for at in timeline_replies]
         stamps = [s for s in stamps if s]
@@ -192,7 +193,7 @@ def summarise(store, key: str, rows: list, numbers: dict, health_cache: dict) ->
         "domain": domain,
         "contacts": len(rows),
         "best_stage": best_stage(stages),
-        "engaged": replies > 0,
+        "engaged": replies > 0 and not all(s in EXIT_STAGES for s in stages),
         "touches": sum(numbers[l["id"]]["touches"] for l in rows),
         "last_touch": iso_utc(max(lasts)) if lasts else None,
         "replies": replies,

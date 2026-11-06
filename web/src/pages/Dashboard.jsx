@@ -24,13 +24,14 @@ function TodayList({ today, onOpen, onDone, go }) {
             <li key={`${item.kind}-${item.lead_id}-${item.task_index ?? i}`} className={`today-item k-${item.kind}`}>
               <span className="stat-icon"><Icon name={KIND_ICON[item.kind] || "check"} /></span>
               <div className="today-text">
-                <b>{item.title}</b> <span className="sub-inline">· {item.company}</span>
+                <b>{item.title}</b>{item.company && <span className="sub-inline"> · {item.company}</span>}
                 <p>{item.detail}</p>
               </div>
               <div className="row today-actions">
                 {item.kind === "call"
                   ? <button className="btn ghost" onClick={() => go("calls")}>Open call desk</button>
-                  : <button className="btn ghost" onClick={() => onOpen(item.lead_id)}>Open lead</button>}
+                  : item.lead_id ? <button className="btn ghost" onClick={() => onOpen(item.lead_id)}>Open lead</button>
+                    : <button className="btn ghost" onClick={() => go("tasks")}>Open tasks</button>}
                 {item.kind === "task" && <button className="btn ghost" onClick={() => onDone(item.task_index)}>Done</button>}
               </div>
             </li>
