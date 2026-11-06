@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, isOwner } from "../api.js";
 import Icon from "../icons.jsx";
+import DrawerShell from "../DrawerShell.jsx";
 
 const MODES = [
   ["find_new", "Find new decision makers", "Searches Apollo and Google Places for HR, talent and founder contacts at new companies."],
@@ -174,8 +175,6 @@ export default function FindLeadsDrawer({ onClose, go, onOpenLeads }) {
   const [estimate, setEstimate] = useState(null);
   const [run, setRun] = useState(null);
   const [error, setError] = useState("");
-  const panel = useRef(null);
-  const previous = useRef(null);
   const live = run && LIVE.includes(run.status);
 
   const body = useCallback((dry_run) => ({
@@ -183,21 +182,6 @@ export default function FindLeadsDrawer({ onClose, go, onOpenLeads }) {
     max_new: Number(limits.max_new) || 0, max_enrich: Number(limits.max_enrich) || 0, max_credits: Number(limits.max_credits) || 0,
   }), [mode, cities, titles, industries, careers, limits]);
 
-  useEffect(() => {
-    previous.current = document.activeElement;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-      if (e.key !== "Tab" || !panel.current) return;
-      const f = panel.current.querySelectorAll("button:not([disabled]), input, select, textarea, a[href]");
-      if (!f.length) return;
-      const [first, last] = [f[0], f[f.length - 1]];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-    document.addEventListener("keydown", onKey);
-    panel.current?.querySelector("h2")?.focus();
-    return () => { document.removeEventListener("keydown", onKey); previous.current?.focus?.(); };
-  }, []);
 
   useEffect(() => {              // pick up a run that is already working (the window was closed and opened again)
     api.findRecent().then((d) => { if (d.active) setRun(d.active); }).catch(() => {});
@@ -224,9 +208,7 @@ export default function FindLeadsDrawer({ onClose, go, onOpenLeads }) {
   const owner = isOwner();
 
   return (
-    <>
-      <div className="scrim" onClick={onClose} aria-hidden="true" />
-      <div className="drawer wizard" role="dialog" aria-modal="true" aria-labelledby="find-title" ref={panel} data-testid="find-drawer">
+    <DrawerShell onClose={onClose} className="wizard" labelledBy="find-title" testId="find-drawer">
         <div className="drawer-head">
           <div><h2 id="find-title" tabIndex={-1}>Find &amp; enrich leads</h2>
             <p className="sub" style={{ margin: 0 }}>Plain steps: choose, preview, run. Nothing is emailed from here.</p></div>
@@ -285,7 +267,6 @@ export default function FindLeadsDrawer({ onClose, go, onOpenLeads }) {
         {run && !live && run.status === "interrupted" && <div className="tip error" role="alert" style={{ marginTop: 14 }}>This run was interrupted because the app restarted. Run it again: leads already checked are skipped.</div>}
         {run && !live && run.status === "failed" && <div className="tip error" role="alert" style={{ marginTop: 14 }}>The run stopped because of a problem. {run.errors?.map((e) => e.message).join(" ")}</div>}
         {run && !live && run.report && <Report run={run} onOpenLeads={openLeads} />}
-      </div>
-    </>
+    </DrawerShell>
   );
 }

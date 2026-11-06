@@ -4,6 +4,7 @@ import { copyText } from "../clipboard.js";
 import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import { useConfirm } from "../Dialog.jsx";
 
 const PERSONA = { ceo_founder: "CEO / Founder", chro: "CHRO / HR Director", ta_head: "Head of TA", recruitment_head: "Recruitment Head",
   business_head: "Business Head", general: "General" };
@@ -94,6 +95,7 @@ function BranchHelper({ leadId, onMessage }) {
 const KIND_WORDS = { connect: "Connection request sent", message: "Message sent", accepted: "Accepted", replied: "Replied", error: "Problem", paused: "Waiting", started: "Agent started" };
 
 function LinkedInAgent({ onMessage }) {
+  const confirm = useConfirm();
   const [st, setSt] = useState(null);
   const [form, setForm] = useState(null);
   const load = () => api.linkedinAgent().then((s) => { setSt(s); setForm((f) => f || s.config); }).catch((e) => onMessage(e.message));
@@ -136,9 +138,9 @@ function LinkedInAgent({ onMessage }) {
                 <td>{a.counts.connect_week} requests</td>
                 <td>{a.leads}</td>
                 <td>{a.paused && <button className="btn ghost" onClick={() => save({ resume_account: a.account }, `${a.name || a.account} resumed.`)}>Resume</button>}
-                  {st.accounts.length > 1 && <select aria-label={`${a.account} is the same LinkedIn account as`} value="" onChange={(e) => e.target.value
-                    && window.confirm(`${a.account} is the same LinkedIn account as ${e.target.value} (its profile link changed)? Its people and counts move over.`)
-                    && save({ merge_from: a.account, merge_into: e.target.value }, `Merged ${a.account} into ${e.target.value}.`)}>
+                  {st.accounts.length > 1 && <select aria-label={`${a.account} is the same LinkedIn account as`} value="" onChange={async (e) => { const into = e.target.value;
+                    if (into && await confirm(`${a.account} is the same LinkedIn account as ${into} (its profile link changed)? Its people and counts move over.`))
+                      save({ merge_from: a.account, merge_into: into }, `Merged ${a.account} into ${into}.`); }}>
                     <option value="">Same account as…</option>{st.accounts.filter((x) => x.account !== a.account).map((x) => <option key={x.account} value={x.account}>{x.name || x.account}</option>)}</select>}</td>
               </tr>))}</tbody></table>
           <small className="sub-inline">Each account has its own daily and weekly caps and its own pause. A person belongs to the account that contacted them first; only that account sends them messages.</small>

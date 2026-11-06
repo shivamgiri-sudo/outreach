@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import GoLive from "./GoLive.jsx";
 import BackupRestore from "./BackupRestore.jsx";
+import { useConfirm, usePrompt } from "../Dialog.jsx";
 
 const STATUS = { configured: ["ok", "Connected"], incomplete: ["warn", "Missing details"], not_configured: ["", "Not set up"] };
 
@@ -142,6 +143,7 @@ function Workspaces({ onChanged }) {
   const load = () => api.workspaces().then((w) => { setRows(w); onChanged?.(w); }).catch((e) => setMessage(e.message));
   useEffect(() => { load(); }, []);
   const run = (fn, done) => fn().then(() => { setMessage(done); load(); }).catch((e) => setMessage(e.message));
+  const confirm = useConfirm();
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <b>Workspaces</b>
@@ -149,7 +151,7 @@ function Workspaces({ onChanged }) {
         A contact can sit in only one workspace, so two clients never contact the same person twice from here. Move leads from the Leads page (select, then “Move to workspace”).</p>
       <ul className="today-list">{rows.map((w) => (
         <li key={w.id} className="row" style={{ justifyContent: "space-between" }}><span><b>{w.name}</b> <small>{w.leads} leads{w.created_by ? ` · made by ${w.created_by}` : ""}</small></span>
-          {w.id !== "main" && <button className="btn ghost danger" onClick={() => window.confirm(`Remove workspace ${w.name}? It must be empty.`) && run(() => api.deleteWorkspace(w.id), "Workspace removed.")}>Remove</button>}</li>))}</ul>
+          {w.id !== "main" && <button className="btn ghost danger" onClick={async () => (await confirm({ message: `Remove workspace ${w.name}? It must be empty.`, confirmLabel: "Remove", danger: true })) && run(() => api.deleteWorkspace(w.id), "Workspace removed.")}>Remove</button>}</li>))}</ul>
       <form className="row" onSubmit={(e) => { e.preventDefault(); run(() => api.createWorkspace(name), `Workspace “${name}” added.`).then(() => setName("")); }}>
         <input aria-label="New workspace name" placeholder="Client name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
         <button className="btn" disabled={!name.trim()}>Add workspace</button>
@@ -181,8 +183,10 @@ function Users() {
     e.preventDefault();
     run(() => api.addUser(form), `Login added for ${form.email}.`).then((ok) => ok && setForm({ email: "", name: "", role: "caller", password: "" }));
   };
-  const reset = (email) => {
-    const password = window.prompt(`New password for ${email} (at least 10 characters)`);
+  const confirm = useConfirm();
+  const ask = usePrompt();
+  const reset = async (email) => {
+    const password = await ask(`New password for ${email} (at least 10 characters)`);
     if (password) run(() => api.changeUser(email, { password }), `Password changed for ${email}; their old sessions are signed out.`);
   };
   return (
@@ -206,7 +210,7 @@ function Users() {
                 {u.role !== "owner" && spaces.length > 1 && <span className="row" title="Tick to limit this login to these workspaces; none ticked = all">
                   <small>Workspaces:</small>{spaces.map((w) => <label key={w.id} className="check-row"><input type="checkbox" checked={(u.workspaces || []).includes(w.id)} onChange={(e) => toggleSpace(u, w.id, e.target.checked)} /> {w.name}</label>)}</span>}
                 <button className="btn ghost" onClick={() => reset(u.email)}>Reset password</button>
-                {!u.super_admin && (isSuper || u.role !== "owner") && <button className="btn ghost danger" onClick={() => window.confirm(`Remove ${u.email}?`) && run(() => api.removeUser(u.email), "Login removed.")}>Remove</button>}
+                {!u.super_admin && (isSuper || u.role !== "owner") && <button className="btn ghost danger" onClick={async () => (await confirm({ message: `Remove ${u.email}?`, confirmLabel: "Remove", danger: true })) && run(() => api.removeUser(u.email), "Login removed.")}>Remove</button>}
               </span>
             </li>
           ))}

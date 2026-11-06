@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api.js";
 import DownloadButton from "../DownloadButton.jsx";
+import { useConfirm } from "../Dialog.jsx";
 
 const NAMES = {
   leads: "Leads", outbox: "Emails sent or practised", inbox: "Replies received", tasks: "Tasks", activities: "Logged calls, meetings, notes",
@@ -47,8 +48,9 @@ export default function BackupRestore() {
     try { setPlan(await api.restoreBackup(file)); } catch (e) { setError(e.message); }
     setBusy("");
   };
+  const confirm = useConfirm();
   const restore = async () => {
-    if (!window.confirm("Replace ALL data in this app with the backup? The current data is kept as a copy on the server, and real sending will be switched off.")) return;
+    if (!(await confirm({ message: "Replace ALL data in this app with the backup? The current data is kept as a copy on the server, and real sending will be switched off.", confirmLabel: "Replace all data", danger: true }))) return;
     setBusy("restore"); setError("");
     try { setDone(await api.restoreBackup(file, { confirm: true, keepSecrets })); setPlan(null); } catch (e) { setError(e.message); }
     setBusy("");

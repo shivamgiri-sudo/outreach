@@ -4,6 +4,8 @@ import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
+import { useHashParam } from "../route.js";
+import { useConfirm } from "../Dialog.jsx";
 
 const when = (iso) => (iso ? istLabel(iso) : "");
 const result = (verb, r) => `${verb} for ${r.started} of ${r.asked}.${r.refused.length ? " Left out: " + r.refused.map((x) => `${x.count} (${x.reason})`).join("; ") : ""}`;
@@ -93,7 +95,7 @@ function ListDetail({ id, onChanged, onClose }) {
   const [d, setD] = useState(null);
   const [picked, setPicked] = useState([]);
   const [msg, setMsg] = useState("");
-  const [lead, setLead] = useState(null);
+  const [lead, setLead] = useHashParam("lead");
   const load = () => api.list(id).then(setD).catch((e) => setMsg(e.message));
   useEffect(() => { load(); }, [id]);
   if (!d) return <div className="card">{msg || "Loading…"}</div>;
@@ -137,10 +139,14 @@ function ListDetail({ id, onChanged, onClose }) {
 export default function Lists() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
-  const [open, setOpen] = useState(null);
+  const [open, setOpen] = useHashParam("list");          // #lists?list=<id>
+  const confirm = useConfirm();
   const load = () => api.lists().then(setRows).catch((e) => setError(e.message));
   useEffect(() => { load(); }, []);
-  const remove = async (id) => { if (window.confirm("Delete this list? The leads stay; only the list goes.")) { await api.deleteList(id); if (open === id) setOpen(null); load(); } };
+  const remove = async (id) => {
+    if (!(await confirm({ message: "Delete this list? The leads stay; only the list goes.", confirmLabel: "Delete", danger: true }))) return;
+    await api.deleteList(id); if (String(open) === String(id)) setOpen(null); load();
+  };
   return (
     <>
       <h2>Lists</h2>

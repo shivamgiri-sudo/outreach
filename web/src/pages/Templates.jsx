@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, isOwner } from "../api.js";
 import { copyText } from "../clipboard.js";
+import DrawerShell from "../DrawerShell.jsx";
+import { useHashParam } from "../route.js";
 
 const UNSUB = "\n\nPrefer no more emails? {{unsub_link}}";
 const email = (text) => `{{greeting}}\n\n${text}\n\n— {{sender}}${UNSUB}`;
@@ -43,11 +45,19 @@ export default function Templates() {
     setCopied((await copyText(text)) ? name : "failed");
     setTimeout(() => setCopied(""), 1500);
   };
+  // #templates?preview=<step number>: the designed-email preview survives refresh and Back, and can be shared.
+  const [previewAt, setPreviewAt] = useHashParam("preview");
   const [shown, setShown] = useState(null);
   const [note, setNote] = useState("");
-  useEffect(() => { if (!shown) return undefined; const esc = (e) => e.key === "Escape" && setShown(null);
-    window.addEventListener("keydown", esc); return () => window.removeEventListener("keydown", esc); }, [shown]);
-  const preview = (t) => api.sequencePreview(sequence.indexOf(t)).then((r) => setShown({ ...r, name: t.name })).catch(() => {});
+  useEffect(() => {
+    const i = Number(previewAt);
+    if (previewAt === null || !Number.isInteger(i) || !sequence[i]) { setShown(null); return; }
+    let live = true;
+    api.sequencePreview(i).then((r) => live && setShown({ ...r, name: sequence[i].name })).catch(() => live && setPreviewAt(null, { replace: true }));
+    return () => { live = false; };
+  }, [previewAt, sequence]);
+  const closePreview = () => { setNote(""); setPreviewAt(null); };
+  const preview = (t) => setPreviewAt(sequence.indexOf(t));
   const Item = ({ t }) => (
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row" style={{ justifyContent: "space-between" }}>
@@ -70,10 +80,9 @@ export default function Templates() {
       <p className="sub">Short, human, no hard sell, no invented stories. Words in {"{{double braces}}"} are filled per lead ({"{{greeting}}"}, {"{{first_name}}"}, {"{{company}}"}, {"{{role}}"}, {"{{sender}}"}, {"{{offer_line}}"}, {"{{demo_link}}"}, {"{{unsub_link}}"}); [square brackets] you fill by hand. The email sequence stops on a reply. Cold emails carry no link except the unsubscribe link.</p>
       <h3>Email sequence (6 steps, sent automatically)</h3>
       <p className="sub">Each email goes out designed (logo, layout) with the same words, plus the plain-text version for mail apps that only show text.</p>
-      {shown && <div className="scrim" onClick={() => setShown(null)} aria-hidden="true" />}
       {shown && (
-        <div className="drawer" role="dialog" aria-modal="true" aria-label={`Designed email: ${shown.name}`} style={{ maxWidth: 720 }}>
-          <div className="row" style={{ justifyContent: "space-between" }}><b>{shown.name}</b><button className="btn ghost" onClick={() => setShown(null)}>Close</button></div>
+        <DrawerShell onClose={closePreview} labelledBy="tpl-preview-title" style={{ maxWidth: 720 }} testId="template-preview">
+          <div className="drawer-head"><h2 id="tpl-preview-title" tabIndex={-1}>Designed email: {shown.name}</h2><button className="btn ghost" onClick={closePreview}>Close</button></div>
           <p className="sub">Subject: <b>{shown.subject}</b> · sample person: Priya Sharma, Acme Retail</p>
           {isOwner() && <form className="row" style={{ marginBottom: 8 }} onSubmit={(e) => { e.preventDefault(); const to = e.target.elements.to.value;
             api.sendSequencePreview(sequence.findIndex((x) => x.name === shown.name), to).then((r) => setNote(`Preview sent to ${r.to}.`)).catch((err) => setNote(err.message)); }}>
@@ -81,7 +90,7 @@ export default function Templates() {
             <button className="btn">Send preview</button></form>}
           {note && <p className="sub" role="status">{note}</p>}
           <iframe title="Designed email preview" srcDoc={shown.html} sandbox="" style={{ width: "100%", height: "70vh", border: "1px solid var(--line, #e2e8f0)", borderRadius: 10, background: "#fff" }} />
-        </div>
+        </DrawerShell>
       )}
       {sequence.map((t) => <Item key={t.name} t={t} />)}
       <h3>WhatsApp (only after a recorded yes)</h3>

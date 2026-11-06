@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api.js";
+import { useModalFocus } from "../../DrawerShell.jsx";
 import { istLabel } from "../../time.js";
 import { CustomHttpBuilder, CustomWebhookMapper } from "./CustomBuilder.jsx";
 import { CopyRow, FieldInput, StatusPill, initialValues, missingRequired } from "./Fields.jsx";
@@ -16,22 +17,9 @@ const HOOK_LABELS = {
   svix: ["Endpoint URL", null], token: ["Webhook address", null],
 };
 
+// Kept for the integrations panels; the shared focus handling lives in DrawerShell.jsx.
 export function useDialog(panel, onClose) {
-  useEffect(() => {
-    const previous = document.activeElement;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-      if (e.key !== "Tab" || !panel.current) return;
-      const focusable = panel.current.querySelectorAll("button:not([disabled]), input, select, textarea, a[href]");
-      if (!focusable.length) return;
-      const [first, last] = [focusable[0], focusable[focusable.length - 1]];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-    document.addEventListener("keydown", onKey);
-    panel.current?.querySelector("h2")?.focus();
-    return () => { document.removeEventListener("keydown", onKey); previous?.focus?.(); };
-  }, []);
+  useModalFocus(panel, onClose);
 }
 
 export default function Wizard({ channel, provider: start, meta, onClose, onChanged }) {

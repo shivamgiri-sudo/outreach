@@ -20,7 +20,21 @@ async function step(name, fn) {
     await page.screenshot({ path: `${SHOTS}/FAIL-${results.length}.png` }).catch(() => {});
   }
 }
-const nav = (label) => page.getByRole("button", { name: label, exact: false }).first().click();
+// Menu click: on a phone the menu is behind the "Open menu" button, so open it first. Scoped to the main menu so a page
+// button with the same words is never clicked by mistake.
+const nav = async (label) => {
+  const menu = page.getByRole("button", { name: "Open menu" });
+  if (await menu.isVisible().catch(() => false)) await menu.click();
+  await page.locator("nav.side").getByRole("button", { name: label, exact: false }).first().click();
+};
+// In-app confirm/prompt boxes (Dialog.jsx) replaced window.confirm/prompt: answer the open one.
+const answerDialog = async (value) => {
+  const box = page.getByTestId("app-dialog");
+  await box.waitFor({ timeout: 5000 });
+  if (value !== undefined) await box.getByTestId("dialog-input").fill(value);
+  await box.getByTestId("dialog-ok").click();
+  await box.waitFor({ state: "detached" });
+};
 const text = (t) => page.getByText(t, { exact: false }).first();
 const expectText = async (t, timeout = 5000) => text(t).waitFor({ timeout });
 const closeDrawer = async () => {
@@ -817,6 +831,7 @@ await step("Data hygiene: duplicate leads are shown side by side and merged", as
   await expectText("same phone");
   await shot("12-hygiene");
   await page.locator(".section-block", { hasText: "same phone" }).getByRole("button", { name: /Keep this one/ }).first().click();
+  await answerDialog();
   await expectText("Merged 1 lead(s) into");
 });
 
@@ -1248,8 +1263,9 @@ await step("Mobile width: no horizontal page scroll on Data hygiene and the impo
 await step("Mobile width: the menu is a compact top bar, even on a short page", async () => {
   await nav("Success stories");
   await page.setViewportSize({ width: 390, height: 1400 });
-  const bar = await page.locator("nav.side").boundingBox();
-  if (!bar || bar.height > 70 || bar.y > 1) throw new Error(`nav bar is ${bar && bar.height}px tall at y=${bar && bar.y}`);
+  const bar = await page.locator("header.topbar").boundingBox();
+  if (!bar || bar.height > 70 || bar.y > 1) throw new Error(`top bar is ${bar && bar.height}px tall at y=${bar && bar.y}`);
+  await page.locator("nav.side").waitFor({ state: "hidden", timeout: 2000 }).catch(() => { throw new Error("the full menu shows without opening it"); });
   await shot("10b-mobile-short-page");
   await page.setViewportSize({ width: 390, height: 800 });
 });
@@ -1260,12 +1276,36 @@ await step("Mobile width: Lead capture and its panel do not scroll sideways", as
   await page.getByTestId("add-capture").waitFor();
   let overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   if (overflow) throw new Error("Lead capture scrolls sideways");
-  await page.getByRole("button", { name: "Open" }).first().click();
+  await page.getByRole("button", { name: "Open", exact: true }).first().click();
   await page.getByTestId("capture-panel").waitFor();
   overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   await shot("14-mobile-lead-capture");
   await page.getByRole("button", { name: "Close" }).click();
   if (overflow) throw new Error("the connector panel scrolls sideways");
+});
+
+// ---------- Links to sub-views (hash routing) ----------
+await step("Links: an open lead is in the address; reload keeps the drawer, Back closes it", async () => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await nav("Leads");
+  await page.locator("tr.click").first().click();
+  await page.locator(".drawer").waitFor();
+  if (!/#leads\?lead=/.test(page.url())) throw new Error(`address is ${page.url()}`);
+  await page.reload();
+  await page.locator(".drawer").waitFor();
+  await page.goBack();
+  await page.locator(".drawer").waitFor({ state: "detached" });
+});
+await step("Links: the designed-email preview has its own address and closes with Escape", async () => {
+  await nav("Sequences");
+  await page.getByRole("button", { name: "Preview designed email" }).first().click();
+  await page.getByTestId("template-preview").waitFor();
+  if (!/#templates\?preview=0/.test(page.url())) throw new Error(`address is ${page.url()}`);
+  await page.reload();
+  await page.getByTestId("template-preview").waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByTestId("template-preview").waitFor({ state: "detached" });
+  if (/preview=/.test(page.url())) throw new Error("closing left the preview in the address");
 });
 
 await browser.close();

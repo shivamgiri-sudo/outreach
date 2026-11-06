@@ -7,6 +7,7 @@ import LeadMeetings from "./LeadMeetings.jsx";
 import LeadActivity from "./LeadActivity.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
 import LeadFlows from "./flows/LeadFlows.jsx";
+import { useAlert, useConfirm } from "../Dialog.jsx";
 
 const SIGNAL_LABELS = {
   hiring_volume: ["Hiring volume", 30], hiring_pain: ["Hiring pain", 25], fit: ["Fit", 15],
@@ -192,6 +193,8 @@ function LeadOrigin({ lead }) {
 }
 
 export default function LeadDrawer({ id, onClose }) {
+  const confirm = useConfirm();
+  const say = useAlert();
   useSourceRegistry();
   const [lead, setLead] = useState(null);
   const [note, setNote] = useState("");
@@ -386,8 +389,8 @@ export default function LeadDrawer({ id, onClose }) {
       <h3>Email sequence</h3>
       {lead.sequence ? (
         <div><p className="sub">{sequenceStatus(lead.sequence)}</p>
-          {!lead.sequence.stopped && <button className="btn ghost" onClick={() => window.confirm(`Send ${lead.contact_name || lead.email} their next sequence email now? It goes at once (real email if real sending is on).`)
-            && act(async () => { const r = await api.emailNow(id); window.alert(`${r.mode === "live" ? "Sent" : "Practised (not sent)"}: ${r.step} → ${r.to}`); return r.lead; })}>Send email now</button>}</div>
+          {!lead.sequence.stopped && <button className="btn ghost" onClick={async () => (await confirm({ message: `Send ${lead.contact_name || lead.email} their next sequence email now? It goes at once (real email if real sending is on).`, confirmLabel: "Send now" }))
+            && act(async () => { const r = await api.emailNow(id); say(`${r.mode === "live" ? "Sent" : "Practised (not sent)"}: ${r.step} → ${r.to}`); return r.lead; })}>Send email now</button>}</div>
       ) : (
         <button className="btn ghost" disabled={!lead.email} onClick={() => act(() => api.enroll(id))}>
           {lead.email ? "Start 6-step email sequence" : "No email — cannot start"}
