@@ -169,7 +169,7 @@ def test_crm_sync_credits_each_field_to_its_source_and_is_incremental(tmp_path):
     store.update_lead(lead["id"], lambda l: {**l, "provenance": {"email": "hunter:https://api.hunter.io"}, "email_check": {"email": "ravi@acme.example", "status": "valid"}})
     first = c.post("/api/prospects/sync-crm", json={}).json()
     assert first["synced"] == 1
-    assert c.post("/api/prospects/sync-crm", json={}).json() == {**c.post("/api/prospects/sync-crm", json={}).json(), "synced": 0}
+    assert c.post("/api/prospects/sync-crm", json={}).json()["synced"] == 0          # nothing changed since the last sync
     person = c.get("/api/prospects/people", params={"q": "ravi"}).json()["results"][0]
     assert person["in_crm"] and person["email_status"] == "verified" and set(person["sources"]) == {"crm", "hunter"}
     view = c.get(f"/api/prospects/people/{person['id']}").json()["provenance"]
