@@ -97,6 +97,15 @@ export const api = {
   editLead: (id, changes, reason = "") => request(`/api/leads/${id}`, { method: "PATCH", body: { ...changes, reason } }),
   leadChanges: (id) => request(`/api/leads/${id}/changes`),
   changeLog: (limit = 300) => request(`/api/change-log?limit=${limit}`),
+  remindStale: () => request("/api/intelligence/remind-stale", { method: "POST" }),
+  async downloadChangeLog() {
+    const token = getToken();
+    const res = await fetch("/api/change-log.csv", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new Error(`Could not export (${res.status})`);
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement("a"), { href: url, download: "change-log.csv" });
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  },
   lists: () => request("/api/lists"),
   list: (id) => request(`/api/lists/${id}`),
   listCompanies: () => request("/api/lists/companies"),

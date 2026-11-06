@@ -60,3 +60,37 @@ def test_campaign_rules_accept_only_companies(tmp_path):
     c = make_client(tmp_path)
     r = c.post("/api/campaigns", json={"name": "Pilot", "rules": {"auto_enrol": True, "only_companies": ["Acme"]}})
     assert r.status_code == 200 and r.json()["rules"]["only_companies"] == ["Acme"]
+
+
+def test_change_log_csv_and_formula_guard(tmp_path):
+    from tests.flow_helpers import make_client, lead, store_of
+    client = make_client(tmp_path)
+    store = store_of(client)
+    store.update("audit", lambda rows: [*rows, {"id": "1", "lead_id": "x", "field": "company", "old": "=SUM(1)", "new": "Acme", "by": "Meena", "at": "2026-11-06T00:00:00+00:00"}])
+    res = client.get("/api/change-log.csv")
+    assert res.status_code == 200 and res.headers["content-type"].startswith("text/csv")
+    assert "'=SUM(1)" in res.text and "Meena" in res.text
+
+
+def test_remind_stale_makes_one_task_per_cold_lead_and_is_repeatable(tmp_path):
+    from tests.flow_helpers import make_client, lead, patch_lead, store_of
+    client = make_client(tmp_path)
+    lid = lead(client, "Acme")["id"]
+    patch_lead(client, lid, stage="interested", timeline=[{"at": "2020-01-01T00:00:00+00:00", "kind": "note", "text": "old"}])
+    first = client.post("/api/intelligence/remind-stale").json()
+    second = client.post("/api/intelligence/remind-stale").json()
+    assert first["created"] == 1 and second["created"] == 0
+    assert sum(1 for t in store_of(client).read("tasks") if t["lead_id"] == lid and t["kind"] == "follow_up") == 1
+
+
+def test_linkedin_connection_note_variants_split_and_are_counted():
+    from app import linkedin_seq as li, analytics
+    ids = [f"lead{i}" for i in range(40)]
+    variants = {i: li.pick_variant(i) for i in ids}
+    assert {"A", "B"} == set(variants.values()) and 10 < list(variants.values()).count("A") < 30
+    for v in ("A", "B"):
+        text = li.render(li.STEPS[0], {"contact_name": "Asha Rao", "title": "CHRO", "linkedin_seq": {"variant": v}}, {})
+        assert text.startswith("Hi Asha") and len(text) <= li.NOTE_LIMIT
+    leads = [{"linkedin_seq": {"done": [1], "variant": "A", "accepted_at": "x"}}, {"linkedin_seq": {"done": [1], "variant": "B"}}]
+    out = analytics.channel_funnels(leads)["linkedin"]["variants"]
+    assert out["A"]["accept_rate"] == 100 and out["B"]["accepted"] == 0

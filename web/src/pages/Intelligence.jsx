@@ -22,6 +22,9 @@ export default function Intelligence() {
   const [d, setD] = useState(null);
   const [log, setLog] = useState([]);
   const [error, setError] = useState("");
+  const [note, setNote] = useState("");
+  const remind = () => api.remindStale().then((r) => { setNote(`${r.created} follow-up task${r.created === 1 ? "" : "s"} created (${r.stale - r.created} already had one).`); load(); }).catch((e) => setNote(e.message));
+  const exportCsv = () => api.downloadChangeLog().catch((e) => setNote(e.message));
   const load = () => { setError(""); api.intelligence().then(setD).catch((e) => setError(e.message)); api.changeLog(50).then(setLog).catch(() => {}); };
   useEffect(() => { load(); }, []);
   if (error) return <ErrorState message="Intelligence could not load." detail={error} onRetry={load} />;
@@ -56,6 +59,13 @@ export default function Intelligence() {
           )}
         </div>
       </div>
+      <div className="card" style={{ marginTop: 12 }}>
+        <b>Connection note test</b> <small className="sub-inline">each new lead gets note A or B, shared evenly</small>
+        <table><thead><tr><th>Note</th><th>Requests sent</th><th>Accepted</th><th>Accept rate</th></tr></thead>
+          <tbody>{["A", "B"].map((v) => { const x = ch.linkedin.variants?.[v] || {}; return <tr key={v}><td>{v}</td><td>{x.sent ?? 0}</td><td>{x.accepted ?? 0}</td><td>{x.accept_rate ?? 0}%</td></tr>; })}</tbody></table>
+        <small className="sub-inline">Wait for 30+ requests per note before trusting the gap.</small>
+      </div>
+      {note && <p className="sub" role="status" style={{ marginTop: 10 }}>{note}</p>}
 
       <div className="grid g2" style={{ marginTop: 14 }}>
         <div className="card">
@@ -69,7 +79,7 @@ export default function Intelligence() {
           <h3 style={{ marginTop: 0 }}>Going cold ({d.stale.count})</h3>
           <p className="sub">Interested leads with no activity for {d.stale.days} days. Pick them up before they forget you.</p>
           {d.stale.leads.map((l) => <div key={l.id}><b>{l.company}</b> <small className="sub-inline">{l.stage} · last {when(l.last_touch)}</small></div>)}
-          {d.stale.count === 0 && <p className="empty">Nothing is going cold.</p>}
+          {d.stale.count === 0 ? <p className="empty">Nothing is going cold.</p> : <button className="btn" onClick={remind} style={{ marginTop: 8 }}>Create follow-up tasks for all {d.stale.count}</button>}
         </div>
       </div>
 
@@ -88,7 +98,7 @@ export default function Intelligence() {
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>
-        <h3 style={{ marginTop: 0 }}>Change log</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h3 style={{ marginTop: 0 }}>Change log</h3><button className="btn" onClick={exportCsv}>Download CSV</button></div>
         <p className="sub">Every manual correction to a lead: who, when, what it was and what it became.</p>
         {log.length === 0 ? <p className="empty">No corrections yet.</p> : (
           <div className="table-wrap"><table><thead><tr><th>When</th><th>Who</th><th>Lead</th><th>Field</th><th>Was</th><th>Now</th><th>Why</th></tr></thead>

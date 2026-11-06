@@ -72,7 +72,11 @@ def channel_funnels(leads) -> dict:
         "email": {"enrolled": len(email), "sent": len(sent), "opened": sum(1 for l in sent if eng(l, "opens")),
                   "clicked": sum(1 for l in sent if eng(l, "clicks")), "replied": sum(1 for l in sent if eng(l, "replies")),
                   "reply_rate": _pct(sum(1 for l in sent if eng(l, "replies")), len(sent))},
-        "linkedin": {"started": len(li), "connect_sent": len(li_sent), "accepted": len(li_acc), "replied": len(li_rep),
+        "linkedin": {"variants": {v: {"sent": sum(1 for l in li_sent if l["linkedin_seq"].get("variant") == v),
+                                      "accepted": sum(1 for l in li_acc if l["linkedin_seq"].get("variant") == v),
+                                      "accept_rate": _pct(sum(1 for l in li_acc if l["linkedin_seq"].get("variant") == v),
+                                                          sum(1 for l in li_sent if l["linkedin_seq"].get("variant") == v))} for v in ("A", "B")},
+                     "started": len(li), "connect_sent": len(li_sent), "accepted": len(li_acc), "replied": len(li_rep),
                      "accept_rate": _pct(len(li_acc), len(li_sent)), "reply_rate": _pct(len(li_rep), len(li_acc))}}
 
 
@@ -130,14 +134,14 @@ def team_activity(leads, days=30, now: Optional[datetime] = None) -> list:
     return sorted(({"who": w, "total": sum(c.values()), "by_kind": dict(c)} for w, c in out.items()), key=lambda r: -r["total"])
 
 
-def stale(leads, now: Optional[datetime] = None) -> dict:
+def stale(leads, now: Optional[datetime] = None, limit: Optional[int] = 20) -> dict:
     now = now or datetime.now(timezone.utc)
     cut = now - timedelta(days=STALE_DAYS)
     live = [l for l in leads if l.get("stage") in ("interested", "whatsapp_active", "call_done", "trial", "engaged", "meeting")]
     old = [l for l in live if (_last_touch(l) or now) < cut]
     return {"days": STALE_DAYS, "count": len(old),
             "leads": [{"id": l["id"], "company": l.get("company", ""), "stage": l.get("stage"),
-                       "last_touch": (_last_touch(l) or now).isoformat(timespec="seconds")} for l in old[:20]]}
+                       "last_touch": (_last_touch(l) or now).isoformat(timespec="seconds")} for l in (old if limit is None else old[:limit])]}
 
 
 def list_performance(store) -> list:

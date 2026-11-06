@@ -9,6 +9,7 @@ Sequence (from BookMyInterview_LinkedIn_Apollo_Sequence.xlsx): connection note o
 messages on days 3, 7, 12, 16, 21 and 28 (spaced from the acceptance / previous message). Step 4 offers a case study:
 it is skipped until a real case-study link is set, because no message may promise material that doesn't exist.
 """
+import hashlib
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -93,6 +94,18 @@ DEFAULT_HOOK = ("Something I've been thinking about lately: how often do busines
                 "people aren't available when they're needed?")
 
 
+# Two openers for the connection request, shared out evenly by lead id so acceptance can be compared fairly.
+CONNECT_VARIANTS = {
+    "A": STEPS[0]["text"],
+    "B": "Hi {first_name}, I work with hiring teams on getting interview time spent only on candidates already screened for "
+         "the role. Would be good to connect and swap notes on hiring.",
+}
+
+
+def pick_variant(lead_id: str) -> str:
+    return "A" if int(hashlib.sha1(str(lead_id).encode()).hexdigest()[:6], 16) % 2 == 0 else "B"
+
+
 def persona(title: str) -> tuple:
     text = (title or "").lower()
     for key, pattern, hook in PERSONAS:
@@ -104,7 +117,10 @@ def persona(title: str) -> tuple:
 def render(step: dict, lead: dict, settings: dict) -> str:
     first = clean_first_name(lead.get("contact_name")) or "there"
     _, hook = persona(lead.get("title", ""))
-    text = step["text"].format(first_name=first, hook=hook, case_study_url=settings.get("case_study_url", ""))
+    template = step["text"]
+    if step["n"] == 1 and step["kind"] == "connect":
+        template = CONNECT_VARIANTS.get((lead.get("linkedin_seq") or {}).get("variant"), template)
+    text = template.format(first_name=first, hook=hook, case_study_url=settings.get("case_study_url", ""))
     if step["kind"] == "connect" and len(text) > NOTE_LIMIT:
         text = text[: NOTE_LIMIT - 1].rsplit(" ", 1)[0] + "…"
     return text
@@ -153,7 +169,8 @@ def start(store, lead_id: str, now: Optional[datetime] = None) -> dict:
     if lead.get("linkedin_seq"):
         raise ValueError("This lead is already on the LinkedIn sequence; it is never restarted.")
     settings = store.read("settings")
-    state = {"started_at": iso(now), "done": [], "status": "waiting_to_connect", "persona": persona(lead.get("title", ""))[0]}
+    state = {"started_at": iso(now), "done": [], "status": "waiting_to_connect", "persona": persona(lead.get("title", ""))[0],
+             "variant": pick_variant(lead_id)}
     saved = store.update_lead(lead_id, lambda l: None if l.get("linkedin_seq") else {
         **l, "linkedin_seq": state, "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin", "text": "Started LinkedIn sequence"}]})
     task = _schedule(store, saved, STEPS[0], now, settings)
