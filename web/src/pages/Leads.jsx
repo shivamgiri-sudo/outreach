@@ -132,7 +132,10 @@ export default function Leads({ go }) {
   const runScrape = async () => {
     try {
       const r = await api.scrape({ url: scrapeUrl, company: scrapeCompany, add_leads: true });
-      setMessage(`Found ${r.emails.length} email(s) and ${r.phones.length} phone(s). Added ${r.added} lead(s).`);
+      const skipped = r.emails.length - r.added - (r.not_for_outreach || 0);
+      setMessage(`Found ${r.emails.length} email(s) and ${r.phones.length} phone(s). Added ${r.added} lead(s).`
+        + (skipped > 0 ? ` ${skipped} already in your leads.` : "")
+        + (r.not_for_outreach ? ` ${r.not_for_outreach} complaint, legal or no-reply address(es) left out.` : ""));
       load();
     } catch (e) {
       setMessage(e.message);

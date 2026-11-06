@@ -14,7 +14,7 @@ from .auth import PRIVATE_SETTINGS
 from .brand import get_brand
 from .growth_core import public_base_url
 from .inbound import _rates, apply_reply, suppress as _suppress_email
-from .scraper import extract_contacts, fetch_page
+from .scraper import extract_contacts, fetch_page, normalise_url, outreach_ok
 from .channels.netguard import is_public_host
 from .privacy import is_blocked, record_consent
 from .senders import email_ready
@@ -428,16 +428,18 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
 
     @router.post("/api/scrape/extract")
     def scrape(body: ScrapeBody):
+        url = normalise_url(body.url)
         try:
-            html = body.html or fetch_page(body.url)
+            html = body.html or fetch_page(url)
         except (ValueError, PermissionError, OSError) as exc:
             raise HTTPException(400, str(exc))
-        found = extract_contacts(html, body.url)
+        found = extract_contacts(html, url)
         added = 0
+        usable = [email for email in found["emails"] if outreach_ok(email)]
         if body.add_leads:
-            built = [build_lead({"company": body.company, "email": email, "website": body.url}, f"web_scraper:{body.url}")
-                     for email in found["emails"]]
+            built = [build_lead({"company": body.company, "email": email, "website": url}, f"web_scraper:{url}")
+                     for email in usable]
             added = len(store.add_leads([lead for lead in built if lead]))
-        return {**found, "added": added}
+        return {**found, "added": added, "not_for_outreach": len(found["emails"]) - len(usable)}
 
     return router

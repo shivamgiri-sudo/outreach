@@ -18,6 +18,24 @@ OBFUSCATED_RE = re.compile(r"([A-Za-z0-9._%+\-]+)\s*[\[\(]\s*at\s*[\]\)]\s*([A-Z
 PHONE_RE = re.compile(r"(?:\+91[\s\-]?)?(?<!\d)[6-9]\d{4}[\s\-]?\d{5}(?!\d)")
 
 
+# Addresses a site lists for complaints, legal or account admin: shown, but never turned into sales leads.
+NOT_FOR_OUTREACH = frozenset({"abuse", "privacy", "legal", "dpo", "grievance", "grievances", "compliance", "security",
+                              "noreply", "no-reply", "donotreply", "do-not-reply", "postmaster", "webmaster", "hostmaster",
+                              "unsubscribe", "cancellation", "cancel", "renewal", "billing", "refunds", "nodal", "ethics"})
+
+
+def outreach_ok(email: str) -> bool:
+    return email.split("@", 1)[0] not in NOT_FOR_OUTREACH
+
+
+def normalise_url(url: str) -> str:
+    """People type "acme.com" or "www.acme.com/careers": read those as https:// addresses."""
+    url = (url or "").strip()
+    if url and "://" not in url and " " not in url and "." in url.split("/")[0]:
+        return "https://" + url.lstrip("/")
+    return url
+
+
 def extract_contacts(html: str, url: str) -> dict:
     text = OBFUSCATED_RE.sub(lambda m: f"{m.group(1)}@{m.group(2)}.{m.group(3)}", html)
     emails = {
