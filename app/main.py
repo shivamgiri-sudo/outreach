@@ -464,6 +464,10 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         saved = store.read("integrations")
         existing = saved.get(integration_id, {}).get("values", {})
         merged = {**existing, **{k: v for k, v in body.values.items() if v and not str(v).startswith("••••")}}
+        if merged.get("click_to_call_url") and body.mode == "api":
+            from .channels.config import dial_link_problem
+            if dial_link_problem(merged["click_to_call_url"]):
+                raise HTTPException(400, dial_link_problem(merged["click_to_call_url"]))
         # keep hub data (other providers, last test, tokens) stored next to mode / values
         store.write("integrations", {**saved, integration_id: {**saved.get(integration_id, {}), "mode": body.mode, "values": merged}})
         return next(i for i in integrations.describe(store.read("integrations"), all_cards=True) if i["id"] == integration_id)

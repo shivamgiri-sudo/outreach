@@ -44,9 +44,12 @@ def make_router(store) -> APIRouter:
         return {v for v in values if v}
 
     @router.get("/api/leads/{lead_id}/export")
-    def export(lead_id: str):
+    def export(lead_id: str, request: Request):
         """Everything we hold on this person, as one JSON file (DPDP right of access)."""
         lead = lead_or_404(lead_id)
+        from . import audit
+        audit.record(store, getattr(request.state, "user", None), "export.download", f"lead-{lead_id}.json",
+                     f"everything held on {lead.get('company') or lead.get('domain') or 'a lead'} (DPDP access)")
         mine = contacts(lead)
         data = {"exported_at": now_iso(), "lead": lead,
                 **{key: [r for r in store.read(key) if r.get("lead_id") == lead_id] for key in LEAD_COLLECTIONS},

