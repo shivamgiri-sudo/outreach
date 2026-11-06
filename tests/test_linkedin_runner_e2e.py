@@ -190,6 +190,7 @@ def test_install_sh_in_a_temporary_home_pairs_and_starts_the_runner(cloud_live, 
     assert "Done." in done.stdout and (base / "app" / "node_modules" / "playwright").is_dir()
     assert json.loads((base / "config.json").read_text())["token"].startswith("mcnr_")
     assert not (home / ".config" / "autostart").exists() and not (home / ".config" / "systemd").exists()
+    # The installed runner has no --linkedin-base: this test must never add a LinkedIn account (it would open linkedin.com).
     r = wait_for(lambda: (x := runner_view(live)) and x["online"] and x, 60, what="the installed runner online")
     live.call(f"/api/linkedin-cloud/runner/{r['id']}", "DELETE")
     wait_for(lambda: not (base / "runner.lock").exists(), 30, what="the runner to exit after revoke")
