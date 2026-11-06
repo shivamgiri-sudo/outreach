@@ -234,14 +234,14 @@ def test_rebranded_demo_page_unsubscribe_ai_and_call_script(tmp_path):
     assert "Skyline Residences" in readiness["bmi_limits"]["title"]
 
 
-def test_unsubscribe_page_names_the_product(tmp_path):
+def test_unsubscribe_page_names_the_sending_company(tmp_path):
     c = make_client(tmp_path)
     from app.unsubscribe import unsub_path
     lead = c.get("/api/leads").json()[0]
     path = unsub_path(store_of(c), lead["id"])
-    assert "Stop all emails from BookMyInterview.ai?" in c.get(path).text
+    assert "Stop all emails from Mas Callnet?"   # names the company that sent the email (as in its footer) in c.get(path).text
     rebrand(c)
-    assert "Stop all emails from Skyline Residences?" in c.get(path).text
+    assert "Stop all emails from Skyline Homes?" in c.get(path).text
 
 
 def test_reset_brings_back_the_original(tmp_path):

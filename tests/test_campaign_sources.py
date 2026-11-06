@@ -138,7 +138,7 @@ def test_careers_homepage_follows_careers_link_and_job_sitemap():
     """A campaign given a company homepage (https://www.wipro.com/ style) reads jobs the way "Read job pages" does."""
     home = '<html><head><title>Wipro</title></head><body><a href="https://careers.wipro.com/">Careers</a></body></html>'
     careers = "<html><body><div id=app></div></body></html>"                       # a script-only careers site
-    sitemap = ("<urlset><url><loc>https://careers.wipro.com/job/Pune-Customer-Support-Executive/123/</loc>"
+    sitemap = ("<urlset><url><loc>https://careers.wipro.com/job/Pune-CUSTOMER-SUPPORT-EXECUTIVE/123/</loc>"
                "<lastmod>2026-11-01</lastmod></url><url><loc>https://careers.wipro.com/about/</loc></url></urlset>")
     io = FakeIO(pages={"https://www.wipro.com/": home, "https://careers.wipro.com/": careers,
                        "https://careers.wipro.com/sitemap.xml": sitemap})

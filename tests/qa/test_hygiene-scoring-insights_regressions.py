@@ -135,7 +135,8 @@ def test_insights_top_leads_skip_closed_and_failed_sends_are_not_sent(tmp_path, 
     })
     ins = c.get("/api/insights").json()
     assert {t["id"] for t in ins["top_leads"]} == {"w1", "e1", "i1", "i2"}     # hot but closed leads are left out
-    assert ins["totals"]["emails_sent"] == 1 and ins["outreach"]["emailed_leads"] == 1
+    # practice emails (dry_run) are not "sent" anywhere (one definition across Dashboard, Analytics, Insights)
+    assert ins["totals"]["emails_sent"] == 0 and ins["outreach"]["emailed_leads"] == 0
     assert ins["outreach"]["interested"] == 2 and ins["outreach"]["interested_rate"] == 0.0   # not 200 %
     assert ins["outreach"]["unsubscribe_rate"] == 0.0
 

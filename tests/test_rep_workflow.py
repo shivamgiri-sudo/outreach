@@ -35,6 +35,13 @@ def soon(minutes=90):
     return (datetime.now(timezone.utc) + timedelta(minutes=minutes)).isoformat(timespec="seconds")
 
 
+def due_now(c, lid):
+    """Tasks made on a weekend are due the next business morning; tests that check "due today" move them to now."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    c.app.state.store.update("tasks", lambda rows: [{**t, "due_at": now} if t.get("lead_id") == lid and t.get("kind") == "call" else t for t in rows])
+
+
 def give_consent(c, lid, channel="call", **kw):
     return c.post(f"/api/leads/{lid}/consent", json={"text": "Yes, call me — on the phone with Priya", "channel": channel, **kw})
 
@@ -98,6 +105,7 @@ def test_call_queue_orders_callbacks_then_yes_then_consent(tmp_path):
     assert c.get("/api/call-queue").json()["queue"] == []        # nobody said yes, no tasks, no consent
     give_consent(c, beta)                                           # consent only
     give_consent(c, acme, move_to_interested=True)                  # said yes + call task
+    due_now(c, acme)
     q = c.get("/api/call-queue").json()["queue"]
     assert [x["lead_id"] for x in q] == [acme, beta]
     assert q[0]["task_id"] and "Call task" in q[0]["reason"] and q[1]["reason"] == "Has a phone and consent"
@@ -153,6 +161,7 @@ def test_my_day_without_login_uses_team_caller(tmp_path):
     c.put("/api/team", json={"caller_name": "Priya"})
     lid = lead_named(c, "Acme")["id"]
     give_consent(c, lid, move_to_interested=True)                   # call task goes to the caller (Priya)
+    due_now(c, lid)
     d = c.get("/api/my-day").json()
     assert d["me"]["name"] == "Priya" and [t["lead_id"] for t in d["calls_due"]] == [lid]
 

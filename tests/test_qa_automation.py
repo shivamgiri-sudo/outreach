@@ -49,7 +49,7 @@ def test_campaign_careers_page_follows_the_careers_site_like_read_job_pages():
         "https://www.acme-steel.in/careers/": '<html><title>Acme Steel</title><a href="https://careers.acme-steel.in/">Careers</a></html>',
         "https://careers.acme-steel.in/": "<html><script>app()</script></html>",
         "https://careers.acme-steel.in/robots.txt": "Sitemap: https://careers.acme-steel.in/sitemap.xml",
-        "https://careers.acme-steel.in/sitemap.xml": ('<urlset><url><loc>https://careers.acme-steel.in/job/Pune-Machine-Operator/101/</loc>'
+        "https://careers.acme-steel.in/sitemap.xml": ('<urlset><url><loc>https://careers.acme-steel.in/job/Pune-MACHINE-OPERATOR/101/</loc>'
                                                     "<lastmod>2026-11-01</lastmod></url></urlset>"),
     }
 

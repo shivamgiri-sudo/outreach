@@ -114,8 +114,9 @@ def test_other_integration_tests_are_honest(tmp_path):
     assert wa["ok"] is False and "practice" in wa["message"].lower()
     c.put("/api/integrations/telephony", json={"mode": "api", "values": {"click_to_call_url": "https://dial.example/call?n={phone}"}})
     assert c.post("/api/integrations/telephony/test", json={}).json()["ok"] is True
-    c.put("/api/integrations/telephony", json={"mode": "api", "values": {"click_to_call_url": "https://dial.example/call"}})
-    assert c.post("/api/integrations/telephony/test", json={}).json()["ok"] is False
+    r = c.put("/api/integrations/telephony", json={"mode": "api", "values": {"click_to_call_url": "https://dial.example/call"}})
+    assert r.status_code == 400 and "{phone}" in r.json()["detail"]           # refused when saved, not only when tested
+    assert c.post("/api/integrations/telephony/test", json={}).json()["ok"] is True   # the good link stays
     assert c.post("/api/integrations/nope/test", json={}).status_code == 404
 
 

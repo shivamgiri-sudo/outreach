@@ -198,8 +198,8 @@ def test_snooze_resets_reminders_and_done_tasks_stay_quiet(tmp_path, clock):
     clock.now = ist("2026-11-04", "10:00")
     t = c.post("/api/tasks", json={"title": "Send proposal", "owner": "Anil", "due_at": "2026-11-04T10:10"}).json()
     run_reminders(store, clock.now)
-    assert c.put(f"/api/tasks/{t['id']}", json={"snooze_minutes": 120}).json()["due_at"] == ist("2026-11-04", "12:00").isoformat()
-    clock.now = ist("2026-11-04", "11:45")
+    assert c.put(f"/api/tasks/{t['id']}", json={"snooze_minutes": 120}).json()["due_at"] == ist("2026-11-04", "12:10").isoformat()   # snooze counts from the later of due time and now
+    clock.now = ist("2026-11-04", "11:55")
     run_reminders(store, clock.now)
     assert [n["kind"] for n in store.read("notifications")] == ["task_due", "task_due"]
     c.post(f"/api/tasks/{t['id']}/done", json={"note": "Sent"})
