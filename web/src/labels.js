@@ -5,7 +5,17 @@ export const STAGE_LABELS = {
   customer: "Customer", advocate: "Advocate", not_now: "Not now", unsubscribed: "Unsubscribed", disqualified: "Disqualified",
 };
 export const STAGE_ORDER = Object.keys(STAGE_LABELS);
-export const stageLabel = (s) => STAGE_LABELS[s] || s;
+// The owner can rename how stages read (Setup → Brand & offer); the ids never change. Set from the brand (brand.js).
+let stageOverrides = {};
+export const DEFAULT_LEAD_TERMS = { open_roles: "Open roles", role: "Role" };
+let leadTerms = { ...DEFAULT_LEAD_TERMS };
+export const setLabelOverrides = (stages = {}, terms = {}) => {
+  stageOverrides = { ...stages };
+  leadTerms = { ...DEFAULT_LEAD_TERMS, ...Object.fromEntries(Object.entries(terms).filter(([, v]) => v)) };
+};
+export const stageLabel = (s) => stageOverrides[s] || STAGE_LABELS[s] || s;
+// What the lead's numbers and fields mean for this business: leadTerm("open_roles") -> "Open roles" / "Units" / "Seats".
+export const leadTerm = (key) => leadTerms[key] || DEFAULT_LEAD_TERMS[key] || key;
 
 // Lead sources come from the server (GET /api/lead-sources) so the words live in one place. Until the list has loaded,
 // a source shows its own name with the underscores taken out.

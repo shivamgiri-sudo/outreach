@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import auth
-from app.main import PUBLIC_API_PATHS, create_app
+from app.main import PUBLIC_API_PATHS, PUBLIC_GET_PATHS, create_app
 from app.routes_auth import needed_role
 from tests.export_fakes import SECRETS, seed
 
@@ -182,7 +182,7 @@ def test_every_api_route_needs_a_login_except_the_documented_public_ones(tmp_pat
     team(c)
     open_routes = []
     for method, path in all_routes(c.app):
-        if not path.startswith("/api/") or method == "OPTIONS" or path in PUBLIC_API_PATHS:
+        if not path.startswith("/api/") or method == "OPTIONS" or path in PUBLIC_API_PATHS or (method == "GET" and path in PUBLIC_GET_PATHS):
             continue
         for headers in ({}, {"Authorization": "Bearer "}, {"Authorization": "Basic YWRtaW46YWRtaW4="}, {"X-Webhook-Secret": ""}):
             r = call(c, method, path, headers=headers)
@@ -190,6 +190,7 @@ def test_every_api_route_needs_a_login_except_the_documented_public_ones(tmp_pat
                 open_routes.append((method, path, headers, r.status_code))
     assert open_routes == []
     assert set(PUBLIC_API_PATHS) == {"/api/login", "/api/auth/status"}
+    assert set(PUBLIC_GET_PATHS) == {"/api/brand/public", "/api/brand/logo"}      # read-only brand for sign-in page and mail apps
     assert c.get("/api/auth/status").json() == {"auth_required": True}
 
 

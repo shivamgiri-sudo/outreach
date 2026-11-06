@@ -48,14 +48,7 @@ def _brand_value(settings: dict, name: str) -> str:
 
 
 def brand_variables(settings: dict) -> dict:
-    """Brand placeholder values from the settings, with sender_* fallbacks. Empty ones are left out (so they show as
-    missing and the engine holds the email instead of sending a gap)."""
-    settings = settings or {}
-    out = {name: _brand_value(settings, name) for name in BRAND_PLACEHOLDERS}
-    out["my_company"] = out["my_company"] or str(settings.get("sender_company") or "").strip()
-    out["my_website"] = out["my_website"] or str(settings.get("sender_website") or "").strip()
-    if not out["sign_off"]:
-        who = str(settings.get("sender_name") or "").strip()
-        team = out["my_company"]
-        out["sign_off"] = "Regards,\n" + (f"{who}\n{team}" if who and team else who or (f"Team {team}" if team else "")) if (who or team) else ""
-    return {k: v for k, v in out.items() if v}
+    """Brand placeholder values. One source of truth: app/brand.py (the Brand & offer settings, with the original
+    business as the default). Kept here so older call sites keep working."""
+    from .brand import brand_variables as from_brand
+    return from_brand(settings or {})

@@ -93,6 +93,6 @@ def message(store, key: str, base_url: str) -> Optional[dict]:
     for k, m, lead in _rows(store):
         if k == key:
             body = str(m.get("body") or "")
-            html = render(body, base_url) if body and store.read("settings").get("html_email") is not False else ""
+            html = render(body, base_url, brand=store) if body and store.read("settings").get("html_email") is not False else ""
             return {**_summary(k, m, lead, campaigns), "body": body, "html": html}
     return None

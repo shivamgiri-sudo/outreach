@@ -21,7 +21,7 @@ RESPONSE_PREVIEW_BYTES = 2048
 SAMPLE = {
     "to": "+919812345678", "phone": "+919812345678", "email": "test.lead@example.com",
     "subject": "Test from Outreach OS", "text": 'Hello from Outreach OS. A "test" message.', "name": "Test Lead",
-    "company": "Example Pvt Ltd", "template": "first_after_yes", "title": "BookMyInterview.ai demo — Example",
+    "company": "Example Pvt Ltd", "template": "first_after_yes", "title": "Product demo — Example",
     "start": "2026-11-05T10:00:00+05:30", "end": "2026-11-05T10:30:00+05:30", "join_url": "https://meet.example.com/test",
 }
 

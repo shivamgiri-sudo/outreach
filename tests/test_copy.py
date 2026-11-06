@@ -149,7 +149,7 @@ def test_whatsapp_templates_keep_keys_and_end_with_stop():
         assert key in TEMPLATES and f"{key}_hinglish" in TEMPLATES
     for key, text in TEMPLATES.items():
         assert text.endswith("Reply STOP to opt out."), key
-        assert ("BookMyInterview" in text or "{{my_company}}" in text) and "{{sender}}" in text, key
+        assert ("{{my_product}}" in text or "{{my_company}}" in text) and "{{sender}}" in text, key   # the brand names the seller
     assert "{{demo_link}}" in TEMPLATES["first_after_yes"] and "{{demo_link}}" in TEMPLATES["nudge_demo_not_opened"]
     assert "If you already have applicants" in TEMPLATES["pilot_offer"]
 

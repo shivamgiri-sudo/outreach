@@ -53,7 +53,7 @@ CALENDAR = [
                     help="Optional: used to list event types and cancel bookings."),
               field("api_base", "API address", placeholder="https://api.cal.com/v2", default="https://api.cal.com/v2",
                     kind="url", help="Change only if you self-host Cal.com.")],
-             ["Sign up at cal.com and create an event type such as 'BookMyInterview.ai demo (30 min)'.",
+             ["Sign up at cal.com and create an event type such as 'Product demo (30 min)'.",
               "Copy that event type's public link into 'Your booking link'.",
               "Optional: Settings → Developer → API keys → create a key and paste it.",
               "Settings → Developer → Webhooks → New: paste the subscriber address and secret from step 3, and tick "
@@ -68,7 +68,7 @@ CALENDAR = [
                     help="Calendly → Integrations → API & Webhooks → Personal access tokens."),
               field("booking_url", "Booking link", placeholder="https://calendly.com/yourname/demo", kind="url",
                     help="Optional: a specific event link. Otherwise your main scheduling page is used.")],
-             ["In Calendly, create an event type such as 'BookMyInterview.ai demo'.",
+             ["In Calendly, create an event type such as 'Product demo'.",
               "Integrations → API & Webhooks → Generate a personal access token. Copy it here and Save.",
               "Click Test: the app reads your account and registers the booking webhook for you "
               "(Calendly webhooks need a paid plan; the booking link works on any plan)."],

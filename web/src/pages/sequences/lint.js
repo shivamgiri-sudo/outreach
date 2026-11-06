@@ -1,8 +1,8 @@
 // Checks shown while a sequence step is edited. "error" blocks saving (the server refuses it too); "warn" is advice.
-export const PLACEHOLDERS = ["greeting", "first_name", "company", "role", "sender", "unsub_link", "offer_line", "demo_link"];
-// Brand placeholders (Brand settings) and the owner's custom lead fields ({{custom.<key>}}) are accepted too.
+// Brand placeholders come from Setup → Brand & offer and are filled the same way in every channel.
 export const BRAND_PLACEHOLDERS = ["my_company", "my_product", "my_tagline", "my_value_1", "my_value_2", "my_value_3", "my_cta", "my_website", "sign_off"];
-const known = (p) => PLACEHOLDERS.includes(p) || BRAND_PLACEHOLDERS.includes(p) || /^custom\.[a-z][a-z0-9_]{0,39}$/.test(p);
+export const PLACEHOLDERS = ["greeting", "first_name", "company", "role", "sender", "unsub_link", "offer_line", "demo_link", ...BRAND_PLACEHOLDERS];
+const known = (p) => PLACEHOLDERS.includes(p) || /^custom\.[a-z][a-z0-9_]{0,39}$/.test(p);   // plus the owner's custom lead fields
 export const SPAM_WORDS = ["free", "guarantee", "guaranteed", "act now", "urgent", "limited time", "risk-free", "risk free", "100%",
   "winner", "cash", "click here", "buy now", "no obligation", "order now", "special promotion", "earn money", "lowest price",
   "congratulations", "exclusive deal", "dear friend", "once in a lifetime", "!!!", "$$$"];

@@ -11,8 +11,8 @@ AUP_NOTE = ("Read the provider's acceptable-use policy: most only allow email to
 def _sender_fields(domain_required=False):
     return [
         field("domain", "Sending domain", domain_required, placeholder="mail.yourbrand.in",
-              help="A separate look-alike domain, never bookmyinterview.ai itself."),
-        field("from_name", "From name", True, placeholder="Your name from BookMyInterview"),
+              help="A separate look-alike domain, never your main company domain itself."),
+        field("from_name", "From name", True, placeholder="Your name from your company"),
         field("from_email", "From email", True, placeholder="name@mail.yourbrand.in", kind="email"),
     ]
 

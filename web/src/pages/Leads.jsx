@@ -312,7 +312,7 @@ export default function Leads({ go }) {
           <input aria-label="Search leads" placeholder="Search company, person, email or phone" value={query} onChange={(e) => setQuery(e.target.value)} />
           <select aria-label="Filter by stage" value={stage} onChange={(e) => setStage(e.target.value)}>
             <option value="">All stages</option>
-            {Object.entries(STAGE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {Object.keys(STAGE_LABELS).map((k) => <option key={k} value={k}>{stageLabel(k)}</option>)}
           </select>
           <select aria-label="Filter by temperature" value={band} onChange={(e) => setBand(e.target.value)}>
             <option value="">Hot, warm and cold</option>

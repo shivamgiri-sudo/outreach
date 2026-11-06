@@ -148,7 +148,8 @@ def render(step: dict, lead: dict, settings: dict) -> str:
 def render_branch(key: str, lead: dict, settings: dict, **values) -> str:
     first = clean_first_name(lead.get("contact_name")) or "there"
     defaults = {"option_1": "", "option_2": "", "date": "", "time": "", "case_study_url": settings.get("case_study_url", "")}
-    return BRANCHES[key].format(first_name=first, **{**defaults, **values})
+    from .brand import fill_brand_placeholders
+    return fill_brand_placeholders(BRANCHES[key], settings, braces_for_format=True).format(first_name=first, **{**defaults, **values})
 
 
 def _active_steps(settings: dict, steps: Optional[list] = None) -> list:

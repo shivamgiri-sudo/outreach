@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from . import brand as brand_mod
 from . import integrations
 from .lead_model import build_lead as _build_lead, contactless_match as _contactless_match, event as _event, merge_contact as _merge_contact, now_iso as _now
 from .prompt_gen import build_prompt, build_prompt_body, with_guardrails
@@ -35,6 +36,7 @@ from . import routes_growth
 from .growth_core import webhook_secret
 from .routes_setup import make_router as make_setup_router
 from .routes_guides import make_router as make_guides_router
+from .routes_brand import make_router as make_brand_router
 from .senders import make_email_sender, make_transactional_sender
 from .routes_workflows import make_router as make_workflows_router
 from .routes_flows import make_router as make_flows_router
@@ -90,6 +92,8 @@ from .unsubscribe import ensure_cutover
 
 BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
 PUBLIC_API_PATHS = ("/api/login", "/api/auth/status")
+# Read-only without a login: the sign-in page shows the brand, and recipients' mail apps load the logo.
+PUBLIC_GET_PATHS = ("/api/brand/public", "/api/brand/logo")
 def open_store(data_file):
     """JSON file by default; MySQL when OUTREACH_DATABASE_URL is set (the data file path is then only used for restore copies)."""
     url = os.environ.get("OUTREACH_DATABASE_URL", "").strip()
@@ -186,7 +190,9 @@ def _present(lead: dict) -> dict:
     scored = score_lead({**lead, "consent_yes": bool(lead.get("consent"))})
     activation = lead.get("activation")
     return {**lead, "source_id": lead.get("source_id") or source_names.source_id(lead.get("source")), "score": scored["score"], "band": scored["band"], "signals": scored["signals"],
-            "suggestion": suggest_next(lead["stage"], scored["band"]),
+            "suggestion": (suggest_next(lead["stage"], scored["band"], brand_mod.CURRENT["claim_url"] or None,
+                                        brand_mod.CURRENT["product"], True) if brand_mod.CURRENT["generic"]
+                           else suggest_next(lead["stage"], scored["band"])),
             "nudge": next_nudge(activation, datetime.now(timezone.utc)) if activation else None}
 
 
@@ -211,6 +217,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     async def require_login(request: Request, call_next):
         path = request.url.path
         open_path = (not path.startswith("/api/") or path in PUBLIC_API_PATHS or request.method == "OPTIONS"
+                     or (path in PUBLIC_GET_PATHS and request.method in ("GET", "HEAD"))
                      or (path == "/api/activation/event" and webhook_secret(store, routes_growth.WEBHOOK_SECRET)
                          and hmac.compare_digest(request.headers.get("x-webhook-secret", "").encode("utf-8", "replace"),
                                                  webhook_secret(store, routes_growth.WEBHOOK_SECRET).encode("utf-8")))
@@ -457,13 +464,14 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     @app.post("/api/prompts/generate")
     def generate_prompt(body: PromptBody):
         spec = body.model_dump()
+        profile = brand_mod.prompt_profile(store)
         if body.use_ai:
-            written = ai_write_prompt(store, build_prompt_body(spec), ai_transport)
+            written = ai_write_prompt(store, build_prompt_body(spec, profile=profile), ai_transport)
             if written:
-                return {"prompt": with_guardrails(written), "ai": True}
-            return {"prompt": build_prompt(spec), "ai": False,
+                return {"prompt": with_guardrails(written, profile), "ai": True}
+            return {"prompt": build_prompt(spec, profile=profile), "ai": False,
                     "note": "The AI writer is not connected or did not answer, so the standard template was used."}
-        return {"prompt": build_prompt(spec), "ai": False}
+        return {"prompt": build_prompt(spec, profile=profile), "ai": False}
 
     app.include_router(make_lead_ops_router(store, _present))     # before the outreach routes: /api/leads/bulk
     app.include_router(make_router(store, _build_lead, _present, email_sender, ai_transport))
@@ -471,6 +479,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_growth_router(store, _build_lead, _present))
     app.include_router(make_sequences_router(store))
     app.include_router(make_lead_fields_router(store, _present))
+    brand_mod.remember(store)
+    app.include_router(make_brand_router(store))
     app.include_router(make_enrich_router(store, fetcher, apollo_transport))
     app.include_router(make_workflows_router(store, ai_transport))
     app.include_router(make_flows_router(store, email_sender, channel_transport, resolver, ai_transport))

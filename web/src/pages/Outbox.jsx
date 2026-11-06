@@ -109,12 +109,12 @@ export default function Outbox({ go }) {
           <div><label>Max emails per day</label><input type="number" min="1" max="500" value={cfg.daily_cap} onChange={(e) => setCfg({ ...cfg, daily_cap: e.target.value })} /></div>
         </div>
         <label>Company name (shown in every email footer)</label>
-        <input value={cfg.sender_company || ""} placeholder="BookMyInterview.ai" onChange={(e) => setCfg({ ...cfg, sender_company: e.target.value })} />
+        <input value={cfg.sender_company || ""} placeholder="Your Company" onChange={(e) => setCfg({ ...cfg, sender_company: e.target.value })} />
         <div className="row">
           <div><label>Website (shown in the footer)</label>
-            <input value={cfg.sender_website || ""} placeholder="bookmyinterview.ai" onChange={(e) => setCfg({ ...cfg, sender_website: e.target.value })} /></div>
+            <input value={cfg.sender_website || ""} placeholder="yourcompany.com" onChange={(e) => setCfg({ ...cfg, sender_website: e.target.value })} /></div>
           <div><label>Contact email (shown in the footer)</label>
-            <input value={cfg.sender_contact_email || ""} placeholder="support@bookmyinterview.ai" onChange={(e) => setCfg({ ...cfg, sender_contact_email: e.target.value })} /></div>
+            <input value={cfg.sender_contact_email || ""} placeholder="hello@yourcompany.com" onChange={(e) => setCfg({ ...cfg, sender_contact_email: e.target.value })} /></div>
         </div>
         <label>Postal address (optional; needed only to email leads in the US or Canada)</label>
         <input value={cfg.sender_address || ""} placeholder="Office address, city, PIN" onChange={(e) => setCfg({ ...cfg, sender_address: e.target.value })} />

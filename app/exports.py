@@ -87,7 +87,7 @@ def _companies(store) -> dict:
 LEAD_PLAIN = ("id", "company", "contact_name", "title", "seniority", "department", "email", "phone", "website", "domain",
               "linkedin_url", "city", "state", "country", "sector", "company_size", "open_roles", "role", "source",
               "campaign_id")
-LEAD_COLUMNS = cols(*LEAD_PLAIN, "tags", "stage", "score", "band", "consent", "@consent_at", "consent_channel",
+LEAD_COLUMNS = cols(*LEAD_PLAIN, "tags", "stage", "stage_name", "score", "band", "consent", "@consent_at", "consent_channel",
                     "consent_proof", "sequence_status", "emails_sent", "@last_activity_at", "owner", "linkedin_status",
                     "replies", "@created_at")
 
@@ -118,11 +118,14 @@ def _task_owners(store) -> dict:
     return owners
 
 
-def _lead_row(lead: dict, owners: dict) -> dict:
+def _lead_row(lead: dict, owners: dict, stage_names: dict = None) -> dict:
+    """One export row; `stage_names` are the owner's words for stages (Setup → Brand & offer), next to the fixed id."""
+    from .brand import DEFAULT_STAGE_LABELS
+    names = {**DEFAULT_STAGE_LABELS, **(stage_names or {})}
     consent = lead.get("consent") if isinstance(lead.get("consent"), dict) else {}
     seq = lead.get("sequence") or {}
     return {**{k: lead.get(k) for k in LEAD_PLAIN}, "tags": lead.get("tags") or [], "stage": lead.get("stage"),
-            "score": lead.get("score"), "band": lead.get("band"), "consent": bool(consent), "consent_at": consent.get("at"),
+            "stage_name": names.get(lead.get("stage"), lead.get("stage") or ""), "score": lead.get("score"), "band": lead.get("band"), "consent": bool(consent), "consent_at": consent.get("at"),
             "consent_channel": consent.get("channel"), "consent_proof": consent.get("text"),
             "sequence_status": _sequence_status(seq), "emails_sent": len(seq.get("sent_days") or []),
             "last_activity_at": _last_activity(lead), "owner": lead.get("owner") or owners.get(lead["id"]) or "",
@@ -160,7 +163,9 @@ def _lead_matches(lead: dict, params: dict, ids: set) -> bool:
 def leads_rows(store, params: dict, present) -> list:
     ids, owners = _ids(params), _task_owners(store)
     shown = sorted((present(l) for l in store.read("leads")), key=lambda l: -(l.get("score") or 0))
-    return [_lead_row(l, owners) for l in shown if _lead_matches(l, params, ids)]
+    from .brand import stage_labels
+    names = stage_labels(store)
+    return [_lead_row(l, owners, names) for l in shown if _lead_matches(l, params, ids)]
 
 
 def _campaign(store, params: dict) -> dict:

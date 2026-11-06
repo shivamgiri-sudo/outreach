@@ -2,8 +2,11 @@ import { useRef, useState } from "react";
 import { api, setToken } from "../api.js";
 import Icon from "../icons.jsx";
 import "../login.css";
+import { useBrand } from "../brand.js";
 
-// The pipeline drawn in the brand panel, in order. Tone = which colour of the Mas Callnet logo tints the step.
+// The pipeline drawn in the brand panel, in order. Tone = which colour of the logo tints the step.
+// The notes name hiring only for the original brand; a rebranded install gets neutral words.
+const GENERIC_NOTES = { Find: "Prospects that fit", Meeting: "Meeting on the calendar", Customer: "Signed up" };
 const STAGES = [
   { label: "Find", icon: "search", tone: "blue", note: "Employers hiring now" },
   { label: "Enrich", icon: "idcard", tone: "green", note: "Contacts found and checked" },
@@ -19,13 +22,13 @@ const FEATURES = [
   { icon: "shield", tone: "red", title: "DPDP-ready consent & unsubscribe", text: "Consent recorded, one-click unsubscribe, erasure on request." },
 ];
 
-function Pipeline() {
+function Pipeline({ generic }) {
   return (
     <ol className="flow">
       {STAGES.map((s, i) => (
         <li key={s.label} className={`flow-step tone-${s.tone}`} style={{ "--i": i }}>
           <span className="flow-dot"><Icon name={s.icon} size={20} /></span>
-          <span className="flow-text"><b>{s.label}</b><small>{s.note}</small></span>
+          <span className="flow-text"><b>{s.label}</b><small>{(generic && GENERIC_NOTES[s.label]) || s.note}</small></span>
           {i < STAGES.length - 1 && <span className={`flow-link to-${STAGES[i + 1].tone}`} aria-hidden="true"><i /></span>}
         </li>
       ))}
@@ -41,6 +44,9 @@ export default function Login({ onSignedIn }) {
   const [show, setShow] = useState(false);
   const [caps, setCaps] = useState(false);
   const pw = useRef(null);
+  const brand = useBrand().public;
+  const generic = !brand.is_default;
+  const [first, ...rest] = String(brand.app_name || "").split(" ");
 
   const submit = async (e) => {
     e.preventDefault();
@@ -73,15 +79,16 @@ export default function Login({ onSignedIn }) {
       </div>
 
       <header className="login-brand">
-        <img className="login-logo" src="/mcn-logo.png" width="138" height="50" alt="Mas Callnet" />
-        <h1 className="login-title">MCN <span>Outreach</span></h1>
-        <p className="login-lede">Find hiring employers, start honest conversations, book demos — on autopilot, with consent built in.</p>
+        <img className="login-logo" src={brand.header_logo} width="138" height="50" alt={brand.company_name} />
+        <h1 className="login-title">{first}{rest.length > 0 && <> <span>{rest.join(" ")}</span></>}</h1>
+        <p className="login-lede">{generic ? (brand.tagline || "Find the right prospects, start honest conversations, book meetings — with consent built in.")
+          : "Find hiring employers, start honest conversations, book demos — on autopilot, with consent built in."}</p>
       </header>
 
       <main className="login-main">
         <form className="login-card" onSubmit={submit} aria-labelledby="login-heading" noValidate>
           <p className="login-eyebrow">Welcome back</p>
-          <h2 id="login-heading">Sign in to MCN Outreach</h2>
+          <h2 id="login-heading">Sign in to {brand.app_name}</h2>
           <p className="login-help">Use the admin password, or your work email and password if the owner added you to the team.</p>
 
           <div className="login-field">
@@ -122,7 +129,7 @@ export default function Login({ onSignedIn }) {
       <section className="login-story" aria-labelledby="story-title">
         <div className="login-glass">
           <h2 id="story-title" className="login-eyebrow">From first find to first customer</h2>
-          <Pipeline />
+          <Pipeline generic={generic} />
         </div>
         <ul className="login-tiles">
           {FEATURES.map((f) => (
@@ -132,10 +139,11 @@ export default function Login({ onSignedIn }) {
             </li>
           ))}
         </ul>
-        <p className="login-for">Built for <img src="/bmi-logo.png" width="145" height="22" alt="BookMyInterview.ai" /></p>
+        <p className="login-for">Built for {brand.is_default ? <img src="/bmi-logo.png" width="145" height="22" alt="BookMyInterview.ai" />
+          : brand.custom_logo ? <img src={brand.logo_url} height="22" style={{ width: "auto", maxWidth: 145 }} alt={brand.product_name} /> : <b>{brand.product_name}</b>}</p>
       </section>
 
-      <footer className="login-foot">© {new Date().getFullYear()} Mas Callnet · MCN Outreach</footer>
+      <footer className="login-foot">© {new Date().getFullYear()} {brand.company_name} · {brand.app_name}</footer>
     </div>
   );
 }

@@ -16,27 +16,27 @@ SESSION_WINDOW = timedelta(hours=24)
 OPT_OUT = "Reply STOP to opt out."
 # Every template says who is writing, refers honestly to their email reply, and ends with the opt-out line.
 TEMPLATES = {
-    "first_after_yes": ("{{greeting}} this is {{sender}} from BookMyInterview. Thanks for replying yes to my email. "
+    "first_after_yes": ("{{greeting}} this is {{sender}} from {{my_product}}. Thanks for replying yes to my email. "
                         "Here is the sample screen I drafted for your opening: {{demo_link}} "
                         "Want me to set up your first role free? " + OPT_OUT),
-    "nudge_demo_not_opened": ("{{greeting}} {{sender}} from BookMyInterview here. You said yes on email, so I drafted "
+    "nudge_demo_not_opened": ("{{greeting}} {{sender}} from {{my_product}} here. You said yes on email, so I drafted "
                               "a sample screen for your opening: {{demo_link}} Have a look when you have a minute. "
                               + OPT_OUT),
-    "nudge_not_published": ("{{greeting}} {{sender}} from BookMyInterview. The role you drafted after our email is "
+    "nudge_not_published": ("{{greeting}} {{sender}} from {{my_product}}. The role you drafted after our email is "
                             "ready but not published yet. Want me to help publish it? It takes a few minutes. " + OPT_OUT),
-    "pilot_offer": ("{{greeting}} {{sender}} from BookMyInterview, following up on your email reply. If you already "
+    "pilot_offer": ("{{greeting}} {{sender}} from {{my_product}}, following up on your email reply. If you already "
                     "have applicants for this role, I can help you add them to your free first role so you see how "
                     "the screen ranks your own candidates. Want help with that? " + OPT_OUT),
-    "first_after_yes_hinglish": ("{{greeting}} main {{sender}}, BookMyInterview se. Email pe yes bolne ke liye thanks. "
+    "first_after_yes_hinglish": ("{{greeting}} main {{sender}}, {{my_product}} se. Email pe yes bolne ke liye thanks. "
                                  "Aapki opening ke liye sample screen yahan hai: {{demo_link}} "
                                  "Kya main aapka first role free mein set up kar doon? " + OPT_OUT),
-    "nudge_demo_not_opened_hinglish": ("{{greeting}} {{sender}} here, BookMyInterview se. Aapne email pe yes kaha tha, "
+    "nudge_demo_not_opened_hinglish": ("{{greeting}} {{sender}} here, {{my_product}} se. Aapne email pe yes kaha tha, "
                                        "isliye aapki opening ke liye sample screen banaya hai: {{demo_link}} "
                                        "Jab time mile, ek baar dekh lijiye. " + OPT_OUT),
-    "nudge_not_published_hinglish": ("{{greeting}} {{sender}}, BookMyInterview se. Email ke baad aapne jo role draft "
+    "nudge_not_published_hinglish": ("{{greeting}} {{sender}}, {{my_product}} se. Email ke baad aapne jo role draft "
                                      "kiya tha, woh ready hai par abhi publish nahi hua. Publish karne mein help "
                                      "chahiye? Bas kuch minute lagenge. " + OPT_OUT),
-    "pilot_offer_hinglish": ("{{greeting}} {{sender}}, BookMyInterview se, aapke email reply ke baare mein. Agar aapke "
+    "pilot_offer_hinglish": ("{{greeting}} {{sender}}, {{my_product}} se, aapke email reply ke baare mein. Agar aapke "
                              "paas is role ke applicants pehle se hain, toh main unhe aapke free first role mein add "
                              "karne mein help kar sakti hoon, taaki aap dekh sakein screen aapke candidates ko kaise "
                              "rank karta hai. Help chahiye? " + OPT_OUT),
@@ -58,6 +58,9 @@ class WhatsAppError(Exception):
 # Positional order of the values a provider-approved template can take: {{1}} first name, {{2}} sender, {{3}} company,
 # {{4}} demo link. A template that doesn't use a value leaves it out and the rest move up, as the provider requires.
 PARAM_ORDER = ("first_name", "sender", "company", "demo_link")
+# Brand values a template's value list may also name (Settings: whatsapp_template_params {template: [names]}).
+BRAND_PARAMS = ("my_company", "my_product", "my_website", "my_cta", "my_tagline")
+NAMED_PARAMS = PARAM_ORDER + BRAND_PARAMS
 
 
 def template_param_names(template: str, configured=None) -> list:
@@ -70,7 +73,7 @@ def template_param_names(template: str, configured=None) -> list:
         setting = None
     if isinstance(setting, int):
         return list(PARAM_ORDER[:max(0, min(setting, len(PARAM_ORDER)))])
-    if isinstance(setting, list) and all(isinstance(n, str) and n in PARAM_ORDER for n in setting):
+    if isinstance(setting, list) and all(isinstance(n, str) and n in NAMED_PARAMS for n in setting):
         return list(setting)
     declared = [int(n) for n in re.findall(r"\{\{(\d+)\}\}", TEMPLATES.get(template, ""))]
     if declared:
@@ -126,8 +129,7 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
     else:
         raise WhatsAppError("Unknown template")
     variables = lead_variables(lead, sender.strip() or get_settings(store)["sender_name"], base_url,
-                               {**brand_variables(get_settings(store)), "demo_link": f"{base_url}/demo/{lead['demo_token']}"},
-                               secret=server_secret(store))
+                               {"demo_link": f"{base_url}/demo/{lead['demo_token']}"}, secret=server_secret(store), brand=store)
     body, missing = render(raw, variables)
     if missing:
         raise WhatsAppError(f"This message needs details the lead doesn't have yet: {', '.join(missing)}")

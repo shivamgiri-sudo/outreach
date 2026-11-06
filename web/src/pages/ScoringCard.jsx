@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
+import { leadTerm } from "../labels.js";
 
 const SIGNALS = [
   ["hiring_volume", "Open roles (log scale)"], ["hiring_pain", "Hard-to-fill roles (old / reposted)"], ["fit", "Size and India fit"],
@@ -48,7 +49,7 @@ export default function ScoringCard() {
         <div className="split-2">
           <label>Warm from<input type="number" min={0} max={99} required value={cfg.warm} onChange={(e) => setCfg({ ...cfg, warm: e.target.value })} /></label>
           <label>Hot from<input type="number" min={1} max={100} required value={cfg.hot} onChange={(e) => setCfg({ ...cfg, hot: e.target.value })} /></label>
-          <label>Open roles for full marks<input type="number" min={2} required value={cfg.open_roles_full} onChange={(e) => setCfg({ ...cfg, open_roles_full: e.target.value })} /></label>
+          <label>{leadTerm("open_roles")} for full marks<input type="number" min={2} required value={cfg.open_roles_full} onChange={(e) => setCfg({ ...cfg, open_roles_full: e.target.value })} /></label>
           <label>Smallest company size that fits<input type="number" min={0} required value={cfg.fit_size_min} onChange={(e) => setCfg({ ...cfg, fit_size_min: e.target.value })} /></label>
         </div>
         <div className="row">

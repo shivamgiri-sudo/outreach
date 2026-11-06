@@ -26,7 +26,7 @@ from .privacy import is_blocked
 from .senders import email_ready
 from .sequences import DEFAULT_DAILY_CAP, IST, due_steps, in_business_hours, lead_variables, render
 
-DEFAULT_SENDER = "BookMyInterview team"
+DEFAULT_SENDER = "BookMyInterview team"     # kept for older imports; the brand (app/brand.py) decides the sender
 DEFAULT_PER_RUN_CAP = 5
 MIN_GAP = timedelta(days=2)
 RETRY_AFTER = timedelta(hours=1)
@@ -43,8 +43,10 @@ _RUN_LOCK = threading.Lock()
 
 
 def get_settings(store) -> dict:
-    return {"daily_cap": DEFAULT_DAILY_CAP, "per_run_cap": DEFAULT_PER_RUN_CAP, "sender_name": DEFAULT_SENDER,
-            "live_sending": False, **store.read("settings")}
+    from .brand import sender_name
+    settings = store.read("settings")
+    return {"daily_cap": DEFAULT_DAILY_CAP, "per_run_cap": DEFAULT_PER_RUN_CAP, "live_sending": False, **settings,
+            "sender_name": sender_name(settings)}
 
 
 def effective_daily_cap(daily_cap: int, live: bool, first_send: Optional[date], today: date) -> int:
@@ -252,7 +254,7 @@ def _compose(lead: dict, step: dict, cfg: dict, offer: dict, base_url: str, now:
     lead = ensure_demo(lead, now)
     extra = {**brand_variables(cfg), "offer_line": offer_line(offer), "demo_link": f"{base_url}/demo/{lead['demo_token']}",
              "include_link": bool(cfg.get(getattr(sequences, "INCLUDE_LINK_SETTING", "email1_include_link")))}
-    variables = lead_variables(lead, cfg["sender_name"], base_url, extra, secret=cfg.get("server_secret", ""))
+    variables = lead_variables(lead, cfg["sender_name"], base_url, extra, secret=cfg.get("server_secret", ""), brand=cfg)
     pick = getattr(sequences, "pick_variant", None)
     step = pick(step, variables) if pick else step
     subject, missing_subject = render(step["subject"], variables)
@@ -421,7 +423,7 @@ def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, bas
     live = bool(cfg["live_sending"]) and bool(email_ready(store))
     if live and (pause := sending_paused(store, now)):
         raise ValueError(f"Sending is paused: {pause['reason']}")
-    variables = lead_variables(lead, cfg["sender_name"], base_url, brand_variables(cfg), secret=server_secret(store))
+    variables = lead_variables(lead, cfg["sender_name"], base_url, {}, secret=server_secret(store), brand=store)
     subject, _ = render(subject, variables)
     body, missing = render(body, variables)
     if missing or re.search(r"\{\{|\}\}", subject + body):

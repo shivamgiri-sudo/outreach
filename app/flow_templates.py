@@ -62,15 +62,15 @@ def _yes_flow() -> dict:
              _edge("wa", "call"), _edge("wa", "call", "error"), _edge("call", "wait"), _edge("wait", "meeting"),
              _edge("meeting", "notify", "yes")]
     return {"name": "Yes → WhatsApp + representative call", "settings": {"stop_on_reply": False},
-            "description": "When someone replies yes: the sample-screen WhatsApp (only with consent), a call task for "
+            "description": "When someone replies yes: the first WhatsApp message (only with consent), a call task for "
                            "the representative, and a nudge to you if no meeting is booked within two days.",
             "nodes": nodes, "edges": edges}
 
 
 def _linkedin_combo_flow() -> dict:
     s = DEFAULT_SEQUENCE
-    note = ("Hi {{first_name}}, came across your profile and noticed your work building teams at {{company}}. "
-            "Always good to connect with people who hire. Thought I'd reach out.")
+    note = ("Hi {{first_name}}, came across your profile and your work at {{company}}. "
+            "I'm with {{my_company}} and thought it would be good to connect.")
     nodes = [
         {"id": "trigger", "type": "trigger.manual", "config": {"title": "Added by hand or in bulk"}, "x": 300, "y": 60},
         {"id": "linkedin", "type": "linkedin_task", "config": {"mode": "start_sequence", "title": "Start LinkedIn sequence"}, "x": 300, "y": 190},
@@ -94,20 +94,20 @@ def _linkedin_combo_flow() -> dict:
 
 
 def _ai_triage_flow() -> dict:
-    """Claude reads each new lead, labels how urgent their hiring looks, and the switch sends it down the right path."""
+    """Claude reads each new lead, labels how urgent their need looks, and the switch sends it down the right path."""
     nodes = [
         {"id": "trigger", "type": "trigger.lead_added", "config": {"title": "A new lead arrives"}, "x": 340, "y": 60},
-        {"id": "ask", "type": "ai", "config": {"title": "How urgent is their hiring?", "mode": "classify", "save_as": "urgency",
+        {"id": "ask", "type": "ai", "config": {"title": "How urgent is their need?", "mode": "classify", "save_as": "urgency",
                                                  "options": ["high", "medium", "low"],
-                                                 "prompt": "Looking at {{company}} and the role {{role}}, how urgent does their hiring look? "
+                                                 "prompt": "Looking at {{company}} and what they need ({{role}}), how urgent does their need for {{my_product}} look? "
                                                            "Answer high, medium or low."}, "x": 340, "y": 190},
         {"id": "route", "type": "switch", "config": {"title": "Route by urgency", "field": "var:urgency", "cases": ["high", "medium", "low"]},
          "x": 340, "y": 320},
-        {"id": "tell", "type": "notify", "config": {"title": "Tell the caller", "message": "Urgent hirer: {{company}} ({{role}}). Call today."},
+        {"id": "tell", "type": "notify", "config": {"title": "Tell the caller", "message": "Urgent lead: {{company}} ({{role}}). Call today."},
          "x": 60, "y": 470},
-        {"id": "hot", "type": "add_tag", "config": {"title": "Tag: hiring-urgent", "tag": "hiring-urgent"}, "x": 60, "y": 600},
-        {"id": "warm", "type": "add_tag", "config": {"title": "Tag: hiring-soon", "tag": "hiring-soon"}, "x": 340, "y": 470},
-        {"id": "cool", "type": "add_tag", "config": {"title": "Tag: hiring-later", "tag": "hiring-later"}, "x": 620, "y": 470},
+        {"id": "hot", "type": "add_tag", "config": {"title": "Tag: urgent", "tag": "urgent"}, "x": 60, "y": 600},
+        {"id": "warm", "type": "add_tag", "config": {"title": "Tag: soon", "tag": "soon"}, "x": 340, "y": 470},
+        {"id": "cool", "type": "add_tag", "config": {"title": "Tag: later", "tag": "later"}, "x": 620, "y": 470},
         {"id": "note", "type": "note", "config": {"title": "How this works", "text": "Claude labels each new lead. The Switch sends high, medium and low "
                                                  "down their own paths. Anything else goes out of the 'other' dot. Turn a step off from its settings."},
          "x": 640, "y": 60},

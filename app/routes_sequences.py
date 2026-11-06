@@ -57,15 +57,14 @@ def render_preview(store, step: dict) -> dict:
     from .email_html import render as render_html
     from .sequences import lead_variables, pick_variant, render as fill
     base = public_base_url(store, BASE_URL)
-    from .template_vars import brand_variables
+    from .brand import sender_name
     from .lead_fields import sample_custom
-    variables = lead_variables({**SAMPLE_LEAD, "custom": sample_custom(store)}, "BookMyInterview team", base,
-                               {**brand_variables(store.read("settings")), "offer_line": offer_line(get_offer(store)),
-                                "demo_link": f"{base}/demo/sample"})
+    variables = lead_variables({**SAMPLE_LEAD, "custom": sample_custom(store)}, sender_name(store), base,
+                               {"offer_line": offer_line(get_offer(store)), "demo_link": f"{base}/demo/sample"}, brand=store)
     chosen = pick_variant(step, variables)
     subject, missing_s = fill(chosen["subject"], variables)
     body, missing_b = fill(chosen["body"], variables)
-    return {"subject": subject, "text": body, "html": render_html(body, base), "missing": sorted(set(missing_s + missing_b))}
+    return {"subject": subject, "text": body, "html": render_html(body, base, brand=store), "missing": sorted(set(missing_s + missing_b))}
 
 
 def make_router(store) -> APIRouter:
