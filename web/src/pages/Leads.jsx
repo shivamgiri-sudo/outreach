@@ -14,7 +14,7 @@ import { istDateLabel, istLabel } from "../time.js";
 import { CustomFilters, customMatches, showValue, useLeadFields } from "./LeadCustomFields.jsx";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
-const SHEET_SOURCES = { "team sheet — Leads tab": "leads", "team sheet — Demo Shared tab": "demo", "team sheet — Decision Makers tab": "decision_makers" };
+const SHEET_SOURCES = { "Team sheet — Leads tab": "leads", "Team sheet — Demo Shared tab": "demo", "Team sheet — Decision Makers tab": "decision_makers" };
 
 const SORTS = {
   score: (a, b) => b.score - a.score,
@@ -118,7 +118,9 @@ export default function Leads({ go }) {
 
   const runJobs = async () => {
     try {
-      const looksCsv = jobsText.trim().toLowerCase().startsWith("company,");
+      // A CSV: the first line names columns (company and title, in any order), not HTML.
+      const head = jobsText.trim().split(/\r?\n/)[0].toLowerCase();
+      const looksCsv = !head.includes("<") && /(^|,)\s*"?company"?\s*(,|$)/.test(head) && head.includes("title");
       const r = await api.ingestJobs({ url: jobsUrl, csv: looksCsv ? jobsText : "", html: looksCsv ? "" : jobsText });
       setMessage(`Read ${r.jobs_found} job(s): ${r.leads_created} new company lead(s), ${r.leads_updated} updated, ${r.reposts} repost(s) spotted.${r.note ? " " + r.note : ""}`);
       load();
@@ -130,7 +132,10 @@ export default function Leads({ go }) {
   const runScrape = async () => {
     try {
       const r = await api.scrape({ url: scrapeUrl, company: scrapeCompany, add_leads: true });
-      setMessage(`Found ${r.emails.length} email(s) and ${r.phones.length} phone(s). Added ${r.added} lead(s).`);
+      const skipped = r.emails.length - r.added - (r.not_for_outreach || 0);
+      setMessage(`Found ${r.emails.length} email(s) and ${r.phones.length} phone(s). Added ${r.added} lead(s).`
+        + (skipped > 0 ? ` ${skipped} already in your leads.` : "")
+        + (r.not_for_outreach ? ` ${r.not_for_outreach} complaint, legal or no-reply address(es) left out.` : ""));
       load();
     } catch (e) {
       setMessage(e.message);

@@ -6,8 +6,9 @@ way imports do it; a value that would make the lead a duplicate of another lead 
 """
 from typing import Optional
 
-from .hygiene import business_domain, company_domain, dedupe_key, is_role_address, normalise_email, normalise_phone
+from .hygiene import business_domain, company_domain, dedupe_key, is_role_address, normalise_email
 from .lead_model import event, now_iso
+from .standardise import parse_phone, phone_type
 
 EDITABLE = {"contact_name": "Contact name", "company": "Company", "title": "Title", "email": "Email",
             "phone": "Phone", "website": "Website", "country": "Country", "linkedin_url": "LinkedIn profile"}
@@ -36,10 +37,11 @@ def _clean(field: str, raw) -> Optional[str]:
     if field == "phone":
         if not text:
             return ""
-        phone = normalise_phone(text)
-        if not phone:
-            raise EditRefused("That is not a valid Indian mobile number (10 digits starting 6-9).")
-        return phone
+        found, _problem = parse_phone(text)           # the importer's rules: mobile, landline with STD code, +country
+        if not found:
+            raise EditRefused("That is not a phone number we can use: give a 10-digit mobile, a landline with its STD code "
+                              "(e.g. 022 2345 6789) or an international number starting with +.")
+        return found[0]
     if field == "linkedin_url" and text and "linkedin.com/" not in text.lower():
         raise EditRefused("That is not a LinkedIn profile link.")
     if field == "website" and text:
@@ -80,6 +82,11 @@ def edit_contact(store, lead_id: str, changes: dict, actor: dict, reason: str = 
             merged["email_is_role"] = bool(cleaned["email"] and is_role_address(cleaned["email"]))
             merged["domain"] = business_domain(merged.get("website")) or business_domain(cleaned["email"]) or merged.get("domain")
             merged.pop("email_check", None)                      # the old mailbox check was for the old address
+        if "phone" in cleaned:                                   # keep the number list and its kind in step
+            old_phone, new_phone = lead.get("phone"), cleaned["phone"]
+            merged["phones"] = [p for p in [new_phone, *(lead.get("phones") or [])] if p and p != old_phone] or None
+            merged["phones"] = list(dict.fromkeys(merged["phones"])) if merged["phones"] else None
+            merged["phone_type"] = phone_type(new_phone) if new_phone else None
         if "website" in cleaned:
             merged["domain"] = business_domain(cleaned["website"]) or merged.get("domain")
         merged["dedupe_key"] = new_key

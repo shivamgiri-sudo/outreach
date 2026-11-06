@@ -1,0 +1,89 @@
+"""Regressions found by the browser QA sweep of the lead-acquisition pages (area "acquire")."""
+from fastapi.testclient import TestClient
+
+from app.main import create_app
+from app.scraper import normalise_url
+
+CONTACT_PAGE = ("<p>Sales: sales@acmetools.in, Priya Shah priya.shah@acmetools.in, +91 98201 23456</p>"
+                "<p>Report abuse: abuse@acmetools.in. Privacy: privacy@acmetools.in. noreply@acmetools.in</p>")
+
+
+def test_typed_domain_without_https_is_read_as_a_website():
+    assert normalise_url("persistent.com") == "https://persistent.com"
+    assert normalise_url(" www.acme.in/contact ") == "https://www.acme.in/contact"
+    assert normalise_url("https://acme.in") == "https://acme.in"
+    assert normalise_url("not a url") == "not a url"
+
+
+def test_find_contacts_leaves_complaint_and_no_reply_addresses_out_of_leads(tmp_path):
+    c = TestClient(create_app(data_file=tmp_path / "d.json"))
+    r = c.post("/api/scrape/extract", json={"url": "acmetools.in/contact", "html": CONTACT_PAGE, "company": "Acme Tools",
+                                            "add_leads": True}).json()
+    assert len(r["emails"]) == 5 and r["added"] == 2 and r["not_for_outreach"] == 3 and r["phones"] == ["+919820123456"]
+    emails = sorted(l["email"] for l in c.get("/api/leads").json())
+    assert emails == ["priya.shah@acmetools.in", "sales@acmetools.in"]
+    again = c.post("/api/scrape/extract", json={"url": "acmetools.in/contact", "html": CONTACT_PAGE, "add_leads": True}).json()
+    assert again["added"] == 0
+
+
+def test_unclosed_quote_is_refused_instead_of_swallowing_the_rest_of_the_file():
+    import pytest
+    from app.lead_import import read_table
+    text = 'company,email,phone\n"Unclosed Quote Ltd,ceo@unclosed.in,9876500000\nGood Ltd,hello@good.in,9876500001\n'
+    with pytest.raises(ValueError, match="Row 2 opens a quote"):
+        read_table(text)
+    headers, table = read_table('company,note\n"Acme, Pune","line one\nline two"\n')   # a real multi-line cell is fine
+    assert table[0][1] == {"company": "Acme, Pune", "note": "line one\nline two"}
+
+
+def test_talent_partner_is_a_recruiter_not_an_owner():
+    from app.standardise import department_of, seniority_of
+    assert (seniority_of("Senior Talent Partner"), department_of("Senior Talent Partner")) == ("executive", "TA")
+    assert (seniority_of("People Partner"), department_of("People Partner")) == ("executive", "HR")
+    assert (seniority_of("Managing Partner"), department_of("Managing Partner")) == ("owner", "Founder")
+
+
+def test_drawer_edit_takes_an_office_landline_and_an_international_number(tmp_path):
+    c = TestClient(create_app(data_file=tmp_path / "d.json"))
+    c.post("/api/leads/import", json={"csv": "company,contact_name,email,phone\nSundaram Textiles,Srinivas,srinivas@sundaram.in,9944012345\n",
+                                      "source": "apollo"})
+    lead = c.get("/api/leads").json()[0]
+    r = c.patch(f"/api/leads/{lead['id']}", json={"phone": "0422-2345678", "reason": "visiting card"})
+    assert r.status_code == 200, r.text
+    assert r.json()["phone"] == "+914222345678" and r.json()["phone_type"] == "landline"
+    assert "+919944012345" not in (r.json().get("phones") or [])
+    r = c.patch(f"/api/leads/{lead['id']}", json={"phone": "+1 (415) 555-0134"})
+    assert r.status_code == 200 and r.json()["phone"] == "+14155550134" and r.json()["phone_type"] == "intl"
+    bad = c.patch(f"/api/leads/{lead['id']}", json={"phone": "12345"})
+    assert bad.status_code == 400 and "STD code" in bad.json()["detail"]
+
+
+def test_found_contacts_get_the_company_site_not_the_contact_page(tmp_path):
+    c = TestClient(create_app(data_file=tmp_path / "d.json"))
+    c.post("/api/scrape/extract", json={"url": "https://www.acmetools.in/about/contact-us.html", "html": CONTACT_PAGE,
+                                        "company": "Acme Tools", "add_leads": True})
+    assert {l["website"] for l in c.get("/api/leads").json()} == {"https://www.acmetools.in"}
+
+
+def test_duplicate_group_suggests_a_named_persons_address_not_abuse_at(tmp_path):
+    from app.hygiene_report import duplicate_clusters
+    leads = [{"id": "a", "company": "Zoho", "email": "abuse@zohocorp.com", "website": "https://www.zoho.com", "stage": "new", "timeline": [{}]},
+             {"id": "b", "company": "Zoho", "email": "info@zohocorp.com", "website": "https://www.zoho.com", "stage": "new", "timeline": [{}]},
+             {"id": "c", "company": "Zoho", "email": "jessica.loo@zohocorp.com", "website": "https://www.zoho.com", "stage": "new", "timeline": [{}]}]
+    [group] = duplicate_clusters(leads)
+    assert group["suggested_keep"] == "c"
+
+
+def test_find_and_enrich_careers_links_use_the_full_job_reader():
+    """A Lever board link in Find & enrich found 0 jobs (only page JSON-LD was read) while Read job pages found 309."""
+    from app.campaign_sources import careers_postings
+    from tests.test_job_discover import LEVER_HTML
+    pages = {"https://jobs.lever.co/acmerobotics": LEVER_HTML}
+
+    def fetch(url, **_):
+        if url not in pages:
+            raise OSError("not found")
+        return pages[url]
+    out = careers_postings(["https://jobs.lever.co/acmerobotics"], [], fetch)
+    assert [p["title"] for p, _ in out["postings"]] == ["Sales Development Rep", "Field Engineer & Trainer"]
+    assert out["errors"] == [] and out["pages"] == 1

@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from .jobs import job_age_days, job_domain, job_key, parse_job_postings
 from .job_discover import discover_jobs
-from .scraper import fetch_page
+from .scraper import fetch_page, normalise_url
 
 MAX_ROLE_TITLES = 2
 
@@ -72,6 +72,7 @@ def make_router(store, build_lead, present) -> APIRouter:
 
     @router.post("/api/jobs/ingest")
     def ingest(body: IngestBody):
+        body.url = normalise_url(body.url)
         if not (body.html or body.csv or body.url):
             raise HTTPException(400, "Give a page URL, page HTML, or a CSV of jobs")
         now = datetime.now(timezone.utc)

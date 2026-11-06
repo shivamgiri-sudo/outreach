@@ -92,6 +92,9 @@ def read_table(csv_text: Optional[str] = None, rows: Optional[list] = None) -> t
         try:
             reader = csv.reader(io.StringIO(text), delimiter=delimiter)
             header, body = next(reader, []), list(reader)
+            if text.count('"') % 2 and body and any("\n" in c for c in body[-1]):
+                raise ValueError(f"Row {len(body) + 1} opens a quote (\") that is never closed, so every row after it was read "
+                                 "as one cell. Fix that quote in the file and try again.")
             blank = [i for i, h in enumerate(header) if not h.strip()]
             start = 2
             if body and len(blank) * 2 >= len(header) and _label_row(body[0], blank):

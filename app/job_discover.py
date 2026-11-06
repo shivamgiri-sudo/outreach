@@ -8,13 +8,15 @@ Order, stopping at the first that yields jobs; every page goes through the robot
      comes from the job page address and the date from <lastmod>.
 Returns (jobs, note): `note` says in plain words how the jobs were found, or why none were.
 """
+import json
 import re
 from html import unescape
 from typing import Callable, Optional
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 from .hygiene import business_domain
-from .jobs import parse_job_postings
+from .jobs import _shared, parse_job_postings
+from .standardise import website_domain
 
 MAX_JOBS = 3000
 MAX_CHILD_SITEMAPS = 4
@@ -44,14 +46,28 @@ def _microdata(html: str, url: str) -> list:
     return out
 
 
+_GENERIC_NAME = re.compile(r"^(careers?|jobs?|home|homepage|welcome|job search|search jobs|current openings|join us|workday|greenhouse|lever|successfactors)$", re.I)
+
+
 def _site_name(html: str, url: str) -> str:
-    m = re.search(r'property=["\']og:site_name["\'][^>]*content=["\']([^"\']+)', html, re.I) or \
-        re.search(r"<title[^>]*>([^<|\-–]+)", html, re.I)
+    m = re.search(r'property=["\']og:site_name["\'][^>]*content=["\']([^"\']+)', html, re.I)
     name = unescape(m.group(1)).strip() if m else ""
+    if not name or _GENERIC_NAME.match(name):          # "Careers | HCLTech": take the part that names the company
+        t = re.search(r"<title[^>]*>([^<]+)", html, re.I)
+        parts = [p.strip() for p in re.split(r"\s[|\-–—:]\s|\|", unescape(t.group(1)))] if t else []
+        name = next((p for p in parts if p and not _GENERIC_NAME.match(p)), "")
     if not name or len(name) > 60:
-        label = (business_domain(url) or urlparse(url).hostname or "").split(".")[0]
-        name = label.capitalize()
+        name = _company_host(url).split(".")[0].capitalize()
+    name = re.sub(r"^\s*(careers?|jobs?|work)\s+(at|with)\s+", "", name, flags=re.I)     # "Jobs at Zeta"
     return re.sub(r"\s*(careers?|jobs?)\s*$", "", name, flags=re.I).strip() or name
+
+
+def _company_host(url: str) -> str:
+    """careers.hcltech.com -> hcltech.com; a shared careers host (nvidia.wd5.myworkdayjobs.com) keeps its own name."""
+    registrable = website_domain(url)[0] or ""
+    if registrable and not _shared(registrable):
+        return registrable
+    return business_domain(url) or urlparse(url).hostname or ""
 
 
 def _from_page(html: str, url: str, company: str, site: str) -> list:
@@ -84,10 +100,28 @@ def _careers_link(html: str, url: str) -> Optional[str]:
     return None
 
 
+_REQ_ID = re.compile(r"[_-]+(?:[A-Z]{1,5}-?)?\d{4,}(?:-\d{1,3})?$")
+
+
+def _workday_address(parts: list) -> tuple:
+    """Workday: /<site>/job/<Country-State-City>/<Title-Words>_<ReqID>; "--" stands for ", " and "---" for " - "."""
+    i = max(i for i, p in enumerate(parts) if p.lower() == "job")
+    slug = _REQ_ID.sub("", parts[-1]) if len(parts) > i + 1 else ""
+    title = re.sub(r"\s+", " ", slug.replace("---", " \0 ").replace("--", ", ").replace("-", " ").replace("\0", "-")).strip(" ,-")
+    place = parts[i + 1].split("-") if len(parts) > i + 2 else []
+    head = []
+    while place and len(head) < 2 and len(place[0]) <= 3 and place[0].isupper() and len(place) > 1:
+        head.append(place.pop(0))                       # "US-CA-Santa-Clara" -> "Santa Clara, CA, US"
+    location = ", ".join(x for x in [" ".join(place), *reversed(head)] if x)
+    return title[:120], location
+
+
 def _title_from_address(address: str) -> tuple:
     """(title, location) from a job page address, e.g. /job/Pune-SOLUTION-ARCHITECT-L1-IND-411005/1363531455/."""
     path = unquote(urlparse(address).path)
     parts = [p for p in path.split("/") if p]
+    if (urlparse(address).hostname or "").endswith("myworkdayjobs.com") and any(p.lower() == "job" for p in parts):
+        return _workday_address(parts)
     slug = next((p for p in reversed(parts) if not p.isdigit() and not re.fullmatch(r"[0-9a-f-]{8,}", p, re.I)
                  and p.lower() not in ("job", "jobs", "en", "en_us", "details")), "")
     words = re.split(r"[-_]+", slug)
@@ -96,7 +130,8 @@ def _title_from_address(address: str) -> tuple:
         words = words[:-1]                                  # trailing post code
     if words and words[-1].upper() in _COUNTRY:
         country = _COUNTRY[words.pop().upper()]
-    if len(words) >= 2 and words[0][:1].isupper() and words[0][1:].islower():
+    rest_upper = all(w.isupper() or not w.isalpha() for w in words[1:])
+    if len(words) >= 2 and words[0][:1].isupper() and words[0][1:].islower() and rest_upper:
         city = words.pop(0)                                 # SuccessFactors puts the city first ("Pune-SOLUTION-ARCHITECT")
     title = " ".join(w for w in words if w).strip()
     title = title.title() if title.isupper() else title
@@ -143,9 +178,74 @@ def _sitemap_jobs(get: Callable, start: str, company: str, site: str) -> list:
     return jobs
 
 
+BOARD_API_BYTES = 6_000_000
+
+
+def _get_big(get: Callable, url: str) -> str:
+    try:
+        return get(url, max_bytes=BOARD_API_BYTES)
+    except TypeError:                                   # a fetcher without the size option
+        return get(url)
+
+
+def _iso_date(value) -> str:
+    return str(value or "")[:10]
+
+
+def _board_token(url: str, hosts: tuple) -> Optional[tuple]:
+    """(api host prefix, board name) for a hosted job board address such as job-boards.greenhouse.io/acme."""
+    parts = urlparse(url)
+    host = (parts.hostname or "").lower()
+    for h, region in hosts:
+        if host == h:
+            token = (parse_qs(parts.query).get("for") or [""])[0] or next((p for p in parts.path.split("/") if p), "")
+            if token and token.lower() not in ("embed", "jobs"):
+                return region, token
+    return None
+
+
+GREENHOUSE_HOSTS = (("boards.greenhouse.io", ""), ("job-boards.greenhouse.io", ""), ("job-boards.eu.greenhouse.io", "eu."),
+                    ("boards.eu.greenhouse.io", "eu."))
+LEVER_HOSTS = (("jobs.lever.co", ""), ("jobs.eu.lever.co", "eu."))
+_LEVER_POSTING = re.compile(r'<a class="posting-title" href="([^"]+)"[^>]*>\s*<h5[^>]*>([^<]+)</h5>(.*?)</a>', re.S)
+
+
+def _board_jobs(url: str, get: Callable) -> Optional[tuple]:
+    """Greenhouse and Lever boards are drawn by JavaScript; their public job board APIs list the same openings."""
+    gh = _board_token(url, GREENHOUSE_HOSTS)
+    if gh:
+        region, token = gh
+        data = json.loads(_get_big(get, f"https://boards-api.{region}greenhouse.io/v1/boards/{token}/jobs"))
+        jobs = [{"title": (j.get("title") or "").strip(), "company": j.get("company_name") or token.capitalize(), "company_site": "",
+                 "location": ((j.get("location") or {}).get("name") or "").strip(),
+                 "date_posted": _iso_date(j.get("first_published") or j.get("updated_at")), "url": j.get("absolute_url") or url}
+                for j in data.get("jobs", [])]
+        return [j for j in jobs if j["title"]][:MAX_JOBS], f"Read the open jobs from the public Greenhouse job board of {token}."
+    lv = _board_token(url, LEVER_HOSTS)
+    if lv:                                              # the board page lists every opening (the JSON API adds full texts)
+        region, token = lv
+        board = f"https://jobs.{region}lever.co/{token}"
+        html = _get_big(get, board)
+        title = re.search(r"<title[^>]*>([^<]+)</title>", html, re.I)
+        company = unescape(title.group(1)).strip() if title and len(title.group(1).strip()) <= 60 else token.capitalize()
+        jobs = []
+        for href, name, cats in _LEVER_POSTING.findall(html):
+            loc = re.search(r'class="[^"]*\blocation\b[^"]*">([^<]+)<', cats)
+            jobs.append({"title": unescape(name).strip(), "company": company, "company_site": "",
+                         "location": unescape(loc.group(1)).strip() if loc else "", "date_posted": "", "url": href})
+        return [j for j in jobs if j["title"]][:MAX_JOBS], f"Read the open jobs from the public Lever job board of {company}."
+    return None
+
+
 def discover_jobs(url: str, get: Callable) -> tuple:
+    try:
+        board = _board_jobs(url, get)
+    except ValueError:                                  # not the JSON we expected: read the page itself below
+        board = None
+    if board and board[0]:
+        return board
     html = get(url)
-    company, site = _site_name(html, url), f"https://{business_domain(url) or urlparse(url).hostname}"
+    company, site = _site_name(html, url), f"https://{_company_host(url)}"
     jobs = _from_page(html, url, company, site)
     if jobs:
         return jobs, f"Read the job details published on {urlparse(url).netloc}."
@@ -164,7 +264,7 @@ def discover_jobs(url: str, get: Callable) -> tuple:
             capped = " (first 3,000)" if len(jobs) >= MAX_JOBS else ""
             return jobs, (f"Read {len(jobs):,} job page addresses{capped} from the public job list (sitemap) of "
                           f"{urlparse(start).netloc}. Titles and places come from the job page addresses.")
-    where = f" or {urlparse(careers).netloc}" if careers else ""
+    where = f" or {urlparse(careers).netloc}" if careers and urlparse(careers).netloc != urlparse(url).netloc else ""
     return [], (f"No job openings found on {urlparse(url).netloc}{where}: the page publishes no job details and its careers "
                 "site has no public job list. Paste the address of one job page, or of a jobs board page (Naukri, "
                 "Greenhouse, Lever, Workday ...), or upload a CSV of jobs.")
