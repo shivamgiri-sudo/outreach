@@ -74,7 +74,7 @@ export default function Workflows() {
             <select style={{ marginTop: 6 }} value={form.aValue} onChange={(e) => set({ aValue: e.target.value })}>
               {ACTIONS[form.aType].options.map((o) => <option key={o} value={o}>{OPTION_NAMES[o] || o.replace(/_/g, " ")}</option>)}
             </select>
-          ) : <input style={{ marginTop: 6 }} value={form.aValue} onChange={(e) => set({ aValue: e.target.value })} placeholder="Text" />}
+          ) : <input style={{ marginTop: 6 }} value={form.aValue} onChange={(e) => set({ aValue: e.target.value })} placeholder="e.g. Send pricing to {{company}} ({{first_name}})" />}
           <div className="row" style={{ marginTop: 12 }}>
             <button className="btn" onClick={add}>Add rule</button>
             <button className="btn ghost" onClick={() => api.starterWorkflows().then(() => { setMessage("Suggested rules added."); load(); }, (e) => setMessage(e.message))}>Add suggested rules</button>

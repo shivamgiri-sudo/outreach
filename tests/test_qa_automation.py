@@ -24,3 +24,18 @@ def test_a_daily_flow_switched_on_after_its_hour_waits_for_the_next_day(tmp_path
     assert started() == []
     tick(c, on_at + timedelta(hours=17))                                     # Wednesday 10:30 IST
     assert len(started()) >= 1
+
+
+def test_simple_rule_task_and_note_fill_in_the_lead_details(tmp_path):
+    # QA sweep: a rule "Send pricing to {{company}}" created a task that literally said {{company}}.
+    from tests.flow_helpers import lead, make_client, store_of
+    c = make_client(tmp_path)
+    for name, action in (("pricing", {"type": "task", "value": "Send pricing to {{company}} ({{first_name}})"}),
+                         ("log", {"type": "note", "value": "{{company}} is engaged; {{unknown}} stays"})):
+        assert c.post("/api/workflows", json={"name": name, "trigger": {"type": "stage_change", "value": "engaged"}, "action": action}).status_code == 200
+    who = lead(c)
+    assert c.post(f"/api/leads/{who['id']}/stage", json={"stage": "engaged"}).status_code == 200
+    first = who["contact_name"].split()[0]
+    tasks = [t for t in store_of(c).read("tasks") if t.get("lead_id") == who["id"]]
+    assert any(t["text"] == f"Send pricing to {who['company']} ({first})" for t in tasks)
+    assert any(e["text"] == f"{who['company']} is engaged; {{{{unknown}}}} stays" for e in lead(c)["timeline"])

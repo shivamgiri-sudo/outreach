@@ -1,5 +1,6 @@
 """Your own communication flow: "when X happens, do Y". Each rule runs at most once per lead."""
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -50,6 +51,18 @@ def new_rule(name: str, trigger: dict, action: dict) -> dict:
     return rule
 
 
+_PLACEHOLDER = re.compile(r"\{\{\s*([a-z_]+)\s*\}\}")
+
+
+def fill(text: str, lead: dict) -> str:
+    """{{company}}, {{first_name}}, {{contact_name}}, {{title}}, {{city}} in a rule's task or note, from the lead.
+    (A rule "Send pricing to {{company}}" made a task that said exactly that.) Unknown names stay as written."""
+    name = str(lead.get("contact_name") or "").strip()
+    known = {"company": lead.get("company") or lead.get("domain") or "", "contact_name": name,
+             "first_name": name.split()[0] if name else "", "title": lead.get("title") or "", "city": lead.get("city") or ""}
+    return _PLACEHOLDER.sub(lambda m: str(known[m.group(1)]) if m.group(1) in known else m.group(0), str(text))
+
+
 def _task(store, lead_id: str, text: str, now: datetime) -> None:
     add_task(store, lead_id, "workflow", text, source="workflow")
 
@@ -74,7 +87,7 @@ def _apply(store, rule: dict, lead: dict, now: datetime) -> str:
             _task(store, lead["id"], f"Workflow '{rule['name']}' could not send WhatsApp: {exc}", now)
             return f"WhatsApp not sent ({exc})"
     if action["type"] == "task":
-        _task(store, lead["id"], action["value"], now)
+        _task(store, lead["id"], fill(action["value"], lead), now)
         return "task created"
     if action["type"] == "set_stage":
         target = action["value"]
@@ -92,7 +105,7 @@ def _run_rule(store, rule: dict, lead: dict, now: datetime) -> bool:
     if rule["id"] in lead.get("workflow_runs", []):
         return False
     result = _apply(store, rule, lead, now)
-    text = rule["action"]["value"] if rule["action"]["type"] == "note" else f"{rule['name']}: {result}"
+    text = fill(rule["action"]["value"], lead) if rule["action"]["type"] == "note" else f"{rule['name']}: {result}"
     _mark_run(store, lead["id"], rule, now, text)
     return True
 
