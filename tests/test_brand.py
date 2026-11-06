@@ -75,7 +75,8 @@ def test_brand_validation(tmp_path, change, needle):
 
 def test_offer_validation(tmp_path):
     c = make_client(tmp_path, csv="")
-    assert "booking link" in c.put("/api/brand/offer", json={"booking_link": "cal.com/x"}).json()["detail"]
+    assert "booking link" in c.put("/api/brand/offer", json={"booking_link": "book a call"}).json()["detail"]
+    assert c.put("/api/brand/offer", json={"booking_link": "cal.com/x"}).json()["offer"]["booking_link"] == "https://cal.com/x"   # bare domain: https:// added
     assert c.put("/api/brand/offer", json={"demo_kind": "other"}).status_code == 400
 
 

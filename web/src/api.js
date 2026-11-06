@@ -215,6 +215,7 @@ export const api = {
   login: (password, email = "") => request("/api/login", { method: "POST", body: { password, email } }),
   logout: () => request("/api/logout", { method: "POST" }),
   me: () => request("/api/me"),
+  changeOwnPassword: (current, next) => request("/api/me/password", { method: "POST", body: { current, new: next } }),
   hiringSummary: () => request("/api/hiring-engine/summary"),
   hiringRun: (body) => request("/api/hiring-engine/run", { method: "POST", body }),
   users: () => request("/api/users"),

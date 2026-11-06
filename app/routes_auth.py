@@ -16,7 +16,7 @@ from .hygiene import normalise_email
 from .web_security import client_ip
 
 LOCAL_OWNER = {"sub": "local", "email": "", "name": "This computer", "role": "owner", "claims": None}
-ANYONE = {("POST", "/api/logout")}
+ANYONE = {("POST", "/api/logout"), ("POST", "/api/me/password")}
 OWNER_ROUTES = {
     ("PUT", "/api/settings"), ("POST", "/api/settings/live-sending"), ("PUT", "/api/offer"), ("PUT", "/api/team"), ("POST", "/api/workspaces"), ("DELETE", "/api/workspaces/{ws_id}"), ("POST", "/api/sequence/{index}/send-preview"),
     ("GET", "/api/channels/webhooks"), ("GET", "/api/flows/{flow_id}/webhook"), ("PUT", "/api/icp"), ("POST", "/api/signals/run"), ("POST", "/api/signals/watch"), ("DELETE", "/api/signals/watch/{watch_id}"), ("POST", "/api/icp/score"), ("GET", "/api/oauth/{provider}/start"),
@@ -46,6 +46,11 @@ class UserBody(BaseModel):
     name: str = ""
     role: str = "caller"
     password: str
+
+
+class OwnPasswordBody(BaseModel):
+    current: str = ""
+    new: str = ""
 
 
 class UserChange(BaseModel):
@@ -132,6 +137,31 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         return {"name": user["name"], "email": user["email"], "role": user["role"], "can_edit_contacts": auth.can_edit_contacts(user), "workspaces": user.get("workspaces") or [],
                 "super_admin": auth.is_super_admin(user),
                 "auth_required": auth.auth_on(store, admin_password)}
+
+    @router.post("/api/me/password")
+    def change_own_password(body: OwnPasswordBody, request: Request):
+        """Anyone with their own login changes their own password (the current one is asked again). Every session of
+        theirs, this one included, is signed out, because tokens carry a password fingerprint."""
+        user = getattr(request.state, "user", None) or {}
+        if not str(user.get("sub", "")).startswith("user:"):
+            raise HTTPException(400, "This sign-in uses the server admin password; change OUTREACH_ADMIN_PASSWORD on the server instead.")
+        stored = auth.find_user(store, user.get("email", ""))
+        caller = client_ip(request)
+        if limiter.locked(caller):
+            raise HTTPException(429, "Too many wrong passwords. Wait a minute and try again.")
+        if not stored or not auth.check_password(stored.get("password_hash", ""), body.current[:auth.MAX_PASSWORD_CHARS]):
+            limiter.record_failure(caller)
+            raise HTTPException(400, "Your current password is not right.")
+        limiter.reset(caller)
+        check_password(body.new)
+        if body.new == body.current:
+            raise HTTPException(400, "Pick a new password that is different from the current one.")
+        changes = {"password_hash": auth.hash_password(body.new), "password_changed_at": auth.now_iso()}
+        store.update("settings", lambda s: {**s, "users": [{**u, **changes} if isinstance(u, dict) and u.get("email") == stored["email"] else u
+                                                           for u in s.get("users") or []]})
+        from . import audit
+        audit.record(store, user, "user.change", stored["email"], "changed own password")
+        return {"ok": True}
 
     # ---------- team logins (owner only; the role guard enforces it) ----------
     def check_role(role: str) -> None:
