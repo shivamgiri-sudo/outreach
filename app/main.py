@@ -21,6 +21,8 @@ from .enrich import polite_fetch
 from .routes_enrich import make_router as make_enrich_router
 from fastapi import Request
 from . import audit
+from . import workspaces as workspaces_mod
+from .routes_workspaces import make_router as make_workspaces_router
 from fastapi.responses import JSONResponse
 
 from . import auth
@@ -184,7 +186,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     password = admin_password if admin_password is not None else os.environ.get("OUTREACH_ADMIN_PASSWORD", "")
     limiter = auth.LoginLimiter()
     docs = os.environ.get("OUTREACH_ENABLE_DOCS") == "1"
-    app = FastAPI(title="Outreach OS", dependencies=[Depends(role_guard)], docs_url="/docs" if docs else None,
+    app = FastAPI(title="Outreach OS", dependencies=[Depends(role_guard), Depends(workspaces_mod.scope_dependency)], docs_url="/docs" if docs else None,
                   redoc_url="/redoc" if docs else None, openapi_url="/openapi.json" if docs else None)
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
                        allow_methods=["*"], allow_headers=["*"], expose_headers=["X-Renewed-Token"])
@@ -281,11 +283,13 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
 
     @app.get("/api/leads")
     def list_leads():
-        return sorted((_present(lead) for lead in store.read("leads")), key=lambda x: -x["score"])
+        return sorted((_present(lead) for lead in workspaces_mod.filter_rows(store.read("leads"))), key=lambda x: -x["score"])
 
     @app.get("/api/leads/{lead_id}")
     def get_lead(lead_id: str):
         leads, i = find(lead_id)
+        if not workspaces_mod.visible(leads[i]):
+            raise HTTPException(404, "Lead not found")
         return _present(leads[i])
 
     @app.post("/api/leads/import")
@@ -362,6 +366,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     @app.patch("/api/leads/{lead_id}")
     def edit_lead(lead_id: str, body: EditBody, request: Request):
         """Correct contact details by hand. Logged with who, when, old and new value; shown in the lead journey."""
+        user = getattr(request.state, "user", None)
+        if user and not auth.can_edit_contacts(user):
+            raise HTTPException(403, "Your login is not allowed to edit contact details. Ask an owner.")
         changes = {k: v for k, v in body.model_dump(exclude={"reason"}).items() if v is not None}
         if not changes:
             raise HTTPException(400, "Nothing to change.")
@@ -444,6 +451,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_activities_router(store, transactional_sender))
     app.include_router(make_linkedin_router(store))
     app.include_router(make_lists_router(store, _present))
+    app.include_router(make_workspaces_router(store))
     app.include_router(make_analytics_router(store))
     app.include_router(make_extension_router(store))
     app.include_router(make_compliance_router(store))

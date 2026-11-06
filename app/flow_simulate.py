@@ -137,7 +137,7 @@ def simulate(store, flow: dict, lead: dict, now: datetime, base_url: str, assume
         if seen[current] > 1:
             ended = f"Loops back to “{title_of(node)}”; the simulation stops here."
             break
-        if node["type"] not in ("wait", "wait_for_reply", "if", "split", "stop", "set_vars", "switch") and (block := _message_block(store, lead)):
+        if node["type"] not in ("wait", "wait_for_reply", "if", "split", "stop", "set_vars", "switch", "loop") and (block := _message_block(store, lead)):
             path.append(_entry(node, block, None, False))
             ended = "Stops: the lead may not be contacted."
             break
@@ -170,6 +170,9 @@ def simulate(store, flow: dict, lead: dict, now: datetime, base_url: str, assume
             idx = next((i for i, v in enumerate(cases) if v and v == value.strip().lower()), None)
             label = "other" if idx is None else f"c{idx + 1}"
             path.append(_entry(node, f"{value or 'empty'} → {'no case matches, so other' if idx is None else cases[idx]}", label))
+        elif t == "loop":
+            label = "done"
+            path.append(_entry(node, f"repeats the 'again' path {c.get('times') or 1} time(s); the practice run shows the path after the repeats", label))
         elif t == "if":
             passed, why = act.evaluate(c, act.lead_facts(lead))
             label = "yes" if passed else "no"

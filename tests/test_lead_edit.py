@@ -34,3 +34,24 @@ def test_no_change_writes_no_log(tmp_path):
     a = lead(c, "Acme")
     r = c.patch(f"/api/leads/{a['id']}", json={"company": "Acme"})
     assert r.status_code == 200 and r.json()["changed"] == [] and c.get("/api/change-log").json() == []
+
+
+def test_owner_can_switch_off_contact_editing_for_one_caller(tmp_path):
+    from fastapi.testclient import TestClient
+    from app.main import create_app
+    from tests.flow_helpers import CSV
+    c = TestClient(create_app(data_file=tmp_path / "a.json", admin_password="admin-pass-123"), client=("203.0.113.9", 50000))
+    h = lambda t: {"Authorization": f"Bearer {t}"}
+    owner = c.post("/api/login", json={"password": "admin-pass-123"}).json()["token"]
+    c.post("/api/users", json={"email": "ravi@example.com", "name": "Ravi", "role": "caller", "password": "long-password-1"}, headers=h(owner))
+    c.post("/api/leads/import", json={"csv": CSV, "source": "apollo"}, headers=h(owner))
+    a = next(l for l in c.get("/api/leads", headers=h(owner)).json() if l["company"] == "Acme")
+    ravi = c.post("/api/login", json={"email": "ravi@example.com", "password": "long-password-1"}).json()["token"]
+    assert c.get("/api/me", headers=h(ravi)).json()["can_edit_contacts"] is True
+    assert c.patch(f"/api/leads/{a['id']}", json={"title": "CHRO"}, headers=h(ravi)).status_code == 200
+    r = c.put("/api/users/ravi@example.com", json={"can_edit_contacts": False}, headers=h(owner))
+    assert r.status_code == 200 and r.json()["can_edit_contacts"] is False
+    assert c.get("/api/me", headers=h(ravi)).json()["can_edit_contacts"] is False
+    r = c.patch(f"/api/leads/{a['id']}", json={"title": "CEO"}, headers=h(ravi))
+    assert r.status_code == 403 and "not allowed" in r.json()["detail"]
+    assert c.patch(f"/api/leads/{a['id']}", json={"title": "CEO"}, headers=h(owner)).status_code == 200

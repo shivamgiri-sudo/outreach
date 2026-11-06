@@ -42,7 +42,7 @@ export default function Intelligence() {
       <h3>LinkedIn</h3>
       <div style={GRID}>
         <Stat n={ch.linkedin.started} label="started" /><Stat n={ch.linkedin.connect_sent} label="requests sent" />
-        <Stat n={ch.linkedin.accepted} label="accepted" note={`${ch.linkedin.accept_rate}% accept`} /><Stat n={ch.linkedin.replied} label="replied" note={`${ch.linkedin.reply_rate}% of accepted`} />
+        <Stat n={ch.linkedin.accepted} label="accepted" note={`${ch.linkedin.accept_rate}% accept`} /><Stat n={ch.linkedin.replied} label="replied" note={`${ch.linkedin.reply_rate}% of accepted`} /><Stat n={ch.linkedin.open_profiles} label="Open Profiles" note="can be messaged without connecting" />
       </div>
 
       <div className="grid g2" style={{ marginTop: 14 }}>

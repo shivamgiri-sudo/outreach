@@ -28,7 +28,7 @@ SETTINGS_KEY = "extension_tokens"
 ALLOWED = (                             # (method, path regex) an extension token may call; nothing else
     ("GET", re.compile(r"^/api/extension/match$")),
     ("GET", re.compile(r"^/api/extension/queue$")),
-    ("POST", re.compile(r"^/api/extension/leads/[^/]+/(sent|accepted|replied)$")),
+    ("POST", re.compile(r"^/api/extension/leads/[^/]+/(sent|accepted|replied|profile)$")),
     ("GET", re.compile(r"^/api/extension/agent$")),                  # the LinkedIn agent program on your computer
     ("POST", re.compile(r"^/api/extension/agent/event$")),
     ("POST", re.compile(r"^/api/mcp$")),                              # Claude / MCP clients: read-only tools (see mcp_server)
@@ -178,7 +178,8 @@ def describe(store, lead: dict) -> dict:
     out = {"matched": True, "lead_id": lead["id"], "name": lead.get("contact_name"), "company": lead.get("company"),
            "title": lead.get("title"), "stage": lead.get("stage"),
            "linkedin_seq": {"status": (seq or {}).get("status"), "next_step": None, "due": None},
-           "message": None, "can_send": False, "reason": "", "actions": []}
+           "message": None, "can_send": False, "reason": "", "actions": [],
+           "open_profile": bool((lead.get("linkedin_profile") or {}).get("open_profile"))}
     if lead.get("stage") in ("unsubscribed", "disqualified"):
         out["reason"] = f"This person is {lead['stage']}; no LinkedIn outreach."
         out["actions"] = ["replied"] if seq else []

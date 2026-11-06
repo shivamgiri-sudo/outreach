@@ -6,7 +6,7 @@ Roles:
           switches, run or resume sending, or download CSV exports
   viewer  read only: any request that changes something is refused (except signing out)
 """
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -18,7 +18,7 @@ from .web_security import client_ip
 LOCAL_OWNER = {"sub": "local", "email": "", "name": "This computer", "role": "owner", "claims": None}
 ANYONE = {("POST", "/api/logout")}
 OWNER_ROUTES = {
-    ("PUT", "/api/settings"), ("PUT", "/api/offer"), ("PUT", "/api/team"),
+    ("PUT", "/api/settings"), ("PUT", "/api/offer"), ("PUT", "/api/team"), ("POST", "/api/workspaces"), ("DELETE", "/api/workspaces/{ws_id}"),
     ("GET", "/api/channels/webhooks"), ("GET", "/api/flows/{flow_id}/webhook"), ("PUT", "/api/icp"), ("POST", "/api/signals/run"), ("POST", "/api/signals/watch"), ("DELETE", "/api/signals/watch/{watch_id}"), ("POST", "/api/icp/score"), ("GET", "/api/oauth/{provider}/start"),
     ("POST", "/api/sequences/run"), ("POST", "/api/sending/resume"), ("POST", "/api/sequences/resume-failed"),
     ("POST", "/api/practice/clear"), ("GET", "/api/enrich/apollo-export"),
@@ -47,6 +47,8 @@ class UserChange(BaseModel):
     name: Optional[str] = None
     role: Optional[str] = None
     password: Optional[str] = None
+    can_edit_contacts: Optional[bool] = None
+    workspaces: Optional[List[str]] = None
 
 
 def needed_role(method: str, path: str) -> str:
@@ -122,7 +124,7 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
     @router.get("/api/me")
     def me(request: Request):
         user = getattr(request.state, "user", None) or LOCAL_OWNER
-        return {"name": user["name"], "email": user["email"], "role": user["role"],
+        return {"name": user["name"], "email": user["email"], "role": user["role"], "can_edit_contacts": auth.can_edit_contacts(user), "workspaces": user.get("workspaces") or [],
                 "auth_required": auth.auth_on(store, admin_password)}
 
     # ---------- team logins (owner only; the role guard enforces it) ----------
@@ -166,6 +168,10 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         if body.role is not None:
             check_role(body.role)
             changes["role"] = body.role
+        if body.workspaces is not None:
+            changes["workspaces"] = [str(w)[:40] for w in body.workspaces][:50]
+        if body.can_edit_contacts is not None:
+            changes["can_edit_contacts"] = bool(body.can_edit_contacts)
         if body.password is not None:
             check_password(body.password)
             changes.update(password_hash=auth.hash_password(body.password), password_changed_at=auth.now_iso())

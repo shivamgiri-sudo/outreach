@@ -119,7 +119,8 @@ def render(step: dict, lead: dict, settings: dict) -> str:
     _, hook = persona(lead.get("title", ""))
     template = step["text"]
     if step["n"] == 1 and step["kind"] == "connect":
-        template = CONNECT_VARIANTS.get((lead.get("linkedin_seq") or {}).get("variant"), template)
+        chosen = (lead.get("linkedin_seq") or {}).get("variant")
+        template = (settings.get("linkedin_connect_variants") or {}).get(chosen) or CONNECT_VARIANTS.get(chosen, template)
     text = template.format(first_name=first, hook=hook, case_study_url=settings.get("case_study_url", ""))
     if step["kind"] == "connect" and len(text) > NOTE_LIMIT:
         text = text[: NOTE_LIMIT - 1].rsplit(" ", 1)[0] + "…"
@@ -266,7 +267,7 @@ def queue(store, now: Optional[datetime] = None) -> dict:
             continue
         step_n = int(re.search(r"step (\d+)", t.get("title", "")).group(1)) if re.search(r"step (\d+)", t.get("title", "")) else None
         due.append({"task_id": t["id"], "lead_id": lead.get("id"), "company": lead.get("company"), "name": lead.get("contact_name"),
-                    "title": lead.get("title"), "linkedin_url": lead.get("linkedin_url"), "step": step_n, "message": t.get("text", ""),
+                    "title": lead.get("title"), "linkedin_url": lead.get("linkedin_url"), "open_profile": bool((lead.get("linkedin_profile") or {}).get("open_profile")), "step": step_n, "message": t.get("text", ""),
                     "due_at": t.get("due_at"), "persona": (lead.get("linkedin_seq") or {}).get("persona")})
     started_today = sum(1 for l in leads.values() if (l.get("linkedin_seq") or {}).get("started_at", "")[:10] == iso(now)[:10])
     limit = int(settings.get("linkedin_daily_connections") or DEFAULT_DAILY_CONNECTIONS)

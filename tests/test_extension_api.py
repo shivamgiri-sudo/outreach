@@ -323,3 +323,18 @@ def test_queue_lists_due_steps_with_verified_links(tmp_path):
     assert by[lid]["profile_url"] == URL and by[lid]["step"] == 1 and by[lid]["kind"] == "connect"
     assert by[other]["profile_url"] == ""                    # a non-http(s) link is never offered
     assert "message" not in by[lid]
+
+
+def test_agent_reports_open_profile_once_and_it_shows_everywhere(tmp_path):
+    c, owner, acme, _ = make(tmp_path)
+    p = pair(c, owner)
+    r = c.post(f"/api/extension/leads/{acme}/profile", json={"open_profile": True, "degree": "2nd"}, headers=bearer(p["token"]))
+    assert r.status_code == 200, r.text
+    c.post(f"/api/extension/leads/{acme}/profile", json={"open_profile": True, "degree": "2nd"}, headers=bearer(p["token"]))
+    lead = c.get(f"/api/leads/{acme}", headers=bearer(owner)).json()
+    assert lead["linkedin_profile"]["open_profile"] is True and lead["linkedin_profile"]["degree"] == "2nd"
+    assert sum("Open Profile" in e["text"] for e in lead["timeline"]) == 1
+    assert match(c, p["token"], profile_url=URL).json()["open_profile"] is True
+    assert c.get("/api/intelligence", headers=bearer(owner)).json()["channels"]["linkedin"]["open_profiles"] == 1
+    bad = c.post(f"/api/extension/leads/{acme}/profile", json={"open_profile": False, "degree": "9th"}, headers=bearer(p["token"]))
+    assert bad.status_code == 422 or c.get(f"/api/leads/{acme}", headers=bearer(owner)).json()["linkedin_profile"]["degree"] == ""

@@ -1,10 +1,10 @@
 """LinkedIn sequence API: today's queue, start / sent / accepted / replied / stop, reply branches, settings."""
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import linkedin_bridge, linkedin_seq as li
+from . import audit, linkedin_bridge, linkedin_seq as li, opener_lab
 
 
 class SentBody(BaseModel):
@@ -25,6 +25,20 @@ class BranchBody(BaseModel):
 
 class ResultsBody(BaseModel):
     csv: str = Field(max_length=linkedin_bridge.MAX_RESULT_CHARS)
+
+
+class NoteBody(BaseModel):
+    text: str = Field(default="", max_length=600)
+
+
+class VariantsBody(BaseModel):
+    A: Optional[str] = Field(default=None, max_length=600)
+    B: Optional[str] = Field(default=None, max_length=600)
+
+
+class GenerateBody(BaseModel):
+    context: str = Field(default="", max_length=500)
+    n: int = Field(default=4, ge=2, le=6)
 
 
 class SettingsBody(BaseModel):
@@ -101,6 +115,25 @@ def make_router(store) -> APIRouter:
             return linkedin_bridge.import_results(store, body.csv)
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
+
+    @router.get("/api/linkedin/variants")
+    def get_variants():
+        return opener_lab.current(store)
+
+    @router.put("/api/linkedin/variants")
+    def put_variants(body: VariantsBody, request: Request):
+        try:
+            return opener_lab.save(store, body.A, body.B, audit.actor_of(getattr(request.state, "user", None))["name"], li.iso(li.now_utc()))
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from None
+
+    @router.post("/api/linkedin/variants/score")
+    def score_variant(body: NoteBody):
+        return opener_lab.score_note(body.text)
+
+    @router.post("/api/linkedin/variants/generate")
+    def generate_variants(body: GenerateBody):
+        return opener_lab.candidates(store, body.context, body.n)
 
     @router.get("/api/linkedin/settings")
     def get_settings():

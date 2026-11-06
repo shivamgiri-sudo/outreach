@@ -13,6 +13,11 @@ class SentBody(BaseModel):
     step: int = Field(ge=1, le=7)
 
 
+class ProfileBody(BaseModel):
+    open_profile: bool = False
+    degree: str = Field(default="", max_length=4)
+
+
 class ReplyBody(BaseModel):
     text: str = Field(default="", max_length=2000)
 
@@ -83,6 +88,23 @@ def make_router(store) -> APIRouter:
             refuse(ext.describe(store, lead), "This person is not waiting to accept a connection request.")
         li.mark_accepted(store, lead_id)
         return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id))}
+
+    @router.post("/api/extension/leads/{lead_id}/profile")
+    def profile(lead_id: str, body: ProfileBody):
+        """What the agent saw on the profile: the connection degree and whether it is an Open Profile (message without connecting)."""
+        lead_or_404(lead_id)
+        degree = body.degree if body.degree in ("1st", "2nd", "3rd") else ""
+        stamp = li.iso(li.now_utc())
+
+        def apply(l):
+            before = (l.get("linkedin_profile") or {}).get("open_profile")
+            info = {"open_profile": body.open_profile, "degree": degree, "checked_at": stamp}
+            timeline = l["timeline"]
+            if body.open_profile and not before:
+                timeline = [*timeline, {"at": stamp, "kind": "linkedin", "text": "Open Profile on LinkedIn: can be messaged without connecting"}]
+            return {**l, "linkedin_profile": info, "timeline": timeline}
+        store.update_lead(lead_id, apply)
+        return {"ok": True}
 
     @router.post("/api/extension/leads/{lead_id}/replied")
     def replied(lead_id: str, body: ReplyBody):

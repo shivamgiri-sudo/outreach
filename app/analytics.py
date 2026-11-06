@@ -6,6 +6,7 @@ from statistics import median
 from typing import Optional
 
 from . import lists as lists_mod
+from . import workspaces
 from .linkedin_seq import persona
 from .source_stats import real
 
@@ -76,6 +77,7 @@ def channel_funnels(leads) -> dict:
                                       "accepted": sum(1 for l in li_acc if l["linkedin_seq"].get("variant") == v),
                                       "accept_rate": _pct(sum(1 for l in li_acc if l["linkedin_seq"].get("variant") == v),
                                                           sum(1 for l in li_sent if l["linkedin_seq"].get("variant") == v))} for v in ("A", "B")},
+                     "open_profiles": sum(1 for l in leads if (l.get("linkedin_profile") or {}).get("open_profile")),
                      "started": len(li), "connect_sent": len(li_sent), "accepted": len(li_acc), "replied": len(li_rep),
                      "accept_rate": _pct(len(li_acc), len(li_sent)), "reply_rate": _pct(len(li_rep), len(li_acc))}}
 
@@ -145,11 +147,11 @@ def stale(leads, now: Optional[datetime] = None, limit: Optional[int] = 20) -> d
 
 
 def list_performance(store) -> list:
-    return [{"id": r["id"], "name": r["name"], "created_by": r.get("created_by"), **lists_mod.stats(store, r)} for r in reversed(store.read("lists"))][:20]
+    return [{"id": r["id"], "name": r["name"], "created_by": r.get("created_by"), **lists_mod.stats(store, r)} for r in reversed(workspaces.filter_rows(store.read("lists")))][:20]
 
 
 def build(store, now: Optional[datetime] = None) -> dict:
-    leads = real(store.read("leads"))
+    leads = real(workspaces.filter_rows(store.read("leads")))
     return {"channels": channel_funnels(leads), "timing": reply_timing(leads), "personas": persona_table(leads),
             "companies": company_table(leads), "quality": data_quality(leads, store.read("audit")),
             "team": team_activity(leads, now=now), "stale": stale(leads, now), "lists": list_performance(store)}

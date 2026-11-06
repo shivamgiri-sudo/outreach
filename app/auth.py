@@ -100,8 +100,17 @@ def find_user(store, email: str) -> Optional[dict]:
     return next((u for u in users(store) if u["email"] == wanted), None) if wanted else None
 
 
+def can_edit_contacts(user: Optional[dict]) -> bool:
+    """Owners always may; callers may unless an owner switched it off for them; viewers never."""
+    user = user or {}
+    if user.get("role") == "owner":
+        return True
+    return user.get("role") == "caller" and user.get("can_edit_contacts", True) is not False
+
+
 def public_user(user: dict) -> dict:
-    return {k: user.get(k) for k in ("email", "name", "role", "created_at", "password_changed_at")}
+    return {**{k: user.get(k) for k in ("email", "name", "role", "created_at", "password_changed_at")},
+            "can_edit_contacts": can_edit_contacts(user), "workspaces": user.get("workspaces") or []}
 
 
 def auth_on(store, admin_password: str) -> bool:
@@ -123,7 +132,7 @@ def subject_principal(store, admin_password: str, sub: str) -> Optional[dict]:
         if not user or user.get("role") not in ROLES:
             return None
         return {"sub": sub, "email": user["email"], "name": user.get("name") or user["email"], "role": user["role"],
-                "pf": _fingerprint(store, "user:" + str(user.get("password_hash")))}
+                "can_edit_contacts": can_edit_contacts(user), "workspaces": user.get("workspaces") or [], "pf": _fingerprint(store, "user:" + str(user.get("password_hash")))}
     return None
 
 

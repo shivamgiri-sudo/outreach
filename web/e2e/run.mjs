@@ -248,7 +248,7 @@ await step("Outbox: run sequences sends a dry-run email with demo link and unsub
   await nav("Outbox");
   await page.getByRole("button", { name: "Run sequences now" }).click();
   await expectText("email(s) practised (not sent)");
-  await page.locator("td", { hasText: "Hiring at Beta Logistics" }).waitFor();
+  await page.locator("td", { hasText: "Are you closing vacancies" }).waitFor();
   await page.locator("tbody .pill", { hasText: "practice" }).first().waitFor();
   await shot("05-outbox");
 });
@@ -264,7 +264,7 @@ await step("Outbox: WhatsApp table lists the practice messages", async () => {
 
 // ---------- Call desk ----------
 await step("Call desk: interested lead listed, outcome can be logged", async () => {
-  await nav("Priya");
+  await nav("Call desk");
   await text("Acme Retail").waitFor();
   await page.locator("select").first().selectOption("Connected – interested");
   await page.waitForTimeout(400);
@@ -275,7 +275,7 @@ await step("Call desk: interested lead listed, outcome can be logged", async () 
 // ---------- Templates ----------
 await step("Templates: 4 email steps from the backend + other messages + copy", async () => {
   await nav("Sequences");
-  await expectText("Email 1 — sample screen");
+  await expectText("Email 1 — compromised hiring");
   await expectText("Email 4 — process gap (Day 12)");
   await expectText("Nudge: demo not opened");
   await page.getByRole("button", { name: "Copy" }).first().click();
@@ -475,8 +475,10 @@ await step("Setup: privacy notice link is saved and the owner sees the Team logi
   await page.getByLabel("Privacy notice link (optional)").fill("https://bookmyinterview.test.invalid/privacy");
   await page.getByRole("button", { name: "Save basics" }).click();
   await expectText("Saved.");
+  await page.getByRole("tab", { name: "Team & workspaces" }).click();
   await page.getByTestId("users-card").getByText("Team logins").waitFor();
   await page.getByTestId("users-card").getByRole("button", { name: "Add login" }).waitFor();
+  await page.getByRole("tab", { name: "Connections" }).click();
   const settings = await (await fetch(`${API}/api/settings`)).json();
   if (settings.privacy_url !== "https://bookmyinterview.test.invalid/privacy") throw new Error(`privacy_url ${settings.privacy_url}`);
 });
@@ -493,7 +495,7 @@ await step("Setup: test buttons answer honestly (WhatsApp, AI writer, sending do
   await mail.getByText("Connect the sending domain first").waitFor();
 });
 await step("Setup: calling link needs {phone} and then drives the call desk", async () => {
-  const tel = page.locator(".card", { hasText: "Calling (Priya" });
+  const tel = page.locator(".card", { hasText: "Calling (click-to-call)" });
   await tel.locator("input[type=text]").first().fill("https://dial.invalid/call");
   await tel.getByRole("button", { name: "Save", exact: true }).click();
   await tel.getByRole("button", { name: "Test connection" }).click();
@@ -505,7 +507,7 @@ await step("Setup: calling link needs {phone} and then drives the call desk", as
   await tel.getByText("Looks right").waitFor();
 });
 await step("Call desk: phone numbers use the click-to-call link", async () => {
-  await nav("Priya");
+  await nav("Call desk");
   const link = page.locator("td a[href*='dial.invalid']").first();
   await link.waitFor();
   const href = await link.getAttribute("href");
@@ -774,7 +776,7 @@ await step("Reminders bell opens and lists reminders", async () => {
 
 await step("LinkedIn: queue page explains the rules and saves settings", async () => {
   await nav("LinkedIn outreach");
-  await expectText("LinkedIn doesn't allow automation");
+  await expectText("LinkedIn does not allow automation");
   await page.getByText("LinkedIn settings").click();
   await page.getByLabel("Case-study link (step 4 is skipped until a real link is set)").fill("https://bookmyinterview.ai/case-study");
   await page.locator("details", { hasText: "LinkedIn settings" }).getByRole("button", { name: "Save" }).click();
@@ -956,15 +958,15 @@ const dragTo = async (from, to) => {
 const flowNode = (prefix) => page.locator(`g.fb-node[aria-label^="${prefix}"]`).first();
 const nodeId = (prefix) => flowNode(prefix).getAttribute("data-node-id");
 let builtFlowUrl = "";
-await step("Flow builder: a flow from the Cold email template shows its 8 steps on the canvas", async () => {
+await step("Flow builder: a flow from the Cold email template shows its 12 steps on the canvas", async () => {
   await nav("Flow builder");
   await expectText("No flows yet");
   await page.getByRole("button", { name: "New from template" }).click();
   await page.getByRole("button", { name: "Use template: Cold email 6-step" }).click();
   await page.getByTestId("flow-canvas").waitFor();
-  await page.locator("g.fb-node").nth(7).waitFor();
+  await page.locator("g.fb-node").nth(11).waitFor();
   const [nodes, edges] = [await page.locator("g.fb-node").count(), await page.locator("g.fb-edge").count()];
-  if (nodes !== 8 || edges !== 7) throw new Error(`expected 8 steps and 7 connections, got ${nodes} / ${edges}`);
+  if (nodes !== 12 || edges !== 11) throw new Error(`expected 12 steps and 11 connections, got ${nodes} / ${edges}`);
   await shot("14-flow-template");
 });
 await step("Flow builder: add an If step and connect its yes / no outputs by dragging", async () => {

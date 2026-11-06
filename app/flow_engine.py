@@ -441,6 +441,13 @@ def _step(store, flow, graph, run, node, lead, now, ctx, counts) -> bool:
     if t == "if":
         passed, why = act.evaluate(c, act.lead_facts(lead))
         return _move(store, flow, graph, run, node, "yes" if passed else "no", f"{'yes' if passed else 'no'} — {why}", now)
+    if t == "loop":
+        key, times = f"loop_{node['id']}", int(c.get("times") or 1)
+        done_rounds = int((run.get("vars") or {}).get(key) or 0)
+        again = done_rounds < times
+        _change_run(store, run["id"], run["step"], lambda r: {**r, "vars": {**(r.get("vars") or {}), key: done_rounds + 1 if again else 0}})
+        return _move(store, flow, graph, _run(store, run["id"]), node, "again" if again else "done",
+                     f"round {done_rounds + 1} of {times}" if again else f"repeated {times} time(s), moving on", now)
     if t == "split":
         variant = (run.get("variants") or {}).get(node["id"]) or act.split_variant(lead["id"], node["id"], c.get("percent_a"))
         _change_run(store, run["id"], run["step"], lambda r: {**r, "variants": {**(r.get("variants") or {}), node["id"]: variant}})

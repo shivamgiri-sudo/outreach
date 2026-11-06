@@ -142,6 +142,17 @@ async function doMessage(page, lead, text) {
   return { done: true };
 }
 
+// Open Profile: not a 1st-degree connection, yet LinkedIn shows a Message button (Premium members who allow free messages).
+async function reportProfile(page, leadId, state) {
+  if (!leadId || state.profiled[leadId]) return;
+  state.profiled[leadId] = true;
+  const degree = await degreeOf(page);
+  const msg = topCard(page).locator('button[aria-label^="Message" i], a[aria-label^="Message" i]');
+  const open = degree !== "1st" && (await msg.count()) > 0;
+  await api(`/api/extension/leads/${leadId}/profile`, "POST", { open_profile: open, degree }).catch((e) => log("could not report profile:", e.message));
+  if (open) log("Open Profile: can be messaged without connecting");
+}
+
 async function oneCycle(page, state) {
   const ctl = await api("/api/extension/agent");
   if (!ctl.active_now) return { idle: `not now: ${ctl.why_not}` };
@@ -152,6 +163,7 @@ async function oneCycle(page, state) {
     state.checked[w.lead_id] = Date.now();
     await page.goto(toLocal(w.profile_url), { waitUntil: "domcontentloaded" }); await sleep(SETTLE);
     await checkTrouble(page);
+    await reportProfile(page, w.lead_id, state);
     if ((await degreeOf(page)) === "1st" && !DRY) {
       await api(`/api/extension/leads/${w.lead_id}/accepted`, "POST");
       await event("accepted", { lead_id: w.lead_id, note: `${w.name} accepted` });
@@ -168,6 +180,7 @@ async function oneCycle(page, state) {
     if (!info.can_send || !info.message) { log(`skip ${item.name}: ${info.reason}`); continue; }
     await page.goto(toLocal(item.profile_url), { waitUntil: "domcontentloaded" }); await sleep(SETTLE);
     await checkTrouble(page);
+    await reportProfile(page, item.lead_id, state);
     const result = kind === "connect" ? await doConnect(page, item, info.message.text) : await doMessage(page, item, info.message.text);
     if (result.dry) { log(`DRY ${item.name}: ${result.why}`); return { acted: "dry" }; }
     if (!result.done) {
@@ -188,7 +201,7 @@ async function oneCycle(page, state) {
 async function main() {
   const context = await chromium.launchPersistentContext(PROFILE_DIR, { headless: HEADLESS, viewport: { width: 1280, height: 900 } });
   const page = context.pages()[0] || await context.newPage();
-  const state = { checked: {}, noNotes: false };
+  const state = { checked: {}, noNotes: false, profiled: {} };
   let exitCode = 0;
   try {
     await event("started", { state: "running", note: DRY ? "started in dry-run mode" : "agent started" });

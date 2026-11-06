@@ -35,7 +35,7 @@ await step("Reload keeps the session", async () => {
 });
 await step("Owner adds a caller login on the Setup page", async () => {
   await page.getByRole("button", { name: "Setup" }).first().click();
-  await page.getByRole("tab", { name: "Connections" }).click();
+  await page.getByRole("tab", { name: "Team & workspaces" }).click();
   const card = page.getByTestId("users-card");
   await card.getByLabel("Email").fill("caller@e2e.invalid");
   await card.getByLabel("Name").fill("Priya");

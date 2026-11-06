@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, getToken, setRole, setToken } from "./api.js";
+import { api, getToken, getWorkspace, setCanEditContacts, setRole, setToken, setWorkspace } from "./api.js";
 import Icon from "./icons.jsx";
 import { stageLabel } from "./labels.js";
 import Login from "./pages/Login.jsx";
@@ -189,8 +189,15 @@ export default function App() {
   useEffect(() => { if (auth.signedIn) refreshPending(); }, [page, auth.signedIn]);
   useEffect(() => {
     if (!auth.signedIn) { setMe(null); return; }
-    api.me().then((m) => { setRole(m.role); setMe(m); }).catch(() => setMe({ role: "owner" }));
+    api.me().then((m) => { setRole(m.role); setCanEditContacts(m.can_edit_contacts); setMe(m); }).catch(() => setMe({ role: "owner" }));
   }, [auth.signedIn]);
+  const [spaces, setSpaces] = useState([]);
+  const [space, setSpace] = useState(getWorkspace());
+  useEffect(() => { if (auth.signedIn && me) api.workspaces().then((w) => {
+    setSpaces(w);
+    if (getWorkspace() && !w.some((x) => x.id === getWorkspace())) { setWorkspace(""); setSpace(""); }
+  }).catch(() => {}); }, [auth.signedIn, me, page, space]);
+  const pickSpace = (id) => { setWorkspace(id); setSpace(id); };
   const signOut = () => api.logout().catch(() => {}).finally(() => {
     setToken(""); setRole("owner"); setAuth((a) => ({ ...a, signedIn: false }));
   });
@@ -207,6 +214,15 @@ export default function App() {
           <div className="brand-text"><h1>MCN Outreach</h1><span className="brand-sub">by Mas Callnet</span></div>
           <Bell onOpen={() => go("tasks")} />
         </div>
+        {spaces.length > 1 && (
+          <label className="ws-pick" style={{ display: "block", margin: "0 12px 10px" }}>
+            <span className="nav-title">Workspace</span>
+            <select aria-label="Workspace" value={space} onChange={(e) => pickSpace(e.target.value)} style={{ width: "100%" }}>
+              {(!me.workspaces || me.workspaces.length !== 1) && <option value="">All workspaces</option>}
+              {spaces.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.leads})</option>)}
+            </select>
+          </label>
+        )}
         <button className="search-trigger" onClick={() => setSearching(true)} aria-label="Quick search (Ctrl K)">
           <Icon name="wand" size={16} /><span>Search…</span><kbd>Ctrl K</kbd>
         </button>
@@ -233,7 +249,7 @@ export default function App() {
         )}
       </nav>
       <main>
-        <Current key={page} go={go} onSetupChanged={refreshPending} focusLead={page === "leads" ? focusLead : undefined} role={me.role} />
+        <Current key={`${page}:${space}`} go={go} onSetupChanged={refreshPending} focusLead={page === "leads" ? focusLead : undefined} role={me.role} />
       </main>
       {searching && (
         <QuickSearch onClose={() => setSearching(false)}

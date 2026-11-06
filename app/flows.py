@@ -71,6 +71,7 @@ NODE_TYPES = {
     "switch": ("logic", "Switch", ("c1", "c2", "c3", "c4", "other")),
     "http": ("action", "HTTP request", ("next", "error")),
     "note": ("note", "Note", ()),
+    "loop": ("logic", "Repeat", ("again", "done")),
 }
 WAIT_TYPES = ("wait", "wait_for_reply")
 VAR_NAME = re.compile(r"^[a-z][a-z0-9_]{0,29}$")
@@ -295,6 +296,8 @@ def config_errors(node: dict, team_names=None, extra_vars=()) -> list:
                 out.append(f"The {key.replace('_', ' ')} filter is too long.")
     elif t == "if":
         out += _if_errors(c)
+    elif t == "loop" and _int_in(c.get("times"), 1, 10) is None:
+        out.append("Repeat 1 to 10 times.")
     elif t == "split" and _int_in(c.get("percent_a"), 1, 99) is None:
         out.append("Variant A must get between 1 and 99 percent of leads.")
     elif t == "wait":

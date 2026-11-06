@@ -134,11 +134,42 @@ function Basics({ onSaved }) {
 
 const ROLE_HELP = { owner: "everything", caller: "leads, calls, meetings, tasks", viewer: "read only" };
 
+// Workspaces (owner only): one per client, so their leads, lists and numbers stay apart.
+function Workspaces({ onChanged }) {
+  const [rows, setRows] = useState([]);
+  const [name, setName] = useState("");
+  const [message, setMessage] = useState("");
+  const load = () => api.workspaces().then((w) => { setRows(w); onChanged?.(w); }).catch((e) => setMessage(e.message));
+  useEffect(() => { load(); }, []);
+  const run = (fn, done) => fn().then(() => { setMessage(done); load(); }).catch((e) => setMessage(e.message));
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <b>Workspaces</b>
+      <p className="sub">One workspace per client. Pick the workspace in the left menu: imports go into it, and Leads, Lists and Intelligence show only its leads.
+        A contact can sit in only one workspace, so two clients never contact the same person twice from here. Move leads from the Leads page (select, then “Move to workspace”).</p>
+      <ul className="today-list">{rows.map((w) => (
+        <li key={w.id} className="row" style={{ justifyContent: "space-between" }}><span><b>{w.name}</b> <small>{w.leads} leads{w.created_by ? ` · made by ${w.created_by}` : ""}</small></span>
+          {w.id !== "main" && <button className="btn ghost danger" onClick={() => window.confirm(`Remove workspace ${w.name}? It must be empty.`) && run(() => api.deleteWorkspace(w.id), "Workspace removed.")}>Remove</button>}</li>))}</ul>
+      <form className="row" onSubmit={(e) => { e.preventDefault(); run(() => api.createWorkspace(name), `Workspace “${name}” added.`).then(() => setName("")); }}>
+        <input aria-label="New workspace name" placeholder="Client name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
+        <button className="btn" disabled={!name.trim()}>Add workspace</button>
+      </form>
+      {message && <p className="sub" role="status">{message}</p>}
+    </div>
+  );
+}
+
 // Team logins (owner only). Without OUTREACH_ADMIN_PASSWORD, the first login must be an owner and turns sign-in on.
 function Users() {
   const [rows, setRows] = useState(null);
   const [form, setForm] = useState({ email: "", name: "", role: "caller", password: "" });
   const [message, setMessage] = useState("");
+  const [spaces, setSpaces] = useState([]);
+  useEffect(() => { api.workspaces().then(setSpaces).catch(() => {}); }, []);
+  const toggleSpace = (u, id, on) => {
+    const next = on ? [...new Set([...(u.workspaces || []), id])] : (u.workspaces || []).filter((x) => x !== id);
+    run(() => api.changeUser(u.email, { workspaces: next }), next.length ? `${u.name} now sees only: ${next.map((x) => spaces.find((w) => w.id === x)?.name || x).join(", ")}.` : `${u.name} sees every workspace.`);
+  };
   const load = () => api.users().then(setRows).catch((e) => setMessage(e.message));
   useEffect(() => { load(); }, []);
   const run = async (fn, done) => {
@@ -168,6 +199,10 @@ function Users() {
                 <select aria-label={`Role for ${u.email}`} value={u.role} onChange={(e) => run(() => api.changeUser(u.email, { role: e.target.value }), "Role changed.")}>
                   {Object.keys(ROLE_HELP).map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
+                {u.role === "caller" && <label className="check-row"><input type="checkbox" checked={u.can_edit_contacts !== false}
+                  onChange={(e) => run(() => api.changeUser(u.email, { can_edit_contacts: e.target.checked }), e.target.checked ? "May edit contact details." : "Can no longer edit contact details.")} /> Can edit contacts</label>}
+                {u.role !== "owner" && spaces.length > 1 && <span className="row" title="Tick to limit this login to these workspaces; none ticked = all">
+                  <small>Workspaces:</small>{spaces.map((w) => <label key={w.id} className="check-row"><input type="checkbox" checked={(u.workspaces || []).includes(w.id)} onChange={(e) => toggleSpace(u, w.id, e.target.checked)} /> {w.name}</label>)}</span>}
                 <button className="btn ghost" onClick={() => reset(u.email)}>Reset password</button>
                 <button className="btn ghost danger" onClick={() => window.confirm(`Remove ${u.email}?`) && run(() => api.removeUser(u.email), "Login removed.")}>Remove</button>
               </span>
@@ -211,10 +246,12 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
       <div className="tabs" role="tablist" aria-label="Setup sections">
         <button role="tab" aria-selected={tab === "checklist"} className={tab === "checklist" ? "on" : ""} onClick={() => setTab("checklist")}>Go-live checklist</button>
         <button role="tab" aria-selected={tab === "connections"} className={tab === "connections" ? "on" : ""} onClick={() => setTab("connections")}>Connections</button>
+        {role === "owner" && <button role="tab" aria-selected={tab === "team"} className={tab === "team" ? "on" : ""} onClick={() => setTab("team")}>Team &amp; workspaces</button>}
         <button role="tab" aria-selected={tab === "backup"} className={tab === "backup" ? "on" : ""} onClick={() => setTab("backup")}>Backup &amp; restore</button>
       </div>
       {tab === "checklist" && <GoLive embedded go={(page) => (page === "setup" ? setTab("connections") : go?.(page))} />}
       {tab === "backup" && <BackupRestore />}
+      {tab === "team" && role === "owner" && <><Workspaces /><Users /></>}
       {tab === "connections" && (
         <>
           <div className="tip" style={{ marginBottom: 16 }}>
@@ -223,7 +260,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
             <div className="row" style={{ marginTop: 8 }}><button className="btn" onClick={() => go?.("integrations")}>Open Integrations</button></div>
           </div>
           {role === "owner" && <Basics onSaved={() => onSetupChanged?.()} />}
-          {role === "owner" && <Users />}
+
           {groups.map((g) => (
             <div key={g}>
               <h3>{g}</h3>

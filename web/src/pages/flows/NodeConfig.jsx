@@ -182,6 +182,11 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
       {select("op", "How", opsFor(kind).map((o) => [o, IF_OPS[o]]))}
       {valueInput()}
     </>),
+    loop: () => (
+      <Field id={id("times")} label="How many times to repeat" hint="Each round goes down 'again'; after the last round the lead goes down 'done'. The loop must include a Wait.">
+        <input id={id("times")} type="number" min="1" max="10" value={c.times ?? 3} onChange={num("times")} />
+      </Field>
+    ),
     split: () => (
       <Field id={id("percent_a")} label={`Share of leads on path A: ${c.percent_a ?? 50}%`} hint="The rest go down path B.">
         <input id={id("percent_a")} type="number" min="1" max="99" value={c.percent_a ?? 50} onChange={num("percent_a")} />

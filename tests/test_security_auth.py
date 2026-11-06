@@ -127,7 +127,7 @@ def test_users_log_in_with_email_and_get_their_role(tmp_path):
     owner = login(c)
     user = add_user(c, owner, "Priya@Example.com", "caller")
     assert user == {"email": "priya@example.com", "name": "Priya", "role": "caller", "created_at": user["created_at"],
-                    "password_changed_at": None}
+                    "password_changed_at": None, "can_edit_contacts": True, "workspaces": []}
     r = c.post("/api/login", json={"email": "priya@example.com", "password": "long-password-1"})
     assert r.status_code == 200 and r.json()["role"] == "caller"
     me = c.get("/api/me", headers=bearer(r.json()["token"])).json()

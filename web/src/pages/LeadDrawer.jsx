@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, isOwner } from "../api.js";
+import { api, canEditContacts, isOwner } from "../api.js";
 import { copyText } from "../clipboard.js";
 import { SEQUENCE_STOPPED, sourceLabel, stageLabel, useSourceRegistry } from "../labels.js";
 import { istLabel } from "../time.js";
@@ -250,7 +250,7 @@ export default function LeadDrawer({ id, onClose }) {
       </div>
       <p className="sub">{lead.contact_name} {lead.title && `· ${lead.title}`}<br />{lead.email} {lead.phone && `· ${lead.phone}`}
         <br /><small>Source: {sourceLabel(lead)}</small></p>
-      <EditDetails lead={lead} onSaved={(r) => setLead(r)} />
+      {canEditContacts() && <EditDetails lead={lead} onSaved={(r) => setLead(r)} />}
       {error && <div className="tip error" role="alert">{error}</div>}
 
       <LeadOrigin lead={lead} />
@@ -354,7 +354,8 @@ export default function LeadDrawer({ id, onClose }) {
 
       <h3>LinkedIn (you send these by hand)</h3>
       <p className="sub">Nothing is automated on LinkedIn. Copy a draft, open their profile, and send it yourself.
-        {/^https?:\/\//i.test(lead.linkedin_url || "") && <> <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer">Open profile</a></>}</p>
+        {/^https?:\/\//i.test(lead.linkedin_url || "") && <> <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer">Open profile</a></>}
+        {lead.linkedin_profile?.open_profile && <span className="pill" style={{ marginLeft: 6 }}>Open Profile</span>}</p>
       {linkedinDrafts(lead).map(([title, text]) => (
         <div className="tip" key={title} style={{ marginBottom: 8 }}>
           <b>{title}</b> <small>({text.length} characters)</small>

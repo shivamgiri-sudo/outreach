@@ -49,7 +49,10 @@ def build_lead(row: dict, source: str, allow_company_key: bool = False) -> Optio
         **{f: to_int(row.get(f)) for f in NUMERIC_FIELDS},
     }
     lead["dedupe_key"] = dedupe_key(lead) or (f"company:{lead['company'].lower()}" if allow_company_key and lead["company"] else None)
-    return lead if lead["dedupe_key"] else None
+    if not lead["dedupe_key"]:
+        return None
+    from .workspaces import stamp_new          # late import: workspaces imports this module
+    return stamp_new(lead)
 
 
 def contactless_match(leads: list, new: dict) -> Optional[int]:

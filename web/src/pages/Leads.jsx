@@ -185,6 +185,16 @@ export default function Leads({ focusLead, go }) {
     setPicked([]); setBusy(""); load();
   };
 
+  const [spaces, setSpaces] = useState([]);
+  useEffect(() => { api.workspaces().then(setSpaces).catch(() => {}); }, []);
+  const moveTo = async (id) => {
+    if (!id) return;
+    const name = spaces.find((w) => w.id === id)?.name || id;
+    if (!window.confirm(`Move ${picked.length} lead(s) to workspace “${name}”? It is logged on each lead.`)) return;
+    setBusy("ws");
+    try { const r = await api.moveToWorkspace(id, picked); setMessage(`${r.moved} lead(s) moved to ${name}.`); setPicked([]); load(); }
+    catch (e) { setMessage(e.message); } finally { setBusy(""); }
+  };
   const saveAsList = async () => {
     const name = window.prompt("Name this list (for example: Noida BPOs, Nov)", `Selected ${picked.length} leads`);
     if (!name) return;
@@ -325,6 +335,8 @@ export default function Leads({ focusLead, go }) {
           <button className="btn" disabled={busy === "enroll"} onClick={bulkEnroll}>{busy === "enroll" ? "Starting…" : "Start email sequence"}</button>
           <button className="btn ghost" disabled={busy === "li"} onClick={bulkLinkedIn}>{busy === "li" ? "Starting…" : "Start LinkedIn outreach"}</button>
           <button className="btn ghost" disabled={busy === "list"} onClick={saveAsList}>Save as list</button>
+          {spaces.length > 1 && <select aria-label="Move selected leads to a workspace" value="" disabled={busy === "ws"} onChange={(e) => moveTo(e.target.value)}>
+            <option value="">Move to workspace…</option>{spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>}
           {isOwner() && <DownloadButton path={exportPath("leads")} body={{ ids: picked }} label="Download CSV" testId="download-leads-picked" />}
           <button className="btn ghost" onClick={() => setPicked([])}>Clear</button>
         </div>

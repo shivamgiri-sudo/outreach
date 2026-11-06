@@ -7,6 +7,14 @@ let role = "owner";
 export const getRole = () => role;
 export const setRole = (r) => { role = r || "owner"; };
 export const isOwner = () => role === "owner";
+let canEdit = true;
+export const canEditContacts = () => canEdit;
+export const setCanEditContacts = (v) => { canEdit = v !== false; };
+
+// The chosen workspace (a client's own leads); sent on every request, remembered per browser. "" = all workspaces.
+const WS_KEY = "outreach-workspace";
+export const getWorkspace = () => { try { return localStorage.getItem(WS_KEY) || ""; } catch { return ""; } };
+export const setWorkspace = (w) => { try { w ? localStorage.setItem(WS_KEY, w) : localStorage.removeItem(WS_KEY); } catch { /* storage blocked */ } };
 
 // The server re-issues the token once half its 12 hours have passed; keep the newest one.
 const keepRenewed = (res) => { const t = res.headers.get("X-Renewed-Token"); if (t && getToken()) setToken(t); };
@@ -14,7 +22,7 @@ const keepRenewed = (res) => { const t = res.headers.get("X-Renewed-Token"); if 
 async function request(path, options = {}) {
   const token = getToken();
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(getWorkspace() ? { "X-Workspace": getWorkspace() } : {}) },
     ...options,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
@@ -143,6 +151,14 @@ export const api = {
   linkedinResults: (csv) => request("/api/linkedin/results", { method: "POST", body: { csv } }),
   linkedinQueue: () => request("/api/linkedin/queue"),
   linkedinSettings: () => request("/api/linkedin/settings"),
+  workspaces: () => request("/api/workspaces"),
+  createWorkspace: (name) => request("/api/workspaces", { method: "POST", body: { name } }),
+  deleteWorkspace: (id) => request(`/api/workspaces/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  moveToWorkspace: (id, leadIds) => request(`/api/workspaces/${encodeURIComponent(id)}/move`, { method: "POST", body: { lead_ids: leadIds } }),
+  linkedinVariants: () => request("/api/linkedin/variants"),
+  saveLinkedinVariants: (body) => request("/api/linkedin/variants", { method: "PUT", body }),
+  scoreLinkedinNote: (text) => request("/api/linkedin/variants/score", { method: "POST", body: { text } }),
+  generateLinkedinNotes: (context = "") => request("/api/linkedin/variants/generate", { method: "POST", body: { context, n: 4 } }),
   saveLinkedinSettings: (body) => request("/api/linkedin/settings", { method: "PUT", body }),
   linkedinStart: (id) => request(`/api/leads/${id}/linkedin/start`, { method: "POST" }),
   linkedinSent: (id, step) => request(`/api/leads/${id}/linkedin/sent`, { method: "POST", body: { step } }),

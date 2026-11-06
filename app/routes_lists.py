@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import audit, lists
+from . import audit, lists, workspaces as ws
 
 
 class ListBody(BaseModel):
@@ -31,19 +31,19 @@ def make_router(store, present) -> APIRouter:
 
     def found(list_id: str) -> dict:
         row = lists.get(store, list_id)
-        if row is None:
+        if row is None or not ws.visible(row):
             raise HTTPException(404, "List not found")
         return row
 
     @router.get("/api/lists")
     def all_lists():
-        return [{**{k: v for k, v in r.items() if k not in ("lead_ids", "log")}, "stats": lists.stats(store, r)} for r in reversed(store.read("lists"))]
+        return [{**{k: v for k, v in r.items() if k not in ("lead_ids", "log")}, "stats": lists.stats(store, r)} for r in reversed(ws.filter_rows(store.read("lists")))]
 
     @router.get("/api/lists/companies")
     def companies():
         """Company names with lead counts, for the company picker."""
         seen = {}
-        for l in store.read("leads"):
+        for l in ws.filter_rows(store.read("leads")):
             name = (l.get("company") or "").strip()
             if name:
                 row = seen.setdefault(name.lower(), {"company": name, "leads": 0, "with_email": 0, "with_linkedin": 0, "enriched": 0})
@@ -55,7 +55,7 @@ def make_router(store, present) -> APIRouter:
 
     @router.get("/api/lists/enriched-summary")
     def enriched_summary():
-        leads = [l for l in store.read("leads") if lists.is_enriched(l)]
+        leads = [l for l in ws.filter_rows(store.read("leads")) if lists.is_enriched(l)]
         ready = [l for l in leads if lists.ready_for_email(l)]
         return {"enriched": len(leads), "email_ready": len(ready), "ready_ids": [l["id"] for l in ready][:2000],
                 "companies": len({(l.get("company") or l["id"]).lower() for l in ready})}

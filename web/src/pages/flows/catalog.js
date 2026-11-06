@@ -48,7 +48,7 @@ export const TEXT_PLACEHOLDERS = ["greeting", "first_name", "company", "role", "
 
 export const OUTPUT_LABELS = {
   next: "", yes: "yes", no: "no", a: "A", b: "B", error: "if refused", interested: "interested", question: "question",
-  not_interested: "not interested", not_now: "not now", wrong_person: "wrong person", other: "other", any: "any reply", timeout: "no reply",
+  not_interested: "not interested", not_now: "not now", wrong_person: "wrong person", other: "other", any: "any reply", timeout: "no reply", again: "again", done: "done",
 };
 export const BRANCH_HEADINGS = {
   next: "Then", yes: "If yes", no: "If no", a: "Variant A", b: "Variant B", error: "If it is refused",
@@ -108,6 +108,8 @@ export const TYPES = {
     "Claude writes a draft, picks one of your options, or pulls out a detail. The answer is saved under a name you can use as {{name}} in later steps."],
   set_vars: ["action", "Set fields", "sliders", ["next"], { values: [{ name: "pitch", value: "" }] },
     "Make named fields from the lead's details, for example pitch = Hiring for {{role}} at {{company}}. Use them as {{pitch}} in later steps."],
+  loop: ["logic", "Repeat", "clock", ["again", "done"], { times: 3 },
+    "Sends the lead down 'again' this many times, then down 'done'. Put a Wait inside the loop (days or hours)."],
   switch: ["logic", "Switch", "split", null, { field: "band", cases: ["hot", "warm"] },
     "Looks at one value and sends the lead down the matching path (up to 4), or 'other' when nothing matches."],
   http: ["action", "HTTP request", "globe", ["next", "error"], { method: "GET", url: "", body: "", save_as: "" },
@@ -160,6 +162,7 @@ export function summaryOf(node, caller = "the representative") {
     case "trigger.activation_event": return `In the product: ${(c.event || "").replace(/_/g, " ")}`;
     case "trigger.no_reply_days": return `No reply ${c.days || "?"} days after an email`;
     case "if": return `${IF_FIELDS[c.field]?.[0] || "?"} ${IF_OPS[c.op] || "?"}${c.op === "exists" ? "" : ` ${c.field?.startsWith("has_") ? (String(c.value) === "true" ? "yes" : "no") : c.value ?? ""}`}`;
+    case "loop": return `Repeat ${c.times || 1} time(s), then done`;
     case "split": return `A ${c.percent_a ?? 50}% · B ${100 - (Number(c.percent_a) || 50)}%`;
     case "wait": return `${c.days || 0} day(s) ${c.hours || 0} h${c.business_hours ? " · then business hours" : ""}`;
     case "wait_for_reply": return `Up to ${c.days || "?"} day(s)`;

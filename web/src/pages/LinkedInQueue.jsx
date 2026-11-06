@@ -197,6 +197,56 @@ function ChromeAssistant({ onMessage }) {
   );
 }
 
+function Score({ s }) {
+  if (!s) return null;
+  const tone = s.score >= 75 ? "good" : s.score >= 50 ? "" : "warn";
+  return <small className="sub-inline" title={(s.reasons || []).join(" ")}><span className={`pill ${tone}`}>{s.score}/100</span> {s.length} chars · {(s.reasons || []).filter((r) => !/^(Good length|Greets|No sales|About their)/.test(r))[0] || "looks good"}</small>;
+}
+
+function ConnectionNotes({ onMessage }) {
+  const [cur, setCur] = useState(null);
+  const [draft, setDraft] = useState({ A: "", B: "" });
+  const [scores, setScores] = useState({});
+  const [ideas, setIdeas] = useState(null);
+  const [context, setContext] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = () => api.linkedinVariants().then((r) => { setCur(r); setDraft({ A: r.notes.A.text, B: r.notes.B.text }); setScores({ A: r.notes.A, B: r.notes.B }); }).catch(() => {});
+  useEffect(() => { load(); }, []);
+  const rescore = (v, text) => api.scoreLinkedinNote(text).then((s) => setScores((x) => ({ ...x, [v]: s }))).catch(() => {});
+  const write = () => { setBusy(true); api.generateLinkedinNotes(context).then(setIdeas).catch((e) => onMessage(e.message)).finally(() => setBusy(false)); };
+  const save = () => api.saveLinkedinVariants(draft).then((r) => { setCur(r); onMessage("Connection notes saved. New leads get the new A or B note."); }).catch((e) => onMessage(e.message));
+  if (!cur) return null;
+  return (
+    <details className="card" style={{ marginBottom: 12 }}>
+      <summary><b>Connection notes A / B</b> <small className="sub-inline">each new lead gets one of the two; compare accept rates on the Intelligence page</small></summary>
+      {["A", "B"].map((v) => (
+        <div key={v} style={{ marginTop: 10 }}>
+          <label htmlFor={`note-${v}`}><b>Note {v}</b></label> <Score s={scores[v]} />
+          <textarea id={`note-${v}`} rows={3} value={draft[v]} maxLength={600} onChange={(e) => setDraft({ ...draft, [v]: e.target.value })} onBlur={(e) => rescore(v, e.target.value)} style={{ width: "100%" }} />
+        </div>
+      ))}
+      <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
+        <button className="btn" onClick={save} disabled={!isOwner()}>Save notes</button>
+        <input aria-label="Who you are writing to" placeholder="Optional: who it is for (e.g. CHROs at IT services firms)" value={context} maxLength={500} onChange={(e) => setContext(e.target.value)} style={{ flex: 1, minWidth: 220 }} />
+        <button className="btn ghost" onClick={write} disabled={busy}>{busy ? "Writing…" : "Write ideas with Claude"}</button>
+      </div>
+      {cur.changed_at && <small className="sub-inline">Last changed by {cur.changed_by} · {istLabel(cur.changed_at)}. Accept rates before this date belong to the old notes.</small>}
+      {ideas && (
+        <div style={{ marginTop: 10 }}>
+          <small className="sub-inline">{ideas.source === "claude" ? "Written by Claude, scored by simple rules:" : "Claude is not connected; built-in ideas, scored:"}</small>
+          {ideas.candidates.map((c, i) => (
+            <div key={i} className="trail-text" style={{ marginTop: 6 }}>
+              <div>{c.text}</div><Score s={c} />
+              <div className="row"><button className="btn ghost" onClick={() => { setDraft({ ...draft, A: c.text }); setScores((x) => ({ ...x, A: c })); }}>Use as A</button>
+                <button className="btn ghost" onClick={() => { setDraft({ ...draft, B: c.text }); setScores((x) => ({ ...x, B: c })); }}>Use as B</button></div>
+            </div>
+          ))}
+        </div>
+      )}
+    </details>
+  );
+}
+
 export default function LinkedInQueue() {
   const [q, setQ] = useState(null);
   const [cfg, setCfg] = useState({ linkedin_daily_connections: 12, linkedin_owner: "", case_study_url: "" });
@@ -217,6 +267,7 @@ export default function LinkedInQueue() {
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
       <ToolBridge onDone={load} />
       <LinkedInAgent onMessage={setMessage} />
+      <ConnectionNotes onMessage={setMessage} />
       <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />
       <ChromeAssistant onMessage={setMessage} />
       {q && !q.case_study_set && <p className="sub">Step 4 (case study) is skipped until you add a real case-study link in the settings above.</p>}
@@ -230,7 +281,7 @@ export default function LinkedInQueue() {
       {q && q.due.map((d) => (
         <div className="card" key={d.task_id} style={{ marginBottom: 10 }}>
           <div className="row" style={{ justifyContent: "space-between" }}>
-            <b>{d.name || "Contact"} · {d.company}</b>
+            <b>{d.name || "Contact"} · {d.company}{d.open_profile && <span className="pill" title="Premium member who accepts messages from anyone" style={{ marginLeft: 6 }}>Open Profile: message without connecting</span>}</b>
             <span className="sub">Step {d.step} · {PERSONA[d.persona] || ""}{d.due_at ? ` · ${istLabel(d.due_at)}` : ""}</span>
           </div>
           <p className="trail-text">{d.message}</p>

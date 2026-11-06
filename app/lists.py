@@ -8,6 +8,7 @@ import uuid
 from typing import Optional
 
 from . import linkedin_seq
+from . import workspaces
 from .lead_model import event, now_iso
 from .routes_outreach import EnrollRefused, enroll_lead
 
@@ -25,7 +26,7 @@ def ready_for_email(lead: dict) -> bool:
 
 def resolve(store, lead_ids=None, companies=None, enriched=False) -> list:
     """Lead ids from explicit ids, company names (case-insensitive, whole name), and/or every enriched lead."""
-    leads = store.read("leads")
+    leads = workspaces.filter_rows(store.read("leads"))
     wanted = set(lead_ids or [])
     names = {c.strip().lower() for c in (companies or []) if c and c.strip()}
     out = []
@@ -41,7 +42,7 @@ def _log(entry: str, by: str) -> dict:
 
 def create(store, name: str, lead_ids: list, by: str, how: str = "") -> dict:
     row = {"id": uuid.uuid4().hex[:10], "name": name.strip()[:80] or "Untitled list", "lead_ids": list(dict.fromkeys(lead_ids)),
-           "created_by": by, "created_at": now_iso(), "log": [_log(f"Created with {len(set(lead_ids))} leads{(' (' + how + ')') if how else ''}", by)]}
+           "created_by": by, "created_at": now_iso(), "workspace": workspaces.for_new_lead(), "log": [_log(f"Created with {len(set(lead_ids))} leads{(' (' + how + ')') if how else ''}", by)]}
     store.update("lists", lambda rows: [*rows, row])
     return row
 
