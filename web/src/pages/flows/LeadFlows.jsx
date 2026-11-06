@@ -6,16 +6,18 @@ const PILL = { running: "ok", waiting: "ok", done: "", stopped: "warn", error: "
 
 // "Flows" in the lead panel: which flows this lead is in, where they are now, Stop; and start an active flow.
 export default function LeadFlows({ lead, onChanged }) {
-  const [runs, setRuns] = useState([]);
+  const [runs, setRuns] = useState(null);                    // null while loading: never say "Not in any flow" before we know
   const [flows, setFlows] = useState([]);
   const [pick, setPick] = useState("");
   const [message, setMessage] = useState({ text: "", bad: false });
-  const load = () => api.leadFlows(lead.id).then(setRuns).catch(() => setRuns([]));
+  const load = () => api.leadFlows(lead.id).then(setRuns)
+    .catch((e) => { setRuns([]); setMessage({ text: `Could not load this lead's flows: ${e.message}`, bad: true }); });
   useEffect(() => {
+    setRuns(null);
     load();
     api.flows().then((all) => setFlows(all.filter((f) => f.status === "active"))).catch(() => setFlows([]));
   }, [lead.id]);
-  const inFlow = new Set(runs.map((r) => r.flow_id));
+  const inFlow = new Set((runs || []).map((r) => r.flow_id));
   const startable = flows.filter((f) => !inFlow.has(f.id));
   const start = async () => {
     try {
@@ -33,7 +35,7 @@ export default function LeadFlows({ lead, onChanged }) {
     <section data-testid="lead-flows">
       <h3>Flows</h3>
       {message.text && <div className={`tip${message.bad ? " error" : ""}`} role={message.bad ? "alert" : "status"}>{message.text}</div>}
-      {runs.length === 0 ? <p className="sub">Not in any flow.</p> : (
+      {runs === null ? <p className="sub">Loading…</p> : runs.length === 0 ? <p className="sub">Not in any flow.</p> : (
         <ul className="meet-mini">
           {runs.map((r) => (
             <li key={r.id}>
@@ -54,7 +56,7 @@ export default function LeadFlows({ lead, onChanged }) {
           ))}
         </ul>
       )}
-      {startable.length > 0 && (
+      {runs !== null && startable.length > 0 && (
         <div className="row">
           <label htmlFor={`lead-flow-${lead.id}`} className="sr-only">Start a flow</label>
           <select id={`lead-flow-${lead.id}`} style={{ flex: 1, width: "auto" }} value={pick} onChange={(e) => setPick(e.target.value)}>

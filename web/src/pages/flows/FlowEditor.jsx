@@ -20,7 +20,9 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
   const [meta, setMeta] = useState({ name: "", description: "", stop_on_reply: true });
   const [savedKey, setSavedKey] = useState("");
   const [selected, setSelected] = useState(null);
-  const [errors, setErrors] = useState([]);
+  // Problems from the server belong to the graph they were checked on; once the graph changes they are stale
+  // (a "Connect the trigger" warning stayed on a trigger that was already connected), so they hide until the next check.
+  const [checked, setChecked] = useState({ list: [], key: "" });
   const [view, setView] = useState(isPhone() ? "list" : "canvas");
   const [note, setNote] = useState({ text: "", bad: false });
   const [sim, setSim] = useState(null);
@@ -32,6 +34,8 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
   const canvas = useRef(null);
   const config = useRef(null);
   const graphRef = useRef(graph);
+  const graphKey = (g) => JSON.stringify({ nodes: g.nodes.map(({ id, type, config: c }) => [id, type, c]), edges: g.edges });  // moving a card keeps them
+  const setErrors = (list, g = graphRef.current) => setChecked({ list, key: graphKey(g) });
   const dragBefore = useRef(null);
   graphRef.current = graph;
 
@@ -43,7 +47,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
     reset(g);
     setMeta(m);
     setSavedKey(keyOf(g, m));
-    setErrors(f.errors || []);
+    setErrors(f.errors || [], g);
   };
   useEffect(() => {
     api.flow(flowId).then((f) => { loaded(f); setTimeout(() => canvas.current?.fit(), 0); })
@@ -52,6 +56,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
   }, [flowId]);
 
   const dirty = flow && keyOf(graph, meta) !== savedKey;
+  const errors = checked.key === graphKey(graph) ? checked.list : [];
   const problems = useMemo(() => {
     const out = {};
     errors.forEach((p) => { if (p.node) (out[p.node] ||= []).push(p.message); });
@@ -92,6 +97,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
       edges: from ? [...g.edges.filter((e) => !(e.from === from.id && e.label === from.label)), { id: uid("e"), from: from.id, to: id, label: from.label }] : g.edges,
     }));
     setSelected({ kind: "node", id });
+    setTimeout(() => canvas.current?.reveal?.(pos), 0);
     say(`Added “${TYPES[type][1]}”. ${isTrigger(type) ? "" : "Connect it by dragging from an output dot, or pick where paths go in the panel."}`);
   };
   const addFrom = (nodeId, label, at) => setPicker({ id: nodeId, label, at });
@@ -250,7 +256,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
         <div className="fb-stage">
           {view === "canvas" ? (
             <>
-              <p className="field-help fb-help">Drag the background to move around, scroll to zoom. Drag from a dot under a step to another step to connect, or click the + under it to add the next step.
+              <p className="field-help fb-help">Drag the background to move around, scroll to zoom. In “Add step”, click a step or drag it onto the canvas. Drag from a dot under a step to another step to connect, or click the + under it to add the next step.
                 Keyboard: Tab to a step, arrows move it, Enter edits, D turns it off, Ctrl+D duplicates, Delete removes; Ctrl+Z / Ctrl+Y undo and redo.</p>
               <FlowCanvas ref={canvas} nodes={graph.nodes} edges={graph.edges} selected={selected} problems={problems} highlight={highlight}
                 caller={catalog?.caller} onSelect={setSelected} onDragStart={() => { dragBefore.current = graphRef.current; }}
@@ -266,7 +272,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
         <div className="fb-side">
           {selectedNode ? (
             <NodeConfig key={selectedNode.id} flowId={flowId} node={selectedNode} nodes={graph.nodes} edges={graph.edges} catalog={catalog}
-              problems={problems[selectedNode.id] || []} onChange={updateConfig} panelRef={config}
+              problems={problems[selectedNode.id] || []} onChange={updateConfig} panelRef={config} savedNodes={flow.nodes} savedKey={savedKey}
               onConnect={(label, to) => (to ? connect(selectedNode.id, label, to) : unlink(selectedNode.id, label))}
               onDelete={() => deleteNode(selectedNode.id)} onDuplicate={() => duplicate(selectedNode.id)} />
           ) : (

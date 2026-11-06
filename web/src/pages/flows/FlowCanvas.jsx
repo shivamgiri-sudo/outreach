@@ -42,6 +42,15 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
   useImperativeHandle(ref, () => ({
     centre: () => { const r = rect(); return toCanvas(r.left + r.width / 2, r.top + r.height / 3); },
     fit,
+    // Pan just enough that a card at canvas point p is on screen (a step added after the 4th output landed off to the right).
+    reveal: (p) => setView((v) => {
+      const r = rect();
+      const pad = 24;
+      const left = p.x * v.k + v.x, top = p.y * v.k + v.y, w = NODE_W * v.k, h = (NODE_H + 90) * v.k;   // + its outputs and + buttons, clear of the zoom bar
+      const dx = left < pad ? pad - left : left + w > r.width - pad ? r.width - pad - (left + w) : 0;
+      const dy = top < pad ? pad - top : top + h > r.height - pad ? r.height - pad - (top + h) : 0;
+      return dx || dy ? { ...v, x: v.x + dx, y: v.y + dy } : v;
+    }),
   }));
 
   useEffect(() => {

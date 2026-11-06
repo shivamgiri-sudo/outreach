@@ -44,14 +44,19 @@ export function ifFieldChange(c, field) {
 }
 
 // Plain-English settings for the selected step, its connections and its problems.
-function WebhookBox({ flowId }) {
+// `saved`: the saved flow starts from a webhook. Until then the server has no address to give (it answered 400 and the
+// box said "This flow does not start from a webhook." right after you added that very trigger), so ask for a save first.
+function WebhookBox({ flowId, saved, savedKey }) {
   const [hook, setHook] = useState(null);
   const [err, setErr] = useState("");
   useEffect(() => {
+    if (!saved) return undefined;
     let alive = true;
+    setErr("");
     api.flowWebhook(flowId).then((h) => alive && setHook(h)).catch((e) => alive && setErr(e.message || "Could not make the address."));
     return () => { alive = false; };
-  }, [flowId]);
+  }, [flowId, saved, savedKey]);
+  if (!saved) return <p className="field-help">Save the flow and this flow's address for other tools appears here.</p>;
   if (err) return <p className="field-help" role="alert">{err}</p>;
   if (!hook) return <p className="field-help">Making the address…</p>;
   const url = hook.urls?.capture || "";
@@ -72,7 +77,7 @@ function WebhookBox({ flowId }) {
   );
 }
 
-export default function NodeConfig({ flowId, node, nodes, edges, catalog, problems, onChange, onConnect, onDelete, onDuplicate, panelRef }) {
+export default function NodeConfig({ flowId, node, nodes, edges, catalog, problems, onChange, onConnect, onDelete, onDuplicate, panelRef, savedNodes = [], savedKey = "" }) {
   const c = node.config || {};
   const lastText = useRef({ key: null, el: null });
   const team = catalog?.team?.length ? catalog.team : [catalog?.caller || "Sales team"];
@@ -126,7 +131,7 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
   const listOf = (key) => (Array.isArray(c[key]) ? c[key] : []);
   const setRow = (i, patch) => set("values", listOf("values").map((row, j) => (j === i ? { ...row, ...patch } : row)));
   const fields = {
-    "trigger.webhook": () => <WebhookBox flowId={flowId} />,
+    "trigger.webhook": () => <WebhookBox flowId={flowId} saved={savedNodes.some((n) => n.type === "trigger.webhook")} savedKey={savedKey} />,
     "trigger.schedule": () => (<>
       {select("when", "How often", [["daily", "Every day"], ["weekdays", "Every weekday (Mon–Fri)"], ["weekly", "Once a week"]])}
       {c.when === "weekly" && select("weekday", "Day", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d, i) => [String(i), d]))}

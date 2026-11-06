@@ -74,7 +74,7 @@ function FlowList({ onOpen }) {
                 const [pill, word] = STATUS[f.status] || ["", f.status];
                 return (
                   <tr key={f.id}>
-                    <td data-label="Flow"><b>{f.name}</b><br /><small className="sub-inline">{f.steps} steps · v{f.version}</small></td>
+                    <td data-label="Flow"><b>{f.name}</b><br /><small className="sub-inline">{f.steps} step{f.steps === 1 ? "" : "s"} · v{f.version}</small></td>
                     <td data-label="Status"><span className={`pill ${pill}`}>{word}</span></td>
                     <td data-label="Starts when">{TRIGGER_WORDS[f.trigger] || "No trigger yet"}</td>
                     <td data-label="Active leads">{f.stats.active_leads} <small className="sub-inline">of {f.stats.total}</small></td>

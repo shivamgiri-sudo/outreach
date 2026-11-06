@@ -190,7 +190,7 @@ def _simulate_step(store, flow, node, lead, clock, base_url, assume_reply, sim_v
             finally:
                 act.CURRENT_VARS.reset(tok)
         sim_vars.update(made)
-        path.append(_entry(node, "would set " + ", ".join(f"{k} = “{v[:40]}”" for k, v in made.items()), "next"))
+        path.append(_entry(node, "would set " + ", ".join(f"{k} = “{v if len(v) <= 80 else v[:79] + '…'}”" for k, v in made.items()), "next"))
         return "next", None
     if t == "switch":
         field = str(c.get("field") or "")
