@@ -103,3 +103,11 @@ def test_refused_and_missing_pages_say_why(monkeypatch):
 def re_escape(text):
     import re
     return re.escape(text)
+
+
+def test_company_name_is_never_the_word_careers():
+    from app.job_discover import _site_name
+    assert _site_name("<title>Careers | HCLTech</title>", "https://careers.hcltech.com/") == "HCLTech"
+    assert _site_name("<title>Careers</title>", "https://careers.hcltech.com/") == "Hcltech"
+    assert _site_name("<title>Jobs at Zeta - Careers</title>", "https://zeta.tech/") == "Zeta"
+    assert _site_name("<title></title>", "https://nvidia.wd5.myworkdayjobs.com/External") == "Nvidia"

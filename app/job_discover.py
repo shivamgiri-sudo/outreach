@@ -15,7 +15,8 @@ from typing import Callable, Optional
 from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 from .hygiene import business_domain
-from .jobs import parse_job_postings
+from .jobs import _shared, parse_job_postings
+from .standardise import website_domain
 
 MAX_JOBS = 3000
 MAX_CHILD_SITEMAPS = 4
@@ -45,14 +46,28 @@ def _microdata(html: str, url: str) -> list:
     return out
 
 
+_GENERIC_NAME = re.compile(r"^(careers?|jobs?|home|homepage|welcome|job search|search jobs|current openings|join us|workday|greenhouse|lever|successfactors)$", re.I)
+
+
 def _site_name(html: str, url: str) -> str:
-    m = re.search(r'property=["\']og:site_name["\'][^>]*content=["\']([^"\']+)', html, re.I) or \
-        re.search(r"<title[^>]*>([^<|\-–]+)", html, re.I)
+    m = re.search(r'property=["\']og:site_name["\'][^>]*content=["\']([^"\']+)', html, re.I)
     name = unescape(m.group(1)).strip() if m else ""
+    if not name or _GENERIC_NAME.match(name):          # "Careers | HCLTech": take the part that names the company
+        t = re.search(r"<title[^>]*>([^<]+)", html, re.I)
+        parts = [p.strip() for p in re.split(r"\s[|\-–—:]\s|\|", unescape(t.group(1)))] if t else []
+        name = next((p for p in parts if p and not _GENERIC_NAME.match(p)), "")
     if not name or len(name) > 60:
-        label = (business_domain(url) or urlparse(url).hostname or "").split(".")[0]
-        name = label.capitalize()
+        name = _company_host(url).split(".")[0].capitalize()
+    name = re.sub(r"^\s*(careers?|jobs?|work)\s+(at|with)\s+", "", name, flags=re.I)     # "Jobs at Zeta"
     return re.sub(r"\s*(careers?|jobs?)\s*$", "", name, flags=re.I).strip() or name
+
+
+def _company_host(url: str) -> str:
+    """careers.hcltech.com -> hcltech.com; a shared careers host (nvidia.wd5.myworkdayjobs.com) keeps its own name."""
+    registrable = website_domain(url)[0] or ""
+    if registrable and not _shared(registrable):
+        return registrable
+    return business_domain(url) or urlparse(url).hostname or ""
 
 
 def _from_page(html: str, url: str, company: str, site: str) -> list:
@@ -230,7 +245,7 @@ def discover_jobs(url: str, get: Callable) -> tuple:
     if board and board[0]:
         return board
     html = get(url)
-    company, site = _site_name(html, url), f"https://{business_domain(url) or urlparse(url).hostname}"
+    company, site = _site_name(html, url), f"https://{_company_host(url)}"
     jobs = _from_page(html, url, company, site)
     if jobs:
         return jobs, f"Read the job details published on {urlparse(url).netloc}."
