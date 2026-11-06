@@ -290,7 +290,7 @@ def test_agent_crash_is_restarted_with_growing_waits_and_a_safety_stop_is_held(c
     home = paired_home(live, tmp_path)
     (home / f"{s['id']}.mode").write_text("crash")
     proc = start_runner(live, home, agent=FAKE_AGENT)
-    wait_for(lambda: (home / "events.log").exists() and (home / "events.log").read_text().count("start ") >= 3, 30, what="3 restarts")
+    wait_for(lambda: live.output().count(f"agent for {s['id']} exited (code 1); restarting in") >= 3, 30, what="3 crashes")
     out = live.output()
     waits = [int(w) for w in re.findall(rf"agent for {s['id']} exited \(code 1\); restarting in (\d+) s", out)]
     assert waits[:3] == [1, 2, 4], waits                                               # backoff base 1 s here (5 s by default)
