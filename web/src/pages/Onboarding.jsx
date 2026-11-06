@@ -13,7 +13,7 @@ const STEPS = [
 ];
 const BUSINESS = [["company_name", "Company name", "Skyline Homes"], ["product_name", "Product or service", "Skyline Residences"],
   ["tagline", "Tagline (optional)", "Homes that are ready when you are"], ["website", "Website (optional)", "https://skylinehomes.in"],
-  ["sender_name", "Who signs the emails", "Priya from Skyline Homes"]];
+  ["sender_name", "Who signs the emails", "Sales team at Skyline Homes"]];
 const OFFER = [["what", "What you sell", "Ready-to-move 2 and 3 BHK homes in Pune."], ["who", "Who it is for", "Families and investors in Pune"],
   ["value_1", "Value point 1", "Possession in 6 months"], ["value_2", "Value point 2", "No brokerage"],
   ["value_3", "Value point 3", "Free site-visit pick-up"], ["cta", "Call to action", "Shall we book a site visit this weekend?"],

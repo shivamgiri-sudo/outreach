@@ -7,7 +7,7 @@ SENDER_FIELDS = {
     "domain": hint("Only the domain, no https:// and no email. Example: mail.yourbrand.in",
                    r"^(?!https?:)(?!.*@)[A-Za-z0-9.-]+\.[A-Za-z]{2,}$",
                    "Type only the domain, like mail.yourbrand.in (no https://, no @, no spaces)."),
-    "from_name": hint("The name people see in their inbox, e.g. Priya from YourBrand."),
+    "from_name": hint("The name people see in their inbox, e.g. Sales team at YourBrand."),
     "from_email": hint("A full email address on your sending domain, e.g. priya@mail.yourbrand.in",
                        r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$", "This is not a full email address. It needs a name, @ and a domain."),
 }

@@ -10,7 +10,7 @@ const BRAND_FIELDS = [
   ["company_name", "Company name", "Mas Callnet"], ["product_name", "Product or service name", "BookMyInterview.ai"],
   ["app_name", "App name (menu and sign-in page)", "MCN Outreach"], ["tagline", "Tagline", "One line about what you do"],
   ["website", "Website", "https://yourcompany.com"], ["support_email", "Support email", "hello@yourcompany.com"],
-  ["sender_name", "Default sender name", "Priya from Your Company"], ["industry", "Industry", "Real estate"],
+  ["sender_name", "Default sender name", "Sales team at Your Company"], ["industry", "Industry", "Real estate"],
 ];
 const OFFER_FIELDS = [
   ["what", "What you sell (one or two sentences)", "Ready-to-move 2 and 3 BHK homes in Pune with flexible payment plans.", true],
