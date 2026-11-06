@@ -18,7 +18,7 @@ import uuid
 from datetime import date, datetime, time, timedelta, timezone
 
 from . import linkedin_seq, sequence_runner, sequences
-from .activities import add_task, caller_name, next_call_slot, on_became_interested
+from .activities import add_task, caller_name, next_call_slot, on_became_interested, update_task
 from .channels.http import request
 from .channels.netguard import check_public_url
 from .channels.sms_send import send_sms
@@ -37,6 +37,8 @@ from .stages import CONSENT_REQUIRED, can_move
 from .whatsapp import WhatsAppError, send as send_whatsapp_message
 
 PROVIDER_RETRY = timedelta(hours=1)
+# Messages that reach the lead's phone wait for business hours like email does (Mon–Fri 09:00–18:00 IST).
+HOURS_BOUND = ("whatsapp", "sms")
 # Fields made earlier in this run (Set fields, Ask Claude, HTTP request); the engine sets it before each step.
 CURRENT_VARS = contextvars.ContextVar("flow_vars", default={})
 _VAR_TOKEN = re.compile(r"\{\{\s*(\w+)\s*\}\}")
@@ -229,6 +231,12 @@ def text_for(store, lead: dict, text: str, base_url: str, now: datetime) -> tupl
     return render(apply_vars(text, CURRENT_VARS.get()), variables)
 
 
+def note_text(store, lead: dict, text, base_url: str, now: datetime) -> str:
+    """A note for the team (task, notification): the lead's details and the flow's fields filled in. A detail the lead
+    doesn't have stays as {{name}} so the person sees what is missing; nothing here is sent to the lead."""
+    return text_for(store, lead, str(text or ""), base_url, now)[0]
+
+
 def _owner_or_caller(store, name) -> str:
     return str(name or "").strip() or caller_name(store)
 
@@ -357,18 +365,26 @@ def do_call_task(store, flow, node, lead, now, ctx) -> dict:
     c = node.get("config") or {}
     owner = _owner_or_caller(store, c.get("owner"))
     company = lead.get("company") or lead.get("domain") or "this lead"
-    note = str(c.get("note") or "").strip() or f"Call {company} through PD only, before 18:55."
+    note = note_text(store, lead, c.get("note"), ctx.base_url, now).strip() or f"Call {company} through PD only, before 18:55."
     due = next_call_slot(now)
-    add_task(store, lead["id"], "call", f"Flow {flow['name']}: {note}", due_at=due, owner=owner, priority="high",
-             source="flow", dedupe_open=True)
-    return ok(f"call task for {owner}, due {ist_text(due)}")
+    text = f"Flow {flow['name']}: {note}"
+    task = add_task(store, lead["id"], "call", text, due_at=due, owner=owner, priority="high", source="flow", dedupe_open=True)
+    if task.get("text") != text:
+        # One open call task per lead: the flow's note joins the one already open (for example the call task a "yes"
+        # reply makes), and the person this step names takes it over.
+        chosen = str(c.get("owner") or "").strip()
+        task = update_task(store, task["id"], lambda t: {**t, "text": f"{t.get('text', '')}\n{text}"[:4000],
+                                                         "owner": chosen or t.get("owner"), "priority": "high"}) or task
+        return ok(f"call task for {task.get('owner') or owner} (added to the open call task), due {ist_text(due)}")
+    return ok(f"call task for {task.get('owner') or owner}, due {ist_text(due)}")
 
 
 def do_meeting_link(store, flow, node, lead, now, ctx) -> dict:
     from .channels import meetings
     from .channels.calendar import LINK_PROVIDERS
     from .channels.config import active_provider, config_for, entry_of
-    c = node.get("config") or {}
+    c = {**(node.get("config") or {})}
+    c["note"] = note_text(store, lead, c.get("note"), ctx.base_url, now)
     owner = _owner_or_caller(store, c.get("owner"))
     pid = active_provider("calendar", entry_of(store.read("integrations"), "calendar"))
     name = lead.get("contact_name") or lead.get("company") or "them"
@@ -430,7 +446,8 @@ def do_notify(store, flow, node, lead, now, ctx) -> dict:
     c = node.get("config") or {}
     to = _owner_or_caller(store, c.get("to"))
     company = lead.get("company") or lead.get("domain") or "a lead"
-    notify(store, to, f"Flow {flow['name']}: {company}", str(c.get("message") or ""), lead["id"], kind="flow", sender=ctx.notify_sender)
+    message = note_text(store, lead, c.get("message"), ctx.base_url, now)
+    notify(store, to, f"Flow {flow['name']}: {company}", message, lead["id"], kind="flow", sender=ctx.notify_sender)
     return ok(f"{to} notified")
 
 

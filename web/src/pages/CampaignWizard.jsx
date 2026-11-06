@@ -17,7 +17,7 @@ export const EMPTY_CAMPAIGN = {
   target: { industries: [], cities: [], roles_hiring: [], company_size_buckets: [], keywords: [] },
   sources: { careers_pages: [], careers_html: [], apollo_search: false, apollo_hiring: false, google_places: false, csv_import_ids: [], max_results: 25, extra: [], extra_params: {} },
   enrich: { crawler: true, hunter: false, firecrawl: false, apollo_match: false, extra: [], extra_params: {} },
-  rules: { credit_cap: 100, min_score: 40, require_business_email: true, skip_role_addresses: false, max_new_leads_per_run: 50, auto_enrol: false, caller: "", only_companies: [] },
+  rules: { credit_cap: 100, min_score: 40, require_business_email: true, skip_role_addresses: false, max_new_leads_per_run: 50, auto_enrol: false, caller: "", only_companies: [], sequence_id: "default" },
 };
 
 function Chips({ label, field, values, onChange }) {
@@ -148,6 +148,8 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
   };
   const [catalog, setCatalog] = useState([]);
   useEffect(() => { api.sources().then((d) => setCatalog(d.sources)).catch(() => {}); }, []);
+  const [sequences, setSequences] = useState([]);
+  useEffect(() => { api.sequences().then((rows) => setSequences(Array.isArray(rows) ? rows : [])).catch(() => {}); }, []);
   const found = catalog.filter((x) => x.discovers && !x.legacy);
   const enrichers = catalog.filter((x) => (x.enriches || x.verifies) && x.id !== "apollo");
   const s = c.sources, r = c.rules, t = c.target;
@@ -249,6 +251,11 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
             <Check checked={r.auto_enrol} onChange={(v) => set("rules", "auto_enrol", v)}><b>Start the email sequence automatically for qualifying leads</b></Check>
             {r.auto_enrol && (
               <div style={{ marginTop: 8 }}>
+                <label htmlFor="camp-sequence">Which email sequence</label>
+                <select id="camp-sequence" value={r.sequence_id || "default"} onChange={(e) => set("rules", "sequence_id", e.target.value)}>
+                  {!sequences.some((q) => q.id === "default") && <option value="default">Default (6 emails)</option>}
+                  {sequences.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
+                </select>
                 <label htmlFor="only-companies">Only email these companies (optional)</label>
                 <textarea id="only-companies" rows={2} placeholder="One company name per line. Leave empty to email every qualifying lead."
                   value={(r.only_companies || []).join("\n")}
@@ -268,7 +275,7 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
             <li>Target: {[t.industries.join(", "), t.cities.join(", "), t.roles_hiring.length ? `hiring ${t.roles_hiring.join(", ")}` : "", t.company_size_buckets.length ? `${t.company_size_buckets.join(", ")} employees` : ""].filter(Boolean).join(" · ") || "anyone (add targeting for better results)"}</li>
             <li>Sources: {[pageCount ? `${pageCount} careers page(s)` : "", s.apollo_search && "Apollo people", s.apollo_hiring && "Apollo hiring companies", s.google_places && "Google Places", (s.extra || []).length ? `${s.extra.length} more source(s)` : "", s.csv_import_ids.length ? `${s.csv_import_ids.length} imported lead(s)` : ""].filter(Boolean).join(", ") || "none yet"}</li>
             <li>Ready for email: score {r.min_score}+{r.require_business_email ? ", business email" : ""}{r.skip_role_addresses ? ", no shared mailboxes" : ""}; up to {r.max_new_leads_per_run} new leads a run.</li>
-            <li>{r.auto_enrol ? "Qualifying leads start the email sequence (sending rules still apply)." : "Nobody is emailed automatically; you start the sequence yourself."} {r.caller || "The caller"} gets an update after each run.</li>
+            <li>{r.auto_enrol ? `Qualifying leads start the email sequence “${(sequences.find((q) => q.id === (r.sequence_id || "default")) || { name: "Default (6 emails)" }).name}” (sending rules still apply).` : "Nobody is emailed automatically; you start the sequence yourself."} {r.caller || "The caller"} gets an update after each run.</li>
           </ul>
           <div className="row" style={{ marginTop: 12 }}>
             <button className="btn ghost" disabled={!!busy || !anySource} onClick={() => act("preview")}>{busy === "preview" ? "Searching… (can take a minute)" : "Run now (preview)"}</button>

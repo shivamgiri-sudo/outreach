@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { GROUPS, TYPES, iconPath } from "./catalog.js";
 
 // An n8n-style "what happens next?" box: type to search, arrow keys to move, Enter to add, Escape to close.
-export default function NodePicker({ open, onClose, onPick, heading = "Add a step", onlyTriggers = false }) {
+// `noTriggers`: the box was opened from a step's output ("what happens next?"), where a trigger can never go.
+export default function NodePicker({ open, onClose, onPick, heading = "Add a step", onlyTriggers = false, noTriggers = false }) {
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const input = useRef(null);
@@ -13,11 +14,11 @@ export default function NodePicker({ open, onClose, onPick, heading = "Add a ste
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
     return Object.entries(TYPES)
-      .filter(([type, t]) => !(onlyTriggers && !type.startsWith("trigger.")))
+      .filter(([type]) => !(onlyTriggers && !type.startsWith("trigger.")) && !(noTriggers && type.startsWith("trigger.")))
       .filter(([type, t]) => !q || `${t[1]} ${t[5]} ${type} ${t[0]}`.toLowerCase().includes(q))
       .map(([type, t]) => ({ type, group: t[0], label: t[1], icon: t[2], help: t[5] }))
       .sort((a, b) => GROUPS.findIndex(([g]) => g === a.group) - GROUPS.findIndex(([g]) => g === b.group));
-  }, [query, onlyTriggers]);
+  }, [query, onlyTriggers, noTriggers]);
 
   useEffect(() => { if (cursor >= items.length) setCursor(Math.max(0, items.length - 1)); }, [items.length, cursor]);
   useEffect(() => { list.current?.querySelector(".on")?.scrollIntoView({ block: "nearest" }); }, [cursor]);

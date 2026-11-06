@@ -146,6 +146,7 @@ class Rules(BaseModel):
     credit_cap: int = Field(default=100, ge=0, le=5000)
     caller: str = Field(default="", max_length=60)
     only_companies: List[str] = Field(default_factory=list, max_length=500)    # empty = every qualifying lead
+    sequence_id: str = Field(default="default", max_length=40)                 # the email sequence auto-enrol starts
 
 
 class CampaignBody(BaseModel):
@@ -182,6 +183,16 @@ def _spec(body: CampaignBody) -> dict:
 def make_router(store, transports: dict, present, notify_sender=None) -> APIRouter:
     router = APIRouter()
 
+    def check_sequence(body) -> None:
+        """Auto-enrol may only point at a sequence that exists and is not archived."""
+        rules = body.model_dump(exclude_unset=True).get("rules") or {}
+        if "sequence_id" not in rules:
+            return
+        from .sequence_library import get_sequence
+        chosen = get_sequence(store, rules["sequence_id"] or "default")
+        if chosen is None or chosen.get("archived"):
+            raise HTTPException(400, "That email sequence does not exist or is archived. Pick another one.")
+
     def found(campaign_id: str) -> dict:
         campaign = campaigns.get_campaign(store, campaign_id)
         if campaign is None:
@@ -201,6 +212,7 @@ def make_router(store, transports: dict, present, notify_sender=None) -> APIRout
 
     @router.post("/api/campaigns")
     def create(body: CampaignBody):
+        check_sequence(body)
         return campaigns.create_campaign(store, _spec(body))
 
     @router.get("/api/campaigns/{campaign_id}")
@@ -212,6 +224,7 @@ def make_router(store, transports: dict, present, notify_sender=None) -> APIRout
     def save(campaign_id: str, body: CampaignChanges):
         """Change the name, status or any part; parts left out (and keys left out of a part) keep their saved values."""
         found(campaign_id)
+        check_sequence(body)
         if body.status is not None and body.status not in campaigns.STATUSES:
             raise HTTPException(400, f"Status must be one of {', '.join(campaigns.STATUSES)}")
         return campaigns.update_campaign(store, campaign_id, body.model_dump(exclude_unset=True))
