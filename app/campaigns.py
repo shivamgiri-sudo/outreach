@@ -220,9 +220,10 @@ def _enrol(store, campaign: dict, ids: list, report: dict) -> None:
         if len(kept) < len(ids):
             pipe.add_error(report, "sequence", f"{len(ids) - len(kept)} qualified leads were left out: their company is not in this campaign's chosen companies")
         ids = kept
+    sequence_id = campaign["rules"].get("sequence_id") or "default"
     for lead_id in ids:
         try:
-            enroll_lead(store, lead_id, note=f"Enrolled in email sequence by campaign {campaign['name']}")
+            enroll_lead(store, lead_id, note=f"Enrolled in email sequence by campaign {campaign['name']}", sequence_id=sequence_id)
             report["enrolled"] += 1
         except (EnrollRefused, LookupError) as exc:
             refused[str(exc)] = refused.get(str(exc), 0) + 1

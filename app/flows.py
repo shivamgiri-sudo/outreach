@@ -211,7 +211,7 @@ def _var_errors(name, what: str) -> list:
     return []
 
 
-def _new_step_errors(t: str, c: dict) -> list:
+def _new_step_errors(t: str, c: dict, extra_vars=()) -> list:
     out = []
     if t == "trigger.webhook":
         return out                      # nothing to set: the address is made when the flow is turned on
@@ -250,6 +250,8 @@ def _new_step_errors(t: str, c: dict) -> list:
                 out += _var_errors(row.get("name"), "Field name")
                 if len(str(row.get("value") or "")) > MAX_VAR_VALUE:
                     out.append(f"Keep each field value under {MAX_VAR_VALUE} characters.")
+                out += _check_text_placeholders(row.get("value"), [*TEXT_PLACEHOLDERS, *extra_vars],
+                                                f"The value of {row.get('name') or 'a field'}")
     elif t == "switch":
         field = str(c.get("field") or "")
         if not (field in IF_FIELDS or (field.startswith("var:") and VAR_NAME.match(field[4:]))):
@@ -278,7 +280,7 @@ def config_errors(node: dict, team_names=None, extra_vars=()) -> list:
     if t in ("trigger.schedule", "trigger.webhook", "ai", "set_vars", "switch", "http", "note"):
         if len(str(c.get("title") or "")) > MAX_TITLE:
             out.append(f"Keep the step name under {MAX_TITLE} characters.")
-        return out + _new_step_errors(t, c) + (
+        return out + _new_step_errors(t, c, extra_vars) + (
             _check_text_placeholders(c.get("prompt"), [*TEXT_PLACEHOLDERS, *extra_vars], "The instruction") if t == "ai" else [])
     if len(str(c.get("title") or "")) > MAX_TITLE:
         out.append(f"Keep the step name under {MAX_TITLE} characters.")
@@ -332,6 +334,7 @@ def config_errors(node: dict, team_names=None, extra_vars=()) -> list:
     elif t in ("call_task", "meeting_link"):
         if len(str(c.get("note") or "")) > MAX_NOTE:
             out.append(f"Keep the note under {MAX_NOTE} characters.")
+        out += _check_text_placeholders(c.get("note"), [*TEXT_PLACEHOLDERS, *extra_vars], "The note")
         out += _owner_errors(c, team_names)
     elif t == "set_stage" and c.get("stage") not in ALL_STAGES:
         out.append("Pick the stage to move the lead to.")
@@ -344,6 +347,7 @@ def config_errors(node: dict, team_names=None, extra_vars=()) -> list:
             out.append("Write the message for the person to be notified.")
         elif len(str(c.get("message"))) > MAX_NOTE:
             out.append(f"Keep the message under {MAX_NOTE} characters.")
+        out += _check_text_placeholders(c.get("message"), [*TEXT_PLACEHOLDERS, *extra_vars], "The message")
         out += _owner_errors(c, team_names, key="to")
     elif t == "webhook":
         out += _check_webhook_url(str(c.get("url") or ""))
@@ -404,6 +408,8 @@ def _cycle_errors(nodes: list, edges: list) -> list:
     """Every loop must pass through a wait step that really waits; otherwise a lead could spin forever."""
     def waits(node):
         c = node.get("config") or {}
+        if c.get("disabled"):
+            return False                        # a step that is turned off is skipped, so it never makes anyone wait
         if node["type"] == "wait_for_reply":
             return True
         return node["type"] == "wait" and (_int_in(c.get("days", 0), 0, 60) or _int_in(c.get("hours", 0), 0, 23))

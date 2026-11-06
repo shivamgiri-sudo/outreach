@@ -127,22 +127,25 @@ def simulate(store, flow: dict, lead: dict, now: datetime, base_url: str, assume
     def after(node_id, label):
         return next((e["to"] for e in edges if e["from"] == node_id and e["label"] == label), None)
 
-    sim_vars = {}
-    current, clock, seen, ended = after(trigger["id"], "next"), now, {}, "Reaches the end of the flow."
+    sim_vars, loops = {}, {}
+    current, clock, seen, ended = after(trigger["id"], "next"), now, set(), "Reaches the end of the flow."
     for _ in range(MAX_SIMULATED_STEPS):
         if current is None:
             break
         node = nodes[current]
-        seen[current] = seen.get(current, 0) + 1
-        if seen[current] > 1:
+        # A Repeat step sends the lead round its 'again' path a set number of times, so a step is only a real loop
+        # when it comes round again with every Repeat counter the same as last time.
+        visit = (current, tuple(sorted(loops.items())))
+        if visit in seen:
             ended = f"Loops back to “{title_of(node)}”; the simulation stops here."
             break
+        seen.add(visit)
         if node["type"] not in ("wait", "wait_for_reply", "if", "split", "stop", "set_vars", "switch", "loop") and (block := _message_block(store, lead)):
             path.append(_entry(node, block, None, False))
             ended = "Stops: the lead may not be contacted."
             break
         t, c = node["type"], node.get("config") or {}
-        token = act.CURRENT_VARS.set(dict(sim_vars))
+        token = act.CURRENT_VARS.set(dict(sim_vars))      # fields made earlier in the run, as the engine sets them
         try:
             if c.get("disabled") and t != "stop":
                 outs = outputs_of(t)
@@ -150,61 +153,89 @@ def simulate(store, flow: dict, lead: dict, now: datetime, base_url: str, assume
                 path.append(_entry(node, "skipped: this step is turned off", label))
                 current = after(node["id"], label)
                 continue
+            label, stop = _simulate_step(store, flow, node, lead, clock, base_url, assume_reply, sim_vars, loops, path, after)
         finally:
             act.CURRENT_VARS.reset(token)
-        if t == "set_vars":
-            made = {}
-            for row in c.get("values") or []:
-                tok = act.CURRENT_VARS.set({**sim_vars, **made})
-                try:
-                    made[str(row.get("name"))] = act.text_for(store, lead, str(row.get("value") or ""), base_url, clock)[0][:500]
-                finally:
-                    act.CURRENT_VARS.reset(tok)
-            sim_vars.update(made)
-            label = "next"
-            path.append(_entry(node, "would set " + ", ".join(f"{k} = “{v[:40]}”" for k, v in made.items()), label))
-        elif t == "switch":
-            field = str(c.get("field") or "")
-            value = str(sim_vars.get(field[4:], "(made by an earlier step)")) if field.startswith("var:") else str(act.lead_facts(lead).get(field, ""))
-            cases = [str(v).strip().lower() for v in c.get("cases") or []]
-            idx = next((i for i, v in enumerate(cases) if v and v == value.strip().lower()), None)
-            label = "other" if idx is None else f"c{idx + 1}"
-            path.append(_entry(node, f"{value or 'empty'} → {'no case matches, so other' if idx is None else cases[idx]}", label))
-        elif t == "loop":
-            label = "done"
-            path.append(_entry(node, f"repeats the 'again' path {c.get('times') or 1} time(s); the practice run shows the path after the repeats", label))
-        elif t == "if":
-            passed, why = act.evaluate(c, act.lead_facts(lead))
-            label = "yes" if passed else "no"
-            path.append(_entry(node, f"{label} — {why}", label))
-        elif t == "split":
-            label = act.split_variant(lead["id"], node["id"], c.get("percent_a"))
-            path.append(_entry(node, f"variant {label.upper()} (the same lead always gets the same variant)", label))
-        elif t == "wait":
-            clock = act.wait_until(c, clock)
-            label = "next"
-            path.append(_entry(node, f"waits until {act.ist_text(clock)}", label))
-        elif t == "wait_for_reply":
-            label = "timeout" if assume_reply == "timeout" else assume_reply if after(node["id"], assume_reply) else "any"
-            clock = clock + timedelta(days=int(c.get("days") or 1)) if label == "timeout" else clock
-            shown = "no reply, so the timeout path" if label == "timeout" else f"assumed reply: {assume_reply}"
-            path.append(_entry(node, f"waits up to {c.get('days')} day(s) for a reply — {shown}", label))
-        elif t == "stop":
-            path.append(_entry(node, "stops here", None))
-            ended = "Stops at a Stop step."
+        if stop:
+            ended = stop
             current = None
             break
-        else:
-            label, result, ok = _simulate_action(store, flow, node, lead, clock, base_url)
-            if not ok and not after(node["id"], "error"):
-                path.append(_entry(node, result + " — the flow would stop here", None, False))
-                ended = "Stops: a step was refused and has no error path."
-                current = None
-                break
-            path.append(_entry(node, result, label, ok))
-            if ok and t in ("ai", "http") and c.get("save_as"):
-                sim_vars[str(c["save_as"])] = "(answer from this step)"
+        if t == "wait":
+            clock = act.wait_until(c, clock)
+        elif t == "wait_for_reply" and label == "timeout":
+            clock = clock + timedelta(days=int(c.get("days") or 1))
         current = after(node["id"], label)
     else:
         ended = f"Stopped after {MAX_SIMULATED_STEPS} steps."
     return {"path": path, "ended": ended, "writes": "none"}
+
+
+def _assume_reply(lead: dict, label: str) -> None:
+    """What the reply does to the lead, as the reply reader would do it (stage, consent), on the private copy."""
+    from .inbound import reply_effect
+    changes, _effect = reply_effect(lead, label, f"(assumed {label} reply)", "email")
+    lead.update(changes)
+    lead["timeline"] = [*lead.get("timeline", []), {"kind": "reply", "text": f"[{label}] (assumed in the simulation)"}]
+
+
+def _simulate_step(store, flow, node, lead, clock, base_url, assume_reply, sim_vars, loops, path, after) -> tuple:
+    """(label to follow, reason the simulation ends or None) for one enabled step."""
+    t, c = node["type"], node.get("config") or {}
+    if t == "set_vars":
+        made = {}
+        for row in c.get("values") or []:
+            tok = act.CURRENT_VARS.set({**sim_vars, **made})
+            try:
+                made[str(row.get("name"))] = act.text_for(store, lead, str(row.get("value") or ""), base_url, clock)[0][:500]
+            finally:
+                act.CURRENT_VARS.reset(tok)
+        sim_vars.update(made)
+        path.append(_entry(node, "would set " + ", ".join(f"{k} = “{v[:40]}”" for k, v in made.items()), "next"))
+        return "next", None
+    if t == "switch":
+        field = str(c.get("field") or "")
+        value = str(sim_vars.get(field[4:], "(made by an earlier step)")) if field.startswith("var:") else str(act.lead_facts(lead).get(field, ""))
+        cases = [str(v).strip().lower() for v in c.get("cases") or []]
+        idx = next((i for i, v in enumerate(cases) if v and v == value.strip().lower()), None)
+        label = "other" if idx is None else f"c{idx + 1}"
+        path.append(_entry(node, f"{value or 'empty'} → {'no case matches, so other' if idx is None else cases[idx]}", label))
+        return label, None
+    if t == "loop":
+        times, done = int(c.get("times") or 1), loops.get(node["id"], 0)
+        if done < times:
+            loops[node["id"]] = done + 1
+            path.append(_entry(node, f"round {done + 1} of {times}", "again"))
+            return "again", None
+        loops.pop(node["id"], None)
+        path.append(_entry(node, f"repeated {times} time(s), moving on", "done"))
+        return "done", None
+    if t == "if":
+        passed, why = act.evaluate(c, act.lead_facts(lead))
+        label = "yes" if passed else "no"
+        path.append(_entry(node, f"{label} — {why}", label))
+        return label, None
+    if t == "split":
+        label = act.split_variant(lead["id"], node["id"], c.get("percent_a"))
+        path.append(_entry(node, f"variant {label.upper()} (the same lead always gets the same variant)", label))
+        return label, None
+    if t == "wait":
+        path.append(_entry(node, f"waits until {act.ist_text(act.wait_until(c, clock))}", "next"))
+        return "next", None
+    if t == "wait_for_reply":
+        label = "timeout" if assume_reply == "timeout" else assume_reply if after(node["id"], assume_reply) else "any"
+        shown = "no reply, so the timeout path" if label == "timeout" else f"assumed reply: {assume_reply}"
+        if label != "timeout":
+            _assume_reply(lead, assume_reply)
+        path.append(_entry(node, f"waits up to {c.get('days')} day(s) for a reply — {shown}", label))
+        return label, None
+    if t == "stop":
+        path.append(_entry(node, "stops here", None))
+        return None, "Stops at a Stop step."
+    label, result, ok = _simulate_action(store, flow, node, lead, clock, base_url)
+    if not ok and not after(node["id"], "error"):
+        path.append(_entry(node, result + " — the flow would stop here", None, False))
+        return None, "Stops: a step was refused and has no error path."
+    path.append(_entry(node, result, label, ok))
+    if ok and t in ("ai", "http") and c.get("save_as"):
+        sim_vars[str(c["save_as"])] = "(answer from this step)"
+    return label, None

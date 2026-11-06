@@ -94,7 +94,7 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
         if ai_label == "interested":
             effect = "review"
         outcome.update(effect=effect, email=lead.get("email"), was_unsubscribed=lead["stage"] == "unsubscribed",
-                       consent_given=bool(changes.get("consent")))
+                       consent_given=bool(changes.get("consent")), stage_from=lead["stage"], stage_to=changes.get("stage", lead["stage"]))
         extra = {"whatsapp_last_inbound_at": _window_start(received_at)} if channel == "whatsapp" else {}
         return {**lead, **changes, **extra,
                 "timeline": [*lead["timeline"], _event("reply", f"[{label}] ({channel}, {source}) {clean[:TEXT_KEPT]}")]}
@@ -126,6 +126,8 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
         if label == "interested":
             on_became_interested(store, lead_id, f"Said yes by {channel}")
         fire(store, "reply", label, lead_id)
+        if outcome["stage_to"] != outcome["stage_from"]:
+            fire(store, "stage_change", outcome["stage_to"], lead_id)   # "stage changes" flows and rules see it too
     return {"label": label, "effect": effect, "ai_label": ai_label}
 
 

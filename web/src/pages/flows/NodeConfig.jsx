@@ -31,6 +31,17 @@ function Chips({ names, onInsert }) {
   );
 }
 
+// Picking a different thing to check keeps the comparison and value only when they still fit it (a yes/no check
+// cannot be "more than 60"), otherwise it starts from the first comparison and a value that fits.
+export function ifFieldChange(c, field) {
+  const kind = IF_FIELDS[field]?.[1] || "text";
+  const ops = opsFor(kind);
+  const op = ops.includes(c.op) ? c.op : ops[0];
+  const sameKind = (IF_FIELDS[c.field]?.[1] || "text") === kind;
+  const start = { bool: "true", band: "hot", stage: "new", persona: "ceo_founder", number: 60 }[kind] ?? "";
+  return { field, op, value: sameKind ? c.value : start };
+}
+
 // Plain-English settings for the selected step, its connections and its problems.
 function WebhookBox({ flowId }) {
   const [hook, setHook] = useState(null);
@@ -178,7 +189,11 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
       <Field id={id("days")} label="Days without a reply"><input id={id("days")} type="number" min="1" max="90" value={c.days ?? ""} onChange={num("days")} /></Field>
     ),
     if: () => (<>
-      {select("field", "Check", Object.entries(IF_FIELDS).map(([k, [shown]]) => [k, shown]))}
+      <Field id={id("field")} label="Check">
+        <select id={id("field")} value={c.field ?? ""} onChange={(e) => onChange(ifFieldChange(c, e.target.value), `${node.id}:field`)}>
+          {Object.entries(IF_FIELDS).map(([k, [shown]]) => <option key={k} value={k}>{shown}</option>)}
+        </select>
+      </Field>
       {select("op", "How", opsFor(kind).map((o) => [o, IF_OPS[o]]))}
       {valueInput()}
     </>),

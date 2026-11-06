@@ -40,6 +40,14 @@ export default function LeadFlows({ lead, onChanged }) {
               <div>
                 <b>{r.flow_name}</b> <span className={`pill ${PILL[r.status] || ""}`}>{r.status}</span>
                 <br /><small>{r.current_title ? `Now: ${r.current_title}` : r.stop_reason}{r.wait_until ? ` · until ${istLabel(r.wait_until)}` : ""}</small>
+                {(r.path || []).length > 0 && (
+                  <details className="fb-run-path">
+                    <summary>Path ({r.path.length} step{r.path.length === 1 ? "" : "s"})</summary>
+                    <ol data-testid="lead-flow-path">
+                      {r.path.map((p, i) => <li key={i}><b>{p.title}</b> <small>{istLabel(p.at)} · {p.result}</small></li>)}
+                    </ol>
+                  </details>
+                )}
               </div>
               {["running", "waiting"].includes(r.status) && <button type="button" className="btn ghost" onClick={() => stop(r.id)}>Stop</button>}
             </li>

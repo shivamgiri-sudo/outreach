@@ -128,7 +128,9 @@ def enroll(store, flow: dict, lead_id: str, now: datetime, why: str = "added by 
            "waiting_on": None, "history": [{"node": trigger["id"] if trigger else None, "at": iso(now), "result": f"started ({why})"}],
            "started_at": iso(now), "updated_at": iso(now), "ended_at": None if first else iso(now),
            "reply_mark": len(reply_events(lead)), "variants": {}, "claim": None, "deferred": None, "attempts": {},
-           "stop_reason": None if first else "the trigger is not connected to a step"}
+           "stop_reason": None if first else "the trigger is not connected to a step",
+           # A lead already warm when it starts (a "they replied yes" or "stage changed" flow) is what the flow is for.
+           "warm_ok": lead.get("stage") in WARM_STAGES}
     added = {}
 
     def add(rows: list) -> list:
@@ -380,7 +382,9 @@ def advance_run(store, flow: dict, run_id: str, now: datetime, ctx: Context, cou
             if fresh and node["type"] == "wait_for_reply" and run.get("waiting_on") == run["step"]:
                 label = fresh[0]
                 port = label if next_node(graph, node["id"], label) else "any"
-                _change_run(store, run_id, run["step"], lambda r: {**r, "reply_mark": len(events)})
+                # The flow waited for this reply and has a path for it: that path runs even though the reply made
+                # the lead warm (a cold flow still stops for warmth that comes from anywhere else).
+                _change_run(store, run_id, run["step"], lambda r: {**r, "reply_mark": len(events), "warm_ok": True})
                 run = _run(store, run_id)
                 _move(store, flow, graph, run, node, port, f"they replied ({label})", now, note=True)
                 counts["steps"] += 1
@@ -391,7 +395,7 @@ def advance_run(store, flow: dict, run_id: str, now: datetime, ctx: Context, cou
                 return
             _change_run(store, run_id, run["step"], lambda r: {**r, "reply_mark": len(events)})
             continue
-        if flow.get("settings", {}).get("stop_on_reply", True) and lead["stage"] in WARM_STAGES:
+        if flow.get("settings", {}).get("stop_on_reply", True) and lead["stage"] in WARM_STAGES and not run.get("warm_ok"):
             _finish(store, flow, run, "stopped", f"the lead is warm ({lead['stage']}); a person handles them now", now)
             counts["stopped"] += 1
             return
@@ -466,6 +470,8 @@ def _step(store, flow, graph, run, node, lead, now, ctx, counts) -> bool:
     outcome = _act(store, flow, run, node, lead, now, ctx)
     kind = outcome["kind"]
     if kind == "ok":
+        if t in ("set_stage", "whatsapp") and (_lead(store, run["lead_id"]) or {}).get("stage") in WARM_STAGES:
+            _change_run(store, run["id"], run["step"], lambda r: {**r, "warm_ok": True})   # the flow itself made them warm
         if outcome.get("vars"):
             _change_run(store, run["id"], run["step"], lambda r: {**r, "vars": {**(r.get("vars") or {}), **outcome["vars"]}})
         return _move(store, flow, graph, _run(store, run["id"]), node, "next", outcome["result"], now, note=outcome.get("note", True),
@@ -497,6 +503,8 @@ def _act(store, flow, run, node, lead, now, ctx) -> dict:
 
     if node["type"] == "email":
         return act.do_email(store, flow, run, node, lead, now, ctx, claim, release)
+    if node["type"] in act.HOURS_BOUND and not ctx.ignore_hours and not act.in_business_hours(now):
+        return act.defer(act.next_business_time(now), "waiting for business hours (Mon–Fri 9–18 IST)")
     if not claim():
         return {"kind": "idle", "result": "another tick took this step"}
     if node["type"] == "set_stage":
@@ -517,10 +525,18 @@ def flow_stats(runs: list) -> dict:
 
 
 def present_run(run: dict, flow: Optional[dict], lead: Optional[dict] = None) -> dict:
-    current = None
-    if flow and run.get("current_node"):
+    current, titles = None, {}
+    if flow:
         graph = graph_for_version(flow, run["flow_version"])
-        node = next((n for n in graph["nodes"] if n["id"] == run["current_node"]), None)
-        current = title_of(node) if node else None
-    return {**run, "flow_name": (flow or {}).get("name", "(deleted flow)"), "current_title": current,
+        titles = {n["id"]: title_of(n) for n in graph["nodes"]}
+        current = titles.get(run.get("current_node")) if run.get("current_node") else None
+    # The path so far in words, for the lead panel: each step once (a wait's start and end are one entry).
+    path = []
+    for h in run.get("history") or []:
+        title = titles.get(h.get("node")) or h.get("node") or "Start"
+        if path and path[-1]["node"] == h.get("node"):
+            path[-1].update(at=h.get("at"), result=h.get("result"))
+        else:
+            path.append({"node": h.get("node"), "title": title, "at": h.get("at"), "result": h.get("result")})
+    return {**run, "flow_name": (flow or {}).get("name", "(deleted flow)"), "current_title": current, "path": path,
             "company": (lead or {}).get("company") or (lead or {}).get("domain")}

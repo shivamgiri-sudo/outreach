@@ -285,7 +285,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
           <RunsPanel flowId={flowId} refreshKey={`${runsKey}-${flow.status}`} />
         </div>
       </div>
-      <NodePicker open={!!picker} onlyTriggers={false} heading={picker?.id ? "What happens next?" : "Add a step"}
+      <NodePicker open={!!picker} onlyTriggers={false} noTriggers={!!picker?.id} heading={picker?.id ? "What happens next?" : "Add a step"}
         onClose={() => setPicker(null)}
         onPick={(type) => { const from = picker?.id ? picker : null; addNode(type, undefined, undefined, from); }} />
       <p className="sr-only" aria-live="polite">{selectedNode ? `Selected ${titleOf(selectedNode)}` : ""}</p>

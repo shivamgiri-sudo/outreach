@@ -81,7 +81,7 @@ export const TYPES = {
   "trigger.manual": ["trigger", "Added by hand", "hand", ["next"], {}, "Start leads from the lead panel (Flows) or pick several in this flow's Enrol box."],
   "trigger.lead_added": ["trigger", "New lead added", "userPlus", ["next"], {}, "Starts for leads added after you activate the flow. Leave filters empty for every new lead."],
   "trigger.reply": ["trigger", "They reply", "reply", ["next"], { label: "interested" }, "Starts when a reply is read and acted on (email, WhatsApp, SMS, LinkedIn)."],
-  "trigger.stage_changed": ["trigger", "Stage changes", "flag", ["next"], { stage: "interested" }, "Starts when someone moves the lead to this stage."],
+  "trigger.stage_changed": ["trigger", "Stage changes", "flag", ["next"], { stage: "interested" }, "Starts when the lead moves to this stage: by a person, by a reply (for example a question makes them Engaged) or by another flow."],
   "trigger.meeting_booked": ["trigger", "Meeting booked", "calendar", ["next"], {}, "Starts when a meeting is booked in the lead panel or through Cal.com / Calendly."],
   "trigger.activation_event": ["trigger", "Product activity", "rocket", ["next"], { event: "role_published" }, "Starts when BookMyInterview reports this activity for the lead."],
   "trigger.no_reply_days": ["trigger", "No reply for some days", "clock", ["next"], { days: 14 }, "Starts for leads still in the cold stages who got an email and haven't replied for this many days."],
