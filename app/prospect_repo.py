@@ -42,17 +42,17 @@ DDL = [
         signal_score {R} DEFAULT 0, last_signal_at {K}, people_count {I} DEFAULT 0, suppressed {I} DEFAULT 0,
         first_seen {K}, last_seen {K}, last_verified {K}, doc {L}){X}""",
     """CREATE TABLE IF NOT EXISTS pdb_people (
-        id {K} PRIMARY KEY, company_id {K}, company_domain {K}, full_name {T}, name_key {K}, title {T},
+        id {K} PRIMARY KEY, company_id {K}, company_domain {K}, full_name {K}, name_key {K}, title {T},
         seniority {K}, department {K}, email {K}, email_status {K}, email_confidence {I} DEFAULT 0,
         has_email {I} DEFAULT 0, has_phone {I} DEFAULT 0, linkedin_url {T}, city {T}, state {T}, country {T},
         city_l {K}, state_l {K}, country_l {K}, source_text {T}, search_all {T}, rank_score {R} DEFAULT 0,
         c_signal {R} DEFAULT 0, c_employees {I}, suppressed {I} DEFAULT 0, first_seen {K}, last_seen {K}, last_verified {K}, doc {L}){X}""",
-    "CREATE TABLE IF NOT EXISTS pdb_keys (k {K} PRIMARY KEY, ref {K}){X}",
+    "CREATE TABLE IF NOT EXISTS pdb_keys (k {KK} PRIMARY KEY, ref {K}){X}",
     """CREATE TABLE IF NOT EXISTS pdb_signals (id {AUTO}, company_id {K}, kind {K}, title {T}, url {T}, at {K},
         weight {R} DEFAULT 1, source {K}, dedupe {K}){X}""",
-    "CREATE TABLE IF NOT EXISTS pdb_suppressions (value {K} PRIMARY KEY, kind {K}, reason {T}, at {K}){X}",
+    "CREATE TABLE IF NOT EXISTS pdb_suppressions (value {KK} PRIMARY KEY, kind {K}, reason {T}, at {K}){X}",
     "CREATE TABLE IF NOT EXISTS pdb_erased (h {K} PRIMARY KEY, at {K}){X}",
-    "CREATE TABLE IF NOT EXISTS pdb_email_marks (email {K} PRIMARY KEY, status {K}, reason {T}, at {K}){X}",
+    "CREATE TABLE IF NOT EXISTS pdb_email_marks (email {KK} PRIMARY KEY, status {K}, reason {T}, at {K}){X}",
     """CREATE TABLE IF NOT EXISTS pdb_crm_links (lead_id {K} PRIMARY KEY, person_id {K}, company_id {K}, workspace {K},
         fp {K}, synced_at {K}){X}""",
     """CREATE TABLE IF NOT EXISTS pdb_saved_searches (id {K} PRIMARY KEY, owner {K}, name {T}, kind {K}, filters {L},
@@ -240,7 +240,7 @@ class SqlRepo:
 
 class SqliteRepo(SqlRepo):
     name = "sqlite"
-    types = {"K": "TEXT", "T": "TEXT", "L": "TEXT", "I": "INTEGER", "R": "REAL", "X": "",
+    types = {"K": "TEXT", "KK": "TEXT", "T": "TEXT", "L": "TEXT", "I": "INTEGER", "R": "REAL", "X": "",
              "AUTO": "INTEGER PRIMARY KEY AUTOINCREMENT"}
 
     def __init__(self, path):
@@ -307,7 +307,7 @@ class MySqlRepo(SqlRepo):
     """The same tables in MySQL 8 (InnoDB, utf8mb4) with FULLTEXT indexes; `connect` is injectable for tests."""
     name = "mysql"
     ph = "%s"
-    types = {"K": "VARCHAR(191)", "T": "TEXT", "L": "MEDIUMTEXT", "I": "BIGINT", "R": "DOUBLE",
+    types = {"K": "VARCHAR(255)", "KK": "VARCHAR(700)", "T": "TEXT", "L": "MEDIUMTEXT", "I": "BIGINT", "R": "DOUBLE",
              "X": " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci", "AUTO": "BIGINT PRIMARY KEY AUTO_INCREMENT"}
 
     def __init__(self, url: str, connect=None):
@@ -345,19 +345,30 @@ class MySqlRepo(SqlRepo):
         cols = list(row)
         self.x(f"INSERT IGNORE INTO {table} ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})", [row[c] for c in cols])
 
+    MIN_TOKEN = 3                              # InnoDB FULLTEXT ignores shorter words ("hr"): those use LIKE instead
+
     def text_match(self, kind, alias, column, phrases, all_words=False):
-        parts = []
+        parts, likes = [], []
         for phrase in phrases:
             words = fts_terms(phrase)
             if not words:
                 continue
-            if all_words:
+            if any(len(w) < self.MIN_TOKEN for w in words):
+                likes += [f"%{w}%" for w in words] if all_words else ["%" + " ".join(words) + "%"]
+            elif all_words:
                 parts += [f"+{w}*" for w in words]
             else:
                 parts.append('"' + " ".join(words) + '"' if len(words) > 1 else f"{words[0]}*")
-        if not parts:
+        sqls, params = [], []
+        if parts:
+            sqls.append(f"MATCH({alias}.{column}) AGAINST (? IN BOOLEAN MODE)")
+            params.append(" ".join(parts))
+        for like in likes:
+            sqls.append(f"LOWER({alias}.{column}) LIKE ?")
+            params.append(like)
+        if not sqls:
             return "", []
-        return f"MATCH({alias}.{column}) AGAINST (? IN BOOLEAN MODE)", [" ".join(parts)]
+        return "(" + (" AND " if all_words else " OR ").join(sqls) + ")", params
 
     def close(self) -> None:
         with self._lock:

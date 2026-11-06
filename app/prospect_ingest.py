@@ -47,7 +47,10 @@ def lead_records(lead: dict, manual: set) -> list:
     for field in set(COMPANY_FROM_LEAD) | set(PERSON_FROM_LEAD):
         if lead.get(field) in (None, "", 0):
             continue
-        src = "manual" if field in manual else (F.source_key(prov[field]) if prov.get(field) else "crm")
+        raw = str(prov.get(field) or "")
+        if raw.startswith("prospect_db:"):                   # a lead made from a prospect keeps the prospect's own source
+            raw = raw.split(":", 1)[1]
+        src = "manual" if field in manual else (F.source_key(raw) if raw else "crm")
         by_source.setdefault(src, set()).add(field)
     domain = F.clean_domain(lead.get("domain") or lead.get("website") or "")
     ident_c = {"domain": domain, "name": lead.get("company") or ""}

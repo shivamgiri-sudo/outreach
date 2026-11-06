@@ -35,6 +35,15 @@ def company_records(n: int, seed: int = 7) -> list:
     return out
 
 
+def _tag(i: int) -> str:
+    """A unique made-up middle name per row (letters only, so name matching keeps rows apart)."""
+    out = ""
+    for _ in range(4):
+        out += "bcdfghjklmnprstvz"[i % 17]
+        i //= 17
+    return out.capitalize()
+
+
 def person_records(n: int, companies: int, seed: int = 11) -> list:
     rnd = random.Random(seed)
     out = []
@@ -42,7 +51,7 @@ def person_records(n: int, companies: int, seed: int = 11) -> list:
         c = i % companies
         first, last = FIRST[i % len(FIRST)], LAST[(i // len(FIRST)) % len(LAST)]
         city, state = CITIES[(c + i) % len(CITIES)]
-        out.append({"company_domain": f"firm{c}.example", "full_name": f"{first} {last} {i}", "title": TITLES[i % len(TITLES)],
+        out.append({"company_domain": f"firm{c}.example", "full_name": f"{first} {_tag(i)} {last}", "title": TITLES[i % len(TITLES)],
                     "email": f"{first.lower()}.{i}@firm{c}.example" if i % 5 else "", "email_status": STATUSES[i % len(STATUSES)],
                     "phones": [f"+9198{i:08d}"[:13]] if i % 4 == 0 else [], "city": city, "state": state, "country": "India",
                     "linkedin_url": f"https://www.linkedin.com/in/fake-{i}" if i % 2 else ""})

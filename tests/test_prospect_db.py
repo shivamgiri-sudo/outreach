@@ -1,20 +1,42 @@
-"""Prospect database: merge rules, provenance, dedupe, search filters, suppression, erasure, disabled sources."""
+"""Prospect database: merge rules, provenance, dedupe, search filters, suppression, erasure, disabled sources.
+
+Every test runs on SQLite; set OUTREACH_TEST_MYSQL_URL=mysql://user:pass@host:port/db (a throwaway database: its pdb_
+tables are dropped) to run the same tests on MySQL too.
+"""
+import os
+
 import pytest
 
 from app import prospect_db as P
 from app import prospect_fields as F
-from app.prospect_repo import forget, repo_for
+from app.prospect_repo import MySqlRepo, forget, repo_for
 from app.store import Store
 
+MYSQL_URL = os.environ.get("OUTREACH_TEST_MYSQL_URL", "")
+TABLES = ("pdb_meta", "pdb_companies", "pdb_people", "pdb_keys", "pdb_signals", "pdb_suppressions", "pdb_erased", "pdb_email_marks",
+          "pdb_crm_links", "pdb_saved_searches", "pdb_lookups")
 
-@pytest.fixture
-def store(tmp_path):
+
+@pytest.fixture(params=["sqlite", "mysql"])
+def store(tmp_path, request):
     s = Store(tmp_path / "d.json")
+    if request.param == "mysql":
+        if not MYSQL_URL:
+            pytest.skip("set OUTREACH_TEST_MYSQL_URL to run the MySQL backend")
+        repo = MySqlRepo(MYSQL_URL)
+        cur = repo._conn().cursor()
+        for t in TABLES:
+            cur.execute(f"DROP TABLE IF EXISTS {t}")
+        repo._conn().commit()
+        s._prospect_repo = repo
+    s.backend = request.param
     yield s
     forget(s)
 
 
 def test_storage_is_a_sqlite_file_next_to_the_data_file_not_a_json_collection(store, tmp_path):
+    if store.backend == "mysql":
+        pytest.skip("SQLite only")
     P.upsert_company(store, {"domain": "acme.example", "name": "Acme"}, "apollo")
     assert (tmp_path / "d.json.prospects.sqlite").exists()
     assert "pdb_companies" not in store.snapshot() and "prospects" not in store.snapshot()
@@ -163,12 +185,12 @@ def test_stats(store):
     P.upsert_person(store, {"email": "s@st.example", "email_status": "verified", "phones": ["9876543211"]}, "apollo")
     s = P.stats(store)
     assert s["people"] == 1 and s["companies"] == 1 and s["verified"] == 1 and s["with_phone"] == 1
-    assert s["people_by_source"] == {"apollo": 1} and s["storage"] == "sqlite"
+    assert s["people_by_source"] == {"apollo": 1} and s["storage"] == store.backend
 
 
 def test_schema_creation_is_idempotent_and_lazy(store, tmp_path):
     repo = repo_for(store)
-    assert not (tmp_path / "d.json.prospects.sqlite").exists()                    # nothing until first use
+    assert not (tmp_path / "d.json.prospects.sqlite").exists()                    # nothing until first use (and never with MySQL)
     repo.ensure()
     repo._ready = False
     repo.ensure()                                                                  # create-if-not-exists only: safe to repeat

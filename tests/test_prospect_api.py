@@ -70,8 +70,12 @@ def test_add_to_leads_dedupes_skips_suppressed_and_fills_list_and_sequence(tmp_p
     assert not leads["Chitra Das"].get("email")                                     # an invalid address is never copied into the CRM
     assert r["list_id"] and len(c.get(f"/api/lists/{r['list_id']}").json()["members"]) == 3
     assert r["sequence"]["started"] == 1                                            # only Bala has a usable email
-    found = c.get("/api/prospects/people", params={"not_in_crm": "1"}).json()
-    assert [p["full_name"] for p in found["results"]] == ["Asha Rao"]
+    c.post("/api/prospects/sync-crm", json={})
+    dev = c.get(f"/api/prospects/people/{ids['Dev Nair']}").json()
+    assert "prospect_db" not in dev["sources"]                                     # no loop back through the CRM sync
+    assert c.get("/api/prospects/people", params={"not_in_crm": "1"}).json()["total"] == 0     # Asha: the CRM opt-out carried over
+    found = c.get("/api/prospects/people", params={"not_in_crm": "1", "include_suppressed": "1"}).json()
+    assert [p["full_name"] for p in found["results"]] == ["Asha Rao"] and found["results"][0]["suppressed"]
     assert c.post("/api/prospects/add-to-leads", json={}).status_code == 400
 
 

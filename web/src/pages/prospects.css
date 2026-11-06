@@ -1,0 +1,56 @@
+/* Prospect search: filter panel + results; on phones the panel folds behind a button and rows become cards. */
+.ps-layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 16px; align-items: start; }
+.prospects .btn.ps-filter-toggle { display: none; }
+.prospects .tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+.prospects .tabs button { white-space: nowrap; }
+.ps-saved { width: auto; max-width: 260px; }
+.ps-side { position: sticky; top: 8px; max-height: calc(100vh - 24px); overflow: auto; }
+.ps-main { min-width: 0; }
+.pf { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.pf-section { border-top: 1px solid var(--line); padding: 4px 0; }
+.pf-section:first-of-type { margin-top: 8px; }
+.pf-head { display: flex; width: 100%; align-items: center; gap: 8px; background: none; border: 0; padding: 8px 0; font: inherit; font-weight: 600; color: inherit; cursor: pointer; text-align: left; min-height: 40px; }
+.pf-head span:first-child { flex: 1; }
+.pf-caret { color: var(--muted); width: 14px; text-align: center; }
+.pf-body { padding-bottom: 8px; }
+.pf-body label:not(.pf-check) { margin-top: 6px; }
+.pf-checks { display: flex; flex-direction: column; gap: 2px; }
+label.pf-check { display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 0; padding: 4px 0; min-height: 32px; cursor: pointer; }
+label.pf-check span { flex: 1; overflow-wrap: anywhere; }
+.ps-results td { vertical-align: top; }
+.ps-results .pick { width: 36px; }
+.ps-email-text { overflow-wrap: anywhere; }
+.ps-results .pill { margin: 2px 4px 2px 0; }
+.pd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 10px 0; }
+.prov-list { display: flex; flex-direction: column; gap: 6px; }
+.prov-field { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.prov-field summary { cursor: pointer; overflow-wrap: anywhere; }
+.prov-val { margin-left: 6px; }
+.prov-table { margin-top: 6px; font-size: 13px; }
+.prov-table th, .prov-table td { padding: 6px 8px; }
+.prov-table tr.chosen td { background: var(--brand-soft); }
+.ps-admin { display: grid; gap: 16px; }
+.ps-admin .card { margin: 0; }
+.ps-table td, .ps-table th { padding: 8px 10px; }
+.ps-sources { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.prospects .tip.error { border-color: var(--hot); }
+
+@media (max-width: 1000px) {
+  .ps-layout { grid-template-columns: 220px minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .ps-layout { grid-template-columns: minmax(0, 1fr); }
+  .prospects .btn.ps-filter-toggle { display: inline-flex; justify-self: start; }
+  .ps-saved { max-width: none; flex: 1 1 100%; }
+  .ps-side { display: none; position: static; max-height: none; }
+  .ps-side.open { display: block; }
+  .ps-results thead { display: none; }
+  .ps-results, .ps-results tbody, .ps-results tr, .ps-results td { display: block; width: 100%; }
+  .ps-results tr { position: relative; padding: 12px 14px 12px 48px; border-bottom: 1px solid var(--line); }
+  .ps-results td { border: 0; padding: 2px 0; }
+  .ps-results td.pick { position: absolute; left: 14px; top: 14px; width: auto; }
+  .ps-results tr:not(:has(td.pick)) { padding-left: 14px; }
+  .prov-table th:nth-child(4), .prov-table td:nth-child(4) { display: none; }
+  .ps-table { font-size: 14px; }
+  .prospects .toolbar select { flex: 1 1 100%; }
+}
