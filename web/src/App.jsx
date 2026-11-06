@@ -27,10 +27,12 @@ import Signals from "./pages/Signals.jsx";
 import Hygiene from "./pages/Hygiene.jsx";
 import Campaigns from "./pages/Campaigns.jsx";
 import HiringEngine from "./pages/HiringEngine.jsx";
+import MyDay from "./pages/MyDay.jsx";
 import { THEMES, getTheme, setTheme } from "./theme.js";
 
 // [id, label, component, icon]
 const PAGES = [
+  ["myday", "My day", MyDay, "tasks"],
   ["dashboard", "Dashboard", Dashboard, "dashboard"],
   ["leads", "Leads", Leads, "users"],
   ["hygiene", "Data hygiene", Hygiene, "check"],
@@ -58,7 +60,7 @@ const PAGES = [
 ];
 
 const GROUPS = [
-  ["Overview", ["dashboard"]],
+  ["Overview", ["myday", "dashboard"]],
   ["Pipeline", ["leads", "lists", "campaigns", "engine", "signals", "hygiene", "sources", "insights", "intelligence", "growth"]],
   ["Outreach", ["replies", "tasks", "outbox", "linkedin", "flows", "workflows", "templates", "calls", "meetings"]],
   ["Library", ["stories", "prompts"]],
@@ -189,7 +191,10 @@ export default function App() {
   useEffect(() => { if (auth.signedIn) refreshPending(); }, [page, auth.signedIn]);
   useEffect(() => {
     if (!auth.signedIn) { setMe(null); return; }
-    api.me().then((m) => { setRole(m.role); setCanEditContacts(m.can_edit_contacts); setMe(m); }).catch(() => setMe({ role: "owner" }));
+    api.me().then((m) => {
+      setRole(m.role); setCanEditContacts(m.can_edit_contacts); setMe(m);
+      if (m.role === "caller" && !window.location.hash.replace(/^#\/?/, "")) setPage("myday");     // callers start on My day
+    }).catch(() => setMe({ role: "owner" }));
   }, [auth.signedIn]);
   const [spaces, setSpaces] = useState([]);
   const [space, setSpace] = useState(getWorkspace());

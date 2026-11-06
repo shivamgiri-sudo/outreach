@@ -130,7 +130,7 @@ export default function Tasks() {
           )}
         </div>
       ))}
-      {lead && <LeadDrawer id={lead} onClose={() => { setLead(null); load(); }} />}
+      {lead && <LeadDrawer id={lead} ids={board ? [...new Set(BUCKETS.flatMap(([k]) => board[k]).map((t) => t.lead_id).filter(Boolean))] : undefined} onClose={() => { setLead(null); load(); }} />}
     </>
   );
 }
