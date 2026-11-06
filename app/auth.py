@@ -100,6 +100,24 @@ def find_user(store, email: str) -> Optional[dict]:
     return next((u for u in users(store) if u["email"] == wanted), None) if wanted else None
 
 
+def super_admins() -> set:
+    """Super admin email(s) from the server setting OUTREACH_SUPER_ADMIN (comma-separated). Set on the server, so nobody
+    inside the app can make themselves one or take it away."""
+    import os
+    return {normalise_email(e) for e in os.environ.get("OUTREACH_SUPER_ADMIN", "").split(",") if normalise_email(e)}
+
+
+def is_super_admin(user: Optional[dict]) -> bool:
+    """A super admin, or the server admin password login. With no super admin set, every owner counts as one (old rules)."""
+    user = user or {}
+    if user.get("sub") in (ADMIN_SUBJECT, "local"):      # the server admin password, or no sign-in at all (this computer)
+        return True
+    supers = super_admins()
+    if not supers:
+        return user.get("role") == "owner"
+    return normalise_email(user.get("email")) in supers
+
+
 def can_edit_contacts(user: Optional[dict]) -> bool:
     """Owners always may; callers may unless an owner switched it off for them; viewers never."""
     user = user or {}
@@ -110,7 +128,8 @@ def can_edit_contacts(user: Optional[dict]) -> bool:
 
 def public_user(user: dict) -> dict:
     return {**{k: user.get(k) for k in ("email", "name", "role", "created_at", "password_changed_at")},
-            "can_edit_contacts": can_edit_contacts(user), "workspaces": user.get("workspaces") or []}
+            "can_edit_contacts": can_edit_contacts(user), "workspaces": user.get("workspaces") or [],
+            "super_admin": bool(super_admins()) and normalise_email(user.get("email")) in super_admins()}
 
 
 def auth_on(store, admin_password: str) -> bool:

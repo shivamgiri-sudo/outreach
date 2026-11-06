@@ -125,6 +125,7 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
     def me(request: Request):
         user = getattr(request.state, "user", None) or LOCAL_OWNER
         return {"name": user["name"], "email": user["email"], "role": user["role"], "can_edit_contacts": auth.can_edit_contacts(user), "workspaces": user.get("workspaces") or [],
+                "super_admin": auth.is_super_admin(user),
                 "auth_required": auth.auth_on(store, admin_password)}
 
     # ---------- team logins (owner only; the role guard enforces it) ----------
@@ -141,8 +142,25 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
     def list_users():
         return [auth.public_user(u) for u in auth.users(store)]
 
+    def actor(request: Request) -> dict:
+        return getattr(request.state, "user", None) or LOCAL_OWNER
+
+    def guard_owner_change(request: Request, target: dict, new_role: Optional[str] = None, removing: bool = False) -> None:
+        """Only the super admin manages owner logins; the super admin's own login cannot be removed or demoted here."""
+        who = actor(request)
+        target_super = normalise_email(target.get("email")) in auth.super_admins()
+        if target_super and removing:
+            raise HTTPException(403, "The super admin login cannot be removed.")
+        if target_super and new_role is not None and new_role != "owner":
+            raise HTTPException(403, "The super admin stays an owner.")
+        if target_super and not auth.is_super_admin(who):
+            raise HTTPException(403, "Only the super admin can change the super admin login.")
+        touches_owner = target.get("role") == "owner" or new_role == "owner"
+        if touches_owner and not auth.is_super_admin(who):
+            raise HTTPException(403, "Only the super admin can add, change or remove owner logins.")
+
     @router.post("/api/users")
-    def add_user(body: UserBody):
+    def add_user(body: UserBody, request: Request):
         email = normalise_email(body.email)
         if not email:
             raise HTTPException(400, "Enter a valid email address.")
@@ -150,6 +168,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         check_password(body.password)
         if auth.find_user(store, email):
             raise HTTPException(409, "That person already has a login.")
+        if auth.users(store):                      # the very first login (setting the app up) is always allowed
+            guard_owner_change(request, {"email": email, "role": body.role})
         if not owner_left([*auth.users(store), {"role": body.role}]):
             raise HTTPException(400, "The first login must be an owner (no admin password is set).")
         user = {"email": email, "name": body.name.strip()[:80] or email, "role": body.role,
@@ -158,10 +178,11 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         return auth.public_user(user)
 
     @router.put("/api/users/{email}")
-    def change_user(email: str, body: UserChange):
+    def change_user(email: str, body: UserChange, request: Request):
         user = auth.find_user(store, email)
         if not user:
             raise HTTPException(404, "No login with that email.")
+        guard_owner_change(request, user, body.role)
         changes = {}
         if body.name is not None:
             changes["name"] = body.name.strip()[:80] or user["email"]
@@ -183,10 +204,11 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         return auth.public_user(updated)
 
     @router.delete("/api/users/{email}")
-    def remove_user(email: str):
+    def remove_user(email: str, request: Request):
         user = auth.find_user(store, email)
         if not user:
             raise HTTPException(404, "No login with that email.")
+        guard_owner_change(request, user, removing=True)
         remaining = [u for u in auth.users(store) if u["email"] != user["email"]]
         if not owner_left(remaining):
             raise HTTPException(400, "Keep at least one owner login (no admin password is set).")

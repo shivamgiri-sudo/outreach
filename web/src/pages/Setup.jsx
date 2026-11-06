@@ -165,7 +165,8 @@ function Users() {
   const [form, setForm] = useState({ email: "", name: "", role: "caller", password: "" });
   const [message, setMessage] = useState("");
   const [spaces, setSpaces] = useState([]);
-  useEffect(() => { api.workspaces().then(setSpaces).catch(() => {}); }, []);
+  const [isSuper, setIsSuper] = useState(true);
+  useEffect(() => { api.workspaces().then(setSpaces).catch(() => {}); api.me().then((m) => setIsSuper(m.super_admin !== false)).catch(() => {}); }, []);
   const toggleSpace = (u, id, on) => {
     const next = on ? [...new Set([...(u.workspaces || []), id])] : (u.workspaces || []).filter((x) => x !== id);
     run(() => api.changeUser(u.email, { workspaces: next }), next.length ? `${u.name} now sees only: ${next.map((x) => spaces.find((w) => w.id === x)?.name || x).join(", ")}.` : `${u.name} sees every workspace.`);
@@ -188,23 +189,24 @@ function Users() {
     <div className="card" style={{ marginBottom: 16 }} data-testid="users-card">
       <b>Team logins</b>
       <p className="sub" style={{ margin: "2px 0 8px" }}>
-        Give each person their own login. Owner: {ROLE_HELP.owner}. Caller: {ROLE_HELP.caller} (no settings, integrations or CSV exports). Viewer: {ROLE_HELP.viewer}.
+        Give each person their own login. Owner (full access to all data and settings; only the super admin adds or removes owners): {ROLE_HELP.owner}. Caller: {ROLE_HELP.caller} (no settings, integrations or CSV exports). Viewer: {ROLE_HELP.viewer}.
       </p>
       {rows && rows.length > 0 && (
         <ul className="today-list">
           {rows.map((u) => (
             <li key={u.email} className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-              <span><b>{u.name}</b> <small>{u.email}</small></span>
+              <span><b>{u.name}</b> <small>{u.email}</small>{u.super_admin && <span className="pill ok" style={{ marginLeft: 6 }}>Super admin</span>}</span>
               <span className="row">
-                <select aria-label={`Role for ${u.email}`} value={u.role} onChange={(e) => run(() => api.changeUser(u.email, { role: e.target.value }), "Role changed.")}>
-                  {Object.keys(ROLE_HELP).map((r) => <option key={r} value={r}>{r}</option>)}
+                <select aria-label={`Role for ${u.email}`} value={u.role} disabled={u.super_admin || (!isSuper && u.role === "owner")}
+                  onChange={(e) => run(() => api.changeUser(u.email, { role: e.target.value }), "Role changed.")}>
+                  {Object.keys(ROLE_HELP).filter((r) => isSuper || r !== "owner" || u.role === "owner").map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
                 {u.role === "caller" && <label className="check-row"><input type="checkbox" checked={u.can_edit_contacts !== false}
                   onChange={(e) => run(() => api.changeUser(u.email, { can_edit_contacts: e.target.checked }), e.target.checked ? "May edit contact details." : "Can no longer edit contact details.")} /> Can edit contacts</label>}
                 {u.role !== "owner" && spaces.length > 1 && <span className="row" title="Tick to limit this login to these workspaces; none ticked = all">
                   <small>Workspaces:</small>{spaces.map((w) => <label key={w.id} className="check-row"><input type="checkbox" checked={(u.workspaces || []).includes(w.id)} onChange={(e) => toggleSpace(u, w.id, e.target.checked)} /> {w.name}</label>)}</span>}
                 <button className="btn ghost" onClick={() => reset(u.email)}>Reset password</button>
-                <button className="btn ghost danger" onClick={() => window.confirm(`Remove ${u.email}?`) && run(() => api.removeUser(u.email), "Login removed.")}>Remove</button>
+                {!u.super_admin && (isSuper || u.role !== "owner") && <button className="btn ghost danger" onClick={() => window.confirm(`Remove ${u.email}?`) && run(() => api.removeUser(u.email), "Login removed.")}>Remove</button>}
               </span>
             </li>
           ))}
@@ -218,7 +220,7 @@ function Users() {
         <div className="split-2">
           <label>Role
             <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              {Object.keys(ROLE_HELP).map((r) => <option key={r} value={r}>{r}</option>)}
+              {Object.keys(ROLE_HELP).filter((r) => isSuper || r !== "owner").map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </label>
           <label>Password (10+ characters)<input type="password" required minLength={10} autoComplete="new-password" value={form.password}
