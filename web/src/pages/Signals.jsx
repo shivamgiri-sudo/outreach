@@ -24,7 +24,8 @@ export default function Signals() {
     setBusy(false);
   };
   const items = (data?.items || []).filter((i) => (show === "all" ? true : i.status === show));
-  const nameFor = (i) => names[i.id] ?? i.company ?? "";
+  // An article found by watching a company is about that company: start with its name.
+  const nameFor = (i) => names[i.id] ?? (i.company || (i.kind === "company" ? i.watch : "") || "");
 
   return (
     <>
