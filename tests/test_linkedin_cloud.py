@@ -7,7 +7,7 @@ import stat
 
 import pytest
 
-from app import linkedin_cloud as cloud
+from app import linkedin_cloud as cloud, linkedin_runner
 from tests.test_extension_api import bearer, make, pair
 
 SECRET = "Sup3r-Secret-Pa55word!"
@@ -18,6 +18,7 @@ def rig(tmp_path, monkeypatch):
     monkeypatch.delenv("OUTREACH_CLOUD_LI_DIR", raising=False)
     monkeypatch.delenv("OUTREACH_CLOUD_LI_MAX", raising=False)
     c, owner, acme, globex = make(tmp_path)
+    linkedin_runner.set_where(c.app.state.store, "server")          # these tests are about the server supervisor's slots.json
     return c, owner, c.app.state.store, tmp_path / "linkedin-cloud"
 
 

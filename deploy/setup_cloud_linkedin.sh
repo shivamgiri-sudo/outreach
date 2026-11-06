@@ -65,4 +65,5 @@ systemctl restart outreach-linkedin
 sleep 3
 systemctl --no-pager --lines=5 status outreach-linkedin || true
 echo
-echo "Done. Add a cloud account on the LinkedIn outreach page (Cloud agent card). Logs: journalctl -u outreach-linkedin -f"
+echo "Done. Note: new installs run LinkedIn on an office computer (LinkedIn blocks cloud servers). To use this server instead,"
+echo "choose 'Portal server' under 'Where the LinkedIn browser runs' on the LinkedIn outreach page. Logs: journalctl -u outreach-linkedin -f"

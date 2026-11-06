@@ -13,7 +13,9 @@ EVENTS = []
 # "captcha" (a puzzle page). LOGIN["attempts"] records every form post (the email only, never the password).
 LOGIN = {}
 LOGIN_DEFAULTS = {"required": False, "mode": "direct", "email": "sender@example.com", "password": "Correct-Horse-9", "code": "246810",
-                  "approved": False, "attempts": [], "codes": []}
+                  "approved": False, "attempts": [], "codes": [], "accounts": {}}
+# Several LinkedIn accounts (QA multi-account tests): LOGIN["accounts"] = {email: {"password", "slug", "name", "mode"}}. Each
+# logs in to its own session cookie (li_at=ok.<slug>), /in/me answers with that account, and every event records "by".
 
 LOGIN_PAGE = """<html><head><title>LinkedIn Login</title></head><body><main>
 <h1>Sign in</h1>{error}
@@ -81,16 +83,27 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
+    def _session(self):
+        """The logged-in account's slug from the li_at cookie ("" = the default single account, None = not logged in)."""
+        for part in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == "li_at" and (v == "ok" or v.startswith("ok.")):
+                return v[3:]
+        return None
+
+    def _cookie_value(self, cookie):
+        return "ok" if cookie is True else f"ok.{cookie}; Max-Age=31536000"      # an account session survives a browser restart
+
     def _html(self, body, cookie=False):
         self.send_response(200); self.send_header("Content-Type", "text/html")
         if cookie:
-            self.send_header("Set-Cookie", "li_at=ok; Path=/")
+            self.send_header("Set-Cookie", f"li_at={self._cookie_value(cookie)}; Path=/")
         self.end_headers(); self.wfile.write(body.encode())
 
     def _go(self, where, cookie=False):
         self.send_response(302); self.send_header("Location", where)
         if cookie:
-            self.send_header("Set-Cookie", "li_at=ok; Path=/")
+            self.send_header("Set-Cookie", f"li_at={self._cookie_value(cookie)}; Path=/")
         self.end_headers()
 
     def _login_page(self, error=""):
@@ -104,11 +117,16 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/login":
             self._login_page(); return
         if path == "/checkpoint/approved" and LOGIN["approved"]:
-            self._go("/feed/", cookie=True); return
-        if LOGIN["required"] and "li_at=ok" not in (self.headers.get("Cookie") or ""):
+            pending = (self.headers.get("Cookie") or "").split("pending_as=")[-1].split(";")[0] if "pending_as=" in (self.headers.get("Cookie") or "") else ""
+            self._go("/feed/", cookie=pending or True); return
+        session = self._session()
+        if LOGIN["required"] and session is None:
             self._go("/login"); return
         if path in ("/in/me", "/in/me/"):                     # the agent asks who is logged in
-            self.send_response(302); self.send_header("Location", "/in/test-sender/"); self.end_headers(); return
+            self.send_response(302); self.send_header("Location", f"/in/{session or 'test-sender'}/"); self.end_headers(); return
+        acct = next((a for a in LOGIN.get("accounts", {}).values() if path == f"/in/{a['slug']}/"), None)
+        if acct:
+            self._html(f"<html><head><title>{acct['name']} | LinkedIn</title></head><body><main><h1>{acct['name']}</h1></main></body></html>"); return
         if path == "/in/test-sender/":
             body = "<html><head><title>Test Sender | LinkedIn</title></head><body><main><h1>Test Sender</h1></main></body></html>"
             self.send_response(200); self.send_header("Content-Type", "text/html"); self.end_headers(); self.wfile.write(body.encode()); return
@@ -124,6 +142,16 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/login":
             form = {k: v[0] for k, v in parse_qs(raw.decode()).items()}
             LOGIN["attempts"].append(form.get("session_key", ""))
+            acct = LOGIN.get("accounts", {}).get(form.get("session_key", ""))
+            if acct:
+                if form.get("session_password") != acct["password"]:
+                    self._login_page("Wrong email or password. Try again or create an account."); return
+                mode = acct.get("mode", "direct")
+                if mode == "direct":
+                    self._go("/feed/", cookie=acct["slug"]); return
+                body = {"code": CODE_PAGE.format(error=""), "app": APP_PAGE.format(), "captcha": CAPTCHA_PAGE}[mode]
+                self.send_response(200); self.send_header("Content-Type", "text/html")
+                self.send_header("Set-Cookie", f"pending_as={acct['slug']}; Path=/"); self.end_headers(); self.wfile.write(body.encode()); return
             if form.get("session_key") != LOGIN["email"] or form.get("session_password") != LOGIN["password"]:
                 self._login_page("Wrong email or password. Try again or create an account."); return
             mode = LOGIN["mode"]
@@ -134,9 +162,11 @@ class Handler(BaseHTTPRequestHandler):
             pin = {k: v[0] for k, v in parse_qs(raw.decode()).items()}.get("pin", "")
             LOGIN["codes"].append(pin)
             if pin == LOGIN["code"]:
-                self._go("/feed/", cookie=True); return
+                cookie = self.headers.get("Cookie") or ""
+                pending = cookie.split("pending_as=")[-1].split(";")[0] if "pending_as=" in cookie else ""
+                self._go("/feed/", cookie=pending or True); return
             self._html(CODE_PAGE.format(error='<div role="alert">That code didn\'t work. Please enter a valid code.</div>')); return
-        EVENTS.append(json.loads(raw or b"{}"))
+        EVENTS.append({**json.loads(raw or b"{}"), "by": self._session()})
         self.send_response(200); self.end_headers()
 
 

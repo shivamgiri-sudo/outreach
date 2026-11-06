@@ -70,6 +70,8 @@ from .routes_mcp import make_router as make_mcp_router
 from .routes_signals import make_router as make_signals_router
 from .routes_linkedin_agent import make_router as make_linkedin_agent_router
 from .routes_linkedin_cloud import make_router as make_linkedin_cloud_router
+from .routes_linkedin_runner import PUBLIC_PATHS as RUNNER_PUBLIC_PATHS, make_router as make_linkedin_runner_router
+from . import linkedin_runner
 from .providers import get_json
 from .senders import make_transactional_sender
 from .routes_channels import make_router as make_channels_router
@@ -220,6 +222,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         path = request.url.path
         open_path = (not path.startswith("/api/") or path in PUBLIC_API_PATHS or request.method == "OPTIONS"
                      or (path in PUBLIC_GET_PATHS and request.method in ("GET", "HEAD"))
+                     # Office runner: pairing with a one-time code, installers and bundle (each checks its code / token itself).
+                     or path in RUNNER_PUBLIC_PATHS
                      or (path == "/api/activation/event" and webhook_secret(store, routes_growth.WEBHOOK_SECRET)
                          and hmac.compare_digest(request.headers.get("x-webhook-secret", "").encode("utf-8", "replace"),
                                                  webhook_secret(store, routes_growth.WEBHOOK_SECRET).encode("utf-8")))
@@ -240,6 +244,15 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             if agent["sub"] == "local" and not _is_local(request):
                 return JSONResponse({"detail": "This app has no password yet, so it only answers on this computer."}, status_code=403)
             request.state.user = agent
+            return await call_next(request)
+        if token.startswith(linkedin_runner.TOKEN_PREFIX):
+            # Office runner token: only the runner's own routes (slots, heartbeat), never anything else.
+            runner = linkedin_runner.authenticate(store, token)
+            if runner is None:
+                return JSONResponse({"detail": "Login required"}, status_code=401)
+            if not linkedin_runner.path_allowed(request.method, path):
+                return JSONResponse({"detail": "An office runner token can only be used by the office runner."}, status_code=403)
+            request.state.user = runner
             return await call_next(request)
         if not auth.auth_on(store, password):
             if not _is_local(request):
@@ -522,6 +535,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     cloud_router = make_linkedin_cloud_router(store, data_file)
     app.state.linkedin_cloud = cloud_router
     app.include_router(cloud_router)
+    app.include_router(make_linkedin_runner_router(store, cloud_router))
     app.include_router(make_sources_router(store, campaign_io))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender, capture_runner=lambda: run_sheet_syncs(store, capture_sheet_fetcher),
