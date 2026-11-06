@@ -333,3 +333,14 @@ def test_out_of_office_is_not_a_reply_anywhere(tmp_path):
     assert comp["Tele Hub"]["replies"] == 0 and comp["Tele Hub"]["engaged"] is False
     assert comp["Acme"]["replies"] == 1 and comp["Acme"]["engaged"] is False       # everyone there said no
     assert c.get("/api/intelligence").json()["timing"]["replies_measured"] == 1
+
+
+def test_pasted_unsubscribe_reply_counts_as_unsubscribed(tmp_path):
+    """QA sweep: 'Please remove me from your list' pasted on a lead moved it to Unsubscribed, but the Analytics
+    overview said Unsubscribed 0 (only the unsubscribe link was counted)."""
+    c = TestClient(create_app(data_file=tmp_path / "s.json"))
+    c.post("/api/leads/import", json={"csv": "company,email,website\nSundaram,ravi@sundaram.in,sundaram.in\n", "source": "manual"})
+    lid = c.get("/api/leads").json()[0]["id"]
+    c.post(f"/api/leads/{lid}/reply", json={"text": "Please remove me from your list and do not email again."})
+    assert c.get(f"/api/leads/{lid}").json()["stage"] == "unsubscribed"
+    assert c.get("/api/analytics/overview?days=7").json()["kpis"]["unsubscribed"]["value"] == 1

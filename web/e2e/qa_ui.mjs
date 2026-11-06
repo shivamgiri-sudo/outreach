@@ -81,6 +81,8 @@ if (want("import")) await step("Import wizard: upload 300-row CSV, dry run, impo
   for (const f of ["Company Name", "Email", "Mobile Phone", "City", "Industry", "Open Positions", "Number of openings", "Employees"]) {
     map[f] = await page.getByLabel(`Field for ${f}`, { exact: true }).inputValue().catch(() => "?");
   }
+  const detected = ((await page.locator("main").innerText()).match(/This looks like[^\n]*/) || ["(no format line)"])[0];
+  map.detected = detected;
   await page.getByRole("button", { name: "Next: dry run" }).click();
   const btn = page.getByRole("button", { name: /^Import: \d+ new/ });
   await btn.waitFor();
@@ -443,6 +445,32 @@ if (want("sorting")) await step("Leads: sort headers, filters and pages give cor
   await page.getByLabel("Search leads").fill("");
   if (!notes[0].includes("true") || !notes[1].includes("true") || interested.length !== 2 || notes[4].includes("(none)")) throw new Error(notes.join(" ;; "));
   return notes.join(" ;; ");
+});
+
+if (want("numbers")) await step("Numbers agree with the seeded data on Dashboard, Analytics, Insights", async () => {
+  const leads = await get("/api/leads");
+  const truth = { total: leads.length, yes: leads.filter((l) => l.stage === "interested").length,
+    replied: leads.filter((l) => l.engagement.replies > 0).length, unsub: leads.filter((l) => l.stage === "unsubscribed").length };
+  const num = async (label) => Number((await page.getByTestId(`kpi-${label}`).first().locator("b").innerText()).replace(/[^\d.]/g, ""));
+  await goPage(page, "dashboard");
+  await page.getByRole("button", { name: "Last 30 days" }).click(); await settle(page, 500);
+  const totalTile = Number(await page.locator(".stat", { hasText: "Total leads" }).first().locator("b").innerText());
+  const yesTile = Number(await page.locator(".stat", { hasText: "Said yes" }).first().locator("b").innerText());
+  const dash = { total: totalTile, yes: yesTile, newLeads: await num("New leads"), replied: await num("Replied"), sent: await num("Emails sent") };
+  await goPage(page, "analytics");
+  const an = { replied: await num("Replied"), unsub: await num("Unsubscribed"), interested: await num("Interested"), sent: await num("Emails sent") };
+  await page.getByRole("tab", { name: "Sources" }).click(); await settle(page, 500);
+  const src = await page.locator("main").innerText();
+  const insSent = Number((src.match(/(\d+)\s*\n\s*Emails sent/) || [])[1]);
+  const bad = [];
+  if (dash.total !== truth.total || dash.newLeads !== truth.total) bad.push("total/new");
+  if (dash.yes !== truth.yes || an.interested !== truth.yes) bad.push("said yes");
+  if (dash.replied !== truth.replied || an.replied !== truth.replied) bad.push("replied");
+  if (an.unsub !== truth.unsub) bad.push("unsubscribed");
+  if (dash.sent !== an.sent || an.sent !== insSent) bad.push("emails sent differ between pages");
+  const note = `truth=${JSON.stringify(truth)} dash=${JSON.stringify(dash)} analytics=${JSON.stringify(an)} insights sent=${insSent}`;
+  if (bad.length) throw new Error(`${bad.join(", ")}: ${note}`);
+  return note;
 });
 
 const out = results.map((r) => r.join(" | ")).join("\n");

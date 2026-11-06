@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { istLabel } from "../time.js";
 import { api } from "../api.js";
-import { sourceOptions, useSourceRegistry } from "../labels.js";
+import { sourceLabel, sourceOptions, useSourceRegistry } from "../labels.js";
 
 // Four steps: add the list, check the columns, dry run (nothing saved), import (with undo).
 const STEPS = ["Add your list", "Check the columns", "Dry run", "Done"];
@@ -64,7 +64,7 @@ function MappingStep({ preview, mapping, setMapping, remember, setRemember }) {
       <div className="tip" style={{ marginBottom: 12 }}>
         This looks like: <b>{preview.format.name}</b>.
         {preview.format.saved_mapping && " Your saved column choices for this layout are filled in."}
-        {" "}Saved as source “{preview.source}”.
+        {" "}Saved as source “{sourceLabel(preview.source)}”.
       </div>
       <table className="map-table">
         <thead><tr><th>Column in your file</th><th>Sample values</th><th>Goes to</th><th>Match</th></tr></thead>
