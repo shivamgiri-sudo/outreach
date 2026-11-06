@@ -35,6 +35,15 @@ def make_router(store, present) -> APIRouter:
     def whatsapp_outbox():
         return list(reversed(store.read("whatsapp_outbox")))
 
+    @router.get("/api/whatsapp/status")
+    def whatsapp_status():
+        """Practice or real: real only when a WhatsApp provider is connected AND "WhatsApp for real" is on."""
+        from .channels.config import config_for
+        cfg = config_for(store, "whatsapp")
+        live = bool(cfg and store.read("settings").get("live_whatsapp"))
+        return {"mode": "live" if live else "practice", "connected": bool(cfg), "provider": (cfg or {}).get("provider") or "",
+                "live_whatsapp": bool(store.read("settings").get("live_whatsapp"))}
+
     @router.get("/api/whatsapp/templates")
     def templates():
         return TEMPLATES

@@ -43,10 +43,13 @@ Stage: <b>${esc(lead.stage)}</b> · score ${esc(lead.score ?? "")} · source ${e
   win.document.close();
 }
 
-function Composer({ lead, onDone, onCancel }) {
+// One-off email composer. Also used by Replies (prefilled "Re: subject") and the call desk.
+// SNIPPETS HOOK: when the snippets API lands, load canned replies here and render them next to the template picker;
+// a picked snippet should be inserted into `body` at the cursor (keep {{greeting}}-style variables as they are).
+export function Composer({ lead, onDone, onCancel, initialSubject = "", initialBody = "{{greeting}}\n\n", note = "" }) {
   const [steps, setSteps] = useState([]);
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("{{greeting}}\n\n");
+  const [subject, setSubject] = useState(initialSubject);
+  const [body, setBody] = useState(initialBody);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [snippets, setSnippets] = useState([]);
@@ -76,6 +79,7 @@ function Composer({ lead, onDone, onCancel }) {
         </select></label>
       <label>Subject<input required maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} /></label>
       <label>Message (paste or write; {"{{greeting}}"}, {"{{first_name}}"}, {"{{company}}"} are filled in)<textarea required rows={8} value={body} onChange={(e) => setBody(e.target.value)} /></label>
+      {note && <p className="sub">{note}</p>}
       <p className="sub">Goes to <b>{lead.email}</b> as one email outside the sequence, designed with the logo, signed off and with an unsubscribe line. Logged on this contact with your name.</p>
       {msg && <p className="error" role="alert">{msg}</p>}
       <div className="row"><button className="btn" type="submit" disabled={busy || !subject.trim() || !body.trim()}>{busy ? "Sending…" : "Send email"}</button>
@@ -101,6 +105,7 @@ export default function LeadActivity({ lead, onChanged }) {
   const [message, setMessage] = useState("");
   const [summary, setSummary] = useState(null);
   const [composing, setComposing] = useState(false);
+  const [callback, setCallback] = useState(null);
   const load = () => Promise.all([api.leadActivity(lead.id).then(setItems), api.historySummary(lead.id).then(setSummary)]).catch((e) => setMessage(e.message));
   const report = () => { const win = window.open("", "_blank"); if (!win) { setMessage("Allow pop-ups to open the report."); return; }
     Promise.all([api.leadActivity(lead.id), api.historySummary(lead.id)]).then(([it, s]) => openReport(win, lead, it, s)).catch((e) => { win.close(); setMessage(e.message); }); };
@@ -147,9 +152,17 @@ export default function LeadActivity({ lead, onChanged }) {
           </p>
           <div className="row" style={{ flexWrap: "wrap", gap: 6 }} aria-label="Log a call in one click">
             <small className="sub">Log a call:</small>
-            {QUICK_CALLS.map(([v, l]) => <button key={v} className="btn ghost" onClick={() => run(() => api.logActivity(lead.id, { type: "call", outcome: v }), `Call logged: ${l}.`)}>{l}</button>)}
+            {QUICK_CALLS.map(([v, l]) => <button key={v} className="btn ghost" onClick={() => (v === "call_back" ? setCallback(new Date(Date.now() + 390 * 60000).toISOString().slice(0, 16))
+              : run(() => api.callOutcome(lead.id, v), `Call logged: ${l}.`))}>{l}</button>)}
             {lead.email && <button className="btn ghost" onClick={() => setComposing(true)}>Write an email</button>}
           </div>
+          {callback !== null && (
+            <form className="row" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault();
+              run(() => api.callOutcome(lead.id, "call_back", "", withIst(callback)), "Call logged; a call-back task was created.").then(() => setCallback(null)); }}>
+              <label className="row" style={{ gap: 6 }}>Call back at (IST)<input type="datetime-local" required value={callback} onChange={(e) => setCallback(e.target.value)} /></label>
+              <button className="btn" type="submit">Save</button><button className="btn ghost" type="button" onClick={() => setCallback(null)}>Cancel</button>
+            </form>
+          )}
           {composing && <Composer lead={lead} onCancel={() => setComposing(false)} onDone={(m) => { setComposing(false); setMessage(m); load(); onChanged?.(); }} />}
         </div>
       )}

@@ -391,7 +391,7 @@ export default function Leads({ go }) {
           </div>
         )}
       </div>
-      {open && <LeadDrawer id={open} onClose={() => { setOpen(null); load(); }} />}
+      {open && <LeadDrawer id={open} ids={shown.map((l) => l.id)} onClose={() => { setOpen(null); load(); }} />}
     </>
   );
 }

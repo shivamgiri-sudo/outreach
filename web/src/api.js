@@ -322,4 +322,19 @@ export const api = {
   createSnippet: (body) => request("/api/snippets", { method: "POST", body }),
   updateSnippet: (id, body) => request(`/api/snippets/${id}`, { method: "PUT", body }),
   deleteSnippet: (id) => request(`/api/snippets/${id}`, { method: "DELETE" }),
+  // Rep workflow (My day, power-dial call desk, reply triage, stage moves with a reason)
+  myDay: () => request("/api/my-day"),
+  saveTargets: (targets, scope = "me") => request("/api/my-day/targets", { method: "PUT", body: { scope, targets } }),
+  callQueue: (mine = false) => request(`/api/call-queue${mine ? "?mine=true" : ""}`),
+  callOutcome: (id, outcome, notes = "", callbackAt = null) => request(`/api/leads/${id}/call-outcome`, { method: "POST", body: { outcome, notes, callback_at: callbackAt } }),
+  callScript: () => request("/api/call-script"),
+  saveCallScript: (script, objections) => request("/api/call-script", { method: "PUT", body: { script, objections } }),
+  resetCallScript: () => request("/api/call-script", { method: "DELETE" }),
+  stageOptions: (id) => request(`/api/leads/${id}/stage-options`),
+  moveStageWith: (id, stage, reason = "", force = false) => request(`/api/leads/${id}/stage`, { method: "POST", body: { stage, reason, force } }),
+  consentAndMove: (id, text, channel = "any", moveToInterested = false) =>
+    request(`/api/leads/${id}/consent`, { method: "POST", body: { text, channel, source: "recorded by a person", move_to_interested: moveToInterested } }),
+  replyAction: (key, action, extra = {}) => request("/api/reply-inbox/action", { method: "POST", body: { key, action, ...extra } }),
+  leadThread: (id) => request(`/api/leads/${id}/thread`),
+  whatsappStatus: () => request("/api/whatsapp/status"),
 };

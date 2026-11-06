@@ -28,12 +28,14 @@ import Signals from "./pages/Signals.jsx";
 import Hygiene from "./pages/Hygiene.jsx";
 import Campaigns from "./pages/Campaigns.jsx";
 import HiringEngine from "./pages/HiringEngine.jsx";
+import MyDay from "./pages/MyDay.jsx";
 import { THEMES, getTheme, setTheme } from "./theme.js";
 import { DialogProvider } from "./Dialog.jsx";
 import { useModalFocus } from "./DrawerShell.jsx";
 
 // [id, label, component, icon]
 const PAGES = [
+  ["myday", "My day", MyDay, "tasks"],
   ["dashboard", "Dashboard", Dashboard, "dashboard"],
   ["leads", "Leads", Leads, "users"],
   ["hygiene", "Data hygiene", Hygiene, "check"],
@@ -230,7 +232,10 @@ function Shell() {
   useEffect(() => { if (auth.signedIn) refreshPending(); }, [page, auth.signedIn]);
   useEffect(() => {
     if (!auth.signedIn) { setMe(null); return; }
-    api.me().then((m) => { setRole(m.role); setCanEditContacts(m.can_edit_contacts); setMe(m); }).catch(() => setMe({ role: "owner" }));
+    api.me().then((m) => {
+      setRole(m.role); setCanEditContacts(m.can_edit_contacts); setMe(m);
+      if (m.role === "caller" && !window.location.hash.replace(/^#\/?/, "")) setPage("myday");     // callers start on My day
+    }).catch(() => setMe({ role: "owner" }));
   }, [auth.signedIn]);
   const [spaces, setSpaces] = useState([]);
   const [space, setSpace] = useState(getWorkspace());

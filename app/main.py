@@ -16,6 +16,7 @@ from .prompt_gen import build_prompt, build_prompt_body, with_guardrails
 from .ai import ai_write_prompt
 from .scoring import score_lead
 from .stages import ALL_STAGES, STAGES, can_move
+from .rep_workflow import stage_rule
 from .activation import next_nudge
 from .enrich import polite_fetch
 from .routes_enrich import make_router as make_enrich_router
@@ -59,6 +60,7 @@ from .campaigns import run_due_campaigns
 from .routes_find_leads import make_router as make_find_leads_router
 from .routes_hiring_engine import make_router as make_hiring_engine_router
 from .routes_reply_inbox import make_router as make_reply_inbox_router
+from .routes_rep import make_router as make_rep_router
 from .routes_icp import make_router as make_icp_router
 from .routes_mcp import make_router as make_mcp_router
 from .routes_signals import make_router as make_signals_router
@@ -102,12 +104,15 @@ class ImportBody(BaseModel):
 
 class StageBody(BaseModel):
     stage: str
+    reason: str = ""          # needed to go back a stage (or, for an owner, to skip steps with force)
+    force: bool = False
 
 
 class ConsentBody(BaseModel):
     text: str
     source: str = ""
     channel: str = ""
+    move_to_interested: bool = False      # also move to Interested (when allowed) and give the caller a call task
 
 
 class NoteBody(BaseModel):
@@ -333,17 +338,25 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     @app.post("/api/leads/{lead_id}/stage")
     def move_stage(lead_id: str, body: StageBody, request: Request):
         find(lead_id)
-        who = audit.actor_of(getattr(request.state, "user", None))["name"]
+        user = getattr(request.state, "user", None)
+        who = audit.actor_of(user)["name"]
+        reason = body.reason.strip()[:500]
+        is_owner = (user or {}).get("role", "owner") == "owner"
         refused = {}
 
         def move(lead: dict):
-            if not can_move(lead["stage"], body.stage, has_consent=bool(lead.get("consent"))):
-                refused["from"] = lead["stage"]
+            # Normal moves follow app/stages.py; going back needs a reason; skipping steps needs an owner, force and a reason.
+            rule = stage_rule(lead["stage"], body.stage, bool(lead.get("consent")))
+            if rule == "no" or (rule == "reason" and not reason) or (rule == "owner" and not (is_owner and body.force and reason)):
+                refused.update({"from": lead["stage"], "rule": rule})
                 return None
-            return {**lead, "stage": body.stage, "timeline": [*lead["timeline"], {**_event("stage", f"{lead['stage']} → {body.stage} (by {who})"), "by": who}]}
+            why = f": {reason}" if reason else ""
+            return {**lead, "stage": body.stage, "timeline": [*lead["timeline"], {**_event("stage", f"{lead['stage']} → {body.stage} (by {who}){why}"), "by": who,
+                                                                                **({"reason": reason} if reason else {})}]}
         store.update_lead(lead_id, move)
         if refused:
-            raise HTTPException(400, f"Cannot move from {refused['from']} to {body.stage}")
+            hint = {"reason": " Going back a stage needs a reason.", "owner": " Skipping steps needs an owner, with a reason."}.get(refused["rule"], "")
+            raise HTTPException(400, f"Cannot move from {refused['from']} to {body.stage}.{hint}")
         if body.stage == "interested":
             on_became_interested(store, lead_id, "Moved to Interested")
         if body.stage == "unsubscribed":
@@ -363,6 +376,14 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             "consent_withdrawn_at": None,
             "timeline": [*lead["timeline"], {**_event("consent", f"Said yes: {text[:500]} (recorded by {who})"), "by": who}]})
         ledger_consent(store, lead_id, "given", body.channel or "any", text, body.source or "recorded by a person")
+        if body.move_to_interested:
+            moved = store.update_lead(lead_id, lambda lead: {**lead, "stage": "interested", "timeline": [*lead["timeline"], {
+                **_event("stage", f"{lead['stage']} → interested (consent recorded by {who})"), "by": who}]}
+                if can_move(lead["stage"], "interested", has_consent=True) else None)
+            if moved and moved["stage"] == "interested":
+                on_became_interested(store, lead_id, "Said yes" + (f" ({body.channel})" if body.channel else ""))
+                fire(store, "stage_change", "interested", lead_id)
+            saved = _present(next(l for l in store.read("leads") if l["id"] == lead_id))
         return saved
 
     @app.patch("/api/leads/{lead_id}")
@@ -471,6 +492,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_find_leads_router(store, campaign_io, transactional_sender))
     app.include_router(make_hiring_engine_router(store, campaign_io))
     app.include_router(make_reply_inbox_router(store))
+    app.include_router(make_rep_router(store, _present))
     app.include_router(make_icp_router(store, ai_transport))
     app.include_router(make_mcp_router(store))
     app.include_router(make_signals_router(store, signal_fetch, ai_transport))
