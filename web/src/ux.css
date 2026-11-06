@@ -21,7 +21,7 @@ main > .row:has(> div > h2:first-child) > .btn, main > .row:has(> div > h2:first
 .tab-chip.on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); }
 
 /* ---------- compact KPI tiles (Replies) ---------- */
-.kpi-row.kpi-mini { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 640px; }
+.kpi-row.kpi-mini { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); max-width: 760px; }
 .kpi-mini .kpi { padding: 10px 12px; }
 .kpi-mini .kpi b { font-size: 22px; }
 

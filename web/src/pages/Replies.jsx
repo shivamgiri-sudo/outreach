@@ -48,7 +48,7 @@ function Thread({ leadId }) {
 function ReplyRow({ r, team, onChanged, onOpen, setMessage }) {
   const [panel, setPanel] = useState("");         // "" | thread | reply | snooze
   const [until, setUntil] = useState(tomorrowMorning());
-  const [lead, setLead] = useHashParam("lead");
+  const [lead, setLead] = useState(null);
   const run = async (action, extra, done) => {
     try { await api.replyAction(r.key, action, extra); setMessage(done); onChanged(); } catch (e) { setMessage(e.message); }
   };
@@ -118,7 +118,7 @@ export default function Replies() {
   const [channel, setChannel] = useState("");
   const [assignee, setAssignee] = useState("");
   const [onlyAction, setOnlyAction] = useState(true);
-  const [lead, setLead] = useState(null);
+  const [lead, setLead] = useHashParam("lead");
   const [message, setMessage] = useState("");
   const load = () => {
     setError("");

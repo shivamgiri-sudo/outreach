@@ -45,7 +45,7 @@ def test_multipart_and_providers_carry_the_html():
 def test_preview_endpoint(tmp_path):
     c = make_client(tmp_path)
     r = c.get("/api/sequence/0/preview")
-    assert r.status_code == 200 and "Priya" in r.json()["html"] and r.json()["subject"]
+    assert r.status_code == 200 and "Alex" in r.json()["html"] and r.json()["subject"]
     assert c.get("/api/sequence/99/preview").status_code == 404
 
 

@@ -76,6 +76,10 @@ def add_task(store, lead_id: Optional[str], kind: str, text: str = "", due_at: O
              owner: Optional[str] = None, priority: str = "normal", title: Optional[str] = None, source: str = "app",
              dedupe_open: bool = False) -> dict:
     """Create a task. With dedupe_open, an open task of the same kind for the same lead is reused instead."""
+    if lead_id and (owner is None or owner == caller_name(store)):
+        lead_owner = next((l.get("owner") for l in store.read("leads") if l["id"] == lead_id), None)
+        if lead_owner:
+            owner = lead_owner                     # the lead has a person responsible: their task, not the team's
     if dedupe_open:
         existing = next((t for t in store.read("tasks") if t.get("lead_id") == lead_id and t.get("kind") == kind
                          and not t.get("done") and t.get("status", "open") == "open"), None)

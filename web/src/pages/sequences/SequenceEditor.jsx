@@ -110,7 +110,7 @@ export default function SequenceEditor({ sequence, onSaved, onClose, onDuplicate
           <b>Live preview · Step {active.index + 1}{step ? ` (Day ${humanDay(step.day)})` : ""} · version {active.variant}</b>
           {preview ? (
             <>
-              <p className="sub" style={{ margin: "6px 0" }}>Subject: <b>{preview.subject}</b> · sample person: Priya Sharma, Acme Retail</p>
+              <p className="sub" style={{ margin: "6px 0" }}>Subject: <b>{preview.subject}</b> · sample person: Alex Example, Example Retail</p>
               {preview.missing?.length > 0 && <p className="error">Not filled: {preview.missing.join(", ")}</p>}
               <iframe title="Live email preview" srcDoc={preview.html} sandbox="" style={{ width: "100%", height: "60vh", border: "1px solid var(--line)", borderRadius: 10, background: "#fff" }} />
             </>

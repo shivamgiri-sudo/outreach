@@ -13,7 +13,7 @@ from . import sequence_library as lib
 from .growth_core import get_offer, offer_line, public_base_url
 
 BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
-SAMPLE_LEAD = {"id": "sample", "contact_name": "Priya Sharma", "company": "Acme Retail", "role": "Store Manager"}
+SAMPLE_LEAD = {"id": "sample", "contact_name": "Alex Example", "company": "Example Retail", "role": "Store Manager"}
 
 
 class SequenceBody(BaseModel):

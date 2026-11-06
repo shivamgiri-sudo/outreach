@@ -134,7 +134,7 @@ def make_router(store, build_lead, present) -> APIRouter:
         if not 0 <= index < len(DEFAULT_SEQUENCE):
             raise HTTPException(404, "No such step")
         base = public_base_url(store, BASE_URL)
-        sample = {"id": "sample", "contact_name": "Priya Sharma", "company": "Acme Retail", "role": "Store Manager"}
+        sample = {"id": "sample", "contact_name": "Alex Example", "company": "Example Retail", "role": "Store Manager"}
         variables = lead_variables(sample, "BookMyInterview team", base, {"offer_line": offer_line(get_offer(store)), "demo_link": f"{base}/demo/sample"})
         step = DEFAULT_SEQUENCE[index]
         subject = fill(step["subject"], variables)[0]

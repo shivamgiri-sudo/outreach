@@ -287,3 +287,15 @@ def test_whatsapp_status_reports_practice_mode(tmp_path):
     c = make(tmp_path)
     s = c.get("/api/whatsapp/status").json()
     assert s["mode"] == "practice" and s["connected"] is False
+
+
+def test_tasks_for_an_owned_lead_go_to_its_owner(tmp_path):
+    from app.activities import add_task, caller_name
+    from tests.flow_helpers import lead, make_client, patch_lead, store_of
+    c = make_client(tmp_path)
+    a = lead(c, "Acme")["id"]
+    store = store_of(c)
+    patch_lead(c, a, owner="Meena")
+    assert add_task(store, a, "call", "ring", owner=caller_name(store))["owner"] == "Meena"
+    assert add_task(store, a, "follow_up", "x")["owner"] == "Meena"
+    assert add_task(store, a, "review", "y", owner="Ravi")["owner"] == "Ravi"         # a named person stays

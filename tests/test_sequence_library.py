@@ -227,10 +227,10 @@ def test_new_and_old_preview_routes(tmp_path):
     steps = two_steps()
     steps[0]["variants"] = [{"name": "B", "subject": "Another angle for {{company}}"}]
     seq = create(c, steps)
-    assert c.get(f"/api/sequences/{seq['id']}/steps/0/preview?variant=B").json()["subject"] == "Another angle for Acme Retail"
+    assert c.get(f"/api/sequences/{seq['id']}/steps/0/preview?variant=B").json()["subject"] == "Another angle for Example Retail"
     assert c.get(f"/api/sequences/{seq['id']}/steps/5/preview").status_code == 404
     draft = c.post("/api/sequences/preview-draft", json={"step": {"subject": "Hi {{company}}", "body": "{{greeting}}" + UNSUB}}).json()
-    assert draft["subject"] == "Hi Acme Retail" and draft["missing"] == []
+    assert draft["subject"] == "Hi Example Retail" and draft["missing"] == []
 
 
 # ---------- roles and snippets ----------
