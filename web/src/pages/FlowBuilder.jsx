@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { istLabel } from "../time.js";
+import { useConfirm } from "../Dialog.jsx";
 import FlowEditor from "./flows/FlowEditor.jsx";
 
 const STATUS = { active: ["ok", "Active"], paused: ["warn", "Paused"], draft: ["", "Draft"] };
@@ -8,6 +9,7 @@ const TRIGGER_WORDS = {
   "trigger.manual": "Added by hand", "trigger.lead_added": "New lead", "trigger.reply": "They reply",
   "trigger.stage_changed": "Stage changes", "trigger.meeting_booked": "Meeting booked",
   "trigger.activation_event": "Product activity", "trigger.no_reply_days": "No reply for days",
+  "trigger.schedule": "On a schedule", "trigger.webhook": "Webhook received",
 };
 
 // "#flows/<id>" opens one flow in the editor; "#flows" is the list.
@@ -21,6 +23,14 @@ function FlowList({ onOpen }) {
   const [templates, setTemplates] = useState([]);
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState("");
+  const confirm = useConfirm();
+  // A blank flow is saved the moment it is made, so "Untitled flow" drafts piled up with no way to remove them.
+  const remove = async (f) => {
+    const live = f.stats?.active_leads || 0;
+    if (!(await confirm({ message: `Delete “${f.name}”?${live ? ` ${live} lead(s) still in it will be stopped.` : ""} This cannot be undone.`,
+      confirmLabel: "Delete flow", danger: true }))) return;
+    try { await api.deleteFlow(f.id); setFlows((rows) => rows.filter((x) => x.id !== f.id)); } catch (e) { setError(e.message); }
+  };
   useEffect(() => {
     api.flows().then(setFlows).catch((e) => { setError(e.message); setFlows([]); });
     api.flowTemplates().then(setTemplates).catch(() => setTemplates([]));
@@ -79,7 +89,9 @@ function FlowList({ onOpen }) {
                     <td data-label="Starts when">{TRIGGER_WORDS[f.trigger] || "No trigger yet"}</td>
                     <td data-label="Active leads">{f.stats.active_leads} <small className="sub-inline">of {f.stats.total}</small></td>
                     <td data-label="Last edited">{istLabel(f.updated_at)}</td>
-                    <td><button type="button" className="btn ghost" onClick={() => onOpen(f.id)} aria-label={`Open ${f.name}`}>Open</button></td>
+                    <td className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
+                      <button type="button" className="btn ghost" onClick={() => onOpen(f.id)} aria-label={`Open ${f.name}`}>Open</button>
+                      <button type="button" className="btn ghost danger" onClick={() => remove(f)} aria-label={`Delete ${f.name}`}>Delete</button></td>
                   </tr>
                 );
               })}
