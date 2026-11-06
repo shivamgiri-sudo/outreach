@@ -85,6 +85,8 @@ def read_table(csv_text: Optional[str] = None, rows: Optional[list] = None) -> t
         table = [(n, {h: clean_text(r.get(h)) for h in headers}) for n, r in enumerate(rows, start=2)]
     else:
         text = (csv_text or "").lstrip("﻿")
+        if text.startswith("PK\x03\x04"):            # a zip: an .xlsx workbook picked instead of its CSV
+            raise ValueError("This is an Excel workbook (.xlsx), not a CSV. In Excel: File > Save As > 'CSV UTF-8', then upload that file.")
         if "\x00" in text[:4000]:
             raise ValueError("This file looks like UTF-16 (Excel 'Unicode Text'). Save it as 'CSV UTF-8' and try again.")
         first = text.split("\n", 1)[0]

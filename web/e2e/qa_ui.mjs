@@ -473,6 +473,57 @@ if (want("numbers")) await step("Numbers agree with the seeded data on Dashboard
   return note;
 });
 
+if (want("brand")) await step("Setup > Brand & offer: typed selling points fill the call script", async () => {
+  await goPage(page, "setup");
+  await page.getByRole("tab", { name: "Brand & offer" }).click(); await settle(page, 400);
+  await page.getByLabel("Value point 1", { exact: true }).fill("Shortlisted candidates in 48 hours");
+  await page.getByLabel("Value point 2", { exact: true }).fill("Pay only when they join");
+  await page.getByLabel("Value point 3", { exact: true }).fill("Teams in 40 cities");
+  await page.getByRole("button", { name: "Save brand & offer" }).click();
+  await see("Saved.");
+  await goPage(page, "calls");
+  const txt = await page.getByTestId("call-script").innerText();
+  const why = txt.split("\n").find((l) => l.startsWith("Why us")) || "";
+  if (!why.includes("Shortlisted candidates in 48 hours. Pay only when they join. Teams in 40 cities.")) throw new Error(why);
+  if (await page.getByTestId("script-gap").count()) throw new Error("gap note still shown");
+  return why;
+});
+
+if (want("importedge")) await step("Import wizard: header-only, garbage, semicolon and 1 MB single-cell files", async () => {
+  const fs2 = await import("node:fs");
+  const dir = (process.env.SHOTS || "/tmp");
+  const files = {
+    "header_only.csv": "Company Name,Email,Mobile Phone\n",
+    "garbage.csv": "\u0000\u0001PK\u0003\u0004binary-junkÿþ,,,\n\u0000\u0000",
+    "semicolon.csv": "Company Name;Email;City\nKiran Textiles;anil@kirantextiles.in;Surat\nNova Pharma;meena@novapharma.in;Vadodara\n",
+    "huge_cell.csv": "Company Name,Notes\nBig Note Co," + "x".repeat(1_000_000) + "\n",
+  };
+  const notes = [];
+  await goPage(page, "leads");
+  for (const [name, body] of Object.entries(files)) {
+    fs2.writeFileSync(`${dir}/${name}`, body);
+    const wizardOpen = await page.locator("#import-file").isVisible().catch(() => false);
+    if (!wizardOpen) await page.getByRole("button", { name: "Import leads" }).click();
+    await page.locator("#import-file").setInputFiles(`${dir}/${name}`);
+    await see(`Loaded ${name}`);
+    await page.getByRole("button", { name: "Next: check the columns" }).click();
+    await settle(page, 1200);
+    const body2 = await page.locator("main").innerText();
+    const alert = await page.getByRole("alert").first().innerText().catch(() => "");
+    const dry = await page.getByRole("button", { name: "Next: dry run" }).isVisible().catch(() => false);
+    let result = alert || (dry ? "columns step" : body2.slice(0, 80));
+    if (dry) {
+      await page.getByRole("button", { name: "Next: dry run" }).click(); await settle(page, 1200);
+      result += " -> " + ((await page.getByRole("button", { name: /^Import: / }).innerText().catch(() => "")) || (await page.getByRole("alert").first().innerText().catch(() => "?")));
+      await page.getByRole("button", { name: "Back to columns" }).click().catch(() => {});
+      await page.getByRole("button", { name: "Back", exact: true }).click().catch(() => {});
+    }
+    notes.push(`${name}: ${result.replace(/\n/g, " ").slice(0, 160)}`);
+  }
+  await page.getByRole("button", { name: "Close", exact: true }).first().click().catch(() => {});
+  return notes.join(" ;; ");
+});
+
 const out = results.map((r) => r.join(" | ")).join("\n");
 console.log("\n==== RESULTS\n" + out + "\n==== PROBLEMS\n" + [...new Set(problems)].join("\n"));
 await browser.close();
