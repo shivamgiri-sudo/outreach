@@ -72,3 +72,42 @@ def test_a_workspace_limited_login_never_sees_another_clients_tasks_or_calls(tmp
     assert c.post(f"/api/leads/{ids['ClientCo']}/note", json={"text": "called"}, headers=h(cal)).status_code == 200
     # owners still see everything
     assert "Konkan" in c.get("/api/tasks", headers=h(admin)).text and c.get("/api/dashboard", headers=h(admin)).json()["total_leads"] >= 2
+
+
+def test_downloads_backups_and_restores_are_audited(tmp_path, monkeypatch):
+    from tests.flow_helpers import CSV
+    c, h, login, admin = rig(tmp_path, monkeypatch)
+    c.post("/api/leads/import", json={"csv": CSV, "source": "apollo"}, headers=h(admin))
+    assert c.get("/api/export/leads.csv?stage=new", headers=h(admin)).status_code == 200
+    ids = [l["id"] for l in c.get("/api/leads", headers=h(admin)).json()][:1]
+    assert c.post("/api/export/leads.csv", json={"ids": ids}, headers=h(admin)).status_code == 200
+    cal = login("cal@example.com").json()["token"]
+    assert c.get("/api/export/leads.csv", headers=h(cal)).status_code == 403          # callers: no CSV, and nothing logged
+    raw = c.get("/api/backup", headers=h(admin)).content
+    assert c.post("/api/backup/restore?dry_run=1", content=raw, headers={**h(admin), "Content-Type": "application/gzip"}).status_code == 200
+    assert c.post("/api/backup/restore?confirm=1", content=raw, headers={**h(admin), "Content-Type": "application/gzip"}).status_code == 200
+    rows = c.get("/api/audit?limit=50", headers=h(admin)).json()["items"]
+    downloads = [r for r in rows if r["action"] == "export.download"]
+    assert len(downloads) == 2 and downloads[0]["target"] == "leads.csv" and "1 picked" in downloads[0]["detail"]
+    assert "stage=new" in downloads[1]["detail"] and "rows" in downloads[1]["detail"]
+    assert [r["action"] for r in rows if r["action"].startswith("backup.")] == ["backup.restore", "backup.download"]   # the download row is inside the backup; the restore row is added after
+
+
+def test_change_log_csv_is_owner_only_audited_and_scoped(tmp_path, monkeypatch):
+    from tests.flow_helpers import CSV
+    from tests.test_workspaces import CSV2
+    c, h, login, admin = rig(tmp_path, monkeypatch)
+    c.post("/api/leads/import", json={"csv": CSV, "source": "apollo"}, headers=h(admin))
+    w = c.post("/api/workspaces", json={"name": "Acme Staffing"}, headers=h(admin)).json()
+    c.post("/api/leads/import", json={"csv": CSV2, "source": "apollo"}, headers={**h(admin), "X-Workspace": w["id"]})
+    ids = {l["company"]: l["id"] for l in c.get("/api/leads", headers=h(admin)).json()}
+    other = next(k for k in ids if k != "ClientCo")
+    for company in (other, "ClientCo"):
+        r = c.patch(f"/api/leads/{ids[company]}", json={"title": f"Head of HR at {company}", "reason": "card"}, headers=h(admin))
+        assert r.status_code == 200, r.text
+    c.put("/api/users/cal@example.com", json={"workspaces": [w["id"]]}, headers=h(admin))
+    cal = login("cal@example.com").json()["token"]
+    assert c.get("/api/change-log.csv", headers=h(cal)).status_code == 403
+    assert [r["company"] for r in c.get("/api/change-log", headers=h(cal)).json()] == ["ClientCo"]
+    assert c.get("/api/change-log.csv", headers=h(admin)).status_code == 200
+    assert any(r["target"] == "change-log.csv" for r in c.get("/api/audit?action=export", headers=h(admin)).json()["items"])

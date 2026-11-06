@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { istLabel } from "../time.js";
-import { api } from "../api.js";
+import { api, isOwner } from "../api.js";
 import { ops } from "../opsApi.js";
 import { ErrorState } from "../states.jsx";
 
@@ -100,7 +100,7 @@ export default function Intelligence({ range, embedded = false }) {
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h3 style={{ marginTop: 0 }}>Change log</h3><button className="btn" onClick={exportCsv}>Download CSV</button></div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h3 style={{ marginTop: 0 }}>Change log</h3>{isOwner() && <button className="btn" onClick={exportCsv}>Download CSV</button>}</div>
         <p className="sub">Every manual correction to a lead: who, when, what it was and what it became.</p>
         {log.length === 0 ? <p className="empty">No corrections yet.</p> : (
           <div className="table-wrap"><table><thead><tr><th>When</th><th>Who</th><th>Lead</th><th>Field</th><th>Was</th><th>Now</th><th>Why</th></tr></thead>

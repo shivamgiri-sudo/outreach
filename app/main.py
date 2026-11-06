@@ -439,7 +439,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
 
     @app.get("/api/change-log")
     def change_log(limit: int = 300):
-        return audit.log_for(store, "", max(1, min(limit, 1000)))
+        hidden = workspaces_mod.hidden_ids(store.read("leads"))       # another workspace's corrections stay out
+        return [r for r in audit.log_for(store, "", 20000) if r.get("lead_id") not in hidden][:max(1, min(limit, 1000))]
 
     @app.post("/api/leads/{lead_id}/note")
     def add_note(lead_id: str, body: NoteBody, request: Request):

@@ -8,7 +8,8 @@ const EMPTY = { action: "", by: "", q: "", from: "", to: "" };
 const PAGE = 50;
 const GROUPS = [["", "Every action"], ["stage", "Stage changes"], ["live_sending", "Send for real"], ["bulk", "Bulk actions"],
   ["lead.erase", "Erasures"], ["user", "Logins and roles"], ["workspace", "Workspaces"], ["linkedin_agent", "LinkedIn agent"],
-  ["settings", "Settings saved"], ["contact.edit", "Contact corrections"], ["list.delete", "Lists deleted"], ["campaign.delete", "Campaigns deleted"]];
+  ["settings", "Settings saved"], ["contact.edit", "Contact corrections"], ["list.delete", "Lists deleted"], ["campaign.delete", "Campaigns deleted"],
+  ["export", "Downloads (CSV/JSON)"], ["backup", "Backups and restores"]];
 
 export default function AuditLog() {
   const [f, setF] = useState(EMPTY);
