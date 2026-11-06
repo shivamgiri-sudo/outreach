@@ -126,8 +126,10 @@ export default function Hygiene({ go }) {
   };
   const confirm = useConfirm();
   const merge = async (keep, others) => {
-    const names = others.map((o) => o.company || o.contact_name || o.id).join(", ");
-    if (!(await confirm({ message: `Merge ${names} into ${keep.company || keep.id}? The others are removed; their history, people, phones and messages move to this lead. The strictest status (unsubscribed, disqualified) is kept.`, confirmLabel: "Merge" }))) return;
+    // Leads of one company all say "Zoho": name each by its person or address so you can see who is merged.
+    const label = (l) => [l.company, l.contact_name || l.email || l.phone].filter(Boolean).join(" · ") || l.id;
+    const shown = others.slice(0, 8).map(label).join(", ") + (others.length > 8 ? ` and ${others.length - 8} more` : "");
+    if (!(await confirm({ message: `Merge ${shown} into ${label(keep)}? The others are removed; their history, people, phones and messages move to this lead. The strictest status (unsubscribed, disqualified) is kept.`, confirmLabel: "Merge" }))) return;
     act(() => api.hygieneMerge(keep.id, others.map((o) => o.id)), `Merged ${others.length} lead(s) into ${keep.company || keep.id}.`);
   };
   const resolve = (c, choice) => act(() => api.resolveConflict(c.lead_id, c.id, choice), choice === "keep" ? "Kept the current value." : "Used the new value.");
