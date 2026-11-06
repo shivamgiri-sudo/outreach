@@ -39,7 +39,13 @@ def _linkedin(raw, kind: str) -> str:
     return f"https://www.linkedin.com/{m.group(1).lower()}/{m.group(2)}"
 
 
-def build_lead(row: dict, source: str, allow_company_key: bool = False) -> Optional[dict]:
+def linkedin_profile_url(raw) -> str:
+    """https://www.linkedin.com/in/<slug> for a LinkedIn person link (tracking and sub-pages dropped), else ""."""
+    url = _linkedin(raw, "in")
+    return url if url.startswith("https://www.linkedin.com/in/") else ""
+
+
+def build_lead(row: dict, source: str, allow_company_key: bool = False, fallback_key: str = "") -> Optional[dict]:
     row = {k.strip().lower(): (v.strip() if isinstance(v, str) else "" if v is None else v) for k, v in row.items() if k}
     custom = {k[7:]: v for k, v in row.items() if k.startswith("custom:") and v not in ("", None)}   # see lead_import.quick_rows
     email = normalise_email(row.get("email"))
@@ -67,7 +73,7 @@ def build_lead(row: dict, source: str, allow_company_key: bool = False) -> Optio
                              "role": row.get("role", "")[:120]}.items() if v},
         **({"custom": custom} if custom else {}),
     }
-    lead["dedupe_key"] = dedupe_key(lead) or (f"company:{lead['company'].lower()}" if allow_company_key and lead["company"] else None)
+    lead["dedupe_key"] = dedupe_key(lead) or (f"company:{lead['company'].lower()}" if allow_company_key and lead["company"] else None) or fallback_key or None
     if not lead["dedupe_key"]:
         return None
     from .workspaces import stamp_new          # late import: workspaces imports this module

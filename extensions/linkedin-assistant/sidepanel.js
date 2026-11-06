@@ -29,7 +29,11 @@ function errorText(res) {
 
 async function activeTab() {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  return tab || null;
+  const self = chrome.tabs.getCurrent ? await chrome.tabs.getCurrent() : undefined;   // undefined in the real side panel
+  if (!self || !tab || tab.id !== self.id) return tab || null;
+  // Only when this panel page is itself open as a tab (e.g. in tests): use the active LinkedIn tab of another window.
+  const others = await chrome.tabs.query({ active: true });
+  return others.find((t) => t.id !== self.id && /^https:\/\/www\.linkedin\.com\//.test(t.url || "")) || null;
 }
 
 async function askPage(tabId, message) {
@@ -60,7 +64,13 @@ function render() {
   const nodes = [];
   if (!match.matched) {
     nodes.push(el("div", { class: "card" }, el("b", {}, profile.name || "This person"), el("div", { class: "sub" }, profile.headline || "")));
-    nodes.push(banner("This profile is not one of your leads, so there is nothing to send. Add or import the lead in the app, with this profile link, and check again.", ""));
+    if (profile.singleProfile) {
+      nodes.push(banner("This profile is not one of your leads yet, so there is nothing to send.", ""));
+      nodes.push(el("div", { class: "row" }, el("button", { class: "primary", id: "save-profile", onclick: () => confirmSave("Save to portal") }, "Save to portal")));
+      nodes.push(el("div", { id: "save-area" }));
+    } else {
+      nodes.push(banner("This profile is not one of your leads. Open the person’s main profile page (linkedin.com/in/…) to save them to the portal.", ""));
+    }
     return show(...nodes);
   }
   const seq = match.linkedin_seq || {};
@@ -84,6 +94,11 @@ function render() {
     nodes.push(el("div", { class: "row" }, el("button", { class: "primary", onclick: () => confirmSent(m.step) }, "I sent it")));
   } else {
     nodes.push(banner(match.reason || "Nothing to send right now.", match.stage === "unsubscribed" || match.stage === "disqualified" ? "warn" : ""));
+  }
+  if (profile.singleProfile && missingFields().length) {
+    nodes.push(el("div", { class: "row" }, el("button", { id: "save-profile", onclick: () => confirmSave("Update lead") }, "Update lead")));
+    nodes.push(el("p", { class: "hint" }, "The lead is missing: " + missingFields().join(", ") + ". Update fills only empty fields."));
+    nodes.push(el("div", { id: "save-area" }));
   }
   const actions = match.actions || [];
   if (actions.includes("accepted")) nodes.push(el("div", { class: "row" }, el("button", { class: "primary", onclick: confirmAccepted }, "They accepted")));
@@ -139,6 +154,52 @@ function showReply() {
   area.replaceChildren(el("label", {}, "What did they say?", box),
     el("button", { class: "primary", onclick: () => record(`/api/extension/leads/${encodeURIComponent(current.match.lead_id)}/replied`, { text: box.value.trim() }, "Recorded: they replied. The sequence is stopped.") }, "Save reply"));
   box.focus();
+}
+
+// ----- Save to portal: one profile per click, values checked and edited by the person before anything is sent -----
+function missingFields() {
+  const { profile, match } = current;
+  const out = [];
+  if (!match.name && profile.name) out.push("name");
+  if (!match.title && profile.headline) out.push("title");
+  if (!match.company && profile.company) out.push("company");
+  if (match.has_profile_link === false) out.push("profile link");
+  return out;
+}
+
+function confirmSave(label) {
+  const area = document.getElementById("save-area");
+  const { profile, match } = current;
+  const field = (id, text, value, max) => {
+    const input = el("input", { id, maxlength: String(max), "aria-label": text });
+    input.value = value || "";
+    return [el("label", { for: id }, text, input), input];
+  };
+  const [nameRow, name] = field("save-name", "Name", (match && match.name) || profile.name, 120);
+  const [titleRow, title] = field("save-title", "Headline / title", profile.headline, 200);
+  const [companyRow, company] = field("save-company", "Current company", profile.company, 200);
+  const [placeRow, place] = field("save-location", "Location (optional)", profile.location, 200);
+  const send = async () => {
+    const body = { profile_url: profile.profileUrl || profile.url, name: name.value.trim(), title: title.value.trim(),
+                   company: company.value.trim(), location: place.value.trim() };
+    if (!body.name) return area.prepend(banner("Type the person’s name first.", "warn"));
+    saveBtn.disabled = true;
+    const res = await api("POST", "/api/extension/save-profile", null, body);
+    if (!res.ok) { saveBtn.disabled = false; return area.prepend(banner(errorText(res), "warn")); }
+    current.match = res.data.match;
+    render();
+    const what = res.data.result === "created" ? "Saved to the portal as a new lead."
+      : res.data.result === "updated" ? "Lead updated: added " + res.data.changed.join(", ") + "."
+      : "The lead already has all of this. Nothing changed.";
+    view.prepend(banner(what, "ok"));
+  };
+  const saveBtn = el("button", { class: "primary", id: "save-confirm", onclick: send }, label === "Update lead" ? "Update lead" : "Save");
+  area.replaceChildren(el("div", { class: "card", id: "save-confirm-box" },
+    el("b", {}, "Check before saving"),
+    el("div", { class: "sub" }, "Only this one profile is saved: " + (profile.profileUrl || profile.url)),
+    nameRow, titleRow, companyRow, placeRow,
+    el("div", { class: "row" }, saveBtn, el("button", { class: "ghost", onclick: () => area.replaceChildren() }, "Cancel"))));
+  name.focus();
 }
 
 // Read-only hints. Each one only ASKS the person to confirm with a click; nothing is reported by itself.

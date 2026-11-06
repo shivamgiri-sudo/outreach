@@ -10,6 +10,7 @@ const ALLOWED = [
   ["GET", /^\/api\/extension\/match$/],
   ["GET", /^\/api\/extension\/queue$/],
   ["POST", /^\/api\/extension\/leads\/[A-Za-z0-9_-]+\/(sent|accepted|replied)$/],
+  ["POST", /^\/api\/extension\/save-profile$/],                  // the person pressed Save in the confirm box
 ];
 
 async function getConfig() {

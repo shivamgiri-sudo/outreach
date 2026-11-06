@@ -8,7 +8,9 @@
  *   - simulate typing or mouse movement, or use human-like / randomised timing; it has no timers at all
  *   - hide itself or rotate anything
  * It ONLY:
- *   1. reads the ONE profile page the person has opened (name, headline, company, degree, profile URL) when asked
+ *   1. reads the ONE profile page the person has opened (name, headline, company, location, degree, profile URL) when
+ *      asked, and only text that is visible on that page (never hidden markup, never other pages or lists). For
+ *      "Save to portal" the side panel shows these values in an editable box and the person presses Save.
  *   2. fills text into the open note / message box ONCE, only when the person pressed "Insert message" in the
  *      extension's own side panel (never over text the person already typed, unless they confirm)
  *   3. after an insert, watches (read-only) whether that box closes, so the panel can ASK the person to confirm
@@ -27,8 +29,17 @@
   ];
 
   function onProfilePath() { return /^\/in\/[^/]+/.test(location.pathname); }
+  // exactly one person's profile (/in/<slug> or /in/<slug>/), not a sub-page such as /in/<slug>/details/...
+  function onSingleProfile() { return /^\/in\/[^/]+\/?$/.test(location.pathname); }
   function onMessagingPath() { return /^\/messaging\//.test(location.pathname); }
   function text(el) { return el ? (el.textContent || "").replace(/\s+/g, " ").trim() : ""; }
+  // Text the person can actually see: nothing from hidden, collapsed or aria-hidden elements.
+  function shown(el) {
+    if (!el || !el.isConnected || el.closest("[hidden], [aria-hidden='true']") || el.getClientRects().length === 0) return false;
+    const st = getComputedStyle(el);
+    return st.visibility !== "hidden" && st.display !== "none";
+  }
+  function visibleText(el) { return shown(el) ? text(el) : ""; }
 
   function nameFromTitle() {
     // "(3) Ravi Kumar | LinkedIn" or "Ravi Kumar - Head of TA - Acme | LinkedIn"
@@ -39,10 +50,11 @@
     if (!onProfilePath()) return { onProfile: false, onMessaging: onMessagingPath(), url: location.origin + location.pathname };
     const top = document.querySelector("main section") || document;
     const h1 = document.querySelector("main h1") || document.querySelector("h1");
-    const name = text(h1) || nameFromTitle();
-    const headline = text(top.querySelector(".text-body-medium.break-words")) || text(top.querySelector(".text-body-medium"));
+    const name = visibleText(h1) || nameFromTitle();
+    const headline = visibleText(top.querySelector(".text-body-medium.break-words")) || visibleText(top.querySelector(".text-body-medium"));
     // current company: the top-card "Current company" button, else "... at Company" in the headline
-    let company = text(document.querySelector("button[aria-label^='Current company']")).replace(/^Current company:\s*/i, "");
+    let company = visibleText(top.querySelector("button[aria-label^='Current company']") || document.querySelector("main button[aria-label^='Current company']"))
+      .replace(/^Current company:\s*/i, "");
     if (!company) {
       const m = headline.match(/\bat\s+(.+?)(?:\s*[|·•].*)?$/i) || headline.match(/@\s*(.+)$/);
       company = m ? m[1].trim() : "";
@@ -50,7 +62,11 @@
     const degreeText = text(document.querySelector(".distance-badge .dist-value")) || text(document.querySelector("span.dist-value"));
     const degree = (degreeText.match(/[123](st|nd|rd)/) || [""])[0];
     const pending = !!Array.from(document.querySelectorAll("main button, main a")).find((b) => /^pending\b/i.test(text(b)) || /pending/i.test(b.getAttribute("aria-label") || ""));
-    return { onProfile: true, onMessaging: false, url: location.origin + location.pathname, name, headline, company, degree, pending };
+    // location line of the top card ("Pune, Maharashtra, India"), only when it is shown
+    const place = visibleText(top.querySelector(".text-body-small.inline.t-black--light.break-words"));
+    const slug = location.pathname.split("/")[2] || "";
+    return { onProfile: true, onMessaging: false, singleProfile: onSingleProfile(), url: location.origin + location.pathname,
+             profileUrl: "https://www.linkedin.com/in/" + slug, name, headline, company, location: place, degree, pending };
   }
 
   function findBox() {
