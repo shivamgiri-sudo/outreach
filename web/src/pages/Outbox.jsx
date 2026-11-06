@@ -3,6 +3,8 @@ import { istLabel } from "../time.js";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import LiveSendingSwitch from "./LiveSendingSwitch.jsx";
+import OutboxTable from "./OutboxTable.jsx";
 
 function Downloads() {
   return (
@@ -19,7 +21,6 @@ function Downloads() {
   );
 }
 
-const STATUS_PILL = { sent: "ok", delivered: "ok", dry_run: "", failed: "warn", provider_error: "warn" };
 const STATUS_LABEL = { dry_run: "practice", provider_error: "provider problem" };
 
 function SendingBanner({ status, onResume, onClearPractice }) {
@@ -55,19 +56,18 @@ function SendingBanner({ status, onResume, onClearPractice }) {
   );
 }
 
-export default function Outbox() {
-  const [box, setBox] = useState([]);
+export default function Outbox({ go }) {
+  const [refresh, setRefresh] = useState(0);
   const [cfg, setCfg] = useState({ daily_cap: 20, sender_name: "" });
   const [status, setStatus] = useState(null);
-  const [inbox, setInbox] = useState([]);
   const [message, setMessage] = useState("");
   const [wa, setWa] = useState([]);
   const [loadError, setLoadError] = useState("");
   const load = () => {
     setLoadError("");
     const fail = (e) => setLoadError(e.message);
-    api.outbox().then(setBox).catch(fail); api.settings().then(setCfg).catch(fail); api.whatsappOutbox().then(setWa).catch(fail);
-    api.sendingStatus().then(setStatus).catch(fail); api.inbox().then(setInbox).catch(fail);
+    setRefresh((n) => n + 1); api.settings().then(setCfg).catch(fail); api.whatsappOutbox().then(setWa).catch(fail);
+    api.sendingStatus().then(setStatus).catch(fail);
   };
   useEffect(() => { load(); }, []);
 
@@ -88,7 +88,7 @@ export default function Outbox() {
     return r.skipped ? `Nothing sent: ${r.skipped}.` : `${r.sent} email(s) ${what}${extras ? `, ${extras}` : ""}. Sends are spread out: a few per run, one per company a day, follow-ups 3, 4 and 7 days apart.`;
   });
   const save = () => act(async () => setCfg(await api.saveSettings({
-    daily_cap: Number(cfg.daily_cap), sender_name: cfg.sender_name, live_sending: !!cfg.live_sending,
+    daily_cap: Number(cfg.daily_cap), sender_name: cfg.sender_name,
     sender_company: cfg.sender_company || "", sender_address: cfg.sender_address || "",
     sender_website: cfg.sender_website || "", sender_contact_email: cfg.sender_contact_email || "",
   })), "Settings saved.");
@@ -96,11 +96,12 @@ export default function Outbox() {
   return (
     <>
       <h2>Outbox & sending</h2>
-      <p className="sub">Emails stay in practice mode until a sending domain is connected AND "Send for real" is ticked. Practice runs never use up a lead's real first email.</p>
+      <p className="sub">Emails stay in practice mode until a sending domain is connected AND "Send for real" is switched on. Practice runs never use up a lead's real first email.</p>
       {loadError && <ErrorState message="The outbox could not load." detail={loadError} onRetry={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
       <SendingBanner status={status} onResume={() => act(api.resumeSending, "Sending resumed.")}
         onClearPractice={() => act(api.clearPractice, (r) => `Removed ${r.outbox} practice row(s). Live sending will start each lead from Email 1.`)} />
+      <LiveSendingSwitch onChanged={load} />
       <Downloads />
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="row">
@@ -118,11 +119,7 @@ export default function Outbox() {
         <label>Postal address (optional; needed only to email leads in the US or Canada)</label>
         <input value={cfg.sender_address || ""} placeholder="Office address, city, PIN" onChange={(e) => setCfg({ ...cfg, sender_address: e.target.value })} />
         <div className="row" style={{ marginTop: 10 }}>
-          <label className="row" style={{ fontWeight: 400, margin: 0 }}>
-            <input type="checkbox" style={{ width: "auto" }} checked={!!cfg.live_sending} onChange={(e) => setCfg({ ...cfg, live_sending: e.target.checked })} />
-            Send for real
-          </label>
-          <button className="btn ghost" onClick={save}>Save</button>
+          <button className="btn ghost" onClick={save}>Save settings</button>
           <button className="btn" onClick={run}>Run sequences now</button>
         </div>
       </div>
@@ -143,30 +140,10 @@ export default function Outbox() {
         </div>
       )}
       <p className="sub">Sends only Mon–Fri, 9am–6pm IST, one step per lead. Any reply stops the sequence for that lead.</p>
-      <div className="card" style={{ padding: 0, overflowX: "auto" }}>
-        {box.length === 0 ? <p className="empty">Nothing queued yet. Start a sequence from a lead, then click Run.</p> : (
-          <table>
-            <thead><tr><th>When</th><th>To</th><th>Step</th><th>Subject</th><th>Status</th></tr></thead>
-            <tbody>{box.map((m, i) => (
-              <tr key={i}><td>{istLabel(m.sent_at)}</td><td>{m.to}</td><td>{m.step}</td>
-                <td title={m.body}>{m.subject}</td>
-                <td><span className={`pill ${STATUS_PILL[m.delivered_at ? "delivered" : m.status] ?? "warn"}`} title={m.error || ""}>
-                  {m.delivered_at ? "delivered" : STATUS_LABEL[m.status] || m.status}</span></td></tr>
-            ))}</tbody>
-          </table>
-        )}
-      </div>
-      <h3>Replies received</h3>
-      <div className="card" style={{ padding: 0, overflowX: "auto" }}>
-        {inbox.length === 0 ? <p className="empty">No replies captured yet. Connect reply capture (IMAP or a webhook) under Integrations, or paste replies on a lead.</p> : (
-          <table>
-            <thead><tr><th>When</th><th>From</th><th>Channel</th><th>Reply</th><th>Read as</th></tr></thead>
-            <tbody>{inbox.map((m) => (
-              <tr key={m.id}><td>{istLabel(m.received_at)}</td><td>{m.from}</td><td>{m.channel}</td>
-                <td>{m.text.slice(0, 160)}</td><td><span className={`pill ${m.lead_id ? "ok" : "warn"}`}>{m.lead_id ? (m.label || "logged") : "no matching lead"}</span></td></tr>
-            ))}</tbody>
-          </table>
-        )}
+      <OutboxTable refreshKey={refresh} />
+      <div className="card" style={{ margin: "14px 0" }}>
+        <b>Replies received</b> <span className="sub-inline">are on the Replies page, with how each was read and which lead it matched.</span>{" "}
+        <button className="btn ghost" onClick={() => (go ? go("replies") : (window.location.hash = "replies"))}>Open Replies</button>
       </div>
       <h3>WhatsApp messages</h3>
       <div className="card" style={{ padding: 0, overflowX: "auto" }}>

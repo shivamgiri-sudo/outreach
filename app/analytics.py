@@ -150,8 +150,22 @@ def list_performance(store) -> list:
     return [{"id": r["id"], "name": r["name"], "created_by": r.get("created_by"), **lists_mod.stats(store, r)} for r in reversed(workspaces.filter_rows(store.read("lists")))][:20]
 
 
-def build(store, now: Optional[datetime] = None) -> dict:
+def build(store, now: Optional[datetime] = None, rng: Optional[dict] = None) -> dict:
+    """Everything on the Intelligence page. With a period (analytics_range.parse_range) the numbers cover the leads
+    created or active in it, and team activity covers exactly those days; without one, all leads and the last 30 days."""
+    from . import analytics_range
+    from .audit import contact_edits
     leads = real(workspaces.filter_rows(store.read("leads")))
-    return {"channels": channel_funnels(leads), "timing": reply_timing(leads), "personas": persona_table(leads),
-            "companies": company_table(leads), "quality": data_quality(leads, store.read("audit")),
-            "team": team_activity(leads, now=now), "stale": stale(leads, now), "lists": list_performance(store)}
+    corrections = contact_edits(store.read("audit"))
+    if rng is None:
+        return {"channels": channel_funnels(leads), "timing": reply_timing(leads), "personas": persona_table(leads),
+                "companies": company_table(leads), "quality": data_quality(leads, corrections),
+                "team": team_activity(leads, now=now), "stale": stale(leads, now), "lists": list_performance(store)}
+    ids = {l["id"] for l in leads}
+    in_range = lambda r: analytics_range._in(analytics_range._t(r.get("at")), rng["start"], rng["end"])
+    active = analytics_range.active_in(leads, rng)
+    corrections = [r for r in corrections if r.get("lead_id") in ids and in_range(r)]
+    return {"channels": channel_funnels(active), "timing": reply_timing(active), "personas": persona_table(active),
+            "companies": company_table(active), "quality": data_quality(leads, corrections),
+            "team": analytics_range.team(store, rng, leads), "stale": stale(leads, now), "lists": list_performance(store),
+            "range": analytics_range.public_range(rng)}

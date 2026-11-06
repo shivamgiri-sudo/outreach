@@ -303,3 +303,5 @@ export const api = {
   cancelMeeting: (meetingId) => request(`/api/meetings/${meetingId}/cancel`, { method: "POST" }),
   meetingDone: (meetingId) => request(`/api/meetings/${meetingId}/done`, { method: "POST" }),
 };
+// Shared with small feature modules (opsApi.js) so they can call the API without growing this file.
+export { request as apiRequest, download as apiDownload };

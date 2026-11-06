@@ -26,7 +26,7 @@ ROWS_PER_CHUNK = 500
 # Lists with people's personal data are owner-only; callers keep their working lists (DPDP: least access).
 TEAM_DATASETS = {"tasks", "activity", "linkedin_queue", "meetings"}
 OWNER_ONLY = {"leads", "hiring_sheet", "linkedin_tool", "outbox", "inbox", "whatsapp", "transactional", "campaign_leads", "campaign_runs",
-              "duplicates", "insights", "suppressed"}
+              "duplicates", "insights", "suppressed", "lists"}
 STATUS_LABEL = {"dry_run": "practice", "provider_error": "provider problem"}
 STATUS_FILTER = {"sent": ("sent",), "practice": ("dry_run",), "failed": ("failed", "provider_error")}
 TASK_BUCKETS = ("overdue", "today", "upcoming", "no_date", "done")
@@ -308,6 +308,13 @@ def insights_rows(store, params: dict, present) -> list:
     return rows
 
 
+def lists_rows(store, params: dict, present) -> list:
+    """Every lead list in the caller's workspace scope with its numbers and rates."""
+    from . import lists as lists_mod, workspaces
+    return [{"name": r.get("name"), "created_by": r.get("created_by"), "created_at": r.get("created_at"), **lists_mod.stats(store, r)}
+            for r in reversed(workspaces.filter_rows(store.read("lists")))]
+
+
 def linkedin_rows(store, params: dict, present) -> list:
     q = linkedin_seq.queue(store)
     return ([{**d, "section": "to send today"} for d in q["due"]]
@@ -365,6 +372,9 @@ DATASETS = {
     "linkedin_tool": (linkedin_tool_rows, linkedin_bridge.TOOL_COLUMNS, ("ids", "campaign_id")),
     "hiring_sheet": (lambda store, params, present: hiring_engine.sheet_rows(store), hiring_engine.SHEET_COLUMNS, ()),
     "suppressed": (suppressed_rows, ["value", "type", "lead_id", "company"], ()),
+    "lists": (lists_rows, cols("name", "created_by", "@created_at", "members", "companies", "with_email", "email_started", "emailed",
+                               "opened", "open_rate", "replied", "reply_rate", "linkedin_started", "linkedin_sent", "linkedin_accepted",
+                               "accept_rate", "interested"), ()),
 }
 
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, isOwner } from "../api.js";
+import { ops } from "../opsApi.js";
 import { ErrorState } from "../states.jsx";
 import { sourceLabel, stageLabel, useSourceRegistry } from "../labels.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
@@ -36,11 +37,11 @@ function SourceSpend({ rows, saved, onSaved }) {
   );
 }
 
-export default function Insights() {
+export default function Insights({ range, embedded = false }) {
   useSourceRegistry();
   const [d, setD] = useState(null);
   const [error, setError] = useState("");
-  const load = () => { setError(""); api.insights().then(setD).catch((e) => setError(e.message)); };
+  const load = () => { setError(""); (range ? ops.insights(range) : api.insights()).then(setD).catch((e) => setError(e.message)); };
   useEffect(() => { load(); }, []);
   if (error) return <ErrorState message="Insights could not load." detail={error} onRetry={load} />;
   if (!d) return <p className="empty">Loading…</p>;
@@ -50,7 +51,7 @@ export default function Insights() {
   return (
     <>
       <div className="row" style={{ justifyContent: "space-between" }}>
-        <div><h2>Insights</h2><p className="sub">What is working. Rates are of leads we have emailed.</p></div>
+        <div>{!embedded && <h2>Insights</h2>}<p className="sub">{range ? "Leads created and emails sent in the chosen period. " : ""}What is working. Rates are of leads we have emailed.</p></div>
         <DownloadButton path={exportPath("insights")} label="Download insights" testId="download-insights"
           title="Every number on this page as one table: section, item, measure, value" />
       </div>

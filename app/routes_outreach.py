@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -55,6 +55,14 @@ class SettingsBody(BaseModel):
     whatsapp_template_params: Optional[dict] = None       # {template: how many values it takes, or their names in order}
 
 
+class LiveSendingBody(BaseModel):
+    on: bool
+    confirm: str = Field(default="", max_length=40)
+
+
+LIVE_CONFIRM = "SEND FOR REAL"
+
+
 class ScrapeBody(BaseModel):
     url: str = ""
     html: str = ""
@@ -88,6 +96,10 @@ def live_blockers(store, base_url: str) -> list:
     elif not (settings.get("sender_address") or settings.get("sender_website") or settings.get("sender_contact_email") or "").strip():
         blockers.append("Add a postal address, or your website and a contact email, for the email footer.")
     return blockers
+
+
+def _now_iso_real() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def _now_iso() -> str:
@@ -152,7 +164,7 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
     router = APIRouter()
 
     def settings() -> dict:
-        shown = {k: v for k, v in get_settings(store).items() if k not in HIDDEN_SETTINGS and k != "company_health"}   # server_secret never leaves the server
+        shown = {k: v for k, v in get_settings(store).items() if k not in HIDDEN_SETTINGS and k not in ("company_health", "system_status")}   # server_secret never leaves the server
         secret = shown.get("webhook_secret")
         if secret:
             shown["webhook_secret"] = "••••" + secret[-4:]
@@ -177,8 +189,39 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
     def read_settings():
         return settings()
 
+    def live_switch(request: Request, on: bool, how: str) -> None:
+        """Keep who switched real sending and when, and put it in the audit trail."""
+        from . import audit
+        actor = audit.actor_of(getattr(request.state, "user", None))
+        store.update("settings", lambda s: {**s, "live_sending_changed": {"on": on, "by": actor["name"], "by_email": actor["email"],
+                                                                          "at": _now_iso_real(), "how": how}})
+        audit.record(store, getattr(request.state, "user", None), "live_sending.on" if on else "live_sending.off", "Send for real", how)
+
+    def live_state() -> dict:
+        cfg = get_settings(store)
+        return {"on": bool(cfg.get("live_sending")), "email_ready": bool(email_ready(store)), "changed": cfg.get("live_sending_changed"),
+                "blockers": live_blockers(store, BASE_URL), "confirm_phrase": LIVE_CONFIRM}
+
+    @router.get("/api/settings/live-sending")
+    def get_live_sending():
+        return live_state()
+
+    @router.post("/api/settings/live-sending")
+    def set_live_sending(body: LiveSendingBody, request: Request):
+        """The 'Send for real' switch, apart from the other settings. On needs the typed phrase; off is one click."""
+        was = bool(get_settings(store).get("live_sending"))
+        if body.on:
+            if body.confirm.strip().upper() != LIVE_CONFIRM:
+                raise HTTPException(400, f'Type {LIVE_CONFIRM} to switch on real sending.')
+            if blockers := live_blockers(store, BASE_URL):
+                raise HTTPException(400, "Real sending stays off until: " + " ".join(blockers))
+        if was != body.on:
+            store.update("settings", lambda current: {**current, "live_sending": body.on})
+            live_switch(request, body.on, "switched on with the typed confirmation" if body.on else "switched off")
+        return live_state()
+
     @router.put("/api/settings")
-    def put_settings(body: SettingsBody):
+    def put_settings(body: SettingsBody, request: Request):
         changes = {k: v for k, v in body.model_dump().items() if v is not None}
         if str(changes.get("webhook_secret", "")).startswith("••••"):
             del changes["webhook_secret"]
@@ -198,10 +241,17 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         for key, (low, high) in CAP_LIMITS.items():
             if key in changes and not low <= changes[key] <= high:
                 raise HTTPException(400, f"{key.replace('_', ' ').capitalize()} must be between {low} and {high}.")
+        was_live = bool(get_settings(store).get("live_sending"))
         store.update("settings", lambda current: {**current, **changes})
         if changes.get("live_sending") and (blockers := live_blockers(store, BASE_URL)):
             store.update("settings", lambda current: {**current, "live_sending": False})
             raise HTTPException(400, "Real sending stays off until: " + " ".join(blockers))
+        from . import audit
+        keys = sorted(k for k in changes if k != "live_sending")
+        if keys:                                            # key names only, never the values (a webhook secret may be one)
+            audit.record(store, getattr(request.state, "user", None), "settings.save", "Settings", "Changed: " + ", ".join(keys))
+        if "live_sending" in changes and bool(changes["live_sending"]) != was_live:
+            live_switch(request, bool(changes["live_sending"]), "changed with the settings form")
         return settings()
 
     @router.get("/api/sending/status")
@@ -289,12 +339,30 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
 
     @router.post("/api/sequences/run")
     def run_sequences(body: RunBody):
+        from .system_health import mark, run_summary
         now = resolve_now(body.now)
-        return run_due(store, now, public_base_url(store, BASE_URL), email_sender, ignore_hours=IGNORE_BUSINESS_HOURS)
+        result = run_due(store, now, public_base_url(store, BASE_URL), email_sender, ignore_hours=IGNORE_BUSINESS_HOURS)
+        mark(store, "sequence_run", not result.get("failed"), "by hand: " + run_summary(result))
+        return result
 
     @router.get("/api/outbox")
-    def get_outbox():
-        return list(reversed(store.read("outbox")))
+    def get_outbox(page: Optional[int] = None, size: int = 50, status: str = "", step: str = "", date_from: str = Query("", alias="from"),
+                   date_to: str = Query("", alias="to"), campaign_id: str = "", kind: str = "", q: str = ""):
+        """Without `page`: every row, newest first (older callers). With `page`: one page of the filtered rows."""
+        if page is None:
+            return list(reversed(store.read("outbox")))
+        from . import outbox_view
+        return outbox_view.search(store, status=status[:20], step=step[:120], date_from=date_from[:10], date_to=date_to[:10],
+                                  campaign_id=campaign_id[:40], kind=kind[:20], q=q, page=page, size=size)
+
+    @router.get("/api/outbox/message")
+    def outbox_message(key: str = Query(..., max_length=300)):
+        """One email in full: the text as sent and the designed HTML preview."""
+        from . import outbox_view
+        found = outbox_view.message(store, key, public_base_url(store, BASE_URL))
+        if found is None:
+            raise HTTPException(404, "Email not found")
+        return found
 
     @router.post("/api/leads/{lead_id}/reply")
     def log_reply(lead_id: str, body: ReplyBody):

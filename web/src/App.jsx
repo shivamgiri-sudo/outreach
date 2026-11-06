@@ -27,6 +27,7 @@ import Signals from "./pages/Signals.jsx";
 import Hygiene from "./pages/Hygiene.jsx";
 import Campaigns from "./pages/Campaigns.jsx";
 import HiringEngine from "./pages/HiringEngine.jsx";
+import Analytics from "./pages/Analytics.jsx";
 import { THEMES, getTheme, setTheme } from "./theme.js";
 
 // [id, label, component, icon]
@@ -39,6 +40,7 @@ const PAGES = [
   ["engine", "Hiring engine", HiringEngine, "workflow"],
   ["signals", "Buying signals", Signals, "bell"],
   ["sources", "Data sources", DataSources, "chart"],
+  ["analytics", "Analytics", Analytics, "chart"],
   ["insights", "Insights", Insights, "chart"],
   ["intelligence", "Intelligence", Intelligence, "bell"],
   ["growth", "Free experience", Growth, "gift"],

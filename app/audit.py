@@ -94,8 +94,79 @@ def edit_contact(store, lead_id: str, changes: dict, actor: dict, reason: str = 
     return {"lead": saved, "changed": [r["field"] for r in rows]}
 
 
+def contact_edits(rows: list) -> list:
+    """Only the per-field contact corrections (the older row shape); action rows from `record` are left out."""
+    return [r for r in rows if not r.get("action")]
+
+
 def log_for(store, lead_id: str = "", limit: int = 200) -> list:
-    rows = store.read("audit")
+    rows = contact_edits(store.read("audit"))
     if lead_id:
-        rows = [r for r in rows if r["lead_id"] == lead_id]
+        rows = [r for r in rows if r.get("lead_id") == lead_id]
     return list(reversed(rows))[:limit]
+
+
+# ---------- the wider audit trail: who did what, when (owner-only Audit tab) ----------
+ACTIONS = {
+    "stage.change": "Stage changed", "live_sending.on": "Real sending switched on", "live_sending.off": "Real sending switched off",
+    "bulk.list_email": "Email started for a list", "bulk.list_linkedin": "LinkedIn started for a list",
+    "bulk.workspace_move": "Leads moved to a workspace", "lead.erase": "Person erased", "list.delete": "List deleted",
+    "campaign.delete": "Campaign deleted", "user.add": "Login added", "user.change": "Login changed", "user.remove": "Login removed",
+    "workspace.create": "Workspace created", "workspace.delete": "Workspace removed", "linkedin_agent.on": "LinkedIn agent switched on",
+    "linkedin_agent.off": "LinkedIn agent switched off", "linkedin_agent.settings": "LinkedIn agent settings saved",
+    "settings.save": "Settings saved", "contact.edit": "Contact details corrected",
+}
+MAX_DETAIL = 500
+
+
+def record(store, user, action: str, target: str = "", detail: str = "") -> dict:
+    """One audit row {at, by, action, target, detail}. Never put secret values in `detail` (key names only)."""
+    actor = actor_of(user) if not isinstance(user, str) else {"name": user or "Unknown", "email": "", "role": ""}
+    row = {"at": now_iso(), "by": actor["name"], "by_email": actor["email"], "by_role": actor["role"], "action": str(action)[:60],
+           "target": str(target or "")[:200], "detail": " ".join(str(detail or "").split())[:MAX_DETAIL]}
+    store.update("audit", lambda old: [*old, row][-MAX_AUDIT_ROWS:])
+    return row
+
+
+def record_stage(store, request, lead_id: str, stage: str) -> None:
+    """A person moved a lead to another stage (the old stage is read from the event just written)."""
+    lead = next((l for l in store.read("leads") if l["id"] == lead_id), None) or {}
+    last = next((e for e in reversed(lead.get("timeline") or []) if e.get("kind") == "stage"), {})
+    record(store, getattr(request.state, "user", None), "stage.change", lead.get("company") or lead.get("domain") or lead_id,
+           f"{str(last.get('text') or stage).split(' (by ')[0]} (lead {lead_id})")
+
+
+def as_action(row: dict) -> dict:
+    """Any audit row in the {at, by, action, target, detail} shape (contact edits are mapped onto it)."""
+    if row.get("action"):
+        return {k: row.get(k, "") for k in ("at", "by", "by_email", "by_role", "action", "target", "detail")}
+    return {"at": row.get("at", ""), "by": row.get("by", ""), "by_email": row.get("by_email", ""), "by_role": "", "action": "contact.edit",
+            "target": row.get("company") or row.get("lead_id") or "",
+            "detail": f"{row.get('label') or row.get('field')}: {row.get('old') or '(empty)'} -> {row.get('new') or '(empty)'}"
+                      + (f" (reason: {row['reason']})" if row.get("reason") else "")}
+
+
+def trail(store, action: str = "", by: str = "", q: str = "", date_from: str = "", date_to: str = "", limit: int = 500, offset: int = 0) -> dict:
+    """Newest first, filtered. `action` matches exactly or by prefix ("live_sending" matches both switches);
+    date_from / date_to are IST days (YYYY-MM-DD, inclusive)."""
+    from datetime import datetime, timedelta, timezone
+    ist = timezone(timedelta(hours=5, minutes=30))
+    rows = [as_action(r) for r in reversed(store.read("audit"))]
+
+    def day(r):
+        try:
+            return datetime.fromisoformat(r["at"]).astimezone(ist).date().isoformat()
+        except (TypeError, ValueError):
+            return ""
+    if action:
+        rows = [r for r in rows if r["action"] == action or r["action"].startswith(action.rstrip(".") + ".")]
+    if by:
+        rows = [r for r in rows if by.lower() in f"{r['by']} {r['by_email']}".lower()]
+    if q:
+        rows = [r for r in rows if q.lower() in f"{r['target']} {r['detail']}".lower()]
+    if date_from:
+        rows = [r for r in rows if day(r) >= date_from]
+    if date_to:
+        rows = [r for r in rows if day(r) and day(r) <= date_to]
+    people = sorted({r["by"] for r in rows if r["by"]})
+    return {"total": len(rows), "items": rows[offset:offset + limit], "actions": ACTIONS, "people": people}

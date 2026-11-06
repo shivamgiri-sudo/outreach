@@ -5,6 +5,7 @@ import { ErrorState } from "../states.jsx";
 import { STAGE_LABELS, sourceLabel, useSourceRegistry } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import FindLeadsDrawer, { FindLeadsCard, setPendingLeadIds } from "./FindLeads.jsx";
+import DashboardPeriod from "./DashboardPeriod.jsx";
 
 const KIND_ICON = { problem: "flame", task: "mail", call: "phone", nudge: "gift", start: "send" };
 
@@ -135,6 +136,7 @@ export default function Dashboard({ go }) {
         <div className="card stat tone-violet"><span className="stat-icon"><Icon name="mail" /></span><b>{data.by_stage.interested}</b><span>Said yes</span></div>
         <div className="card stat tone-green"><span className="stat-icon"><Icon name="check" /></span><b>{data.by_stage.customer}</b><span>Customers</span></div>
       </div>
+      <DashboardPeriod go={go} />
 
       <div className="grid g2" style={{ marginTop: 16 }}>
         <div className="card">

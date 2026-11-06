@@ -342,6 +342,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         store.update_lead(lead_id, move)
         if refused:
             raise HTTPException(400, f"Cannot move from {refused['from']} to {body.stage}")
+        audit.record_stage(store, request, lead_id, body.stage)
         if body.stage == "interested":
             on_became_interested(store, lead_id, "Moved to Interested")
         if body.stage == "unsubscribed":

@@ -2,7 +2,7 @@
 review cold leads past the retention period, and read the consent ledger."""
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -60,7 +60,7 @@ def make_router(store) -> APIRouter:
         return JSONResponse(data, headers={"Content-Disposition": f'attachment; filename="lead-{lead_id}.json"'})
 
     @router.post("/api/leads/{lead_id}/erase")
-    def erase(lead_id: str, body: EraseBody):
+    def erase(lead_id: str, body: EraseBody, request: Request):
         """Delete the person and everything linked to them; keep only hashes so they are never imported or contacted
         again. Consent-ledger rows are kept as proof, with the text removed and the lead id replaced by a hash."""
         if not body.confirm:
@@ -94,6 +94,9 @@ def make_router(store) -> APIRouter:
                  "rows": {pid: [r for r in rows if r.get("lead_id") != lead_id] for pid, rows in (run.get("rows") or {}).items()}}
                 for run in runs])
         record_consent(store, ref, "withdrawn", "any", "", "data erased on request")
+        from . import audit                              # no name, email or company: only the erased reference
+        audit.record(store, getattr(request.state, "user", None), "lead.erase", ref,
+                     "erased on request; removed " + ", ".join(f"{k} {v}" for k, v in counts.items() if v))
         return {"ok": True, "erased": lead_id, "removed": counts, "suppressed_hashes": len(hashes)}
 
     @router.get("/api/compliance/retention")

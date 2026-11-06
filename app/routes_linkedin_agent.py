@@ -39,7 +39,9 @@ def make_router(store, notify_sender=None) -> APIRouter:
         return agent.status(store)
 
     @router.put("/api/linkedin-agent")
-    def put_config(body: ConfigBody):
+    def put_config(body: ConfigBody, request: Request):
+        from . import audit
+        was = bool(agent.config(store).get("enabled"))
         if body.resume_account:
             agent.resume(store, body.resume_account)
         try:
@@ -48,6 +50,12 @@ def make_router(store, notify_sender=None) -> APIRouter:
             agent.save_config(store, body.model_dump(exclude={"resume_account", "merge_from", "merge_into"}))
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
+        user = getattr(request.state, "user", None)
+        if body.enabled is not None and body.enabled != was:
+            audit.record(store, user, "linkedin_agent.on" if body.enabled else "linkedin_agent.off", "LinkedIn agent")
+        changed = sorted(k for k, v in body.model_dump(exclude={"enabled"}).items() if v is not None)
+        if changed:
+            audit.record(store, user, "linkedin_agent.settings", "LinkedIn agent", "Changed: " + ", ".join(changed))
         return agent.status(store)
 
     # ----- the agent program (pairing token; see extension_api.ALLOWED) -----

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { EmptyArt } from "../states.jsx";
-import { stageLabel } from "../labels.js";
 import { istLabel } from "../time.js";
 import CampaignWizard from "./CampaignWizard.jsx";
 import { PreviewTable, RunReport, StatusPill } from "./CampaignReport.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import { CampaignLeadsTable, OutcomeLine, OutcomeTiles } from "./CampaignOutcomes.jsx";
 
 function lastRunText(run) {
   if (!run) return "Not run yet";
@@ -16,13 +16,14 @@ function lastRunText(run) {
 function CampaignDetail({ id, go, onBack, onEdit }) {
   const [campaign, setCampaign] = useState(null);
   const [runs, setRuns] = useState([]);
-  const [leads, setLeads] = useState([]);
+  const [leadCount, setLeadCount] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const [open, setOpen] = useState(null);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
-  const load = () => Promise.all([api.campaign(id), api.campaignRuns(id), api.campaignLeads(id)])
-    .then(([c, r, l]) => { setCampaign(c); setRuns(r); setLeads(l); }).catch((e) => setError(e.message));
+  const load = () => Promise.all([api.campaign(id), api.campaignRuns(id)])
+    .then(([c, r]) => { setCampaign(c); setRuns(r); setRefresh((n) => n + 1); }).catch((e) => setError(e.message));
   useEffect(() => { load(); }, [id]);
 
   const act = async (kind) => {
@@ -57,31 +58,15 @@ function CampaignDetail({ id, go, onBack, onEdit }) {
         <button className="btn ghost danger" disabled={!!busy} onClick={() => act("delete")}>Delete</button>
       </div>
       {error && <div className="tip error" role="alert" style={{ marginTop: 12 }}>{error}</div>}
+      <h3>Outcomes</h3>
+      <OutcomeTiles o={campaign.outcomes} />
       {result && <><RunReport report={result} />{result.dry_run && <PreviewTable rows={result.preview} />}</>}
 
       <div className="row dl-head">
-        <h3>Leads from this campaign ({leads.length})</h3>
-        <DownloadButton path={exportPath("campaign_leads", { campaign_id: id })} label="Download leads" disabled={leads.length === 0} testId="download-campaign-leads" />
+        <h3>Leads from this campaign ({leadCount})</h3>
+        <DownloadButton path={exportPath("campaign_leads", { campaign_id: id })} label="Download leads" disabled={leadCount === 0} testId="download-campaign-leads" />
       </div>
-      <div className="card table-card">
-        {leads.length === 0 ? <p className="empty">No leads yet. Run the campaign to find some.</p> : (
-          <table className="leads-table" data-testid="campaign-leads">
-            <thead><tr><th>Company</th><th>Contact</th><th>Stage</th><th>Score</th><th>Ready for email?</th></tr></thead>
-            <tbody>
-              {leads.map((l) => (
-                <tr key={l.id} className="click" onClick={() => setOpen(l.id)}>
-                  <td data-label="Company"><button className="linkish" onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{l.company || l.domain}</b></button></td>
-                  <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small></td>
-                  <td data-label="Stage">{stageLabel(l.stage)}{l.sequence ? " · in sequence" : ""}</td>
-                  <td data-label="Score"><span className={`pill ${l.band}`}>{l.score} · {l.band}</span></td>
-                  <td data-label="Ready for email?">{l.sequence ? "Started" : l.campaign_check?.qualified ? <span className="pill ok">Yes</span>
-                    : <small>{(l.campaign_check?.reasons || ["not checked yet"]).join("; ")}</small>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <CampaignLeadsTable id={id} onOpen={setOpen} onTotal={setLeadCount} refreshKey={refresh} />
 
       <div className="row dl-head">
         <h3>Runs</h3>
@@ -132,7 +117,8 @@ export default function Campaigns({ go }) {
           {list.map((c) => (
             <div className="card" key={c.id} data-testid="campaign-card">
               <div className="row" style={{ justifyContent: "space-between" }}><b>{c.name}</b><StatusPill status={c.status} /></div>
-              <p className="sub" style={{ margin: "6px 0 10px" }}>{lastRunText(c.last_run)}</p>
+              <p className="sub" style={{ margin: "6px 0 4px" }}>{lastRunText(c.last_run)}</p>
+              <div style={{ marginBottom: 6 }}><OutcomeLine o={c.outcomes} /></div>
               <small className="sub-inline">{[c.target?.industries?.join(", "), c.target?.cities?.join(", "), c.target?.roles_hiring?.length ? `hiring ${c.target.roles_hiring.join(", ")}` : ""].filter(Boolean).join(" · ")}</small>
               <div className="row" style={{ marginTop: 10 }}>
                 <button className="btn ghost" onClick={() => setView({ mode: "detail", id: c.id })}>Open</button>
