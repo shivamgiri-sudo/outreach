@@ -14,7 +14,7 @@ import { istDateLabel, istLabel } from "../time.js";
 import { CustomFilters, customMatches, showValue, useLeadFields } from "./LeadCustomFields.jsx";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
-const SHEET_SOURCES = { "team sheet — Leads tab": "leads", "team sheet — Demo Shared tab": "demo", "team sheet — Decision Makers tab": "decision_makers" };
+const SHEET_SOURCES = { "Team sheet — Leads tab": "leads", "Team sheet — Demo Shared tab": "demo", "Team sheet — Decision Makers tab": "decision_makers" };
 
 const SORTS = {
   score: (a, b) => b.score - a.score,

@@ -41,3 +41,18 @@ def test_talent_partner_is_a_recruiter_not_an_owner():
     assert (seniority_of("Senior Talent Partner"), department_of("Senior Talent Partner")) == ("executive", "TA")
     assert (seniority_of("People Partner"), department_of("People Partner")) == ("executive", "HR")
     assert (seniority_of("Managing Partner"), department_of("Managing Partner")) == ("owner", "Founder")
+
+
+def test_drawer_edit_takes_an_office_landline_and_an_international_number(tmp_path):
+    c = TestClient(create_app(data_file=tmp_path / "d.json"))
+    c.post("/api/leads/import", json={"csv": "company,contact_name,email,phone\nSundaram Textiles,Srinivas,srinivas@sundaram.in,9944012345\n",
+                                      "source": "apollo"})
+    lead = c.get("/api/leads").json()[0]
+    r = c.patch(f"/api/leads/{lead['id']}", json={"phone": "0422-2345678", "reason": "visiting card"})
+    assert r.status_code == 200, r.text
+    assert r.json()["phone"] == "+914222345678" and r.json()["phone_type"] == "landline"
+    assert "+919944012345" not in (r.json().get("phones") or [])
+    r = c.patch(f"/api/leads/{lead['id']}", json={"phone": "+1 (415) 555-0134"})
+    assert r.status_code == 200 and r.json()["phone"] == "+14155550134" and r.json()["phone_type"] == "intl"
+    bad = c.patch(f"/api/leads/{lead['id']}", json={"phone": "12345"})
+    assert bad.status_code == 400 and "STD code" in bad.json()["detail"]
