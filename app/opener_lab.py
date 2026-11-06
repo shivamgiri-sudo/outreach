@@ -31,14 +31,19 @@ BUILT_IN = [
 def score_note(text: str) -> dict:
     text = str(text or "").strip()
     reasons, score = [], 0
-    unknown = sorted({p for p in PLACEHOLDER.findall(text) if p != "first_name"})
-    rendered = text.replace("{first_name}", LONG_NAME)
     if not text:
         return {"score": 0, "reasons": ["Empty note."], "length": 0, "ok": False}
-    if unknown:
-        return {"score": 0, "reasons": [f"Unknown placeholder {{{unknown[0]}}}; only {{first_name}} is filled in."], "length": len(rendered), "ok": False}
+    # The same placeholders the LinkedIn steps editor accepts and the sequence fills in ({company}, {hook}, {{my_company}}...).
+    # Only {first_name} was allowed here, so a note B saved fine in "Steps & personas" was refused in this lab.
+    from .linkedin_config import check_placeholders, stand_in_length
+    try:
+        check_placeholders(text, "Note")
+    except ValueError as exc:
+        return {"score": 0, "reasons": [str(exc)], "length": len(text), "ok": False}
+    length = stand_in_length(text)
+    rendered = "x" * length                  # only its length is used below: filled with a long name and company
     if len(rendered) > NOTE_LIMIT:
-        return {"score": 0, "reasons": [f"Too long: {len(rendered)} characters with a long name; LinkedIn allows {NOTE_LIMIT}."], "length": len(rendered), "ok": False}
+        return {"score": 0, "reasons": [f"Too long: {len(rendered)} characters with a long name and company; LinkedIn allows {NOTE_LIMIT}."], "length": len(rendered), "ok": False}
     if 110 <= len(rendered) <= 260:
         score += 25; reasons.append("Good length.")
     else:

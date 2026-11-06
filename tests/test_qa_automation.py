@@ -86,3 +86,15 @@ def test_a_linkedin_link_typed_without_https_is_tidied_and_can_be_started(tmp_pa
     assert r.status_code == 200, r.text
     assert lead(c)["linkedin_url"] == "https://www.linkedin.com/in/deepak-patel-navyug"
     assert c.post(f"/api/leads/{who['id']}/linkedin/start").status_code == 200
+
+
+def test_connection_note_lab_accepts_the_placeholders_the_steps_editor_accepts():
+    # QA sweep: note B "Hi {first_name}, noticed {company} is hiring..." saved in Steps & personas was refused by the
+    # A/B notes lab with "only {first_name} is filled in", although the sequence fills {company} in.
+    from app.opener_lab import score_note
+    ok = score_note("Hi {first_name}, noticed {company} is hiring. Would be good to connect.")
+    assert ok["ok"] is not False and ok["score"] > 0
+    bad = score_note("Hi {first_name}, about {favourite_food}.")
+    assert bad["score"] == 0 and "favourite_food" in bad["reasons"][0]
+    long = score_note("Hi {first_name}, " + "{company} " * 40)
+    assert long["score"] == 0 and long["reasons"][0].startswith("Too long")
