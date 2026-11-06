@@ -500,6 +500,8 @@ if (want("importedge")) await step("Import wizard: header-only, garbage, semicol
   };
   const notes = [];
   await goPage(page, "leads");
+  const zip = Buffer.from("504b0304140000000800", "hex");                       // the start of an .xlsx (a zip)
+  files["leads.xlsx"] = Buffer.concat([zip, Buffer.from("[Content_Types].xml workbook")]);
   for (const [name, body] of Object.entries(files)) {
     fs2.writeFileSync(`${dir}/${name}`, body);
     const wizardOpen = await page.locator("#import-file").isVisible().catch(() => false);
