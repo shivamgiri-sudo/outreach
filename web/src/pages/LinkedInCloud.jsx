@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { useConfirm } from "../Dialog.jsx";
 import { istLabel } from "../time.js";
+import OfficeRunner from "./LinkedInOfficeRunner.jsx";
 
-// The cloud LinkedIn agent: runs on the portal's server, so nobody installs anything. The owner adds an account, logs it in
-// here (password goes to the server's memory for at most 10 minutes, then it is gone), and the server does the sending
-// under the same switch, caps, working hours and safety pause as the agent below.
+// The portal-run LinkedIn agent. The browser runs on one office computer (default: LinkedIn blocks our cloud server) or on
+// the portal's server. Either way the owner adds an account, logs it in here (password goes to the server's memory for at
+// most 10 minutes, then it is gone), and the agent does the sending under the same switch, caps, working hours and safety
+// pause as the agent below.
 const BUSY = new Set(["starting", "logging_in", "needs_login", "needs_code", "needs_app_approval", "logging_out"]);
 const WORDS = {
   starting: ["", "Starting…"], needs_login: ["warn", "Needs login"], logging_in: ["", "Logging in…"],
@@ -28,7 +30,7 @@ function LoginForm({ slot, onDone, onMessage }) {
     setBusy(true);
     const secret = password;
     setPassword("");                                   // never kept in the page after it was sent
-    try { onDone(await api.loginLinkedinCloud(slot.id, email.trim(), secret)); onMessage("Logging in on the server. This page updates by itself."); }
+    try { onDone(await api.loginLinkedinCloud(slot.id, email.trim(), secret)); onMessage("Logging in. This page updates by itself."); }
     catch (err) { onMessage(err.message); }
     finally { setBusy(false); }
   };
@@ -38,7 +40,7 @@ function LoginForm({ slot, onDone, onMessage }) {
         <input type="email" required maxLength={254} autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} data-testid="cloud-email" /></label>
       <label>LinkedIn password
         <input type="password" required maxLength={200} autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} data-testid="cloud-password" /></label>
-      <small className="sub-inline">Sent once to the server's memory for the agent to type into LinkedIn, then deleted. It is never saved or shown again.</small>
+      <small className="sub-inline">Kept in the portal's memory only until the agent types it into LinkedIn, then deleted. It is never saved or shown again.</small>
       <div className="row"><button className="btn" type="submit" disabled={busy || !email || !password}>{busy ? "Sending…" : "Log in"}</button></div>
     </form>
   );
@@ -82,10 +84,10 @@ function Slot({ s, onDone, onMessage }) {
         {s.enabled
           ? <button className="btn ghost" onClick={() => act(() => api.changeLinkedinCloud(s.id, { enabled: false }), `${s.label} switched off. Its browser stops within a minute.`)}>Switch off</button>
           : <button className="btn ghost" onClick={() => act(() => api.changeLinkedinCloud(s.id, { enabled: true }), `${s.label} switched on.`)}>Switch on</button>}
-        <button className="btn ghost" onClick={() => act(() => api.restartLinkedinCloud(s.id), "Restarting the cloud browser.")}>Restart</button>
-        {s.account && <button className="btn ghost" onClick={async () => { if (await confirm(`Log ${s.label} out? The server deletes this account's LinkedIn session; you will need to log in again.`))
-          act(() => api.logoutLinkedinCloud(s.id), "Logged out. The session is deleted on the server."); }}>Log out</button>}
-        <button className="btn ghost" onClick={async () => { if (await confirm(`Remove ${s.label}? The server stops it and deletes its LinkedIn session. The people it contacted and its counts stay.`))
+        <button className="btn ghost" onClick={() => act(() => api.restartLinkedinCloud(s.id), "Restarting the LinkedIn browser.")}>Restart</button>
+        {s.account && <button className="btn ghost" onClick={async () => { if (await confirm(`Log ${s.label} out? Its LinkedIn browser session is deleted; you will need to log in again.`))
+          act(() => api.logoutLinkedinCloud(s.id), "Logged out. The browser session is deleted."); }}>Log out</button>}
+        <button className="btn ghost" onClick={async () => { if (await confirm(`Remove ${s.label}? Its browser stops and its LinkedIn session is deleted. The people it contacted and its counts stay.`))
           act(() => api.removeLinkedinCloud(s.id), `${s.label} removed.`); }}>Remove</button>
       </div>
     </div>
@@ -95,34 +97,56 @@ function Slot({ s, onDone, onMessage }) {
 export default function LinkedInCloud({ onMessage }) {
   const [st, setSt] = useState(null);
   const [label, setLabel] = useState("");
+  const confirm = useConfirm();
   const timer = useRef(null);
   const load = () => api.linkedinCloud().then(setSt).catch((e) => onMessage(e.message));
   useEffect(() => { load(); return () => clearTimeout(timer.current); }, []);
   useEffect(() => {                                    // every 5 s while something is happening, else every 30 s
     clearTimeout(timer.current);
     if (!st) return undefined;
-    const busy = st.slots.some((s) => BUSY.has(s.state) && s.enabled);
+    const busy = st.slots.some((s) => BUSY.has(s.state) && s.enabled) || !!st.pairing;
     timer.current = setTimeout(load, busy ? 5000 : 30000);
     return () => clearTimeout(timer.current);
   }, [st]);
   if (!st) return null;
   const add = async (e) => {
     e.preventDefault();
-    try { setSt(await api.addLinkedinCloud(label.trim())); setLabel(""); onMessage("Cloud account added. Log it in below."); } catch (err) { onMessage(err.message); }
+    try { setSt(await api.addLinkedinCloud(label.trim())); setLabel(""); onMessage("LinkedIn account added. Log it in below."); } catch (err) { onMessage(err.message); }
   };
   const full = st.slots.length >= st.max;
+  const office = st.where !== "server";
+  const where = async (value) => {
+    if (value === st.where) return;
+    const ok = await confirm(value === "server"
+      ? "Run LinkedIn on the portal's server instead? LinkedIn currently blocks our cloud server, so logins will probably fail there. The office computer stops its LinkedIn browsers."
+      : "Run LinkedIn on the office computer? The server stops its LinkedIn browsers and the office computer takes over.");
+    if (!ok) return;
+    try { setSt(await api.setLinkedinWhere(value)); onMessage(value === "server" ? "LinkedIn now runs on the server." : "LinkedIn now runs on the office computer."); }
+    catch (e) { onMessage(e.message); }
+  };
   return (
     <section className="card" style={{ marginBottom: 14 }} data-testid="linkedin-cloud" aria-labelledby="li-cloud-title">
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-        <h3 id="li-cloud-title" style={{ margin: 0 }}>Cloud agent (no installation)</h3>
-        {st.slots.length > 0 && !st.supervisor.running && <span className="pill warn" data-testid="cloud-runner-off">The cloud runner is not running on the server</span>}
+        <h3 id="li-cloud-title" style={{ margin: 0 }}>LinkedIn agent run from this portal</h3>
+        {!office && st.slots.length > 0 && !st.supervisor.running && <span className="pill warn" data-testid="cloud-runner-off">The cloud runner is not running on the server</span>}
       </div>
-      <p className="sub">The LinkedIn agent can run on this portal's server, so nothing needs to be installed on anyone's computer. Add a LinkedIn account, log it in here
-        once, and the server sends the connection requests and follow-up messages from this page, one at a time, inside the working hours and caps set in the agent box below.</p>
-      <p className="tip" role="note">LinkedIn may ask for extra security checks because the login comes from a cloud server; the agent stops by itself if it sees one.
-        LinkedIn does not allow automation and can restrict accounts that use it. Use an account you can afford to lose.</p>
+      <p className="sub">Add a LinkedIn account, log it in here once, and the agent sends the connection requests and follow-up messages, one at a time, inside the working
+        hours and caps set in the agent box below. You do everything from this page.</p>
+      <div className="row" style={{ flexWrap: "wrap", alignItems: "center", gap: 8, margin: "4px 0 10px" }}>
+        <span className="sub" style={{ margin: 0 }}>Where the LinkedIn browser runs:</span>
+        <div className="tab-chips" role="radiogroup" aria-label="Where the LinkedIn browser runs" style={{ margin: 0 }} data-testid="cloud-where">
+          <button type="button" role="radio" aria-checked={office} className={`tab-chip${office ? " on" : ""}`} onClick={() => where("office")}>Office computer (recommended)</button>
+          <button type="button" role="radio" aria-checked={!office} className={`tab-chip${!office ? " on" : ""}`} onClick={() => where("server")}>Portal server</button>
+        </div>
+      </div>
+      {office ? <OfficeRunner st={st} onDone={setSt} onMessage={onMessage} />
+        : <p className="tip" role="note">LinkedIn blocks logins from our cloud server (it shows "Sorry, you have been blocked"), so the server can only be used if that changes.
+          Switch to Office computer to run it on an ordinary office connection.</p>}
+      {office && st.slots.length > 0 && !st.runner?.online && <p className="tip" role="note" data-testid="cloud-waiting-runner">The LinkedIn accounts below start as soon as the office computer is online.</p>}
+      <p className="tip" role="note">LinkedIn does not allow automation and can restrict accounts that use it; the agent stops by itself at any security check.
+        Use an account you can afford to lose.</p>
       {st.slots.map((s) => <Slot key={s.id} s={s} onDone={setSt} onMessage={onMessage} />)}
-      {full ? <p className="sub">{st.max === 0 ? "Cloud accounts are switched off on this server." : `This server runs ${st.max} cloud account${st.max === 1 ? "" : "s"} at most (each needs its own browser).`}</p> : (
+      {full ? <p className="sub">{st.max === 0 ? "LinkedIn accounts are switched off here." : `${office ? "The office computer" : "This server"} runs ${st.max} LinkedIn account${st.max === 1 ? "" : "s"} at most (each needs its own browser).`}</p> : (
         <form className="row" onSubmit={add} style={{ flexWrap: "wrap" }}>
           <input aria-label="Name for the LinkedIn account" placeholder="Name, e.g. Sales LinkedIn" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} />
           <button className="btn" type="submit" data-testid="cloud-add">Add LinkedIn account</button>

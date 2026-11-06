@@ -26,6 +26,9 @@ RATE_LIMITS = (
     ("/api/webhooks/", False, 120),
     ("/api/inbound/", False, 120),
     ("/api/activation/event", True, 120),
+    ("/api/linkedin-runner/pair", True, 10),        # office runner pairing codes: guessing is also capped per code
+    ("/api/linkedin-runner/install", False, 20),
+    ("/api/linkedin-runner/bundle", False, 20),
 )
 TOO_MANY = "Too many requests. Wait a minute and try again."
 PAGE_CSP = ("default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "

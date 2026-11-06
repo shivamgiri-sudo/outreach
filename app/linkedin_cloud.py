@@ -1,4 +1,8 @@
-"""Cloud LinkedIn agent: LinkedIn outreach that runs on THIS server, so nobody has to install anything.
+"""Cloud LinkedIn agent: LinkedIn outreach run from the portal, on THIS server or on one office computer.
+
+Where it runs (settings linkedin_cloud.where, see linkedin_runner): "office" (default; LinkedIn blocks our cloud server's
+address) runs the agents on the paired office computer (tools/linkedin_runner.mjs), and slots.json then marks every slot
+switched off so the server supervisor idles; "server" runs them here through the supervisor.
 
 The owner adds "cloud accounts" (slots) in the portal. For each slot the portal makes an internal pairing token
 (extension_api, label "cloud:<slot id>") and writes slots.json for the supervisor (tools/linkedin_cloud_supervisor.mjs),
@@ -24,7 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from . import extension_api as ext, linkedin_agent as agent
+from . import extension_api as ext, linkedin_agent as agent, linkedin_runner as runner_mod
 from .activities import iso, now_utc
 
 SETTINGS_KEY, STATE_KEY = "linkedin_cloud", "linkedin_cloud_state"
@@ -40,11 +44,15 @@ EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,63}$")
 CODE = re.compile(r"^\d{4,8}$")
 
 
-def max_slots() -> int:
+def max_slots(store=None) -> int:
+    """How many accounts may run: on the server OUTREACH_CLOUD_LI_MAX (default 1, memory), on the office computer
+    OUTREACH_OFFICE_LI_MAX (default 3)."""
+    office = store is not None and runner_mod.where(store) == "office"
+    name, default = ("OUTREACH_OFFICE_LI_MAX", "3") if office else ("OUTREACH_CLOUD_LI_MAX", "1")
     try:
-        return max(0, min(10, int(os.environ.get("OUTREACH_CLOUD_LI_MAX", "1"))))
+        return max(0, min(10, int(os.environ.get(name, default))))
     except ValueError:
-        return 1
+        return int(default)
 
 
 def cloud_dir(data_file) -> Path:
@@ -174,7 +182,9 @@ def profile_dir(base: Path, slot_id: str) -> Path:
 
 def write_slots_file(store, base: Path, raw_tokens: dict) -> Path:
     """slots.json for the supervisor: [{slot_id, label, token, enabled, profile_dir, run_seq, wipe_seq, restart_seq}], mode 0600, atomic.
-    `raw_tokens` maps slot id -> raw token for tokens made just now; others keep the token already in the file."""
+    `raw_tokens` maps slot id -> raw token for tokens made just now; others keep the token already in the file.
+    In office mode every slot is written switched off (the server supervisor idles); the office runner reads the tokens
+    through runner_slots()."""
     base.mkdir(parents=True, exist_ok=True)
     os.chmod(base, 0o700)
     path = base / "slots.json"
@@ -183,17 +193,18 @@ def write_slots_file(store, base: Path, raw_tokens: dict) -> Path:
     except (OSError, ValueError, KeyError, TypeError):
         old = {}
     rows = []
+    on_server = runner_mod.where(store) == "server"
     for s in slots(store):
         token = raw_tokens.get(s["id"]) or (old.get(s["id"]) or {}).get("token") or ""
         if not token:
             continue
-        rows.append({"slot_id": s["id"], "label": s.get("label", ""), "token": token, "enabled": bool(s.get("enabled")),
+        rows.append({"slot_id": s["id"], "label": s.get("label", ""), "token": token, "enabled": bool(s.get("enabled")) and on_server,
                      "profile_dir": str(profile_dir(base, s["id"])), "run_seq": int(s.get("run_seq") or 0),
                      "wipe_seq": int(s.get("wipe_seq") or 0), "restart_seq": int(s.get("restart_seq") or 0)})
     temp = base / f".slots.{secrets.token_hex(4)}.tmp"
     fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        json.dump({"written_at": iso(now_utc()), "max": max_slots(), "slots": rows}, fh, indent=1)
+        json.dump({"written_at": iso(now_utc()), "where": runner_mod.where(store), "max": max_slots(), "slots": rows}, fh, indent=1)
         fh.flush()
         os.fsync(fh.fileno())
     os.replace(temp, path)
@@ -221,17 +232,51 @@ def sync(store, base: Path, owner: Optional[dict] = None) -> None:
         write_slots_file(store, base, fresh)
 
 
+def rotate_tokens(store, base: Path) -> None:
+    """New tokens for every slot (the old ones stop working at once): used when an office computer is replaced or
+    disconnected, so agents still running there cannot keep using LinkedIn accounts."""
+    for s in slots(store):
+        if s.get("token_id"):
+            ext.revoke_token(store, s["token_id"], {"role": "owner"})
+    sync(store, base)
+
+
+def runner_slots(store, base: Path) -> list:
+    """What the office runner runs: every slot with its run/wipe/restart counters; the slot token only for slots that are
+    switched on in office mode (in server mode none, so the office computer stops its agents without deleting sessions)."""
+    def tokens_on_file():
+        try:
+            return {r["slot_id"]: r.get("token") for r in json.loads((base / "slots.json").read_text(encoding="utf-8")).get("slots", [])}
+        except (OSError, ValueError, KeyError, TypeError):
+            return {}
+    office = runner_mod.where(store) == "office"
+    on_file = tokens_on_file()
+    if office and any(s.get("enabled") and not on_file.get(s["id"]) for s in slots(store)):
+        sync(store, base)                                   # a lost slots.json: new tokens, written again
+        on_file = tokens_on_file()
+    out = []
+    for s in slots(store):
+        enabled = office and bool(s.get("enabled")) and bool(on_file.get(s["id"]))
+        out.append({"slot_id": s["id"], "label": s.get("label", ""), "enabled": enabled, "token": on_file.get(s["id"]) if enabled else "",
+                    "run_seq": int(s.get("run_seq") or 0), "wipe_seq": int(s.get("wipe_seq") or 0), "restart_seq": int(s.get("restart_seq") or 0)})
+    return out
+
+
 def add_slot(store, base: Path, user: dict, label: str) -> dict:
     label = " ".join(str(label or "").split())[:60] or "LinkedIn account"
-    if len(slots(store)) >= max_slots():
-        raise ValueError(f"This server runs at most {max_slots()} cloud LinkedIn account(s). Remove one first "
+    limit = max_slots(store)
+    if len(slots(store)) >= limit:
+        if runner_mod.where(store) == "office":
+            raise ValueError(f"The office computer runs at most {limit} LinkedIn account(s). Remove one first (the limit is OUTREACH_OFFICE_LI_MAX).")
+        raise ValueError(f"This server runs at most {limit} cloud LinkedIn account(s). Remove one first "
                          "(the limit is OUTREACH_CLOUD_LI_MAX; each account needs its own browser, about 400 MB of memory).")
     sid = secrets.token_hex(5)
     raw, row = ext.create_token(store, user, TOKEN_LABEL + sid, days=TOKEN_DAYS)
     new = {"id": sid, "label": label, "enabled": True, "created_by": user.get("name") or user.get("email") or "owner",
            "created_sub": user.get("sub", ""), "created_at": iso(now_utc()), "token_id": row["id"], "run_seq": 0, "wipe_seq": 0}
     _save_slots(store, lambda rows: [*rows, new])
-    set_state(store, sid, "starting", "waiting for the cloud runner to start the browser")
+    set_state(store, sid, "starting", "waiting for the office computer to start the browser" if runner_mod.where(store) == "office"
+              else "waiting for the cloud runner to start the browser")
     write_slots_file(store, base, {sid: raw})
     return new
 
@@ -306,6 +351,9 @@ def describe(store, base: Path, jobs: CloudJobs) -> dict:
     now = now_utc()
     states, held = _states(store), agent.paused(store)
     sup = supervisor_status(base)
+    office = runner_mod.where(store) == "office"
+    run = runner_mod.describe(store)
+    office_agents = {a.get("slot_id"): a.get("state") for a in ((run["runner"] or {}).get("agents") or [])} if run["runner"] and run["runner"]["online"] else {}
     out = []
     for s in slots(store):
         st = states.get(s["id"]) or {}
@@ -322,5 +370,5 @@ def describe(store, base: Path, jobs: CloudJobs) -> dict:
         out.append({"id": s["id"], "label": s.get("label", ""), "enabled": bool(s.get("enabled")), "created_by": s.get("created_by", ""),
                     "created_at": s.get("created_at"), "state": state, "note": st.get("note", ""), "account": account,
                     "name": st.get("name", ""), "last_seen": seen, "online": online, "paused": held.get(account) if account else None,
-                    "pending": jobs.pending(s["id"]), "runner": (sup["agents"] or {}).get(s["id"])})
-    return {"max": max_slots(), "slots": out, "supervisor": {"running": sup["running"], "at": sup["at"]}}
+                    "pending": jobs.pending(s["id"]), "runner": office_agents.get(s["id"]) if office else (sup["agents"] or {}).get(s["id"])})
+    return {"max": max_slots(store), "slots": out, "supervisor": {"running": sup["running"], "at": sup["at"]}, **run}

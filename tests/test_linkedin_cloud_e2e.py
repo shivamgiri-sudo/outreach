@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 import uvicorn
 
-from app import linkedin_agent as agent_mod
+from app import linkedin_agent as agent_mod, linkedin_runner
 from app.main import create_app
 from tests import mock_linkedin
 from tests.test_linkedin_agent import ADMIN_PASSWORD, CSV, enrol, open_up
@@ -47,6 +47,7 @@ def cloud_live(tmp_path, monkeypatch):
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]
     app = create_app(data_file=tmp_path / "d.json", admin_password=ADMIN_PASSWORD)
+    linkedin_runner.set_where(app.state.store, "server")             # the server supervisor runs the agents here
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
     thread = threading.Thread(target=server.run, daemon=True); thread.start()
     wait_for(lambda: server.started, 10, 0.05, "the app")

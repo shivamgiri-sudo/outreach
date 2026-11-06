@@ -12,8 +12,9 @@
 // any sign of trouble (login wall, checkpoint, CAPTCHA, weekly invitation limit). It does not hide itself: no stealth plugins,
 // no spoofed browser identity, no proxies, no randomised "human" delays. Use it on an account you can afford to have restricted.
 //
-// --cloud: the same agent running headless on the portal's server (started by tools/linkedin_cloud_supervisor.mjs). It is
-// logged in from the portal (tools/linkedin_cloud_login.mjs) instead of by a person at the window.
+// --cloud: the same agent started by tools/linkedin_cloud_supervisor.mjs (headless, on the portal's server) or by
+// tools/linkedin_runner.mjs (on an always-on office computer, a visible window by default: --headed). It is logged in from
+// the portal (tools/linkedin_cloud_login.mjs) instead of by a person at the window.
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -35,12 +36,12 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) =>
 const PORTAL = String(args.portal || process.env.MCN_PORTAL || "").replace(/\/$/, "");
 const TOKEN = String(args.token || process.env.MCN_TOKEN || "");
 const PROFILE_DIR = String(args.profile || path.join(os.homedir(), ".mcn-linkedin-profile"));
-const LINKEDIN = String(args["linkedin-base"] || "https://www.linkedin.com").replace(/\/$/, "");   // only tests change this
+const LINKEDIN = String(args["linkedin-base"] || process.env.MCN_LINKEDIN_BASE || "https://www.linkedin.com").replace(/\/$/, "");   // only tests change this
 const DRY = !!args.dry;                 // look at the page and say what would be clicked, click nothing
 const ONCE = !!args.once;               // do at most one action and exit (tests, or a first check)
 const ALLOW_NO_NOTE = !!args["allow-no-note"];      // send a request without a note when LinkedIn will not allow one
 const CLOUD = !!args.cloud;             // on the server: headless, logged in from the portal
-const HEADLESS = !!args.headless || CLOUD;   // local use needs the window so you can log in
+const HEADLESS = args.headed ? false : !!args.headless || CLOUD;   // local use needs the window so you can log in; the office runner shows it too
 const SETTLE = Number(args.settle || 1500);          // fixed wait after a page changes
 const POLL = Number(args.poll || 20) * 1000;
 const LOGIN_POLL = Number(args["login-poll"] || 3);
@@ -48,6 +49,7 @@ const LOGIN_POLL = Number(args["login-poll"] || 3);
 if (!PORTAL || !TOKEN) { console.error("Usage: node tools/linkedin_agent.mjs --portal https://your-portal --token mcnx_..."); process.exit(2); }
 const log = (...a) => console.log(new Date().toLocaleTimeString(), ...a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+if (LINKEDIN !== "https://www.linkedin.com") log(`LinkedIn address: ${LINKEDIN} (test stand-in)`);
 
 // Which LinkedIn account this window is logged in to (its /in/ slug). The portal keeps caps, the gap and the safety
 // pause per account, and gives each person to one account only, so several accounts can run side by side.
@@ -303,17 +305,20 @@ async function waitForResume() {
 
 async function launch() {
   const options = { headless: HEADLESS, viewport: { width: 1280, height: 900 } };
-  if (CLOUD) options.args = ["--disable-dev-shm-usage", "--disable-gpu", "--disable-extensions", "--mute-audio", "--no-first-run",
+  if (CLOUD && HEADLESS) options.args = ["--disable-dev-shm-usage", "--disable-gpu", "--disable-extensions", "--mute-audio", "--no-first-run",
     "--renderer-process-limit=2", "--js-flags=--max-old-space-size=256"];
   const context = await chromium.launchPersistentContext(PROFILE_DIR, options);
-  if (CLOUD) await context.route("**/*", (route) => route.request().resourceType() === "media" ? route.abort() : route.continue());   // videos only cost memory
+  if (CLOUD && HEADLESS) await context.route("**/*", (route) => route.request().resourceType() === "media" ? route.abort() : route.continue());   // videos only cost memory
   return context;
 }
 
 async function main() {
   const context = await launch();
-  for (const signal of ["SIGTERM", "SIGINT"]) {                 // the supervisor (or Ctrl+C) stops it: close the browser cleanly
-    process.on(signal, async () => { log(`${signal}: closing the browser`); await context.close().catch(() => {}); process.exit(0); });
+  const close = async (why) => { log(`${why}: closing the browser`); await context.close().catch(() => {}); process.exit(0); };
+  for (const signal of ["SIGTERM", "SIGINT"]) process.on(signal, () => close(signal));   // the supervisor (or Ctrl+C) stops it
+  if (process.channel) {                // started by the agent pool: "stop" over IPC (on Windows a signal cannot be caught)
+    process.on("message", (m) => { if (m === "stop") close("stop requested"); });
+    process.channel.unref();
   }
   const page = context.pages()[0] || await context.newPage();
   const state = { checked: {}, noNotes: false, profiled: {} };
