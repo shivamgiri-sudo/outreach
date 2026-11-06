@@ -7,6 +7,7 @@ import LeadMeetings from "./LeadMeetings.jsx";
 import LeadActivity from "./LeadActivity.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
 import LeadFlows from "./flows/LeadFlows.jsx";
+import SequencePicker from "./sequences/SequencePicker.jsx";
 
 const SIGNAL_LABELS = {
   hiring_volume: ["Hiring volume", 30], hiring_pain: ["Hiring pain", 25], fit: ["Fit", 15],
@@ -389,9 +390,7 @@ export default function LeadDrawer({ id, onClose }) {
           {!lead.sequence.stopped && <button className="btn ghost" onClick={() => window.confirm(`Send ${lead.contact_name || lead.email} their next sequence email now? It goes at once (real email if real sending is on).`)
             && act(async () => { const r = await api.emailNow(id); window.alert(`${r.mode === "live" ? "Sent" : "Practised (not sent)"}: ${r.step} → ${r.to}`); return r.lead; })}>Send email now</button>}</div>
       ) : (
-        <button className="btn ghost" disabled={!lead.email} onClick={() => act(() => api.enroll(id))}>
-          {lead.email ? "Start 6-step email sequence" : "No email — cannot start"}
-        </button>
+        <SequencePicker lead={lead} onStart={(sequenceId) => act(() => api.enrollIn(id, sequenceId))} />
       )}
       <label htmlFor="reply-box">Paste their reply (stops the sequence, detects yes / no / question)</label>
       <div className="row">

@@ -75,6 +75,7 @@ from .routes_import import make_router as make_import_router
 from .routes_exports import make_router as make_exports_router
 from .lead_import import quick_rows
 from .routes_outreach import make_router
+from .routes_sequences import make_router as make_sequences_router
 from .store import Store
 from .suggest import suggest_next
 from .unsubscribe import ensure_cutover
@@ -439,6 +440,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_router(store, _build_lead, _present, email_sender, ai_transport))
     app.include_router(make_jobs_router(store, _build_lead, _present))
     app.include_router(make_growth_router(store, _build_lead, _present))
+    app.include_router(make_sequences_router(store))
     app.include_router(make_enrich_router(store, fetcher, apollo_transport))
     app.include_router(make_workflows_router(store, ai_transport))
     app.include_router(make_flows_router(store, email_sender, channel_transport, resolver, ai_transport))

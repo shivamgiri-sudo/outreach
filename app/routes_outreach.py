@@ -105,17 +105,24 @@ class EnrollRefused(ValueError):
     """The lead may not be put into the email sequence; the message says why in plain words."""
 
 
-def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence") -> dict:
+def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence", sequence_id: str = "default") -> dict:
     """Start one lead's email sequence. The only way in: the Enrol button, bulk enrol and campaigns all use it.
 
     Refuses leads without an email, leads that may not be emailed (unsubscribed, disqualified, not now, customers),
     suppressed addresses, and leads already in the sequence (it is never restarted). The checks run again on the
     latest saved copy, so a reply or unsubscribe saved a moment ago still wins. Sending itself stays with the
     sequence engine and its caps, warm-up, business hours and practice mode. Raises LookupError or EnrollRefused.
+
+    `sequence_id` picks a saved sequence (app/sequence_library.py); the lead keeps its id and version, so later edits
+    to the sequence's days never break a lead that is part-way through. "default" is the built-in 6-email sequence.
     """
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None:
         raise LookupError("Lead not found")
+    from .sequence_library import DEFAULT_ID, get_sequence
+    chosen = get_sequence(store, sequence_id or DEFAULT_ID)
+    if chosen is None or chosen.get("archived"):
+        raise EnrollRefused("That sequence does not exist or is archived; pick another one")
     if not lead.get("email"):
         raise EnrollRefused("This lead has no valid email")
     if lead["stage"] in NO_EMAIL_STAGES:
@@ -124,7 +131,10 @@ def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence") -
         raise EnrollRefused(ALREADY_ENROLLED)
     if is_blocked(store, lead["email"]):
         raise EnrollRefused("This address is on the suppression list (unsubscribed or bounced)")
-    sequence = {"enrolled_at": _now_iso(), "sent_days": [], "stopped": None}
+    sequence = {"enrolled_at": _now_iso(), "sent_days": [], "stopped": None, "sequence_id": chosen["id"],
+                "version": chosen.get("version", 1)}
+    if chosen["id"] != DEFAULT_ID:
+        note = f"{note} ({chosen['name']})"
     applied = {}
 
     def start(l: dict):
@@ -141,6 +151,10 @@ def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence") -
     if not applied:
         raise EnrollRefused(ALREADY_ENROLLED)
     return saved
+
+
+class EnrollBody(BaseModel):
+    sequence_id: str = Field(default="default", max_length=40)
 
 
 class ComposeBody(BaseModel):
@@ -251,9 +265,9 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         return list(reversed(store.read("inbox")))[:500]
 
     @router.post("/api/leads/{lead_id}/enroll")
-    def enroll(lead_id: str):
+    def enroll(lead_id: str, body: Optional[EnrollBody] = None):
         try:
-            return present(enroll_lead(store, lead_id))
+            return present(enroll_lead(store, lead_id, sequence_id=(body.sequence_id if body else "") or "default"))
         except LookupError:
             raise HTTPException(404, "Lead not found")
         except EnrollRefused as exc:
