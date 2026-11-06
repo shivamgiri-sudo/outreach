@@ -205,7 +205,13 @@ def poll_schedules(store, now: datetime) -> int:
         when = config.get("when")
         if (when == "weekdays" and ist.weekday() >= 5) or (when == "weekly" and ist.weekday() != int(config.get("weekday") or 0)):
             continue
-        if ist < ist.replace(hour=int(config.get("hour") or 0), minute=0, second=0, microsecond=0) or flow.get("schedule_last") == today:
+        slot = ist.replace(hour=int(config.get("hour") or 0), minute=0, second=0, microsecond=0)
+        if ist < slot or flow.get("schedule_last") == today:
+            continue
+        # Turned on after today's hour (a 10:00 flow switched on at 17:30): the first run is the next slot, not right now.
+        # A slot missed while the server was down is still caught up later the same day.
+        activated = _parse(flow.get("activated_at"))
+        if activated and slot <= activated.astimezone(act.IST) and activated.astimezone(act.IST).date() == ist.date():
             continue
         store.update("flows", lambda fs, fid=flow["id"]: [{**f, "schedule_last": today} if f["id"] == fid else f for f in fs])
         limit = int(config.get("limit") or 50)

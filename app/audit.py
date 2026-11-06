@@ -9,6 +9,7 @@ from typing import Optional
 from .hygiene import business_domain, company_domain, dedupe_key, is_role_address, normalise_email
 from .lead_model import event, now_iso
 from .standardise import parse_phone, phone_type
+from .standardise import linkedin_url
 
 EDITABLE = {"contact_name": "Contact name", "company": "Company", "title": "Title", "email": "Email",
             "phone": "Phone", "website": "Website", "country": "Country", "linkedin_url": "LinkedIn profile"}
@@ -42,8 +43,14 @@ def _clean(field: str, raw) -> Optional[str]:
             raise EditRefused("That is not a phone number we can use: give a 10-digit mobile, a landline with its STD code "
                               "(e.g. 022 2345 6789) or an international number starting with +.")
         return found[0]
-    if field == "linkedin_url" and text and "linkedin.com/" not in text.lower():
-        raise EditRefused("That is not a LinkedIn profile link.")
+    if field == "linkedin_url" and text:
+        # Tidy to the https profile link the LinkedIn queue needs: "linkedin.com/in/x/" was saved as typed, so the lead
+        # showed up in "Suggested people" but Start refused it ("Add the person's LinkedIn profile link first").
+        tidy = linkedin_url(text, "in")
+        if tidy:
+            return tidy
+        if "linkedin.com/" not in text.lower():
+            raise EditRefused("That is not a LinkedIn profile link.")
     if field == "website" and text:
         return text if "." in text else (_ for _ in ()).throw(EditRefused("That does not look like a website."))
     return text

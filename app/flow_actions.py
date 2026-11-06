@@ -149,8 +149,9 @@ def evaluate(config: dict, facts: dict) -> tuple:
     field, op, value = config.get("field"), config.get("op"), config.get("value")
     kind, actual = IF_FIELDS.get(field) or (facts.get("_kinds") or {}).get(field, "text"), facts.get(field)
     shown = ", ".join(actual) if isinstance(actual, list) else actual
+    # The words shown in the lead's path: "industry vertical is Healthcare", never "custom:industry vertical is ...".
+    label = (field[len(CUSTOM_FIELD_PREFIX):] if is_custom_field(field) else str(field or "")).replace("_", " ")
     if is_custom_field(field):
-        label = field[len(CUSTOM_FIELD_PREFIX):].replace("_", " ")
         if op == "exists":
             filled = actual not in (None, "", [])
             return filled, f"{label} is {'filled in' if filled else 'empty'}"
@@ -165,7 +166,7 @@ def evaluate(config: dict, facts: dict) -> tuple:
     if kind == "bool":
         want = str(value).lower() in ("true", "yes", "1")
         result = bool(actual) if op == "exists" else (bool(actual) == want) if op == "eq" else (bool(actual) != want)
-        return result, f"{field.replace('_', ' ')} is {'yes' if actual else 'no'}"
+        return result, f"{label} is {'yes' if actual else 'no'}"
     if kind == "tags":
         tags = {str(t).strip().lower() for t in actual or []}
         wanted = _items(value)
@@ -178,10 +179,10 @@ def evaluate(config: dict, facts: dict) -> tuple:
         result = {"gt": a > _num(value), "lt": a < _num(value), "eq": a == _num(value), "ne": a != _num(value),
                   "in": any(a == _num(v) for v in _items(value)), "contains": str(value) in str(actual),
                   "exists": a != 0}.get(op, False)
-        return result, f"{field.replace('_', ' ')} is {actual}"
+        return result, f"{label} is {actual}"
     a, v = str(actual or "").strip().lower(), str(value or "").strip().lower()
     result = {"eq": a == v, "ne": a != v, "contains": bool(v) and v in a, "in": a in _items(value), "exists": bool(a)}.get(op, False)
-    return result, f"{field.replace('_', ' ')} is {actual or 'empty'}"
+    return result, f"{label} is {actual or 'empty'}"
 
 
 def split_variant(lead_id: str, node_id: str, percent_a) -> str:

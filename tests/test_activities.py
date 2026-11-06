@@ -176,3 +176,16 @@ def test_no_meeting_reminder_email_to_an_unsubscribed_lead(tmp_path):
     sender = Sender()
     run_reminders(store, T0, sender)
     assert sender.sent == []
+
+
+def test_snooze_pushes_a_future_task_later_never_earlier(tmp_path):
+    # QA sweep: "+1 hour" on a task due tonight moved it to now+1h, i.e. earlier than it was.
+    c = make(tmp_path)
+    ahead = (datetime.now(timezone.utc) + timedelta(days=2)).replace(microsecond=0)
+    task = c.post("/api/tasks", json={"title": "Call back tonight", "due_at": ahead.isoformat()}).json()
+    moved = c.put(f"/api/tasks/{task['id']}", json={"snooze_minutes": 60}).json()
+    assert datetime.fromisoformat(moved["due_at"]) == ahead + timedelta(hours=1)
+    past = c.post("/api/tasks", json={"title": "Overdue", "due_at": "2026-01-05T10:00:00+05:30"}).json()
+    before = datetime.now(timezone.utc)
+    moved = c.put(f"/api/tasks/{past['id']}", json={"snooze_minutes": 60}).json()
+    assert datetime.fromisoformat(moved["due_at"]) >= before + timedelta(minutes=59)

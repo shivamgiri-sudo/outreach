@@ -177,13 +177,18 @@ def _schedule(store, lead: dict, step: dict, due: datetime, settings: dict) -> d
                     source="linkedin_sequence")
 
 
+def has_profile_link(lead: dict) -> bool:
+    """The same test for "Suggested people" and for Start, so a suggested person can always be started."""
+    return bool(re.match(r"^https?://([a-z]+\.)?linkedin\.com/", lead.get("linkedin_url") or "", re.I))
+
+
 def start(store, lead_id: str, now: Optional[datetime] = None) -> dict:
     """Put a lead on the LinkedIn sequence (needs a LinkedIn profile link; never restarts)."""
     now = now or now_utc()
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None:
         raise LookupError("Lead not found")
-    if not re.match(r"^https?://([a-z]+\.)?linkedin\.com/", lead.get("linkedin_url") or "", re.I):
+    if not has_profile_link(lead):
         raise ValueError("Add the person's LinkedIn profile link first.")
     if lead.get("stage") in ("unsubscribed", "disqualified"):
         raise ValueError(f"Lead is {lead['stage']}; no LinkedIn outreach.")
@@ -295,7 +300,7 @@ def queue(store, now: Optional[datetime] = None) -> dict:
     limit = int(settings.get("linkedin_daily_connections") or DEFAULT_DAILY_CONNECTIONS)
     suggestions = []
     if started_today < limit:
-        ranked = sorted((l for l in leads.values() if not l.get("linkedin_seq") and l.get("linkedin_url")
+        ranked = sorted((l for l in leads.values() if not l.get("linkedin_seq") and has_profile_link(l)
                          and l.get("stage") not in ("unsubscribed", "disqualified", "customer", "advocate")),
                         key=lambda l: -(l.get("open_roles") or 0))
         suggestions = [{"lead_id": l["id"], "company": l.get("company"), "name": l.get("contact_name"), "title": l.get("title"),

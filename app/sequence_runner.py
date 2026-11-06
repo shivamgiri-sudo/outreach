@@ -152,7 +152,7 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
         composed = _compose(lead, step, cfg, offer, base_url, now, today)
         if composed is None:
             counts["blocked"] += 1
-            _set_sequence(store, lead["id"], blocked="a detail needed by the email is missing")
+            _set_sequence(store, lead["id"], blocked=_blocked_text(missing_details(lead, step, cfg, offer, base_url, now)))
             continue
         message, demo = composed
         _tag(message, step, seq)
@@ -249,14 +249,30 @@ def _ready(seq: dict, now: datetime, last_key: str = "last_sent_at") -> bool:
     return not (last_failed and now - datetime.fromisoformat(last_failed) < RETRY_AFTER)
 
 
-def _compose(lead: dict, step: dict, cfg: dict, offer: dict, base_url: str, now: datetime, today: date):
-    """Return (message, demo fields), or None when a {{placeholder}} would be left unfilled."""
+def _prepare(lead: dict, step: dict, cfg: dict, offer: dict, base_url: str, now: datetime) -> tuple:
     lead = ensure_demo(lead, now)
     extra = {**brand_variables(cfg), "offer_line": offer_line(offer), "demo_link": f"{base_url}/demo/{lead['demo_token']}",
              "include_link": bool(cfg.get(getattr(sequences, "INCLUDE_LINK_SETTING", "email1_include_link")))}
     variables = lead_variables(lead, cfg["sender_name"], base_url, extra, secret=cfg.get("server_secret", ""), brand=cfg)
     pick = getattr(sequences, "pick_variant", None)
-    step = pick(step, variables) if pick else step
+    return lead, (pick(step, variables) if pick else step), variables
+
+
+def missing_details(lead: dict, step: dict, cfg: dict, offer: dict, base_url: str, now: datetime) -> list:
+    """The {{names}} this step needs that the lead (or Brand settings) cannot fill, e.g. ["project"]."""
+    lead, step, variables = _prepare(lead, step, cfg, offer, base_url, now)
+    names = render(step["subject"], variables)[1] + render(step["body"], variables)[1]
+    return list(dict.fromkeys(names))
+
+
+def _blocked_text(missing: list) -> str:
+    # Name the detail: "a detail is missing" alone left the owner guessing which one to fill in.
+    return "a detail needed by the email is missing" + (f": {', '.join('{{' + m + '}}' for m in missing[:5])}" if missing else "")
+
+
+def _compose(lead: dict, step: dict, cfg: dict, offer: dict, base_url: str, now: datetime, today: date):
+    """Return (message, demo fields), or None when a {{placeholder}} would be left unfilled."""
+    lead, step, variables = _prepare(lead, step, cfg, offer, base_url, now)
     subject, missing_subject = render(step["subject"], variables)
     body_text, missing_body = render(step["body"], variables)
     if missing_subject or missing_body:
@@ -377,7 +393,8 @@ def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str 
         step = _lead_step(steps[0], lead)
         composed = _compose(lead, step, cfg, get_offer(store), base_url, now, today)
         if composed is None:
-            raise ValueError("A detail needed by the email is missing for this lead.")
+            why = _blocked_text(missing_details(lead, step, cfg, get_offer(store), base_url, now))
+            raise ValueError(why[0].upper() + why[1:] + " for this lead.")
         message, demo = composed
         _tag(message, step, seq)
         day = steps[0]["day"]

@@ -6,10 +6,11 @@ import { GROUPS, TYPES, iconPath } from "./catalog.js";
 export default function NodePicker({ open, onClose, onPick, heading = "Add a step", onlyTriggers = false, noTriggers = false }) {
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
+  const [dragging, setDragging] = useState(false);          // a step is being dragged out onto the canvas
   const input = useRef(null);
   const list = useRef(null);
 
-  useEffect(() => { if (open) { setQuery(""); setCursor(0); setTimeout(() => input.current?.focus(), 0); } }, [open]);
+  useEffect(() => { if (open) { setQuery(""); setCursor(0); setDragging(false); setTimeout(() => input.current?.focus(), 0); } }, [open]);
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -33,7 +34,7 @@ export default function NodePicker({ open, onClose, onPick, heading = "Add a ste
   };
   let index = -1;
   return (
-    <div className="fb-picker-back" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={`fb-picker-back${dragging ? " dragging" : ""}`} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="fb-picker" role="dialog" aria-modal="true" aria-label={heading} onKeyDown={onKey}>
         <div className="fb-picker-head">
           <b>{heading}</b>
@@ -54,6 +55,14 @@ export default function NodePicker({ open, onClose, onPick, heading = "Add a ste
                   const mineIndex = index;
                   return (
                     <button key={item.type} type="button" role="option" aria-selected={cursor === mineIndex} aria-label={`Add step: ${item.label}`}
+                      draggable={!noTriggers} title={noTriggers ? undefined : "Click to add, or drag it onto the canvas"}
+                      onDragStart={(e) => {
+                        // The canvas drop handler reads this type. The box fades and lets the drop through to the canvas.
+                        e.dataTransfer.setData("application/x-flow-step", item.type);
+                        e.dataTransfer.effectAllowed = "copy";
+                        setTimeout(() => setDragging(true), 0);
+                      }}
+                      onDragEnd={() => { setDragging(false); onClose(); }}
                       className={`fb-picker-item g-${group}${cursor === mineIndex ? " on" : ""}`} onMouseEnter={() => setCursor(mineIndex)} onClick={() => choose(item)}>
                       <span className="fb-picker-icon"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={iconPath(item.icon)} /></svg></span>
                       <span className="fb-picker-text"><b>{item.label}</b><small>{item.help}</small></span>

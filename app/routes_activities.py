@@ -144,7 +144,11 @@ def make_router(store, transactional_sender=None) -> APIRouter:
             if due:
                 out["due_at"] = iso(due)
             if body.snooze_minutes:
-                out["due_at"] = iso(now_utc() + timedelta(minutes=body.snooze_minutes))
+                # Snooze pushes the task later: from its due time if that is still ahead, else from now.
+                # (From "now" alone, "+1 hour" on a task due tonight would move it earlier.)
+                current = _parse_when(t.get("due_at"), "due_at") if t.get("due_at") else None
+                base = max(now_utc(), current) if current else now_utc()
+                out["due_at"] = iso(base + timedelta(minutes=body.snooze_minutes))
             if due or body.snooze_minutes:
                 out["reminded"] = []             # remind again at the new time
             return out
