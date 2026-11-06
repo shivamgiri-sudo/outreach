@@ -302,4 +302,8 @@ export const api = {
   bookMeeting: (id, body) => request(`/api/leads/${id}/meetings`, { method: "POST", body }),
   cancelMeeting: (meetingId) => request(`/api/meetings/${meetingId}/cancel`, { method: "POST" }),
   meetingDone: (meetingId) => request(`/api/meetings/${meetingId}/done`, { method: "POST" }),
+  // Companies (accounts)
+  companies: (params = {}) => request(`/api/companies?${new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "" && v != null)).toString()}`),
+  company: (key) => request(`/api/companies/${encodeURIComponent(key)}`),
+  companyOfLead: (leadId) => request(`/api/companies/of-lead/${encodeURIComponent(leadId)}`),
 };
