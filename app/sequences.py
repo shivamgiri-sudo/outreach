@@ -48,7 +48,7 @@ DEFAULT_SEQUENCE = [
               "coordination, the process becomes difficult to manage efficiently and consistently.\n\n"
               "The opportunity is to bring more structure to candidate evaluation before valuable interviewer time is "
               "invested.\n\nHas your organisation considered using technology to streamline these stages?" + _SIGN_OFF)},
-    {"day": 15, "name": "Email 5 — introducing BookMyInterview.ai (Day 16)",
+    {"day": 15, "name": "Email 5 — introducing the product (Day 16)",
      "subject": "Technology for more informed hiring decisions",
      "body": ("{{greeting}}\n\nThis is the problem {{my_product}} is designed to address.\n\n"
               "{{my_product}} is a recruitment technology platform focused on candidate assessment and interview "

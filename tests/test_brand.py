@@ -302,3 +302,9 @@ def test_blank_sign_off_uses_the_person_who_signs_the_emails():
     assert unnamed["sign_off"] == "Regards,\nTeam Bulk hiring"
     own = b.get_brand({"brand": {"company_name": "Mas Callnet", "sender_name": "Shivam", "sign_off": "Cheers,\nS"}})
     assert own["sign_off"] == "Cheers,\nS"
+
+
+def test_default_sequence_step_names_do_not_name_the_original_product():
+    # QA sweep: a rebranded install saw "Email 5 — introducing BookMyInterview.ai" in the composer, lead panel and Outbox.
+    for step in DEFAULT_SEQUENCE:
+        assert "bookmyinterview" not in (step["name"] + step["subject"] + step["body"]).lower(), step["name"]
