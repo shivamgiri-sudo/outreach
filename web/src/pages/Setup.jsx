@@ -6,6 +6,8 @@ import { useConfirm, usePrompt } from "../Dialog.jsx";
 import ScoringCard from "./ScoringCard.jsx";
 import AuditLog from "./AuditLog.jsx";
 import SystemHealth from "./SystemHealth.jsx";
+import { FieldHint, GuideButton, useTouched } from "../GuidePanel.jsx";
+import { fieldHelp, useGuides } from "../guides.js";
 
 const STATUS = { configured: ["ok", "Connected"], incomplete: ["warn", "Missing details"], not_configured: ["", "Not set up"] };
 
@@ -18,6 +20,9 @@ function Connector({ item, onSaved }) {
   const [testResult, setTestResult] = useState(null);
   const [testing, setTesting] = useState(false);
   const [pill, label] = STATUS[item.status];
+  const { data: guides } = useGuides();
+  const [touched, touch] = useTouched();
+  const gkey = `integration:${item.id}`;
 
   const save = async () => {
     setSaving(true); setError("");
@@ -39,6 +44,7 @@ function Connector({ item, onSaved }) {
         <b>{item.title}</b><span className={`pill ${pill}`}>{label}</span>
       </div>
       <p className="sub" style={{ margin: "2px 0 8px" }}>{item.why}</p>
+      <GuideButton keys={gkey} testId={`setup-guide-${item.id}`} />
       <details open={item.status !== "configured"}>
         <summary>Set up in {item.steps.length} easy steps</summary>
         <ol className="steps">{item.steps.map((s) => <li key={s}>{s}</li>)}</ol>
@@ -52,13 +58,19 @@ function Connector({ item, onSaved }) {
             ))}
           </div>
         )}
-        {mode === "api" && item.fields.map((f) => (
-          <div key={f.key}>
-            <label>{f.label}{f.required && " *"}</label>
-            <input type={f.secret ? "password" : "text"} placeholder={item.values[f.key] || f.placeholder || ""}
-              value={values[f.key] || ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
-          </div>
-        ))}
+        {mode === "api" && item.fields.map((f) => {
+          const id = `c-${item.id}-${f.key}`;
+          const help = fieldHelp(guides, gkey, f.key);
+          return (
+            <div key={f.key}>
+              <label htmlFor={id}>{f.label}{f.required && " *"}</label>
+              <input id={id} type={f.secret ? "password" : "text"} autoComplete="off" placeholder={item.values[f.key] || f.placeholder || ""}
+                value={values[f.key] || ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} onBlur={() => touch(f.key)}
+                aria-describedby={help ? `${id}-hint ${id}-problem` : undefined} />
+              <FieldHint id={id} help={help} value={values[f.key]} touched={touched[f.key]} />
+            </div>
+          );
+        })}
         {error && <p style={{ color: "var(--hot)" }}>{error}</p>}
         <div className="row" style={{ marginTop: 12 }}>
           <button className="btn" disabled={saving} onClick={save}>{mode === "manual" ? "Use manual mode" : "Save"}</button>
@@ -82,6 +94,8 @@ function Connector({ item, onSaved }) {
 function Basics({ onSaved }) {
   const [cfg, setCfg] = useState(null);
   const [message, setMessage] = useState("");
+  const { data: guides } = useGuides();
+  const [touched, touch] = useTouched();
   useEffect(() => { api.settings().then(setCfg); }, []);
   if (!cfg) return null;
 
@@ -107,12 +121,16 @@ function Basics({ onSaved }) {
     <div className="card" style={{ marginBottom: 16 }}>
       <b>The basics</b>
       <p className="sub" style={{ margin: "2px 0 8px" }}>Three things every live launch needs.</p>
-      <label>Your public web address</label>
-      <input value={cfg.public_base_url || ""} placeholder="https://outreach.yourcompany.in" onChange={(e) => setCfg({ ...cfg, public_base_url: e.target.value })} />
+      <label htmlFor="public-url">Your public web address</label>
+      <input id="public-url" value={cfg.public_base_url || ""} placeholder="https://outreach.yourcompany.in" onChange={(e) => setCfg({ ...cfg, public_base_url: e.target.value })}
+        onBlur={() => touch("public_base_url")} aria-describedby="public-url-hint public-url-problem" />
+      <FieldHint id="public-url" help={fieldHelp(guides, "setup:public_url", "public_base_url")} value={cfg.public_base_url} touched={touched.public_base_url} />
+      <GuideButton keys="setup:public_url" label="What is my public web address?" testId="basics-guide-url" />
       <p className="sub" style={{ margin: "4px 0" }}>Unsubscribe and demo links in emails point here, so it must open from outside your office. Not localhost.</p>
-      <label>Secret for product activity events</label>
+      <label htmlFor="webhook-secret">Secret for product activity events</label>
+      <GuideButton keys="setup:webhook" label="What is this for?" testId="basics-guide-webhook" />
       <div className="row">
-        <input style={{ flex: 1 }} value={cfg.webhook_secret || ""} placeholder="Click Generate" onChange={(e) => setCfg({ ...cfg, webhook_secret: e.target.value })} />
+        <input id="webhook-secret" style={{ flex: 1 }} value={cfg.webhook_secret || ""} placeholder="Click Generate" onChange={(e) => setCfg({ ...cfg, webhook_secret: e.target.value })} />
         <button className="btn ghost" onClick={randomSecret}>Generate</button>
       </div>
       <p className="sub" style={{ margin: "4px 0" }}>
@@ -149,7 +167,7 @@ function Workspaces({ onChanged }) {
   const confirm = useConfirm();
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <b>Workspaces</b>
+      <b>Workspaces</b> <GuideButton keys="app:workspaces" label="How do workspaces work?" testId="workspaces-guide" />
       <p className="sub">One workspace per client. Pick the workspace in the left menu: imports go into it, and Leads, Lists and Intelligence show only its leads.
         A contact can sit in only one workspace, so two clients never contact the same person twice from here. Move leads from the Leads page (select, then “Move to workspace”).</p>
       <ul className="today-list">{rows.map((w) => (
@@ -194,7 +212,7 @@ function Users() {
   };
   return (
     <div className="card" style={{ marginBottom: 16 }} data-testid="users-card">
-      <b>Team logins</b>
+      <b>Team logins</b> <GuideButton keys={["app:team_logins", "setup:login"]} label="How do I add my team?" testId="users-guide" />
       <p className="sub" style={{ margin: "2px 0 8px" }}>
         Give each person their own login. Owner (full access to all data and settings; only the super admin adds or removes owners): {ROLE_HELP.owner}. Caller: {ROLE_HELP.caller} (no settings, integrations or CSV exports). Viewer: {ROLE_HELP.viewer}.
       </p>
@@ -261,7 +279,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
         {role === "owner" && <button role="tab" aria-selected={tab === "health"} className={tab === "health" ? "on" : ""} onClick={() => setTab("health")}>System health</button>}
       </div>
       {tab === "checklist" && <GoLive embedded go={(page) => (page === "setup" ? setTab("connections") : go?.(page))} />}
-      {tab === "backup" && <BackupRestore />}
+      {tab === "backup" && <><p><GuideButton keys="app:backup" label="How do backups work?" testId="backup-guide" /></p><BackupRestore /></>}
       {tab === "audit" && role === "owner" && <AuditLog />}
       {tab === "health" && role === "owner" && <SystemHealth />}
       {tab === "team" && role === "owner" && <><Workspaces /><Users /><ScoringCard /></>}

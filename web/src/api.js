@@ -280,6 +280,7 @@ export const api = {
   addPartner: (p) => request("/api/partners", { method: "POST", body: p }),
   partnerStatus: (id, status) => request(`/api/partners/${id}/status`, { method: "POST", body: { status } }),
   integrations: () => request("/api/integrations"),
+  guides: () => request("/api/guides"),
   saveIntegration: (id, mode, values) => request(`/api/integrations/${id}`, { method: "PUT", body: { mode, values } }),
   stories: () => request("/api/stories"),
   addStory: (story) => request("/api/stories", { method: "POST", body: story }),

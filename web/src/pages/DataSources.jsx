@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getToken } from "../api.js";
 import { istLabel } from "../time.js";
+import { GuideButton } from "../GuidePanel.jsx";
 
 const DEFAULT_SAMPLE = 25;
 const MAX_SAMPLE = 100;
@@ -50,6 +51,7 @@ function ProviderList({ list, go }) {
           </span>
           <span className="row">
             <span className={`pill ${p.configured ? "ok" : "warn"}`}>{p.configured ? "Connected" : "Not set up"}</span>
+            {p.setup_id && <GuideButton keys={`integration:${p.setup_id}`} label="How do I get this?" testId={`source-guide-${p.id}`} />}
             {!p.configured && <button className="btn ghost" onClick={() => go("setup")}>Set up in Setup</button>}
           </span>
         </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { copyText } from "../../clipboard.js";
+import { FieldHint } from "../../GuidePanel.jsx";
 
 export const STATUS = {
   configured: ["ok", "Connected"],
@@ -29,12 +30,12 @@ export function CopyRow({ label, value, testid }) {
   );
 }
 
-function SecretInput({ id, value, placeholder, onChange }) {
+function SecretInput({ id, value, placeholder, onChange, a11y }) {
   const [shown, setShown] = useState(false);
   return (
     <div className="secret-wrap">
       <input id={id} type={shown ? "text" : "password"} autoComplete="off" value={value} placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)} />
+        onChange={(e) => onChange(e.target.value)} {...a11y} />
       <button type="button" className="btn ghost" aria-pressed={shown} onClick={() => setShown(!shown)}>{shown ? "Hide" : "Show"}</button>
     </div>
   );
@@ -60,30 +61,35 @@ export function HeadersEditor({ id, rows, onChange }) {
 }
 
 // One form field from the catalogue: text, url, email, number, phone, select, textarea, headers; secrets get show / hide.
-export function FieldInput({ field, value, saved, onChange, inputRef }) {
+// `guide` is the field help from the setup guides: what the value looks like, and a friendly check once the box is left.
+export function FieldInput({ field, value, saved, onChange, inputRef, guide }) {
   const id = `f-${field.key}`;
+  const [touched, setTouched] = useState(false);
   const placeholder = field.secret && saved ? `${saved} (saved; leave empty to keep)` : field.placeholder || "";
+  const described = [field.help && `${id}-help`, guide && `${id}-hint`, guide && `${id}-problem`].filter(Boolean).join(" ") || undefined;
+  const a11y = { "aria-describedby": described, onBlur: () => setTouched(true) };
   let control;
   if (field.kind === "headers") control = <HeadersEditor id={id} rows={value} onChange={onChange} />;
-  else if (field.secret) control = <SecretInput id={id} value={value || ""} placeholder={placeholder} onChange={onChange} />;
+  else if (field.secret) control = <SecretInput id={id} value={value || ""} placeholder={placeholder} onChange={onChange} a11y={a11y} />;
   else if (field.kind === "select") {
     control = (
-      <select id={id} value={value || field.default || field.options[0]} onChange={(e) => onChange(e.target.value)}>
+      <select id={id} value={value || field.default || field.options[0]} onChange={(e) => onChange(e.target.value)} aria-describedby={described}>
         {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     );
   } else if (field.kind === "textarea") {
-    control = <textarea id={id} ref={inputRef} rows={4} value={value || ""} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />;
+    control = <textarea id={id} ref={inputRef} rows={4} value={value || ""} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} {...a11y} />;
   } else {
     const type = { email: "email", number: "text", url: "url", phone: "tel" }[field.kind] || "text";
     control = <input id={id} type={type} inputMode={field.kind === "number" ? "numeric" : undefined} value={value || ""}
-      placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />;
+      placeholder={placeholder} onChange={(e) => onChange(e.target.value)} {...a11y} />;
   }
   return (
     <div className="field">
       <label htmlFor={id}>{field.label}{field.required && <span aria-hidden="true"> *</span>}</label>
       {control}
-      {field.help && <p className="field-help">{field.help}</p>}
+      {field.help && <p className="field-help" id={`${id}-help`}>{field.help}</p>}
+      <FieldHint id={id} help={guide} value={value} touched={touched} />
     </div>
   );
 }

@@ -41,7 +41,7 @@ def default_smtp_factory(host: str, port: int, use_ssl: bool, timeout: int):
 def smtp_settings(pid: str, values: dict) -> dict:
     if pid == "gmail_smtp":
         return {"host": GMAIL_HOST, "port": GMAIL_PORT, "ssl": False, "username": values["smtp_username"],
-                "password": values["app_password"]}
+                "password": "".join(str(values["app_password"]).split())}   # Google shows it in 4 groups; spaces are never part of it
     port = int(values.get("smtp_port") or 587)
     return {"host": values["smtp_host"], "port": port, "ssl": values.get("smtp_security") == "ssl" or port == 465,
             "username": values["smtp_username"], "password": values["smtp_password"]}

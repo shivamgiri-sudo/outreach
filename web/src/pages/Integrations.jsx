@@ -3,7 +3,8 @@ import { api, isOwner } from "../api.js";
 import { EmptyArt, ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import { CopyRow, StatusPill } from "./integrations/Fields.jsx";
-import Wizard from "./integrations/Wizard.jsx";
+import Wizard, { guideKeys } from "./integrations/Wizard.jsx";
+import { GuideButton } from "../GuidePanel.jsx";
 import LeadCapture from "./integrations/LeadCapture.jsx";
 
 const EXTRA_TABS = [["capture", "Lead capture"], ["custom", "Custom"], ["webhooks", "Webhook addresses"]];
@@ -41,6 +42,7 @@ function ProviderCard({ channel, provider, onOpen, onActivate }) {
       )}
       <div className="row prov-actions">
         <button className="btn" onClick={onOpen}>{provider.saved ? "Open" : "Set up"}</button>
+        <GuideButton keys={guideKeys(channel.id, provider)} testId={`card-guide-${channel.id}-${provider.id}`} />
         {channel.kind === "exclusive" && !provider.active && ready && (
           <button className="btn ghost" onClick={onActivate}>Make active</button>
         )}

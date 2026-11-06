@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
+import { GuideButton } from "../GuidePanel.jsx";
 
 const MARK = { done: "✓", todo: "○", optional: "–" };
 const PILL = { done: "ok", todo: "warn", optional: "" };
@@ -42,6 +43,7 @@ export default function GoLive({ go, embedded = false }) {
               </span>
               <span className="row">
                 <span className={`pill ${PILL[i.status]}`}>{i.status === "done" ? "Done" : i.status === "todo" ? "To do" : "Optional"}</span>
+                <GuideButton keys={`setup:${i.id}`} label="Need help?" testId={`checklist-guide-${i.id}`} />
                 {i.status !== "done" && <button className="btn ghost" onClick={() => go(i.page)}>Fix this</button>}
               </span>
             </div>

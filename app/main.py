@@ -34,6 +34,7 @@ from .http_util import post_json
 from . import routes_growth
 from .growth_core import webhook_secret
 from .routes_setup import make_router as make_setup_router
+from .routes_guides import make_router as make_guides_router
 from .senders import make_email_sender, make_transactional_sender
 from .routes_workflows import make_router as make_workflows_router
 from .routes_flows import make_router as make_flows_router
@@ -472,6 +473,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_flows_router(store, email_sender, channel_transport, resolver, ai_transport))
     app.include_router(make_setup_router(store, email_transport, ai_transport, apollo_transport, BASE_URL, routes_growth.WEBHOOK_SECRET, lambda: bool(password),
                                            source_transports={"fetch": fetcher, **(campaign_transports or {})}))
+    app.include_router(make_guides_router())
     app.include_router(make_whatsapp_router(store, _present))
     app.include_router(make_insights_router(store, _present))
     app.include_router(make_today_router(store, _present))
