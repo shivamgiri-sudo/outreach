@@ -29,6 +29,9 @@ OWNER_ROUTES = {
     ("GET", "/api/scoring"), ("PUT", "/api/scoring"),
     ("PUT", "/api/linkedin/sequence"), ("POST", "/api/linkedin/sequence/reset"), ("PUT", "/api/lead-fields"),   # industry setup
     ("POST", "/api/presets/{preset_id}/apply"),
+    ("POST", "/api/prospects/export"), ("POST", "/api/prospects/import"), ("POST", "/api/prospects/suppress"),       # prospect DB
+    ("DELETE", "/api/prospects/people/{person_id}"), ("PATCH", "/api/prospects/people/{person_id}"), ("POST", "/api/prospects/sync-crm"),
+    ("PUT", "/api/prospects/settings"), ("POST", "/api/prospects/enrich"), ("GET", "/api/prospects/spend"), ("PUT", "/api/prospects/spend"),
     ("PUT", "/api/insights/source-spend"), ("GET", "/api/inbound/log"), ("POST", "/api/inbound/{connector_id}/test"), ("POST", "/api/inbound/{connector_id}/sync"),
 }
 OWNER_PREFIXES = ("/api/users", "/api/compliance", "/api/backup", "/api/export/", "/api/capture", "/api/hiring-engine", "/api/linkedin-agent", "/api/linkedin-cloud", "/api/audit", "/api/system")    # any method (exports: no CSV for callers)

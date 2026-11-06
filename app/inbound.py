@@ -45,6 +45,18 @@ def suppress(store, email: Optional[str]) -> None:
         store.update("suppressed", lambda rows: rows if email in rows else [*rows, email])
 
 
+def _prospect_event(store, email: Optional[str], kind: str, at: str) -> None:
+    """Bounces mark the address invalid in the prospect database; complaints opt the person out there too."""
+    if not email:
+        return
+    from . import prospect_db
+    from .prospect_ingest import safely
+    if kind == "bounce":
+        safely(prospect_db.mark_email, store, email, "invalid", "bounced", at)
+    elif kind == "complaint":
+        safely(prospect_db.suppress, store, email, "spam complaint")
+
+
 def reply_effect(lead: dict, label: str, text: str, channel: str = "email") -> tuple:
     """What a reply changes. Returns (changes, effect) where effect is applied / logged / review."""
     seq = lead.get("sequence")
@@ -245,6 +257,7 @@ def process_delivery_event(store, event: dict, now: Optional[datetime] = None) -
                                              for m in rows])
         return {"ok": True}
     suppress(store, email)
+    _prospect_event(store, email, kind, record["at"])
     reason = "bounced" if kind == "bounce" else "complained"
     for lead in store.read("leads"):
         if email and lead.get("email") == email:
@@ -288,4 +301,5 @@ def _count_reply_bounce(store, email: Optional[str], message_id: str = "") -> No
         return                     # the provider webhook (or an earlier notice) already counted this bounce
     record = {"key": key, "type": "bounce", "email": email, "provider_id": message_id, "at": now.isoformat(timespec="seconds"), "via": "reply"}
     store.update("delivery_events", lambda rows: [*rows, record])
+    _prospect_event(store, email, "bounce", record["at"])
     _pause_if_unhealthy(store, now)

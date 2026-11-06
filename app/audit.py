@@ -116,6 +116,9 @@ ACTIONS = {
     "linkedin_agent.off": "LinkedIn agent switched off", "linkedin_agent.settings": "LinkedIn agent settings saved",
     "settings.save": "Settings saved", "contact.edit": "Contact details corrected",
     "extension.save_profile": "Profile saved from LinkedIn (Chrome assistant)",
+    "prospects.export": "Prospects exported", "prospects.import": "Prospects imported", "prospects.suppress": "Prospect suppressed",
+    "prospects.erase": "Prospect erased", "prospects.edit": "Prospect edited", "prospects.settings": "Prospect sources changed",
+    "prospects.enrich": "Prospect emails looked up", "prospects.spend": "Lookup budget changed",
 }
 MAX_DETAIL = 500
 

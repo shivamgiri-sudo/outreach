@@ -37,6 +37,7 @@ SOURCES = (
     ("careers_page", "Careers page", "outbound"),
     ("web_scraper", "Website contact finder", "outbound"),
     ("enrichment", "Website lookup", "outbound"),
+    ("prospect_db", "Prospect database", "outbound"),
     # imports and hand entry
     ("bmi_sheet", "Team sheet", "import"),
     ("sheet", "Spreadsheet import", "import"),

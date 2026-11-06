@@ -13,6 +13,7 @@ from typing import Optional
 
 from . import campaign_pipeline as pipe
 from . import campaign_sources as src
+from . import prospect_ingest
 from .activities import caller_name
 from .lead_model import now_iso
 from .providers import provider_status
@@ -271,7 +272,10 @@ def run_campaign(store, campaign_id: str, transports: dict, dry_run: bool = Fals
             _change(store, campaign_id, lambda c: {**c, "last_run_date": today})
         campaign = get_campaign(store, campaign_id)
         report = new_report(dry_run, trigger, now)
-        candidates = pipe.merge_rows(discover(store, campaign, transports, report, now, dry_run))
+        rows = discover(store, campaign, transports, report, now, dry_run)
+        if not dry_run:                                          # previews store nothing, here too
+            prospect_ingest.safely(prospect_ingest.ingest_rows, store, rows)
+        candidates = pipe.merge_rows(rows)
         plan = pipe.plan_additions(store, campaign, candidates, report)
         if dry_run:
             report["preview"] = _preview_rows(plan, campaign)
@@ -296,6 +300,7 @@ def run_campaign(store, campaign_id: str, transports: dict, dry_run: bool = Fals
         report["lead_ids"] = [l["id"] for l in added][:MAX_LEAD_IDS]
         report["finished_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         _save_run(store, campaign_id, report)
+        prospect_ingest.safely(prospect_ingest.sync_crm, store)     # enriched/verified leads -> prospect DB
         _notify_caller(store, campaign, report, notify_sender)
         return report
     finally:

@@ -31,6 +31,7 @@ import HiringEngine from "./pages/HiringEngine.jsx";
 import MyDay from "./pages/MyDay.jsx";
 import Analytics from "./pages/Analytics.jsx";
 import Help from "./pages/Help.jsx";
+import ProspectSearch from "./pages/ProspectSearch.jsx";
 import { THEMES, getTheme, setTheme } from "./theme.js";
 import { DialogProvider } from "./Dialog.jsx";
 import { useModalFocus } from "./DrawerShell.jsx";
@@ -41,6 +42,7 @@ import Onboarding from "./pages/Onboarding.jsx";
 const PAGES = [
   ["myday", "My day", MyDay, "tasks"],
   ["dashboard", "Dashboard", Dashboard, "dashboard"],
+  ["prospects", "Prospect search", ProspectSearch, "search"],
   ["leads", "Leads", Leads, "users"],
   ["hygiene", "Data hygiene", Hygiene, "check"],
   ["lists", "Lists", Lists, "tasks"],
@@ -73,7 +75,7 @@ const PAGES = [
 // PAGES entry; when Analytics replaces Insights + Intelligence, drop those two from PAGES and alias them below.
 const GROUPS_ALL = [
   ["Today", ["myday", "dashboard"]],
-  ["Pipeline", ["leads", "companies", "lists", "campaigns", "growth"]],
+  ["Pipeline", ["prospects", "leads", "companies", "lists", "campaigns", "growth"]],
   ["Conversations", ["replies", "calls", "linkedin", "tasks", "meetings", "outbox"]],
   ["Content & automation", ["templates", "flows", "workflows", "stories", "prompts"]],
   ["Analytics", ["analytics"]],

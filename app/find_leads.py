@@ -352,4 +352,6 @@ class Runner:
                 break
         for (source, message), count in ctx.errors.items():
             self._error(run_id, source, message + (f" ({count} times)" if count > 1 else ""))
+        from .prospect_ingest import safely, sync_crm
+        safely(sync_crm, self.store)                 # filled-in contacts -> prospect DB (credited to their source)
         self._set(run_id, persist=True)
