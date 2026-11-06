@@ -154,7 +154,7 @@ export default function LeadActivity({ lead, onChanged }) {
             <small className="sub">Log a call:</small>
             {QUICK_CALLS.map(([v, l]) => <button key={v} className="btn ghost" onClick={() => (v === "call_back" ? setCallback(new Date(Date.now() + 390 * 60000).toISOString().slice(0, 16))
               : run(() => api.callOutcome(lead.id, v), `Call logged: ${l}.`))}>{l}</button>)}
-            {lead.email && <button className="btn ghost" onClick={() => setComposing(true)}>Write an email</button>}
+            {lead.email && !["unsubscribed", "disqualified"].includes(lead.stage) && <button className="btn ghost" onClick={() => setComposing(true)}>Write an email</button>}
           </div>
           {callback !== null && (
             <form className="row" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault();

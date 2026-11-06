@@ -397,19 +397,37 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
             log_legacy_use(lead_id)
         return lead_id, signed is None
 
+    def unsub_html(inner: str, status: int = 200) -> HTMLResponse:
+        """The small page a recipient sees: always a readable page, never raw JSON."""
+        return HTMLResponse("<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                            "<div style='font-family:sans-serif;max-width:420px;margin:15vh auto;padding:0 16px;text-align:center'>"
+                            f"{inner}</div>", status_code=status)
+
+    def unsub_sender() -> str:
+        # the name in the email footer (the company), which the recipient knows; the product name is a fallback
+        b = get_brand(store)
+        return escape(b.get("company_name") or b.get("product_name") or "us")
+
+    BAD_LINK = "<p>This unsubscribe link is not valid. Reply to the email with \"unsubscribe\" and we will stop.</p>"
+
     @router.get("/u/{token}", response_class=HTMLResponse)
     def unsubscribe_page(token: str):
-        unsubscribe_target(token)
+        try:
+            lead_id, _ = unsubscribe_target(token)
+        except HTTPException:
+            return unsub_html(BAD_LINK, 404)
+        if any(l["id"] == lead_id and l["stage"] == "unsubscribed" for l in store.read("leads")):
+            return unsub_html(f"<p>You are already unsubscribed. You will not get more emails from {unsub_sender()}.</p>")
         action = escape(f"/u/{quote(token, safe='.')}", quote=True)
-        return ("<!doctype html><meta name='viewport' content='width=device-width,initial-scale=1'>"
-                "<div style='font-family:sans-serif;max-width:420px;margin:15vh auto;text-align:center'>"
-                f"<p>Stop all emails from {escape(get_brand(store)['product_name'])}?</p>"
-                f"<form method='post' action='{action}'><button style='padding:10px 18px;font-size:16px'>Yes, unsubscribe me</button></form>"
-                "</div>")
+        return unsub_html(f"<p>Stop all emails from {unsub_sender()}?</p>"
+                          f"<form method='post' action='{action}'><button style='padding:10px 18px;font-size:16px'>Yes, unsubscribe me</button></form>")
 
     @router.post("/u/{token}", response_class=HTMLResponse)
     def unsubscribe(token: str):
-        lead_id, legacy = unsubscribe_target(token)
+        try:
+            lead_id, legacy = unsubscribe_target(token)
+        except HTTPException:
+            return unsub_html(BAD_LINK, 404)
         how = "Clicked unsubscribe link" + (" (older unsigned link)" if legacy else "")
 
         def unsubscribe_lead(lead: dict):
@@ -424,7 +442,7 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         _suppress(store, lead.get("email"))
         if was != "unsubscribed":
             record_consent(store, lead_id, "withdrawn", "email", "", how.lower())
-        return "<p style='font-family:sans-serif'>You are unsubscribed and will not hear from us again.</p>"
+        return unsub_html("<p>You are unsubscribed and will not hear from us again.</p>")
 
     @router.post("/api/scrape/extract")
     def scrape(body: ScrapeBody):
