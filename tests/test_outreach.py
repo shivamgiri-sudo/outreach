@@ -33,6 +33,14 @@ def lead_id(c):
     ("I am not the right person, contact our HR head Meena", "wrong_person"),
     ("How much does it cost?", "question"),
     ("ok", "other"),
+    # QA sweep: real replies that were misread
+    ("Hi Shivam, thanks for reaching out. We are ramping up delivery partner hiring in Bangalore next month. "
+     "Can we talk on Tuesday at 3pm?", "interested"),
+    ("Could we set up a call this week?", "interested"),
+    ("Haan, kal 11 baje call kar lijiye", "interested"),
+    ("Kitna charge karte ho per hire", "question"),
+    ("Abhi nahi, next quarter mein baat karte hain.", "not_now"),
+    ("We can't talk now, maybe next month", "not_now"),
 ])
 def test_classify_reply(text, label):
     assert classify_reply(text) == label

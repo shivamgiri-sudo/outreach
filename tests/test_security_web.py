@@ -173,3 +173,21 @@ def test_template_variable_and_practice_email_carry_the_signed_link(tmp_path):
     c.post("/api/sequences/run", json={"now": "2026-11-04T05:00:00+00:00"})
     body = c.get("/api/outbox").json()[0]["body"]
     assert unsub_path(store, lid) in body
+
+
+def test_unsubscribe_pages_are_readable_for_the_recipient(tmp_path):
+    # QA sweep: a wrong link showed raw JSON, the page named the product instead of the company in the email footer,
+    # and reopening the link after unsubscribing asked again.
+    c = make(tmp_path)
+    store = c.app.state.store
+    store.update("settings", lambda s: {**s, "brand": {"company_name": "Mas Callnet", "product_name": "Bulk hiring and calling teams"}})
+    lid = lead_id(c)
+    link = unsub_path(store, lid)
+    bad = c.get(link[:-1] + ("A" if link[-1] != "A" else "B"))
+    assert bad.status_code == 404 and bad.headers["content-type"].startswith("text/html") and "not valid" in bad.text and "detail" not in bad.text
+    assert c.post(f"/u/{lid}.").headers["content-type"].startswith("text/html")
+    first = c.get(link)
+    assert "Stop all emails from Mas Callnet?" in first.text and "Yes, unsubscribe me" in first.text
+    assert "You are unsubscribed" in c.post(link).text
+    again = c.get(link)
+    assert again.status_code == 200 and "already unsubscribed" in again.text and "Yes, unsubscribe me" not in again.text

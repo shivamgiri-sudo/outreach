@@ -181,7 +181,8 @@ export default function LeadDrawer({ id, ids, onClose }) {
           <option value="pilot_offer">Free pilot offer</option>
           <option value="custom">Write my own</option>
         </select>
-        <button className="btn ghost" onClick={() => act(async () => { const r = await api.sendWhatsapp(id_, waTemplate, waText); setWaText(""); return r; })}>Send</button>
+        <button className="btn ghost" onClick={() => act(async () => { const r = await api.sendWhatsapp(id_, waTemplate, waText); setWaText("");
+          say(waMode?.mode === "live" ? "WhatsApp sent." : "Practised (not sent): the WhatsApp message is in Outbox → WhatsApp messages."); return r; })}>Send</button>
       </div>
       {waTemplate === "custom" && <textarea aria-label="Your WhatsApp message" rows={2} style={{ marginTop: 8 }} value={waText} onChange={(e) => setWaText(e.target.value)} placeholder="Your message" />}
 

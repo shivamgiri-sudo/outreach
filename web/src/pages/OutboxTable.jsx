@@ -91,7 +91,7 @@ export default function OutboxTable({ refreshKey }) {
               <tr key={m.key} className="click" onClick={() => m.lead_id && setLead(m.lead_id)} title={m.lead_id ? "Open the lead" : ""}>
                 <td data-label="When">{istLabel(m.sent_at)}</td>
                 <td data-label="To">{m.to}{m.company && <><br /><small>{m.company}</small></>}</td>
-                <td data-label="Step">{m.step}{m.manual && <><br /><small>one-off{m.by ? ` by ${m.by}` : ""}</small></>}{m.campaign && <><br /><small>{m.campaign}</small></>}</td>
+                <td data-label="Step">{m.step}{m.manual ? <><br /><small>one-off{m.by ? ` by ${m.by}` : ""}</small></> : m.by && <><br /><small>sent now by {m.by}</small></>}{m.campaign && <><br /><small>{m.campaign}</small></>}</td>
                 <td data-label="Subject">{m.subject}<br /><small className="sub-inline">{m.preview}</small></td>
                 <td data-label="Status"><span className={`pill ${STATUS_PILL[m.delivered_at ? "delivered" : m.status] ?? "warn"}`} title={m.error || ""}>
                   {m.delivered_at ? "delivered" : STATUS_LABEL[m.status] || m.status}</span></td>

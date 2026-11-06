@@ -53,3 +53,33 @@ def test_only_newest_reply_needs_action():
 def test_viewer_may_read_inbox(tmp_path):
     c = make_client(tmp_path, csv=None)
     assert c.get("/api/reply-inbox").status_code == 200
+
+
+def test_replies_can_be_assigned_to_a_login(tmp_path):
+    # QA sweep: callers added as logins could own leads but were missing from the Replies "Assign to" list.
+    from fastapi.testclient import TestClient
+    from app.main import create_app
+    from tests.flow_helpers import CSV
+    c = TestClient(create_app(data_file=tmp_path / "d.json", admin_password="admin-pass-123"), client=("203.0.113.9", 50000))
+    c.headers["Authorization"] = "Bearer " + c.post("/api/login", json={"password": "admin-pass-123"}).json()["token"]
+    c.post("/api/leads/import", json={"csv": CSV, "source": "apollo"})
+    assert c.post("/api/users", json={"email": "priya@example.in", "name": "Priya Verma", "role": "caller",
+                                      "password": "caller-password-1"}).status_code in (200, 201)
+    a = lead(c, "Acme")
+    c.post(f"/api/leads/{a['id']}/reply", json={"text": "Can we talk on Tuesday at 3pm?"})
+    data = c.get("/api/reply-inbox").json()
+    assert "Priya Verma" in data["team"]
+    key = data["replies"][0]["key"]
+    r = c.post("/api/reply-inbox/action", json={"key": key, "action": "assign", "assignee": "Priya Verma"})
+    assert r.status_code == 200 and r.json()["state"]["assignee"] == "Priya Verma"
+    assert c.post("/api/reply-inbox/action", json={"key": key, "action": "assign", "assignee": "Nobody Known"}).status_code == 400
+
+
+def test_thread_shows_the_reply_words_not_the_internal_tag(tmp_path):
+    # QA sweep: the Replies thread and the activity list showed "[not_now] (email, pasted) Hi …".
+    c = make_client(tmp_path)
+    a = lead(c, "Acme")
+    c.post(f"/api/leads/{a['id']}/reply", json={"text": "Abhi nahi, next quarter mein baat karte hain."})
+    msg = [m for m in c.get(f"/api/leads/{a['id']}/thread").json()["messages"] if m["direction"] == "in"][-1]
+    assert msg["body"] == "Abhi nahi, next quarter mein baat karte hain." and msg["status"] == "read as not now"
+    assert msg["title"] == "Reply (email)"

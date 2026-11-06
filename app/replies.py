@@ -54,13 +54,16 @@ _RULES = (
                    r"tell me more|call me|let'?s (talk|connect|discuss)|happy to (talk|connect|chat)|"
                    r"haan|ha ji|haan ji|bhej do|bhejiye|bhej dijiye|ok send|sample|send (a|one) sample|"
                    r"reach out to me|contact me|book (a|the) (call|demo|meeting)|send the details|do the needful|"
-                   r"would like to (try|see|know more)|(pls|please|kindly) call|connect on a call|can we connect)\b|"
+                   r"would like to (try|see|know more)|(pls|please|kindly) call|connect on a call|can we connect|"
+                   r"(can|could|shall) we (talk|speak|meet|chat|schedule|set up|fix|have a call|do a call|get on a call)|"
+                   r"let'?s (meet|speak|schedule|set up)|call kar (lijiye|lo|lena|dijiye|lijie))\b|"
                    r"^\W*(please|pls|kindly) share\W*$"),
     ("not_now", r"\bnot now\b|not at the moment|not right now|maybe later|maybe after|next (week|month|quarter|year)|"
                 r"\bbusy\b|\blater\b|baad mein|abhi nahi[n]?|after (diwali|holi|the festival|new year)|"
                 r"not hiring (currently|right now|at the moment|now)|hiring freeze|next financial year|festive season|"
                 r"follow up (in|after|next)"),
-    ("question", r"(\?|\b(how much|cost|price|pricing|what is|how does|how do|share (your|the) (price|pricing|details))\b)"),
+    ("question", r"(\?|\b(how much|cost|price|pricing|what is|how does|how do|share (your|the) (price|pricing|details)|"
+                 r"kitna|kitne|kya (rate|charge|price|cost)|rate kya)\b)"),
 )
 # "No problem, send it" is a yes: these phrases contain "no" but are not refusals.
 _NOT_A_NO = re.compile(r"\bno (problem|problems|issue|issues|worries|doubt)\b")

@@ -78,9 +78,9 @@ export function Composer({ lead, onDone, onCancel, initialSubject = "", initialB
           <optgroup label="Sequence emails">{steps.map((t, i) => <option key={t.name} value={`s:${i}`}>{t.name}</option>)}</optgroup>
         </select></label>
       <label>Subject<input required maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} /></label>
-      <label>Message (paste or write; {"{{greeting}}"}, {"{{first_name}}"}, {"{{company}}"} are filled in)<textarea required rows={8} value={body} onChange={(e) => setBody(e.target.value)} /></label>
+      <label>Message (paste or write; {"{{greeting}}"}, {"{{first_name}}"}, {"{{company}}"}, {"{{sign_off}}"}, brand and {"{{custom.…}}"} fields are filled in)<textarea required rows={8} value={body} onChange={(e) => setBody(e.target.value)} /></label>
       {note && <p className="sub">{note}</p>}
-      <p className="sub">Goes to <b>{lead.email}</b> as one email outside the sequence, designed with the logo, signed off and with an unsubscribe line. Logged on this contact with your name.</p>
+      <p className="sub">Goes to <b>{lead.email}</b> as one email outside the sequence, designed with the logo, your footer and an unsubscribe line (write {"{{sign_off}}"} where your sign-off should go). Logged on this contact with your name.</p>
       {msg && <p className="error" role="alert">{msg}</p>}
       <div className="row"><button className="btn" type="submit" disabled={busy || !subject.trim() || !body.trim()}>{busy ? "Sending…" : "Send email"}</button>
         <button className="btn ghost" type="button" onClick={onCancel}>Cancel</button></div>
@@ -154,7 +154,7 @@ export default function LeadActivity({ lead, onChanged }) {
             <small className="sub">Log a call:</small>
             {QUICK_CALLS.map(([v, l]) => <button key={v} className="btn ghost" onClick={() => (v === "call_back" ? setCallback(new Date(Date.now() + 390 * 60000).toISOString().slice(0, 16))
               : run(() => api.callOutcome(lead.id, v), `Call logged: ${l}.`))}>{l}</button>)}
-            {lead.email && <button className="btn ghost" onClick={() => setComposing(true)}>Write an email</button>}
+            {lead.email && !["unsubscribed", "disqualified"].includes(lead.stage) && <button className="btn ghost" onClick={() => setComposing(true)}>Write an email</button>}
           </div>
           {callback !== null && (
             <form className="row" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault();
@@ -260,8 +260,9 @@ export default function LeadActivity({ lead, onChanged }) {
                     <span className="sub">{istLabel(item.at)}</span>
                   </div>
                   <div className="sub">
-                    {item.direction === "in" ? "Received" : item.direction === "out" ? "Sent / done" : ""}
-                    {item.status ? ` · ${String(item.status).replace(/_/g, " ")}` : ""}
+                    {/^practice/.test(String(item.status || "")) ? "Practice only (not sent)" : <>
+                      {item.direction === "in" ? "Received" : item.direction === "out" ? "Sent / done" : ""}
+                      {item.status ? ` · ${String(item.status).replace(/_/g, " ")}` : ""}</>}
                     {item.to ? ` · to ${item.to}` : ""}{item.detail ? ` · ${item.detail}` : ""}
                     {item.due_at ? ` · due ${istLabel(item.due_at)}` : ""}{item.start ? ` · ${istLabel(item.start)}` : ""}
                   </div>

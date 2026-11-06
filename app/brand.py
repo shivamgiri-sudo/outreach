@@ -88,8 +88,10 @@ def _generic_brand(saved: dict) -> dict:
     original business's website, sign-off or logo."""
     company = _clean(saved.get("company_name")) or DEFAULT_BRAND["company_name"]
     product = _clean(saved.get("product_name")) or company
+    # The person named in "Who signs the emails" signs them; without one, the team does.
+    signer = _clean(saved.get("sender_name")) or f"Team {product}"
     return {**DEFAULT_BRAND, "company_name": company, "product_name": product, "tagline": "", "website": "",
-            "sender_name": f"{product} team", "sign_off": f"Regards,\nTeam {product}", "industry": "",
+            "sender_name": f"{product} team", "sign_off": f"Regards,\n{signer}", "industry": "",
             "primary_color": DEFAULT_BRAND["primary_color"], "accent_color": DEFAULT_BRAND["accent_color"]}
 
 

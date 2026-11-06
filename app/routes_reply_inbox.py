@@ -8,7 +8,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from .activities import _when, add_task, iso, lead_activity, now_utc, team
+from .activities import _when, add_task, iso, lead_activity, now_utc
+from .lead_ops import owner_choices
 from .reply_inbox import BASE, LABELS_SHOWN, build_inbox
 
 ACTIONS = ("handled", "unhandled", "read", "unread", "assign", "snooze", "label")
@@ -51,7 +52,7 @@ def make_router(store) -> APIRouter:
         for r in data["replies"]:
             r["subject"] = _subject_for(r["lead_id"], r["at"], inbox_rows, outbox_rows)
         data["labels"] = list(LABELS_SHOWN)
-        data["team"] = [m["name"] for m in team(store)]
+        data["team"] = owner_choices(store)        # the task team plus every login, as for lead owners
         return data
 
     @router.post("/api/reply-inbox/action")
@@ -72,8 +73,8 @@ def make_router(store) -> APIRouter:
             change = {"read": body.action == "read"}
         elif body.action == "assign":
             name = (body.assignee or "").strip()[:120]
-            if name and name not in {m["name"] for m in team(store)}:
-                raise HTTPException(400, "Pick someone from the team (Tasks → Team & reminders).")
+            if name and name not in owner_choices(store):
+                raise HTTPException(400, "Pick someone from the team (a login, or Tasks → Team & reminders).")
             change = {"assignee": name, "assigned_by": who, "assigned_at": stamp}
         elif body.action == "label":
             if body.label not in BASE:

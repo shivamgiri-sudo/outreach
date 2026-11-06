@@ -291,3 +291,20 @@ def test_onboarding_state_resume_finish_and_reopen(tmp_path):
 def test_existing_install_with_leads_is_not_greeted_by_the_wizard(tmp_path):
     c = make_client(tmp_path)
     assert c.get("/api/onboarding").json()["show"] is False
+
+
+def test_blank_sign_off_uses_the_person_who_signs_the_emails():
+    # QA sweep: onboarding asks "Who signs the emails"; the default sequence ends with {{sign_off}}, which used to say
+    # "Team <product>" and never the person's name.
+    named = b.get_brand({"brand": {"company_name": "Mas Callnet", "product_name": "Bulk hiring", "sender_name": "Shivam Giri"}})
+    assert named["sign_off"] == "Regards,\nShivam Giri"
+    unnamed = b.get_brand({"brand": {"company_name": "Mas Callnet", "product_name": "Bulk hiring"}})
+    assert unnamed["sign_off"] == "Regards,\nTeam Bulk hiring"
+    own = b.get_brand({"brand": {"company_name": "Mas Callnet", "sender_name": "Shivam", "sign_off": "Cheers,\nS"}})
+    assert own["sign_off"] == "Cheers,\nS"
+
+
+def test_default_sequence_step_names_do_not_name_the_original_product():
+    # QA sweep: a rebranded install saw "Email 5 — introducing BookMyInterview.ai" in the composer, lead panel and Outbox.
+    for step in DEFAULT_SEQUENCE:
+        assert "bookmyinterview" not in (step["name"] + step["subject"] + step["body"]).lower(), step["name"]

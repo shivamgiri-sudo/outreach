@@ -199,9 +199,16 @@ def lead_activity(store, lead: dict) -> list:
             continue                       # logged notes / "other" activities are already listed above
         if e["kind"] == "reply" and any(t and t in e["text"] for t in inbox_texts):
             continue                       # the captured message already shows this reply in full
-        items.append({"at": e["at"], "type": e["kind"], "direction": "in" if e["kind"] == "reply" else "out" if e["kind"] == "linkedin" else "none",
-                      "title": "LinkedIn" if e["kind"] == "linkedin" else e["kind"].replace("_", " ").capitalize(), "body": e["text"], "status": "",
-                      "detail": e.get("by", "")})
+        item = {"at": e["at"], "type": e["kind"], "direction": "in" if e["kind"] == "reply" else "out" if e["kind"] == "linkedin" else "none",
+                "title": "LinkedIn" if e["kind"] == "linkedin" else e["kind"].replace("_", " ").capitalize(), "body": e["text"], "status": "",
+                "detail": e.get("by", "")}
+        if e["kind"] == "reply":
+            from .reply_inbox import parse_reply
+            parsed = parse_reply(e)
+            if parsed:                     # "[not_now] (email, pasted) text" -> the words they wrote, and how it was read
+                item.update({"body": parsed["text"], "title": f"Reply ({parsed['channel']})",
+                             "status": "read as " + parsed["label"].replace("_", " ")})
+        items.append(item)
     for r in store.read("settings").get("linkedin_agent_log") or []:
         if r.get("lead_id") == lid and r.get("kind") in ("connect", "message", "accepted", "error"):
             items.append({"at": r["at"], "type": "linkedin", "direction": "in" if r["kind"] == "accepted" else "out",
