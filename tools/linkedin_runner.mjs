@@ -185,6 +185,11 @@ async function main() {
     let wait = INTERVAL;
     try {
       const data = await call(portal, config.token, "/api/linkedin-runner/slots");
+      // A reply without a proper account list (a proxy page, a half-deployed portal) must never be read as "every
+      // account was removed": that would stop the agents and delete their saved LinkedIn logins.
+      if (!data || typeof data !== "object" || !Array.isArray(data.slots) || (data.where !== "office" && data.where !== "server")) {
+        throw new Error("the portal's answer had no account list; keeping everything as it is");
+      }
       if (failures) log(`The portal answers again (after ${failures} failed attempt${failures === 1 ? "" : "s"}).`);
       failures = 0;
       if (data.where !== lastWhere) {
