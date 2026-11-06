@@ -34,7 +34,7 @@ def robots_allows(robots_txt: str, url: str) -> bool:
     return parser.can_fetch(USER_AGENT, url)
 
 
-def fetch_page(url: str, resolver=None) -> str:
+def fetch_page(url: str, resolver=None, max_bytes: int = MAX_PAGE_BYTES) -> str:
     """Fetch a page only if robots.txt allows it, through the SSRF guard (public addresses only, IP pinned,
     redirects re-checked). Failures say only "Couldn't fetch that page.", so the tool can't probe internal hosts."""
     parts = urlparse(url)
@@ -49,7 +49,7 @@ def fetch_page(url: str, resolver=None) -> str:
         robots = ""
     if robots and not robots_allows(robots, url):
         raise PermissionError("robots.txt does not allow fetching this page")
-    return _get(url, resolver)
+    return _get(url, resolver, max_bytes)
 
 
 def _refuse_linkedin(url: str) -> None:
@@ -72,13 +72,18 @@ def _refuse_typed_private(host: str) -> None:
         raise PermissionError("That address is not a public website")
 
 
-def _get(url: str, resolver=None) -> str:
+def _get(url: str, resolver=None, max_bytes: int = MAX_PAGE_BYTES) -> str:
     try:
         resp = guarded_request(url, "GET", {"User-Agent": USER_AGENT, "Accept": "text/html,*/*"},
-                               timeout=FETCH_TIMEOUT_SECONDS, max_bytes=MAX_PAGE_BYTES, resolver=resolver,
+                               timeout=FETCH_TIMEOUT_SECONDS, max_bytes=max_bytes, resolver=resolver,
                                allow_http=True, max_redirects=MAX_REDIRECTS, check_hop=_refuse_linkedin)
     except (BlockedAddress, FetchFailed) as exc:
         raise FetchFailed(GENERIC_FETCH_ERROR) from exc
+    if resp.status in (404, 410):            # only public hosts get here, so saying why is safe
+        raise FetchFailed(f"That page was not found (HTTP {resp.status}). Check the address.")
+    if resp.status in (401, 403, 429):
+        raise FetchFailed(f"That website refused automated reading (HTTP {resp.status}). Open the page in your browser "
+                          "and paste its HTML (or a CSV) instead.")
     if resp.status >= 300:
         raise FetchFailed(GENERIC_FETCH_ERROR)
     return resp.body.decode("utf-8", errors="replace")

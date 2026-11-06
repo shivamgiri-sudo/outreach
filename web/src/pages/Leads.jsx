@@ -118,7 +118,9 @@ export default function Leads({ go }) {
 
   const runJobs = async () => {
     try {
-      const looksCsv = jobsText.trim().toLowerCase().startsWith("company,");
+      // A CSV: the first line names columns (company and title, in any order), not HTML.
+      const head = jobsText.trim().split(/\r?\n/)[0].toLowerCase();
+      const looksCsv = !head.includes("<") && /(^|,)\s*"?company"?\s*(,|$)/.test(head) && head.includes("title");
       const r = await api.ingestJobs({ url: jobsUrl, csv: looksCsv ? jobsText : "", html: looksCsv ? "" : jobsText });
       setMessage(`Read ${r.jobs_found} job(s): ${r.leads_created} new company lead(s), ${r.leads_updated} updated, ${r.reposts} repost(s) spotted.${r.note ? " " + r.note : ""}`);
       load();
