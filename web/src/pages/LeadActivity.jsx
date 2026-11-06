@@ -48,7 +48,15 @@ function Composer({ lead, onDone, onCancel }) {
   const [body, setBody] = useState("{{greeting}}\n\n");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  useEffect(() => { api.sequence().then(setSteps).catch(() => {}); }, []);
+  const [snippets, setSnippets] = useState([]);
+  useEffect(() => { api.sequence().then(setSteps).catch(() => {}); api.snippets("email").then(setSnippets).catch(() => {}); }, []);
+  const applyTemplate = (value) => {
+    const [kind, i] = String(value).split(":");
+    const t = kind === "s" ? steps[Number(i)] : kind === "n" ? snippets[Number(i)] : null;
+    if (!t) return;
+    if (t.subject) setSubject(t.subject);
+    setBody(kind === "s" ? t.body.replace(/\n\nRegards,[\s\S]*$/, "") : t.body);
+  };
   const send = async (e) => {
     e.preventDefault();
     if (!window.confirm(`Send this email to ${lead.email} now? (It goes for real if real sending is on; an unsubscribe line is added.)`)) return;
@@ -59,8 +67,10 @@ function Composer({ lead, onDone, onCancel }) {
   return (
     <form className="inline-form" onSubmit={send} aria-label="Write a one-off email">
       <label>Start from a template (optional)
-        <select value="" onChange={(e) => { const t = steps[Number(e.target.value)]; if (t) { setSubject(t.subject); setBody(t.body.replace(/\n\nRegards,[\s\S]*$/, "")); } }}>
-          <option value="">Blank email</option>{steps.map((t, i) => <option key={t.name} value={i}>{t.name}</option>)}
+        <select value="" onChange={(e) => applyTemplate(e.target.value)}>
+          <option value="">Blank email</option>
+          {snippets.length > 0 && <optgroup label="Snippets">{snippets.map((t, i) => <option key={t.id} value={`n:${i}`}>{t.name}</option>)}</optgroup>}
+          <optgroup label="Sequence emails">{steps.map((t, i) => <option key={t.name} value={`s:${i}`}>{t.name}</option>)}</optgroup>
         </select></label>
       <label>Subject<input required maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} /></label>
       <label>Message (paste or write; {"{{greeting}}"}, {"{{first_name}}"}, {"{{company}}"} are filled in)<textarea required rows={8} value={body} onChange={(e) => setBody(e.target.value)} /></label>

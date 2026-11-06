@@ -16,7 +16,7 @@ import uuid
 from datetime import date, datetime, timedelta
 from typing import Optional
 
-from . import sequences
+from . import sequence_library, sequences
 from .channels.security import server_secret
 from .growth_core import ensure_demo, get_offer, offer_line
 from .hygiene import business_domain
@@ -37,6 +37,7 @@ NO_EMAIL_STAGES = ("unsubscribed", "disqualified", "not_now", "customer", "advoc
 WARM_STAGES = ("interested", "whatsapp_active", "call_done", "trial")
 EARLY_STAGES = ("new", "verified", "enriched")
 PROVIDER_PAUSE = timedelta(hours=1)
+MISSING_SEQUENCE = "the sequence this lead was started on no longer exists"
 _RUN_LOCK = threading.Lock()
 
 
@@ -107,6 +108,7 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
     counts = {"sent": 0, "failed": 0, "needs_check": 0, "blocked": 0, "mode": "live" if live else "practice"}
 
     icp_rules = get_icp(store)
+    _decide_ab_winners(store)
     for lead in sorted(store.read("leads"), key=lambda l: (l.get("sequence") or {}).get("enrolled_at", "")):
         seq = lead.get("sequence")
         if not seq or seq["stopped"] or lead["stage"] in NO_EMAIL_STAGES + WARM_STAGES or not lead.get("email"):
@@ -131,18 +133,26 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
             if seq.get("blocked") != held:
                 _set_sequence(store, lead["id"], blocked=held)
             continue
+        plan = sequence_library.steps_for(store, seq)
+        if plan is None:
+            counts["blocked"] += 1          # the saved sequence (or its version) is gone: hold, never guess another
+            if seq.get("blocked") != MISSING_SEQUENCE:
+                _set_sequence(store, lead["id"], blocked=MISSING_SEQUENCE)
+            continue
         last = seq.get(last_key)
-        steps = due_steps(datetime.fromisoformat(seq["enrolled_at"]), seq.get(days_key, []), now,
+        steps = due_steps(datetime.fromisoformat(seq["enrolled_at"]), seq.get(days_key, []), now, sequence=plan,
                           last_sent_at=datetime.fromisoformat(last) if last else None)
         domain = business_domain(lead["email"])
         if not steps or (domain and domain in domains_today):
             continue
-        composed = _compose(lead, steps[0], cfg, offer, base_url, now, today)
+        step = _lead_step(steps[0], lead)
+        composed = _compose(lead, step, cfg, offer, base_url, now, today)
         if composed is None:
             counts["blocked"] += 1
             _set_sequence(store, lead["id"], blocked="a detail needed by the email is missing")
             continue
         message, demo = composed
+        _tag(message, step, seq)
         day = steps[0]["day"]
         key = f"{lead['id']}:{day}:{counts['mode']}"
         # The Message-ID comes from the key: a retry must be the same request, or Resend refuses it (409).
@@ -168,6 +178,32 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
         if domain:
             domains_today.add(domain)
     return counts
+
+
+def _decide_ab_winners(store) -> None:
+    """Save any A/B winner that is now clear, before this run picks variants. Never stops sending if it fails."""
+    try:
+        sequence_library.evaluate_winners(store)
+    except Exception:                                     # noqa: BLE001 - statistics must not block the sender
+        pass
+
+
+def _lead_step(step: dict, lead: dict) -> dict:
+    """The step as this lead gets it: saved sequences get their A/B variant and the unsubscribe guarantee.
+    The built-in default sequence is passed through untouched (old leads behave exactly as before)."""
+    seq_id = (lead.get("sequence") or {}).get("sequence_id") or sequence_library.DEFAULT_ID
+    if seq_id == sequence_library.DEFAULT_ID:
+        return step
+    return sequence_library.prepare_step(step, lead["id"], seq_id)
+
+
+def _tag(message: dict, step: dict, seq: dict) -> None:
+    """Saved-sequence sends carry which sequence/version/step/variant they were (for the A/B counts)."""
+    seq_id = seq.get("sequence_id") or sequence_library.DEFAULT_ID
+    if seq_id == sequence_library.DEFAULT_ID:
+        return
+    message.update({"sequence_id": seq_id, "sequence_version": seq.get("version", 1), "step_day": step["day"],
+                    "variant": step.get("ab_variant", "A")})
 
 
 def _message_domain(store) -> str:
@@ -326,16 +362,21 @@ def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str 
         if live and sequences.needs_postal_address(lead) and not cfg.get("sender_address"):
             raise ValueError("US/Canada addresses need a postal address in the footer; add it in Outbox settings.")
         days_key, last_key = _mode_keys(live)
+        plan = sequence_library.steps_for(store, seq)
+        if plan is None:
+            raise ValueError(f"Not sent: {MISSING_SEQUENCE}.")
         last = seq.get(last_key)
-        steps = due_steps(datetime.fromisoformat(seq["enrolled_at"]), seq.get(days_key, []), now,
+        steps = due_steps(datetime.fromisoformat(seq["enrolled_at"]), seq.get(days_key, []), now, sequence=plan,
                           last_sent_at=datetime.fromisoformat(last) if last else None)
         if not steps:
             raise ValueError("No email is due for this lead right now (the next one has its own day in the sequence).")
         today = now.astimezone(IST).date()
-        composed = _compose(lead, steps[0], cfg, get_offer(store), base_url, now, today)
+        step = _lead_step(steps[0], lead)
+        composed = _compose(lead, step, cfg, get_offer(store), base_url, now, today)
         if composed is None:
             raise ValueError("A detail needed by the email is missing for this lead.")
         message, demo = composed
+        _tag(message, step, seq)
         day = steps[0]["day"]
         key = f"{lead['id']}:{day}:{'live' if live else 'practice'}"
         message.update({"idempotency_key": key, "by": by, "manual": True,
