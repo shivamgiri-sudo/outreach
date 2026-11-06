@@ -39,3 +39,24 @@ def test_simple_rule_task_and_note_fill_in_the_lead_details(tmp_path):
     tasks = [t for t in store_of(c).read("tasks") if t.get("lead_id") == who["id"]]
     assert any(t["text"] == f"Send pricing to {who['company']} ({first})" for t in tasks)
     assert any(e["text"] == f"{who['company']} is engaged; {{{{unknown}}}} stays" for e in lead(c)["timeline"])
+
+
+def test_campaign_careers_page_follows_the_careers_site_like_read_job_pages():
+    # QA sweep: a campaign with https://www.wipro.com/careers/ reported "no job listings found" while the Leads page
+    # tool (discover_jobs) reads the jobs from the careers site's Careers link / public sitemap.
+    from app import campaign_sources as src
+    pages = {
+        "https://www.acme-steel.in/careers/": '<html><title>Acme Steel</title><a href="https://careers.acme-steel.in/">Careers</a></html>',
+        "https://careers.acme-steel.in/": "<html><script>app()</script></html>",
+        "https://careers.acme-steel.in/robots.txt": "Sitemap: https://careers.acme-steel.in/sitemap.xml",
+        "https://careers.acme-steel.in/sitemap.xml": ('<urlset><url><loc>https://careers.acme-steel.in/job/Pune-Machine-Operator/101/</loc>'
+                                                    "<lastmod>2026-11-01</lastmod></url></urlset>"),
+    }
+
+    def fetch(url):
+        if url not in pages:
+            raise OSError("404")
+        return pages[url]
+    out = src.careers_postings(["https://www.acme-steel.in/careers/"], [], fetch)
+    assert out["errors"] == [] and out["pages"] == 1
+    assert [p["title"] for p, _ in out["postings"]] == ["Machine Operator"]

@@ -14,6 +14,7 @@ from typing import Optional
 
 from .apollo import APOLLO_BASE
 from .hygiene import business_domain, company_domain, normalise_email, normalise_phone, safe_http_url
+from .job_discover import discover_jobs
 from .jobs import is_job_board, job_age_days, parse_job_postings
 from .lead_model import to_int
 
@@ -180,35 +181,43 @@ def apollo_hiring(target: dict, key: str, post, get, max_results: int, now: date
 
 # ---------- careers pages ----------
 def careers_postings(urls: list, pasted: list, fetch) -> dict:
-    """JobPosting entries from each company's own careers page (fetched or pasted). Returns pages, postings and errors."""
-    pages, errors = [], []
+    """JobPosting entries from each company's own careers page (fetched or pasted). Returns pages, postings and errors.
+
+    A fetched link is read the same way as "Read job pages" on the Leads page: the page's own job details, then the
+    site's Careers link, then the careers site's public job list (sitemap). Only reading the page itself gave
+    "no job listings found" for https://www.wipro.com/careers/ although the Leads tool reads its jobs."""
+    found, errors, pages = [], [], 0
     for url in urls:
         host = company_domain(url)
         if is_job_board(host):
             errors.append(f"{url}: job boards are not read. Add the company's own careers page instead.")
             continue
         try:
-            pages.append((url, fetch(url)))
+            jobs, note = discover_jobs(url, fetch)
         except PermissionError as exc:
             errors.append(f"{url}: not read ({exc}).")
+            continue
         except (OSError, ValueError) as exc:
             errors.append(f"{url}: could not read it ({exc}). Paste the page's HTML instead.")
+            continue
+        pages += 1
+        if not jobs:
+            errors.append(f"{url}: no job listings found. {note}")
+        found += [(p, url) for p in jobs]
     for item in pasted:
         url, html = str(item.get("url") or "").strip(), str(item.get("html") or "")
         if url and is_job_board(company_domain(url)):
             errors.append(f"{url}: job board pages are not used. Paste the company's own careers page instead.")
             continue
-        if html.strip():
-            pages.append((url, html))
-        else:
+        if not html.strip():
             errors.append(f"{url or 'Pasted page'}: no job listings found in the pasted HTML (no JobPosting data).")
-    found = []
-    for url, html in pages:
+            continue
+        pages += 1
         postings = parse_job_postings(html, url)
         if not postings:
             errors.append(f"{url or 'Pasted page'}: no job listings found (the page has no JobPosting data).")
         found += [(p, url) for p in postings]
-    return {"postings": found, "errors": errors, "pages": len(pages)}
+    return {"postings": found, "errors": errors, "pages": pages}
 
 
 # ---------- Google Places ----------
