@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { istLabel } from "../time.js";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 
-const when = (iso) => (iso ? iso.slice(0, 16).replace("T", " ") : "");
+const when = (iso) => (iso ? istLabel(iso) : "");
 const result = (verb, r) => `${verb} for ${r.started} of ${r.asked}.${r.refused.length ? " Left out: " + r.refused.map((x) => `${x.count} (${x.reason})`).join("; ") : ""}`;
 
 // Step chips for one lead: how far outreach got.

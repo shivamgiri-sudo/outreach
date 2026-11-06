@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { istDateLabel, istLabel } from "../time.js";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 
@@ -49,7 +50,7 @@ export default function Signals() {
           ))}
           {data && data.watch.length === 0 && <span className="sub">Nothing watched yet.</span>}
         </div>
-        {data?.last_run && <p className="sub" style={{ marginBottom: 0 }}>Last checked {new Date(data.last_run).toLocaleString()}.</p>}
+        {data?.last_run && <p className="sub" style={{ marginBottom: 0 }}>Last checked {istLabel(data.last_run)}.</p>}
         {msg && <p role="status" className="sub">{msg}</p>}
       </section>
       <div className="row" style={{ marginBottom: 10 }}>
@@ -61,7 +62,7 @@ export default function Signals() {
       {items.map((i) => (
         <div key={i.id} className="card" style={{ marginBottom: 10 }}>
           <div><a href={i.link} target="_blank" rel="noopener noreferrer">{i.title}</a></div>
-          <div className="sub">{i.source}{i.published ? ` · ${new Date(i.published).toLocaleDateString()}` : ""} · {KIND_WORDS[i.kind]}: {i.watch}
+          <div className="sub">{i.source}{i.published ? ` · ${istDateLabel(i.published)}` : ""} · {KIND_WORDS[i.kind]}: {i.watch}
             {i.status === "added" && <> · <span className="pill ok">lead made</span></>}</div>
           {i.status === "new" && (
             <div className="row" style={{ marginTop: 6 }}>

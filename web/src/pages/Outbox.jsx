@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { istLabel } from "../time.js";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
@@ -33,7 +34,7 @@ function SendingBanner({ status, onResume, onClearPractice }) {
       {status.paused && (
         <div className="tip" role="alert" style={{ marginTop: 8 }}>
           <b>Sending is paused.</b> {status.paused.reason}{" "}
-          {status.paused.resume_at ? `It restarts by itself at ${status.paused.resume_at.slice(11, 16)} UTC.` : "A person must resume it."}
+          {status.paused.resume_at ? `It restarts by itself at ${istLabel(status.paused.resume_at)}.` : "A person must resume it."}
           <div className="row" style={{ marginTop: 6 }}><button className="btn" onClick={onResume}>Resume sending now</button></div>
         </div>
       )}
@@ -147,7 +148,7 @@ export default function Outbox() {
           <table>
             <thead><tr><th>When</th><th>To</th><th>Step</th><th>Subject</th><th>Status</th></tr></thead>
             <tbody>{box.map((m, i) => (
-              <tr key={i}><td>{m.sent_at.slice(0, 16).replace("T", " ")}</td><td>{m.to}</td><td>{m.step}</td>
+              <tr key={i}><td>{istLabel(m.sent_at)}</td><td>{m.to}</td><td>{m.step}</td>
                 <td title={m.body}>{m.subject}</td>
                 <td><span className={`pill ${STATUS_PILL[m.delivered_at ? "delivered" : m.status] ?? "warn"}`} title={m.error || ""}>
                   {m.delivered_at ? "delivered" : STATUS_LABEL[m.status] || m.status}</span></td></tr>
@@ -161,7 +162,7 @@ export default function Outbox() {
           <table>
             <thead><tr><th>When</th><th>From</th><th>Channel</th><th>Reply</th><th>Read as</th></tr></thead>
             <tbody>{inbox.map((m) => (
-              <tr key={m.id}><td>{(m.received_at || "").slice(0, 16).replace("T", " ")}</td><td>{m.from}</td><td>{m.channel}</td>
+              <tr key={m.id}><td>{istLabel(m.received_at)}</td><td>{m.from}</td><td>{m.channel}</td>
                 <td>{m.text.slice(0, 160)}</td><td><span className={`pill ${m.lead_id ? "ok" : "warn"}`}>{m.lead_id ? (m.label || "logged") : "no matching lead"}</span></td></tr>
             ))}</tbody>
           </table>
@@ -173,7 +174,7 @@ export default function Outbox() {
           <table>
             <thead><tr><th>When</th><th>To</th><th>Template</th><th>Message</th><th>Status</th></tr></thead>
             <tbody>{wa.map((m, i) => (
-              <tr key={i}><td>{m.sent_at.slice(0, 16).replace("T", " ")}</td><td>{m.to}</td><td>{m.template}</td><td>{m.body}</td>
+              <tr key={i}><td>{istLabel(m.sent_at)}</td><td>{m.to}</td><td>{m.template}</td><td>{m.body}</td>
                 <td><span className={`pill ${m.status === "sent" ? "ok" : ""}`}>{STATUS_LABEL[m.status] || m.status}</span></td></tr>
             ))}</tbody>
           </table>

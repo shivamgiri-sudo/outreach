@@ -217,7 +217,9 @@ def describe(store, lead: dict, account: str = "") -> dict:
         out["reason"] = "Already sent today. The next step is not due yet."
         return out
     if due and datetime.fromisoformat(due) > now + GRACE:
-        out["reason"] = f"Step {nxt['n']} is not due yet (due {due[:10]})."
+        from .sequences import IST
+        when = datetime.fromisoformat(due).astimezone(IST).strftime("%-d %b, %-I:%M %p IST")
+        out["reason"] = f"Step {nxt['n']} is not due yet (due {when})."
         return out
     out["can_send"] = True
     out["actions"] = ["sent", "replied"]

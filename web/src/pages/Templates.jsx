@@ -45,6 +45,8 @@ export default function Templates() {
   };
   const [shown, setShown] = useState(null);
   const [note, setNote] = useState("");
+  useEffect(() => { if (!shown) return undefined; const esc = (e) => e.key === "Escape" && setShown(null);
+    window.addEventListener("keydown", esc); return () => window.removeEventListener("keydown", esc); }, [shown]);
   const preview = (t) => api.sequencePreview(sequence.indexOf(t)).then((r) => setShown({ ...r, name: t.name })).catch(() => {});
   const Item = ({ t }) => (
     <div className="card" style={{ marginBottom: 12 }}>
@@ -68,6 +70,7 @@ export default function Templates() {
       <p className="sub">Short, human, no hard sell, no invented stories. Words in {"{{double braces}}"} are filled per lead ({"{{greeting}}"}, {"{{first_name}}"}, {"{{company}}"}, {"{{role}}"}, {"{{sender}}"}, {"{{offer_line}}"}, {"{{demo_link}}"}, {"{{unsub_link}}"}); [square brackets] you fill by hand. The email sequence stops on a reply. Cold emails carry no link except the unsubscribe link.</p>
       <h3>Email sequence (6 steps, sent automatically)</h3>
       <p className="sub">Each email goes out designed (logo, layout) with the same words, plus the plain-text version for mail apps that only show text.</p>
+      {shown && <div className="scrim" onClick={() => setShown(null)} aria-hidden="true" />}
       {shown && (
         <div className="drawer" role="dialog" aria-modal="true" aria-label={`Designed email: ${shown.name}`} style={{ maxWidth: 720 }}>
           <div className="row" style={{ justifyContent: "space-between" }}><b>{shown.name}</b><button className="btn ghost" onClick={() => setShown(null)}>Close</button></div>

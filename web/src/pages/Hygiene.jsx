@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
+import { istDateLabel, istLabel } from "../time.js";
 import { api } from "../api.js";
 import { stageLabel, sourceLabel } from "../labels.js";
 import { ErrorState } from "../states.jsx";
@@ -18,7 +19,7 @@ function LeadCard({ lead, suggested, others, onMerge, busy }) {
   const rows = [
     ["Person", [lead.contact_name, lead.title].filter(Boolean).join(", ")], ["Email", lead.email], ["Phone", lead.phones.join(", ") || lead.phone],
     ["Website", lead.domain], ["City", lead.city], ["Stage", stageLabel(lead.stage)], ["Source", sourceLabel(lead)],
-    ["Added", lead.created_at ? new Date(lead.created_at).toLocaleDateString() : ""],
+    ["Added", lead.created_at ? istDateLabel(lead.created_at) : ""],
     ["History", `${lead.events} event(s)${lead.emailed ? ", emailed" : ""}${lead.has_consent ? ", said yes" : ""}`],
     ["People", lead.other_contacts ? `${lead.other_contacts} more` : ""],
   ];

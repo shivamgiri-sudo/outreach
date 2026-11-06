@@ -16,6 +16,9 @@ const ACTIONS = {
 
 const describe = (kind, step, defs) => `${defs[step.type].label} ${step.value}`;
 
+const OPTION_NAMES = { first_after_yes: "First message (after yes)", nudge_demo_not_opened: "Nudge: demo not opened",
+  nudge_not_published: "Nudge: drafted but not published", pilot_offer: "Offer: help with existing applicants" };
+
 export default function Workflows() {
   const [rules, setRules] = useState([]);
   const [form, setForm] = useState({ name: "", tType: "reply", tValue: "interested", aType: "whatsapp", aValue: "first_after_yes" });
@@ -69,7 +72,7 @@ export default function Workflows() {
           </select>
           {ACTIONS[form.aType].options ? (
             <select style={{ marginTop: 6 }} value={form.aValue} onChange={(e) => set({ aValue: e.target.value })}>
-              {ACTIONS[form.aType].options.map((o) => <option key={o}>{o}</option>)}
+              {ACTIONS[form.aType].options.map((o) => <option key={o} value={o}>{OPTION_NAMES[o] || o.replace(/_/g, " ")}</option>)}
             </select>
           ) : <input style={{ marginTop: 6 }} value={form.aValue} onChange={(e) => set({ aValue: e.target.value })} placeholder="Text" />}
           <div className="row" style={{ marginTop: 12 }}>

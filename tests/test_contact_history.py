@@ -34,3 +34,15 @@ def test_one_off_email_is_sent_logged_and_safe(tmp_path):
     assert c.post(f"/api/leads/{a}/email-compose", json={"subject": "Hi", "body": "x"}).status_code == 400
     items = c.get(f"/api/leads/{a}/activity").json()
     assert any(i["type"] == "email" and i["title"].startswith("Quick question") for i in items)
+
+
+def test_quick_paste_keeps_linkedin_links_city_and_sector(tmp_path):
+    c = make_client(tmp_path, csv=None)
+    csv = ("company,contact_name,email,Person Linkedin Url,city,industry\n"
+           "Delta BPO,Asha Rao,asha@delta.test,linkedin.com/in/asha-rao-12?trk=x,Noida,BPO\n"
+           "Bad Link Co,Ravi K,ravi@bad.test,https://example.com/in/ravi,Pune,IT\n")
+    assert c.post("/api/leads/import", json={"csv": csv, "source": "apollo"}).json()["created"] == 2
+    by = {l["company"]: l for l in c.get("/api/leads").json()}
+    assert by["Delta BPO"]["linkedin_url"] == "https://www.linkedin.com/in/asha-rao-12"
+    assert by["Delta BPO"]["city"] == "Noida" and by["Delta BPO"]["sector"] == "BPO"
+    assert not by["Bad Link Co"].get("linkedin_url")

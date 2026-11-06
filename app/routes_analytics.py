@@ -2,7 +2,7 @@
 import csv
 import io
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 
 from . import activities, analytics, audit
@@ -45,5 +45,27 @@ def make_router(store) -> APIRouter:
                                        due_at=activities.now_utc(), owner=owner, priority="high", source="going_cold", dedupe_open=True)
             made += task["id"] not in before
         return {"stale": info["count"], "created": made}
+
+    @router.get("/api/leads/{lead_id}/company-health")
+    def company_health_get(lead_id: str):
+        from . import company_health
+        from .hygiene import business_domain
+        lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+        if lead is None:
+            raise HTTPException(404, "Lead not found")
+        domain = lead.get("domain") or business_domain(lead.get("website")) or business_domain(lead.get("email"))
+        return {"report": company_health.cached(store, domain) if domain else None, "domain": domain}
+
+    @router.post("/api/leads/{lead_id}/company-health")
+    def company_health_refresh(lead_id: str):
+        """Build (or rebuild, at most hourly per company) the health report from free public data."""
+        from . import company_health
+        lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+        if lead is None:
+            raise HTTPException(404, "Lead not found")
+        try:
+            return {"report": company_health.refresh(store, lead)}
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from None
 
     return router

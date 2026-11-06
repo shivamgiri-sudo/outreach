@@ -25,6 +25,20 @@ def to_int(value) -> int:
         return 0
 
 
+def _linkedin(raw, kind: str) -> str:
+    """A LinkedIn profile (/in/…) or company (/company/…) link, made https and stripped of tracking; anything else is dropped."""
+    import re
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    if not text.startswith("http"):
+        text = "https://" + text.lstrip("/")
+    m = re.match(r"^https?://(?:[a-z]{2,3}\.)?(?:www\.)?linkedin\.com/(in|company|pub)/([^/?#\s]+)", text, re.I)
+    if not m or (kind == "company") != (m.group(1).lower() == "company"):
+        return ""
+    return f"https://www.linkedin.com/{m.group(1).lower()}/{m.group(2)}"
+
+
 def build_lead(row: dict, source: str, allow_company_key: bool = False) -> Optional[dict]:
     row = {k.strip().lower(): (v or "").strip() for k, v in row.items() if k}
     email = normalise_email(row.get("email"))
@@ -47,6 +61,9 @@ def build_lead(row: dict, source: str, allow_company_key: bool = False) -> Optio
         "timeline": [event("created", f"Imported from {source}")],
         "created_at": now_iso(),
         **{f: to_int(row.get(f)) for f in NUMERIC_FIELDS},
+        **{k: v for k, v in {"linkedin_url": _linkedin(row.get("linkedin_url"), "in"), "company_linkedin_url": _linkedin(row.get("company_linkedin_url"), "company"),
+                             "city": row.get("city", "")[:80], "state": row.get("state", "")[:80], "sector": row.get("sector", "")[:120],
+                             "role": row.get("role", "")[:120]}.items() if v},
     }
     lead["dedupe_key"] = dedupe_key(lead) or (f"company:{lead['company'].lower()}" if allow_company_key and lead["company"] else None)
     if not lead["dedupe_key"]:

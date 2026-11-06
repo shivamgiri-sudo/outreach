@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { istLabel } from "../time.js";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 
-const when = (iso) => (iso ? iso.slice(0, 16).replace("T", " ") : "—");
+const when = (iso) => (iso ? istLabel(iso) : "—");
 const GRID = { display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" };
 const role = (k) => ({ chro: "CHRO", ceo_founder: "CEO / founder", ta_head: "TA head", hr_head: "HR head" }[k] || String(k).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()));
 const Stat = ({ n, label, note }) => <div className="card"><b style={{ fontSize: 26 }}>{n ?? "—"}</b><div className="sub">{label}</div>{note && <small className="sub-inline">{note}</small>}</div>;

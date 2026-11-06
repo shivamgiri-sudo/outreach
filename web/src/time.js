@@ -29,3 +29,11 @@ export function outsideBusinessHours(date, time) {
   const weekday = new Date(`${date}T12:00:00+05:30`).getUTCDay();
   return weekday === 0 || h < 9 || h >= 18;
 }
+
+// A date only, in India time ("6 Nov 2026").
+export function istDateLabel(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" });
+}

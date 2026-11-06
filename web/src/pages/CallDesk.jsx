@@ -29,7 +29,8 @@ export default function CallDesk() {
   const [open, setOpen] = useState(null);
   const [dialUrl, setDialUrl] = useState("");
   const [rep, setRep] = useState("your name");
-  useEffect(() => { api.me().then((m) => setRep(m.name || "your name")).catch(() => {}); }, []);
+  const [forLead, setForLead] = useState("");
+  useEffect(() => { api.me().then((m) => setRep(m.email ? m.name : "your name")).catch(() => {}); }, []);
   useEffect(() => {
     api.integrations().then((list) => {
       const t = list.find((i) => i.id === "telephony");
@@ -72,7 +73,15 @@ export default function CallDesk() {
         </div>
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Call script</h3>
-          {SCRIPT.map(([t, text]) => <p key={t}><b>{t}:</b> {text.replaceAll("{{rep}}", rep)}</p>)}
+          {leads.length > 0 && <label>Script for <select value={forLead} onChange={(e) => setForLead(e.target.value)}>
+            {leads.map((l) => <option key={l.id} value={l.id}>{l.contact_name || l.company} · {l.company}</option>)}</select></label>}
+          {(() => {
+            const l = leads.find((x) => x.id === forLead) || leads[0] || {};
+            const first = (l.contact_name || "").trim().split(/\s+/)[0] || "there";
+            const fill = (text) => text.replaceAll("{{rep}}", rep).replaceAll("{{first_name}}", first)
+              .replaceAll("{{role}}", l.role || "your open roles").replaceAll("{{company}}", l.company || "your company");
+            return SCRIPT.map(([t, text]) => <p key={t}><b>{t}:</b> {fill(text)}</p>);
+          })()}
           <h3>If they say…</h3>
           {OBJECTIONS.map(([t, text]) => <p key={t}><b>“{t}”</b> — {text}</p>)}
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { istLabel } from "../time.js";
 import { api } from "../api.js";
 import { sourceOptions, useSourceRegistry } from "../labels.js";
 
@@ -47,7 +48,7 @@ function History({ onUndo }) {
       <summary>Recent imports</summary>
       {items.map((h) => (
         <div key={h.id} className="row" style={{ justifyContent: "space-between", padding: "6px 0" }}>
-          <span>{new Date(h.at).toLocaleString()} · {h.format} · {h.created} new, {h.merged} updated</span>
+          <span>{istLabel(h.at)} · {h.format} · {h.created} new, {h.merged} updated</span>
           {h.undone_at ? <span className="pill">Undone</span>
             : <button className="btn ghost" onClick={() => onUndo(h.id).then((ok) => ok && setItems((xs) => xs.map((x) => x.id === h.id ? { ...x, undone_at: "now" } : x)))}>Undo</button>}
         </div>

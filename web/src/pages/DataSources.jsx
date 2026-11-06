@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getToken } from "../api.js";
+import { istLabel } from "../time.js";
 
 const DEFAULT_SAMPLE = 25;
 const MAX_SAMPLE = 100;
@@ -32,7 +33,7 @@ const sources = {
   importScraper: (json) => call("/api/providers/import-contact-scraper", { json }),
 };
 
-const when = (iso) => { try { return new Date(iso).toLocaleString(); } catch { return iso; } };
+const when = (iso) => istLabel(iso);
 
 function Alert({ text }) {
   return text ? <p role="alert" style={{ color: "var(--hot)", margin: "8px 0 0" }}>{text}</p> : null;

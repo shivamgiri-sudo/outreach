@@ -5,6 +5,7 @@ import { SEQUENCE_STOPPED, sourceLabel, stageLabel, useSourceRegistry } from "..
 import { istLabel } from "../time.js";
 import LeadMeetings from "./LeadMeetings.jsx";
 import LeadActivity from "./LeadActivity.jsx";
+import CompanyHealth from "./CompanyHealth.jsx";
 import LeadFlows from "./flows/LeadFlows.jsx";
 
 const SIGNAL_LABELS = {
@@ -295,9 +296,10 @@ export default function LeadDrawer({ id, onClose }) {
           </div>
         </div>
       )}
-      {lead.consent && <p className="sub">Consent saved: “{lead.consent.text}” on {lead.consent.at.slice(0, 10)}</p>}
+      {lead.consent && <p className="sub">Consent saved: “{lead.consent.text}” on {istLabel(lead.consent.at)}</p>}
 
       <LeadMeetings lead={lead} onChanged={load} />
+      <CompanyHealth lead={lead} />
       <LeadActivity lead={lead} onChanged={load} />
       <LeadFlows lead={lead} onChanged={load} />
       {isOwner() && <PrivacyActions lead={lead} onErased={onClose} />}
@@ -352,8 +354,10 @@ export default function LeadDrawer({ id, onClose }) {
         </select>
       </label>
 
-      <h3>LinkedIn (you send these by hand)</h3>
-      <p className="sub">Nothing is automated on LinkedIn. Copy a draft, open their profile, and send it yourself.
+      <h3>LinkedIn</h3>
+      <p className="sub">{lead.linkedin_seq
+        ? `On the LinkedIn sequence: ${String(lead.linkedin_seq.status || "").replace(/_/g, " ")}${(lead.linkedin_seq.done || []).length ? `, steps done ${lead.linkedin_seq.done.join(", ")}` : ""}${lead.linkedin_seq.variant ? `, note ${lead.linkedin_seq.variant}` : ""}${lead.linkedin_seq.account ? `, handled by ${lead.linkedin_seq.account}` : ""}. The LinkedIn agent or a person sends each step from the LinkedIn page.`
+        : "Not on the LinkedIn sequence. Start it from Leads (select, then Start LinkedIn outreach), or copy a draft below and send it yourself."}
         {/^https?:\/\//i.test(lead.linkedin_url || "") && <> <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer">Open profile</a></>}
         {lead.linkedin_profile?.open_profile && <span className="pill" style={{ marginLeft: 6 }}>Open Profile</span>}</p>
       {linkedinDrafts(lead).map(([title, text]) => (
@@ -422,7 +426,7 @@ export default function LeadDrawer({ id, onClose }) {
       <h3>Conversation & history</h3>
       <div className="timeline">
         {[...lead.timeline].reverse().map((t, i) => (
-          <div key={i} className={t.kind === "edit" ? "timeline-edit" : undefined}><small>{t.at.slice(0, 16).replace("T", " ")} · {t.kind === "edit" ? "details edited" : t.kind}{t.by ? ` · ${t.by}` : ""}</small>{t.text}</div>
+          <div key={i} className={t.kind === "edit" ? "timeline-edit" : undefined}><small>{istLabel(t.at)} · {t.kind === "edit" ? "details edited" : t.kind}{t.by ? ` · ${t.by}` : ""}</small>{t.text}</div>
         ))}
       </div>
       <label htmlFor="note-box">Log a reply, call or note</label>

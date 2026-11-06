@@ -386,6 +386,8 @@ def quick_rows(csv_text: str) -> list:
             "title": get("title"), "email": emails[0] if emails else "", "phone": best_phone(numbers)[0] or "",
             "website": site if "//" in site or not site else f"https://{site}", "country": clean_country(get("country")),
             "open_roles": parse_count(get("open_roles")) or "", "company_size": parse_company_size(get("company_size"))[0] or "",
+            "linkedin_url": get("linkedin_url"), "company_linkedin_url": get("company_linkedin_url"), "city": get("city"),
+            "state": get("state"), "sector": get("sector"), "role": get("role"),
         }
         if base.get("email") and clean_email(base["email"])[0] is None:
             base["email"] = ""                     # e.g. Apollo's email_not_unlocked@domain.com placeholder
