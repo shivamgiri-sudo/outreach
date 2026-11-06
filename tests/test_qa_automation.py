@@ -74,3 +74,15 @@ def test_a_held_sequence_email_names_the_missing_detail(tmp_path):
     missing = sr.missing_details(lead(c), step, sr.get_settings(store), sr.get_offer(store), "http://x", datetime.now(timezone.utc))
     assert "project_name" in missing and "company" not in missing and "greeting" not in missing
     assert sr._blocked_text(["my_cta", "project_name"]) == "a detail needed by the email is missing: {{my_cta}}, {{project_name}}"
+
+
+def test_a_linkedin_link_typed_without_https_is_tidied_and_can_be_started(tmp_path):
+    # QA sweep: "linkedin.com/in/deepak-patel-navyug/" typed in Edit details was listed under "Suggested people" but
+    # Start refused it with "Add the person's LinkedIn profile link first."
+    from tests.flow_helpers import lead, make_client
+    c = make_client(tmp_path)
+    who = lead(c)
+    r = c.patch(f"/api/leads/{who['id']}", json={"linkedin_url": "linkedin.com/in/deepak-patel-navyug/", "reason": ""})
+    assert r.status_code == 200, r.text
+    assert lead(c)["linkedin_url"] == "https://www.linkedin.com/in/deepak-patel-navyug"
+    assert c.post(f"/api/leads/{who['id']}/linkedin/start").status_code == 200
