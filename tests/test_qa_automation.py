@@ -60,3 +60,17 @@ def test_campaign_careers_page_follows_the_careers_site_like_read_job_pages():
     out = src.careers_postings(["https://www.acme-steel.in/careers/"], [], fetch)
     assert out["errors"] == [] and out["pages"] == 1
     assert [p["title"] for p, _ in out["postings"]] == ["Machine Operator"]
+
+
+def test_a_held_sequence_email_names_the_missing_detail(tmp_path):
+    # QA sweep: a campaign started the preset "Real estate" sequence; every lead showed "Waiting: a detail needed by the
+    # email is missing" without saying which one ({{my_value_1}}, {{my_cta}}... from Brand settings).
+    from datetime import datetime, timezone
+    from app import sequence_runner as sr
+    from tests.flow_helpers import lead, make_client, store_of
+    c = make_client(tmp_path)
+    store = store_of(c)
+    step = {"name": "e1", "subject": "Hi {{company}}", "body": "{{greeting}} {{my_cta}} {{project_name}} {{unsub_link}}"}
+    missing = sr.missing_details(lead(c), step, sr.get_settings(store), sr.get_offer(store), "http://x", datetime.now(timezone.utc))
+    assert "project_name" in missing and "company" not in missing and "greeting" not in missing
+    assert sr._blocked_text(["my_cta", "project_name"]) == "a detail needed by the email is missing: {{my_cta}}, {{project_name}}"
