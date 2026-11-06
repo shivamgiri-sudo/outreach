@@ -144,7 +144,7 @@ def test_healthcare_clinic_reply_flow_whatsapp_with_and_without_consent(world_fa
     w.tick(ist(5, 9, 0))
     wa = w.whatsapps()
     assert [(m["to"], m["template"], ist_text(m["sent_at"])) for m in wa] == [("+919827012345", "first_after_yes", "Thu 05 Nov 09:00")]
-    assert wa[0]["body"].startswith("Hi Ashok, this is BookMyInterview team from BookMyInterview. Thanks for replying yes")
+    assert wa[0]["body"].startswith("Hi Ashok, this is BookMyInterview team from BookMyInterview.ai. Thanks for replying yes")
     assert_rendered(wa[0]["body"])
     assert w.full("Sunrise Multispeciality Clinic")["stage"] == "whatsapp_active"
     for name in ("Sunrise Multispeciality Clinic", "SmileCare Dental"):
