@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, isOwner } from "../api.js";
 import { copyText } from "../clipboard.js";
 
 const UNSUB = "\n\nPrefer no more emails? {{unsub_link}}";
@@ -43,11 +43,17 @@ export default function Templates() {
     setCopied((await copyText(text)) ? name : "failed");
     setTimeout(() => setCopied(""), 1500);
   };
+  const [shown, setShown] = useState(null);
+  const [note, setNote] = useState("");
+  const preview = (t) => api.sequencePreview(sequence.indexOf(t)).then((r) => setShown({ ...r, name: t.name })).catch(() => {});
   const Item = ({ t }) => (
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row" style={{ justifyContent: "space-between" }}>
         <b>{t.day !== undefined ? `Day ${t.day} · ` : ""}{t.name} <span className="pill">{t.channel}</span></b>
-        <button className="btn ghost" onClick={() => copy(t.name, (t.subject ? `Subject: ${t.subject}\n\n` : "") + t.body)}>{copied === t.name ? "Copied" : "Copy"}</button>
+        <span className="row">
+          {t.channel === "Email" && <button className="btn ghost" onClick={() => preview(t)}>Preview designed email</button>}
+          <button className="btn ghost" onClick={() => copy(t.name, (t.subject ? `Subject: ${t.subject}\n\n` : "") + t.body)}>{copied === t.name ? "Copied" : "Copy"}</button>
+        </span>
       </div>
       {t.subject && <p><b>Subject:</b> {t.subject}</p>}
       <pre>{t.body}</pre>
@@ -61,6 +67,19 @@ export default function Templates() {
       <h2>Sequences & templates</h2>
       <p className="sub">Short, human, no hard sell, no invented stories. Words in {"{{double braces}}"} are filled per lead ({"{{greeting}}"}, {"{{first_name}}"}, {"{{company}}"}, {"{{role}}"}, {"{{sender}}"}, {"{{offer_line}}"}, {"{{demo_link}}"}, {"{{unsub_link}}"}); [square brackets] you fill by hand. The email sequence stops on a reply. Cold emails carry no link except the unsubscribe link.</p>
       <h3>Email sequence (6 steps, sent automatically)</h3>
+      <p className="sub">Each email goes out designed (logo, layout) with the same words, plus the plain-text version for mail apps that only show text.</p>
+      {shown && (
+        <div className="drawer" role="dialog" aria-modal="true" aria-label={`Designed email: ${shown.name}`} style={{ maxWidth: 720 }}>
+          <div className="row" style={{ justifyContent: "space-between" }}><b>{shown.name}</b><button className="btn ghost" onClick={() => setShown(null)}>Close</button></div>
+          <p className="sub">Subject: <b>{shown.subject}</b> · sample person: Priya Sharma, Acme Retail</p>
+          {isOwner() && <form className="row" style={{ marginBottom: 8 }} onSubmit={(e) => { e.preventDefault(); const to = e.target.elements.to.value;
+            api.sendSequencePreview(sequence.findIndex((x) => x.name === shown.name), to).then((r) => setNote(`Preview sent to ${r.to}.`)).catch((err) => setNote(err.message)); }}>
+            <input name="to" type="email" aria-label="Send this preview to" placeholder="Send this preview to (your email)" required style={{ flex: 1 }} />
+            <button className="btn">Send preview</button></form>}
+          {note && <p className="sub" role="status">{note}</p>}
+          <iframe title="Designed email preview" srcDoc={shown.html} sandbox="" style={{ width: "100%", height: "70vh", border: "1px solid var(--line, #e2e8f0)", borderRadius: 10, background: "#fff" }} />
+        </div>
+      )}
       {sequence.map((t) => <Item key={t.name} t={t} />)}
       <h3>WhatsApp (only after a recorded yes)</h3>
       {whatsapp.map((t) => <Item key={t.name} t={t} />)}

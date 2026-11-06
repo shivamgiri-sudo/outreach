@@ -95,7 +95,7 @@ def attempts(rig) -> list:
     out = []
     if rig.pid == "smtp":
         for msg in rig.smtp.attempts:
-            out.append({"to": msg["To"], "subject": msg["Subject"], "text": msg.get_content(),
+            out.append({"to": msg["To"], "subject": msg["Subject"], "text": (msg.get_body(preferencelist=("plain",)) or msg).get_content(),
                         "headers": {k: str(v) for k, v in msg.items()}, "idem": None})
         return out
     for call in rig.wire.calls:

@@ -16,7 +16,7 @@ from .auth import PRIVATE_SETTINGS
 from .activation import STEPS, apply_event, conversion_due, next_nudge
 from .capacity import capacity_plan
 from .demo import draft_kit, render_demo_html
-from .growth_core import ensure_demo, get_offer, public_base_url, webhook_secret
+from .growth_core import ensure_demo, get_offer, offer_line, public_base_url, webhook_secret
 from .hygiene import normalise_email
 from .sequences import DEFAULT_SEQUENCE
 from .unsubscribe import unsub_path
@@ -75,6 +75,10 @@ def _event(kind: str, text: str, now: datetime) -> dict:
     return {"at": now.isoformat(timespec="seconds"), "kind": kind, "text": text}
 
 
+class PreviewBody(BaseModel):
+    to: str = Field(min_length=3, max_length=320)
+
+
 def make_router(store, build_lead, present) -> APIRouter:
     router = APIRouter()
 
@@ -121,6 +125,39 @@ def make_router(store, build_lead, present) -> APIRouter:
     @router.get("/api/sequence")
     def read_sequence():
         return DEFAULT_SEQUENCE
+
+    @router.get("/api/sequence/{index}/preview")
+    def preview_sequence(index: int):
+        """The designed (HTML) email for one step, filled for a sample person, exactly as it is sent."""
+        from .email_html import render as render_html
+        from .sequences import lead_variables, render as fill
+        if not 0 <= index < len(DEFAULT_SEQUENCE):
+            raise HTTPException(404, "No such step")
+        base = public_base_url(store, BASE_URL)
+        sample = {"id": "sample", "contact_name": "Priya Sharma", "company": "Acme Retail", "role": "Store Manager"}
+        variables = lead_variables(sample, "BookMyInterview team", base, {"offer_line": offer_line(get_offer(store)), "demo_link": f"{base}/demo/sample"})
+        step = DEFAULT_SEQUENCE[index]
+        subject = fill(step["subject"], variables)[0]
+        body = fill(step["body"], variables)[0]
+        return {"subject": subject, "text": body, "html": render_html(body, base)}
+
+    @router.post("/api/sequence/{index}/send-preview")
+    def send_preview(index: int, body: PreviewBody):
+        """Owner only: send the designed preview of one step to an address (marked [Preview]), to see it in a real inbox."""
+        from .channels.config import config_for
+        from .channels.email_send import deliver
+        from .hygiene import normalise_email
+        to = normalise_email(body.to)
+        if not to:
+            raise HTTPException(400, "Give a valid email address.")
+        cfg = config_for(store, "email_send")
+        if not cfg:
+            raise HTTPException(400, "Connect the sending domain first (Integrations > Email sending).")
+        shown = preview_sequence(index)
+        result = deliver(cfg, to, f"[Preview] {shown['subject']}", shown["text"], {}, html=shown["html"])
+        if result.get("status") != "sent":
+            raise HTTPException(400, f"Not sent: {result.get('error') or result.get('status')}")
+        return {"ok": True, "to": to}
 
     # ---- demo link and page ----
     @router.post("/api/leads/{lead_id}/demo-link")

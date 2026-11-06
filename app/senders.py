@@ -73,6 +73,10 @@ def make_email_sender(store, transport=post_json, base_url: str = "", channel_tr
             headers["Message-ID"] = message["message_id"]
         body = {"from": _from_header(cfg["from_name"], cfg["from_email"]), "to": [message["to"]],
                 "subject": message["subject"], "text": message["body"], "headers": headers}
+        from .channels.email_send import designed
+        html = designed(store, message, base_url)
+        if html:
+            body["html"] = html
         if cfg.get("reply_to"):
             body["reply_to"] = cfg["reply_to"]
         request_headers = {"Authorization": f"Bearer {cfg['api_key']}"}

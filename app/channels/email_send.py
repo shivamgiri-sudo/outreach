@@ -51,7 +51,7 @@ class RecipientRejected(ValueError):
     """This one address was refused; the provider itself is fine."""
 
 
-def build_message(values: dict, to: str, subject: str, text: str, headers: dict, attachments=None) -> EmailMessage:
+def build_message(values: dict, to: str, subject: str, text: str, headers: dict, attachments=None, html: str = "") -> EmailMessage:
     msg = EmailMessage()
     msg["From"] = _from(values)
     msg["To"] = to
@@ -64,6 +64,8 @@ def build_message(values: dict, to: str, subject: str, text: str, headers: dict,
         if key not in ("Message-ID", "X-Idempotency-Key"):    # the idempotency key is for HTTP APIs, not an email header
             msg[key] = value
     msg.set_content(text)
+    if html:
+        msg.add_alternative(html, subtype="html")          # the designed version; text stays for plain-text readers
     for item in attachments or []:
         maintype, _, rest = item["content_type"].partition("/")
         subtype, *raw_params = [p.strip() for p in rest.split(";")]
@@ -107,7 +109,7 @@ def _b64(data: bytes) -> str:
     return base64.b64encode(data).decode("ascii")
 
 
-def http_request_for(pid: str, values: dict, to: str, subject: str, text: str, headers: dict, attachments=None):
+def http_request_for(pid: str, values: dict, to: str, subject: str, text: str, headers: dict, attachments=None, html: str = ""):
     """(url, headers, json body) for the HTTP email providers."""
     files = attachments or []
     if pid == "resend":
@@ -115,20 +117,21 @@ def http_request_for(pid: str, values: dict, to: str, subject: str, text: str, h
         if headers.get("X-Idempotency-Key"):
             auth["Idempotency-Key"] = headers["X-Idempotency-Key"]
         body = {"from": _from(values), "to": [to], "subject": subject, "text": text,
-                "headers": {k: v for k, v in headers.items() if k != "X-Idempotency-Key"}}
+                "headers": {k: v for k, v in headers.items() if k != "X-Idempotency-Key"}, **({"html": html} if html else {})}
         if files:
             body["attachments"] = [{"filename": f["filename"], "content": _b64(f["content"]), "content_type": f["content_type"]}
                                    for f in files]
         return RESEND_URL, auth, body
     if pid == "sendgrid":
         body = {"personalizations": [{"to": [{"email": to}]}], "from": {"email": values["from_email"], "name": values["from_name"]},
-                "subject": subject, "content": [{"type": "text/plain", "value": text}], **({"headers": headers} if headers else {})}
+                "subject": subject, "content": [{"type": "text/plain", "value": text}, *([{"type": "text/html", "value": html}] if html else [])],
+                **({"headers": headers} if headers else {})}
         if files:
             body["attachments"] = [{"content": _b64(f["content"]), "type": f["content_type"], "filename": f["filename"],
                                     "disposition": "attachment"} for f in files]
         return SENDGRID_URL, {"Authorization": f"Bearer {values['api_key']}"}, body
     if pid == "postmark":
-        body = {"From": _from(values), "To": to, "Subject": subject, "TextBody": text,
+        body = {"From": _from(values), "To": to, "Subject": subject, "TextBody": text, **({"HtmlBody": html} if html else {}),
                 "MessageStream": values.get("message_stream") or "outbound",
                 "Headers": [{"Name": k, "Value": v} for k, v in headers.items()]}
         if files:
@@ -147,20 +150,20 @@ def _http_id(pid: str, reply: dict) -> str:
 
 
 def deliver(cfg: dict, to: str, subject: str, text: str, headers: dict, transport=request, smtp_factory=None,
-            resolver=None, extra: dict = None, attachments=None) -> dict:
+            resolver=None, extra: dict = None, attachments=None, html: str = "") -> dict:
     """Send one email with a provider config from config_for(). Returns {status: sent|failed, provider_id?, error?}."""
     pid, values = cfg["provider"], cfg["values"]
     try:
         if pid in SMTP_PROVIDERS:
-            msg = build_message(values, to, subject, text, headers, attachments)
+            msg = build_message(values, to, subject, text, headers, attachments, html)
             return {"status": "sent", "provider_id": smtp_send(pid, values, msg, smtp_factory)}
         if pid == "custom_http":
-            result = call_custom(values, {"to": to, "email": to, "subject": subject, "text": text, **(extra or {})},
+            result = call_custom(values, {"to": to, "email": to, "subject": subject, "text": text, **({"html": html} if html else {}), **(extra or {})},
                                  transport, resolver)
             return ({"status": "sent", "provider_id": result.get("provider_id", "")} if result["ok"]
                     else {"status": "failed", "error": result.get("error", "failed")})
         headers = {k: v for k, v in headers.items() if k != "X-Idempotency-Key" or pid == "resend"}
-        url, auth, body = http_request_for(pid, values, to, subject, text, headers, attachments)
+        url, auth, body = http_request_for(pid, values, to, subject, text, headers, attachments, html)
         reply = transport(url, auth, body)
         if pid == "postmark" and reply.get("ErrorCode") not in (None, 0):
             return {"status": "failed", "error": f"Postmark error {reply.get('ErrorCode')}: {reply.get('Message', '')}"}
@@ -190,7 +193,16 @@ def send_email(store, message: dict, transport=request, smtp_factory=None, base_
         headers["Message-ID"] = message["message_id"]
     if message.get("idempotency_key"):
         headers["X-Idempotency-Key"] = message["idempotency_key"][:256]
-    return deliver(cfg, message["to"], message["subject"], message["body"], headers, transport, smtp_factory, resolver)
+    return deliver(cfg, message["to"], message["subject"], message["body"], headers, transport, smtp_factory, resolver,
+                   html=designed(store, message, base_url))
+
+
+def designed(store, message: dict, base_url: str) -> str:
+    """The HTML version of a sequence email (same words, with the logo), unless the owner switched designed emails off."""
+    if store.read("settings").get("html_email") is False or not message.get("body"):
+        return ""
+    from ..email_html import render
+    return render(message["body"], base_url)
 
 
 def invite_attachments(message: dict) -> list:

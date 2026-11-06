@@ -18,7 +18,7 @@ from .web_security import client_ip
 LOCAL_OWNER = {"sub": "local", "email": "", "name": "This computer", "role": "owner", "claims": None}
 ANYONE = {("POST", "/api/logout")}
 OWNER_ROUTES = {
-    ("PUT", "/api/settings"), ("PUT", "/api/offer"), ("PUT", "/api/team"), ("POST", "/api/workspaces"), ("DELETE", "/api/workspaces/{ws_id}"),
+    ("PUT", "/api/settings"), ("PUT", "/api/offer"), ("PUT", "/api/team"), ("POST", "/api/workspaces"), ("DELETE", "/api/workspaces/{ws_id}"), ("POST", "/api/sequence/{index}/send-preview"),
     ("GET", "/api/channels/webhooks"), ("GET", "/api/flows/{flow_id}/webhook"), ("PUT", "/api/icp"), ("POST", "/api/signals/run"), ("POST", "/api/signals/watch"), ("DELETE", "/api/signals/watch/{watch_id}"), ("POST", "/api/icp/score"), ("GET", "/api/oauth/{provider}/start"),
     ("POST", "/api/sequences/run"), ("POST", "/api/sending/resume"), ("POST", "/api/sequences/resume-failed"),
     ("POST", "/api/practice/clear"), ("GET", "/api/enrich/apollo-export"),
