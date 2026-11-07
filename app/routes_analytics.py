@@ -41,6 +41,26 @@ def make_router(store) -> APIRouter:
     def analytics_overview(date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"), days: Optional[int] = None):
         return analytics_range.overview(store, period(date_from, date_to, days))
 
+    def pipeline_period(date_from: str, date_to: str, days: Optional[int]) -> Optional[dict]:
+        return period(date_from, date_to, days) if (date_from or date_to or days is not None) else None
+
+    @router.get("/api/analytics/pipeline")
+    def analytics_pipeline(date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"),
+                           days: Optional[int] = None, added: bool = False):
+        """Where every lead stands now: total -> enriched -> attempted -> connected -> interested / not interested /
+        follow-up, call outcomes, channels, stages, daily trend, per owner and per source. `added` keeps only leads
+        added in the period."""
+        from . import pipeline_funnel
+        return pipeline_funnel.build(store, pipeline_period(date_from, date_to, days), added)
+
+    @router.get("/api/analytics/pipeline/leads")
+    def analytics_pipeline_leads(step: str, date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"),
+                                 days: Optional[int] = None, added: bool = False, owner: str = "", source: str = ""):
+        from . import pipeline_funnel
+        if step not in pipeline_funnel.DRILL_STEPS:
+            raise HTTPException(400, "Unknown funnel step.")
+        return pipeline_funnel.drill(store, step, pipeline_period(date_from, date_to, days), added, owner[:120], source[:120])
+
     @router.get("/api/audit")
     def audit_trail(action: str = "", by: str = "", q: str = "", date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"),
                     limit: int = 200, offset: int = 0):

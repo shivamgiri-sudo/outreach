@@ -19,6 +19,8 @@ const query = (params) => {
 export const ops = {
   analytics: (range) => request(`/api/analytics?${rangeQuery(range)}`),
   overview: (range) => request(`/api/analytics/overview?${rangeQuery(range)}`),
+  pipeline: (range, added) => request(`/api/analytics/pipeline?${rangeQuery(range)}${added ? "&added=true" : ""}`),
+  pipelineLeads: ({ step, owner = "", source = "", added }, range) => request(`/api/analytics/pipeline/leads?${new URLSearchParams({ step, owner, source, ...(added ? { added: "true" } : {}) })}&${rangeQuery(range)}`),
   intelligence: (range) => request(`/api/intelligence${range ? `?${rangeQuery(range)}` : ""}`),
   insights: (range) => request(`/api/insights${range ? `?${rangeQuery(range)}` : ""}`),
   outboxPage: (params) => request(`/api/outbox${query({ page: 1, ...params })}`),

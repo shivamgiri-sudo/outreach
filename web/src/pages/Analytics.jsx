@@ -5,16 +5,17 @@ import { sourceLabel, stageLabel, useSourceRegistry } from "../labels.js";
 import PeriodPicker, { DeltaTile, usePeriod } from "../PeriodPicker.jsx";
 import Intelligence from "./Intelligence.jsx";
 import Insights from "./Insights.jsx";
+import Pipeline from "./Pipeline.jsx";
 
-// One page for the numbers: Overview, Funnel, Channels (was Intelligence), Sources (was Insights) and Team, all for one period.
-const TABS = [["overview", "Overview"], ["funnel", "Funnel"], ["channels", "Channels"], ["sources", "Sources"], ["team", "Team"]];
+// One page for the numbers: Pipeline (where every lead stands), Overview, Funnel, Channels (was Intelligence), Sources (was Insights) and Team, all for one period.
+const TABS = [["pipeline", "Pipeline"], ["overview", "Overview"], ["funnel", "Funnel"], ["channels", "Channels"], ["sources", "Sources"], ["team", "Team"]];
 const STEP_LABEL = { contacted: "Contacted", replied: "Replied", interested: "Interested", meeting: "Meeting", customer: "Customer" };
 const GROUP_LABEL = { campaign: "Campaign", step: "Sequence step", variant: "Template variant", source: "Lead source" };
 const GRID = { display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))" };
 
 function tabFromHash() {
   const m = /[?&]tab=([a-z]+)/.exec(window.location.hash);
-  return m && TABS.some(([id]) => id === m[1]) ? m[1] : "overview";
+  return m && TABS.some(([id]) => id === m[1]) ? m[1] : "pipeline";
 }
 
 function Overview({ data }) {
@@ -145,6 +146,7 @@ export default function Analytics() {
       </div>
       {error && <ErrorState message="Analytics could not load." detail={error} onRetry={load} />}
       {tab === "channels" && <Intelligence key={JSON.stringify(period)} range={period} embedded />}
+      {tab === "pipeline" && <Pipeline period={period} />}
       {tab === "sources" && <Insights key={JSON.stringify(period)} range={period} embedded />}
       {["overview", "funnel", "team"].includes(tab) && !error && (!data ? <p className="empty">Loading…</p> : (
         <>

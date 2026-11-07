@@ -550,3 +550,25 @@ td small { color: var(--muted); overflow-wrap: anywhere; }
 .scrim { z-index: 45; }
 .drawer { z-index: 50; }
 .palette { z-index: 55; }
+
+/* Pipeline funnel + small SVG charts */
+.stat-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
+.tile-btn { text-align: left; cursor: pointer; font: inherit; color: inherit; transition: border-color .18s, background-color .18s; }
+.tile-btn:hover { border-color: var(--brand); background: var(--brand-soft); }
+.tile-btn b { font-size: 26px; margin-top: 0; }
+.tile-btn span { color: var(--muted); font-size: 13px; }
+.hbars { display: grid; gap: 6px; }
+.hbar-row { display: grid; grid-template-columns: minmax(90px, 150px) 1fr 34px minmax(0, 118px); gap: 8px; align-items: center; background: none; border: 0; padding: 4px 2px; font: inherit; color: inherit; text-align: left; border-radius: 8px; cursor: pointer; }
+.hbar-row:disabled { cursor: default; }
+.hbar-row:not(:disabled):hover { background: var(--brand-soft); }
+.hbar-label { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar-track { height: 16px; background: color-mix(in srgb, var(--line) 60%, transparent); border-radius: 6px; overflow: hidden; }
+.hbar-fill { display: block; height: 100%; border-radius: 6px; min-width: 2px; transition: width .4s ease; }
+.donut-wrap { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.legend { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 4px; font-size: 13px; }
+.legend.row { display: flex; flex-wrap: wrap; gap: 14px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+.legend .link:disabled { color: var(--muted); cursor: default; text-decoration: none; }
+.hbar-row b { text-align: right; }
+@media (max-width: 560px) { .hbar-row { grid-template-columns: 96px 1fr 30px; } .hbar-row small { grid-column: 2 / -1; } }
+@media (prefers-reduced-motion: reduce) { .hbar-fill { transition: none; } }
