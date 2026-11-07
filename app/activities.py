@@ -149,6 +149,11 @@ def log_activity(store, lead_id: str, kind: str, body: dict) -> dict:
            "subject": (body.get("subject") or "")[:300], "body": (body.get("notes") or "")[:8000],
            "outcome": body.get("outcome") or "", "duration_minutes": body.get("duration_minutes"),
            "by": body.get("by") or "", "at": at, "created_at": iso(now_utc())}
+    lead = next((l for l in store.read("leads") if l.get("id") == lead_id), {})
+    to = str(body.get("to") or "").strip()[:300] or {"call": lead.get("phone"), "whatsapp": lead.get("phone"), "sms": lead.get("phone"),
+                                                       "email": lead.get("email"), "linkedin": lead.get("linkedin_url")}.get(kind) or ""
+    if to:
+        row["to"] = to                              # the number / address / profile this contact used
     store.update("activities", lambda rows: [*rows, row])
     summary = f"{kind.title()}" + (f" — {row['outcome'].replace('_', ' ')}" if row["outcome"] else "") + (f": {row['body'][:200]}" if row["body"] else "")
     store.update_lead(lead_id, lambda l: {**l, "last_activity_at": at,

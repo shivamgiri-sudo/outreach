@@ -133,6 +133,8 @@ def make_transactional_sender(store, transport=post_json, channel_transport=None
             return {"status": "dry_run"}
         body = {"from": _from_header(cfg["from_name"], cfg["from_email"]), "to": [to],
                 "subject": message["subject"][:300], "text": message["body"]}
+        if message.get("html"):
+            body["html"] = message["html"]
         if cfg.get("reply_to"):
             body["reply_to"] = cfg["reply_to"]
         files = invite_attachments(message)

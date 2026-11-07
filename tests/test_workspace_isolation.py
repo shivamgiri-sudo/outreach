@@ -103,3 +103,40 @@ def test_allow_list_only_names_real_routes(tmp_path):
                 yield x
     real = {(m, r.path) for r in walk(app.routes) for m in (getattr(r, "methods", None) or [])}
     assert LIMITED_OK - real == set()
+
+
+def admin_setup(tmp_path):
+    c, ho, hr, w = setup(tmp_path)
+    w2 = c.post("/api/workspaces", json={"name": "Client Two"}, headers=ho).json()
+    assert c.post("/api/users", json={"email": "boss@client.example", "role": "admin", "password": "long-password-1"}, headers=ho).status_code == 400
+    c.post("/api/users", json={"email": "boss@client.example", "name": "Boss", "role": "admin", "password": "long-password-1",
+                               "workspaces": [w["id"]]}, headers=ho)
+    tok = c.post("/api/login", json={"email": "boss@client.example", "password": "long-password-1"}).json()["token"]
+    return c, ho, {"Authorization": f"Bearer {tok}"}, w, w2
+
+
+def test_workspace_admin_manages_only_its_own_workspace_logins(tmp_path):
+    c, ho, ha, w, w2 = admin_setup(tmp_path)
+    c.post("/api/users", json={"email": "other@two.example", "role": "caller", "password": "long-password-1", "workspaces": [w2["id"]]}, headers=ho)
+    seen = {u["email"] for u in c.get("/api/users", headers=ha).json()}
+    assert seen == {"raj@example.com", "boss@client.example"}                      # not the owner, not Client Two's login
+    new = c.post("/api/users", json={"email": "new@one.example", "role": "caller", "password": "long-password-1"}, headers=ha)
+    assert new.status_code == 200 and new.json()["workspaces"] == [w["id"]]        # defaults to the admin's own workspace
+    assert c.post("/api/users", json={"email": "x@one.example", "role": "caller", "password": "long-password-1",
+                                      "workspaces": [w2["id"]]}, headers=ha).status_code == 403
+    assert c.post("/api/users", json={"email": "y@one.example", "role": "owner", "password": "long-password-1"}, headers=ha).status_code == 403
+    assert c.put("/api/users/other@two.example", json={"role": "viewer"}, headers=ha).status_code == 404
+    assert c.delete("/api/users/other@two.example", headers=ha).status_code == 404
+    assert c.put("/api/users/new@one.example", json={"workspaces": [w["id"], w2["id"]]}, headers=ha).status_code == 403
+    assert c.put("/api/users/new@one.example", json={"role": "viewer"}, headers=ha).json()["role"] == "viewer"
+    assert c.delete("/api/users/new@one.example", headers=ha).status_code == 200
+    assert c.post("/api/workspaces", json={"name": "Mine"}, headers=ha).status_code == 403
+    assert c.get("/api/campaigns", headers=ha).status_code == 403
+    assert c.get("/api/leads", headers=ha).json() == []                           # Client One has no leads; main's stay hidden
+    assert [x["id"] for x in c.get("/api/workspaces", headers=ha).json()] == [w["id"]]
+
+
+def test_admin_without_workspace_sees_nothing(tmp_path):
+    from app.workspaces import allowed_of
+    assert allowed_of({"role": "admin", "workspaces": []}) == set()
+    assert allowed_of({"role": "owner"}) is None

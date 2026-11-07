@@ -572,3 +572,5 @@ td small { color: var(--muted); overflow-wrap: anywhere; }
 .hbar-row b { text-align: right; }
 @media (max-width: 560px) { .hbar-row { grid-template-columns: 96px 1fr 30px; } .hbar-row small { grid-column: 2 / -1; } }
 @media (prefers-reduced-motion: reduce) { .hbar-fill { transition: none; } }
+
+.plain-list { list-style: none; padding: 0; margin: 4px 0; }

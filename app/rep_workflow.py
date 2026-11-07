@@ -217,6 +217,7 @@ def lead_card(lead: dict, presented: Optional[dict] = None) -> dict:
     notes = [e for e in lead.get("timeline") or [] if e.get("kind") in ("note", "call", "consent", "reply")][-3:]
     return {"lead_id": lead["id"], "company": lead.get("company") or lead.get("domain") or "", "contact_name": lead.get("contact_name") or "",
             "title": lead.get("title") or "", "role": lead.get("role") or "", "phone": lead.get("phone") or "",
+            "phones": [p for p in lead.get("phones") or [] if p and p != lead.get("phone") and p not in (lead.get("bad_numbers") or {})],
             "phone_ok": phone_ok(lead), "email": lead.get("email") or "", "stage": lead.get("stage"),
             "score": presented.get("score"), "band": presented.get("band"), "consent": bool(lead.get("consent")),
             "owner": lead.get("owner"), "last_touch": _last_touch(lead), "custom": lead.get("custom") or {},
@@ -287,7 +288,7 @@ class OutcomeRefused(ValueError):
 
 
 def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str, callback_at: Optional[datetime] = None,
-                        now: Optional[datetime] = None) -> dict:
+                        now: Optional[datetime] = None, to: str = "") -> dict:
     """Log one call (by `who`) and do what the outcome means. Returns {activity, task, stage, consent_recorded, phone_flagged}."""
     from .privacy import record_consent
     now = now or now_utc()
@@ -298,12 +299,18 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
         raise OutcomeRefused("Pick when to call back.")
     if outcome == "call_back" and callback_at <= now - timedelta(minutes=1):
         raise OutcomeRefused("The call-back time is in the past.")
-    activity = log_activity(store, lead_id, "call", {"outcome": outcome, "notes": notes, "by": who})
+    dialled = to if to and to in [lead.get("phone"), *(lead.get("phones") or [])] else (lead.get("phone") or "")
+    activity = log_activity(store, lead_id, "call", {"outcome": outcome, "notes": notes, "by": who, "to": dialled})
     result = {"activity": activity, "task": None, "stage": lead["stage"], "consent_recorded": False, "phone_flagged": False}
     stamp = iso(now)
     if outcome == "call_back":
         result["task"] = add_task(store, lead_id, "call", notes or "They asked to be called back.", due_at=callback_at, owner=who,
                                   priority="high", title="Call back", source="callback")
+    elif outcome in ("wrong_number", "inactive_number") and dialled and dialled != lead.get("phone"):
+        what = "wrong number" if outcome == "wrong_number" else "inactive (not in service / switched off)"
+        store.update_lead(lead_id, lambda l: {**l, "bad_numbers": {**(l.get("bad_numbers") or {}), dialled: {"status": outcome, "at": stamp, "by": who}},
+                                              "timeline": [*l["timeline"], {"at": stamp, "kind": "phone_flag", "text": f"Extra phone {dialled} marked {what} (by {who})", "by": who}]})
+        result["phone_flagged"] = True
     elif outcome in ("wrong_number", "inactive_number"):
         number = lead.get("phone") or ""
         what = "wrong number" if outcome == "wrong_number" else "inactive (not in service / switched off)"

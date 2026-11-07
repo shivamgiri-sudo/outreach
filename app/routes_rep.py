@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import rep_workflow as rw
 from .activities import CALL_OUTCOMES, ensure_task_ids, iso, now_utc, task_buckets
@@ -18,6 +18,7 @@ class OutcomeBody(BaseModel):
     outcome: str
     notes: str = ""
     callback_at: Optional[str] = None       # call_back: when (ISO; no zone = IST)
+    to: str = Field(default="", max_length=60)   # the number dialled (main or an extra one); default the main one
 
 
 class TargetsBody(BaseModel):
@@ -166,7 +167,7 @@ def make_router(store, present) -> APIRouter:
         before = lead_or_404(lead_id)["stage"]
         try:
             result = rw.record_call_outcome(store, lead_id, body.outcome, body.notes.strip()[:4000], who,
-                                            _when(body.callback_at, "callback_at"))
+                                            _when(body.callback_at, "callback_at"), to=body.to.strip())
         except rw.OutcomeRefused as exc:
             raise HTTPException(400, str(exc)) from None
         if result["stage"] != before:

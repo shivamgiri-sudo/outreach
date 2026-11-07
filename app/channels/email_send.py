@@ -207,11 +207,12 @@ def designed(store, message: dict, base_url: str) -> str:
 
 def invite_attachments(message: dict) -> list:
     """The .ics calendar invite of a message ({ics, ics_method}) as an attachment, or nothing."""
+    extra = [a for a in message.get("attachments") or [] if isinstance(a, dict) and a.get("filename") and a.get("content")]
     if not message.get("ics"):
-        return []
+        return extra
     method = message.get("ics_method") or "REQUEST"
     return [{"filename": "invite.ics" if method != "CANCEL" else "cancel.ics", "content": message["ics"].encode("utf-8"),
-             "content_type": f"text/calendar; method={method}; charset=UTF-8"}]
+             "content_type": f"text/calendar; method={method}; charset=UTF-8"}, *extra]
 
 
 def send_transactional(store, message: dict, transport=request, smtp_factory=None, resolver=None) -> dict:
@@ -221,7 +222,7 @@ def send_transactional(store, message: dict, transport=request, smtp_factory=Non
     if not cfg or not to:
         return {"status": "dry_run"}
     return deliver(cfg, to, message["subject"][:300], message["body"], {}, transport, smtp_factory, resolver,
-                   attachments=invite_attachments(message))
+                   attachments=invite_attachments(message), **({"html": message["html"]} if message.get("html") else {}))
 
 
 def test_email(store, pid: str, to: str, transport=request, smtp_factory=None, resolver=None) -> dict:

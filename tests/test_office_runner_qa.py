@@ -132,7 +132,8 @@ def test_the_runner_token_opens_no_route_except_its_own(rig):
         if not raw_path.startswith("/api/"):
             continue
         path = _concrete(raw_path)
-        if path in PUBLIC_API_PATHS or path in PUBLIC_GET_PATHS or path in PUBLIC_PATHS or path.startswith(("/api/webhooks/", "/api/oauth/", "/api/inbound/")):
+        if path in PUBLIC_API_PATHS or path in PUBLIC_GET_PATHS or path in PUBLIC_PATHS or path.startswith(("/api/webhooks/", "/api/oauth/", "/api/inbound/", "/api/reports/file/")) \
+                or path in ("/api/password/forgot", "/api/password/reset"):     # public by design: the token / generic answer is the gate
             continue
         for method in methods - {"HEAD", "OPTIONS"}:
             if (method, path) in allowed:

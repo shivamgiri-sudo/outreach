@@ -52,6 +52,9 @@ from .routes_lists import make_router as make_lists_router
 from .routes_companies import make_router as make_companies_router
 from .routes_prospects import make_router as make_prospects_router
 from .routes_analytics import make_router as make_analytics_router
+from .routes_contacts import make_router as make_contacts_router
+from .routes_password import PUBLIC_PATHS as PASSWORD_PUBLIC_PATHS, make_router as make_password_router
+from .routes_reports import PUBLIC_PREFIX as REPORT_FILE_PREFIX, make_router as make_reports_router
 from . import extension_api
 from .routes_extension import make_router as make_extension_router
 from .routes_compliance import make_router as make_compliance_router
@@ -241,6 +244,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                      or (path in PUBLIC_GET_PATHS and request.method in ("GET", "HEAD"))
                      # Office runner: pairing with a one-time code, installers and bundle (each checks its code / token itself).
                      or path in RUNNER_PUBLIC_PATHS
+                     # Forgot password (always the same answer) and the signed report download link (the token is the key).
+                     or (path in PASSWORD_PUBLIC_PATHS and request.method == "POST")
+                     or (path.startswith(REPORT_FILE_PREFIX) and request.method in ("GET", "HEAD"))
                      or (path == "/api/activation/event" and webhook_secret(store, routes_growth.WEBHOOK_SECRET)
                          and hmac.compare_digest(request.headers.get("x-webhook-secret", "").encode("utf-8", "replace"),
                                                  webhook_secret(store, routes_growth.WEBHOOK_SECRET).encode("utf-8")))
@@ -537,6 +543,11 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_today_router(store, _present))
     app.include_router(make_providers_router(store, fetcher))
     app.include_router(make_activities_router(store, transactional_sender))
+    from .growth_core import public_base_url as _public_base_url
+    base_url_of = lambda: _public_base_url(store, BASE_URL)
+    app.include_router(make_reports_router(store, base_url_of, transactional_sender))
+    app.include_router(make_password_router(store, base_url_of, transactional_sender))
+    app.include_router(make_contacts_router(store, _present))
     app.include_router(make_linkedin_router(store))
     app.include_router(make_lists_router(store, _present))
     app.include_router(make_companies_router(store))

@@ -28,7 +28,7 @@ RENEW_AFTER = 0.5                      # re-issue once more than half the lifeti
 CLOCK_SKEW_SECONDS = 60
 TOKEN_PREFIX = "v2"
 ADMIN_SUBJECT = "admin"
-ROLES = ("owner", "caller", "viewer")
+ROLES = ("owner", "admin", "caller", "viewer")      # admin = workspace admin: a caller who also manages its workspaces' logins
 MIN_PASSWORD_CHARS = 10
 MAX_PASSWORD_CHARS = 1000
 MAX_FAILURES = 5
@@ -122,6 +122,8 @@ def can_edit_contacts(user: Optional[dict]) -> bool:
     """Owners always may; callers may unless an owner switched it off for them; viewers never."""
     user = user or {}
     if user.get("role") == "owner":
+        return True
+    if user.get("role") == "admin":
         return True
     return user.get("role") == "caller" and user.get("can_edit_contacts", True) is not False
 

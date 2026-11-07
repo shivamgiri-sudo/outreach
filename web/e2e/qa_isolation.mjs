@@ -141,6 +141,51 @@ await step("Owner still sees both clients", async () => {
   await p.getByRole("button", { name: "Sharma Logistics Pvt Ltd" }).first().waitFor();
 });
 
+const admin = await session();
+await step("Owner makes a workspace admin for Client Foods from the Add-login form", async () => {
+  const p = owner.page;
+  await nav(p, "Setup");
+  await p.getByRole("tab", { name: "Team & workspaces" }).click();
+  const card = p.getByTestId("users-card");
+  const form = card.locator("form.inline-form");
+  await form.getByLabel("Email").fill("lead@client.example");
+  await form.getByLabel("Name").fill("Client Lead");
+  await form.getByLabel("Role").selectOption("admin");
+  await form.getByLabel(/Password/).fill("long-password-2");
+  await p.getByTestId("new-user-workspaces").getByLabel("Client Foods").check();
+  await form.getByRole("button", { name: "Add login" }).click();
+  await card.getByText("Login added for lead@client.example.").waitFor();
+});
+await step("Workspace admin sees only its workspace's logins and adds a caller into it", async () => {
+  const p = admin.page;
+  await signIn(p, "lead@client.example", "long-password-2");
+  await nav(p, "Setup");
+  await p.getByRole("tab", { name: "Team & workspaces" }).click();
+  const card = p.getByTestId("users-card");
+  await card.getByText("raj@client.example").waitFor();
+  const text = await card.innerText();
+  if (/Add workspace/.test(await p.locator("main").innerText())) throw new Error("admin sees Add workspace");
+  if (!/lead@client.example/.test(text) || /Super admin|qa-admin|boss@qa.test/.test(text)) throw new Error(`users card: ${text.slice(0, 200)}`);
+  const roles = await card.locator("form.inline-form").getByLabel("Role").locator("option").allInnerTexts();
+  if (roles.includes("owner")) throw new Error("admin may pick owner");
+  const form = card.locator("form.inline-form");
+  await form.getByLabel("Email").fill("agent@client.example");
+  await form.getByLabel("Name").fill("Client Agent");
+  await form.getByLabel(/Password/).fill("long-password-3");
+  await form.getByRole("button", { name: "Add login" }).click();
+  await card.getByText("Login added for agent@client.example.").waitFor();
+  const refused = admin.errors.filter((e) => e.startsWith("403"));
+  if (refused.length) throw new Error(`refused ${JSON.stringify(refused)}`);
+});
+await step("The admin's new caller sees only Client Foods (Nandi Foods), nothing from main", async () => {
+  const s = await session();
+  await signIn(s.page, "agent@client.example", "long-password-3");
+  await nav(s.page, "Leads");
+  await s.page.getByRole("button", { name: "Nandi Foods" }).first().waitFor();
+  const text = await s.page.locator("main").innerText();
+  for (const w of SECRET_WORDS) if (text.includes(w)) throw new Error(`agent sees ${w}`);
+});
+
 await browser.close();
 for (const [ok, name] of results) console.log(`${ok ? "PASS" : "FAIL"} ${name}`);
 const other = raj.errors.filter((e) => !e.startsWith("403"));

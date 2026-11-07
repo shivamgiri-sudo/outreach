@@ -47,6 +47,7 @@ function Summary({ s }) {
 function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
   const [index, setIndex] = useState(0);
   const [notes, setNotes] = useState("");
+  const [dialled, setDialled] = useState("");
   const [callback, setCallback] = useState(null);
   const [summary, setSummary] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -65,7 +66,9 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
     if (outcome === "call_back" && callback === null) { setCallback(inIstMinutes(60)); return; }
     setBusy(true); setMsg("");
     try {
-      const r = await api.callOutcome(lead.lead_id, outcome, notes.trim(), outcome === "call_back" ? withIst(callback) : null);
+      const numbers = [lead.phone, ...(lead.phones || [])].filter(Boolean);
+      const r = await api.callOutcome(lead.lead_id, outcome, notes.trim(), outcome === "call_back" ? withIst(callback) : null, numbers.includes(dialled) ? dialled : lead.phone);
+      setDialled("");
       setLog((l) => [...l, { company: lead.company, outcome, stage: r.stage }]);
       setIndex((i) => i + 1);
     } catch (e) { setMsg(e.message); }
@@ -106,7 +109,9 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
         <p className="sub" style={{ margin: 0 }}>{lead.contact_name}{lead.title ? ` · ${lead.title}` : ""}{lead.role ? ` · hiring ${lead.role}` : ""}
           <br /><span className="pill">{stageLabel(lead.stage)}</span> {lead.score != null && <span className={`pill ${lead.band || ""}`}>{lead.score} · {lead.band}</span>}
           {lead.consent && <span className="pill ok" style={{ marginLeft: 4 }}>consent</span>}</p>
-        <a className="btn dial-btn" href={dialLink(lead.phone)} style={{ display: "inline-block", margin: "10px 0", fontSize: 18 }} data-testid="dial-link">Call {lead.phone}</a><PhoneTag lead={lead} />
+        <a className="btn dial-btn" href={dialLink(lead.phone)} style={{ display: "inline-block", margin: "10px 0", fontSize: 18 }} data-testid="dial-link" onClick={() => setDialled(lead.phone)}>Call {lead.phone}</a><PhoneTag lead={lead} />
+        {(lead.phones || []).map((p) => <a key={p} className="btn ghost" href={dialLink(p)} onClick={() => setDialled(p)} style={{ marginLeft: 6 }} data-testid="dial-extra">Call {p}</a>)}
+        {(lead.phones || []).length > 0 && <small className="sub" style={{ display: "block" }}>Logging for {dialled || lead.phone} (the number you last tapped).</small>}
         <Summary s={summary} />
         {lead.recent_notes.length > 0 && (
           <ul className="sub" style={{ paddingLeft: 18, margin: "4px 0" }}>

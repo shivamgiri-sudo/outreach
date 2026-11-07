@@ -81,7 +81,7 @@ def needed_role(method: str, path: str) -> str:
 
 
 def allowed(role: str, needed: str) -> bool:
-    rank = {"viewer": 0, "caller": 1, "owner": 2}
+    rank = {"viewer": 0, "caller": 1, "admin": 1, "owner": 2}
     return rank.get(role, -1) >= rank[needed]
 
 
@@ -91,7 +91,10 @@ def role_guard(request: Request) -> None:
     if user is None:
         return
     route = request.scope.get("route")
-    needed = needed_role(request.method, getattr(route, "path", request.url.path))
+    path = getattr(route, "path", request.url.path)
+    needed = needed_role(request.method, path)
+    if user.get("role") == "admin" and (path == "/api/users" or path.startswith("/api/users/")):
+        return                                # workspace admins manage their own workspaces' logins (checked in the routes)
     if not allowed(user.get("role", ""), needed):
         what = "make changes" if user.get("role") == "viewer" else "do this"
         raise HTTPException(403, f"Your role ({user.get('role')}) cannot {what}. Ask the owner.")
@@ -172,7 +175,40 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
     # ---------- team logins (owner only; the role guard enforces it) ----------
     def check_role(role: str) -> None:
         if role not in auth.ROLES:
-            raise HTTPException(400, "Role must be owner, caller or viewer.")
+            raise HTTPException(400, "Role must be owner, admin, caller or viewer.")
+
+    ADMIN_GIVES = ("admin", "caller", "viewer")
+
+    def admin_spaces(request: Request) -> Optional[set]:
+        """The workspaces a workspace admin manages, or None when the person is an owner (manages everyone)."""
+        who = actor(request)
+        return set(who.get("workspaces") or []) if who.get("role") == "admin" else None
+
+    def manageable(request: Request, target: dict) -> bool:
+        mine = admin_spaces(request)
+        if mine is None:
+            return True
+        spaces = set(target.get("workspaces") or [])
+        return target.get("role") in ADMIN_GIVES and bool(spaces) and spaces <= mine
+
+    def clean_spaces(request: Request, role: str, spaces: list) -> list:
+        """Workspaces for a login: they must exist; a workspace admin gives only its own (its own by default); an
+        admin login always has at least one."""
+        from . import workspaces as ws_mod
+        known = {w["id"] for w in ws_mod.all_workspaces(store)}
+        spaces = list(dict.fromkeys(str(w)[:40] for w in spaces or []))[:50]
+        if any(w not in known for w in spaces):
+            raise HTTPException(400, "Pick workspaces from the list.")
+        mine = admin_spaces(request)
+        if mine is not None:
+            if role not in ADMIN_GIVES:
+                raise HTTPException(403, "A workspace admin can add admins, callers and viewers only.")
+            spaces = spaces or sorted(mine)
+            if not set(spaces) <= mine:
+                raise HTTPException(403, "You can give access only to your own workspaces.")
+        if role == "admin" and not spaces:
+            raise HTTPException(400, "A workspace admin needs at least one workspace.")
+        return spaces if role != "owner" else []
 
     def check_password(password: str) -> None:
         problem = auth.password_problem(password)
@@ -180,8 +216,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
             raise HTTPException(400, problem)
 
     @router.get("/api/users")
-    def list_users():
-        return [auth.public_user(u) for u in auth.users(store)]
+    def list_users(request: Request):
+        return [auth.public_user(u) for u in auth.users(store) if manageable(request, u)]
 
     def actor(request: Request) -> dict:
         return getattr(request.state, "user", None) or LOCAL_OWNER
@@ -213,14 +249,10 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
             guard_owner_change(request, {"email": email, "role": body.role})
         if not owner_left([*auth.users(store), {"role": body.role}]):
             raise HTTPException(400, "The first login must be an owner (no admin password is set).")
-        from . import workspaces as ws_mod
-        known = {w["id"] for w in ws_mod.all_workspaces(store)}
-        spaces = [str(w)[:40] for w in body.workspaces or []][:50]
-        if any(w not in known for w in spaces):
-            raise HTTPException(400, "Pick workspaces from the list.")
+        spaces = clean_spaces(request, body.role, body.workspaces)
         user = {"email": email, "name": body.name.strip()[:80] or email, "role": body.role,
                 "password_hash": auth.hash_password(body.password), "created_at": auth.now_iso(),
-                **({"workspaces": spaces} if spaces and body.role != "owner" else {})}
+                **({"workspaces": spaces} if spaces else {})}
         store.update("settings", lambda s: {**s, "users": [*(s.get("users") or []), user]})
         from . import audit
         audit.record(store, actor(request), "user.add", email, f"role {body.role}")
@@ -229,7 +261,7 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
     @router.put("/api/users/{email}")
     def change_user(email: str, body: UserChange, request: Request):
         user = auth.find_user(store, email)
-        if not user:
+        if not user or not manageable(request, user):
             raise HTTPException(404, "No login with that email.")
         guard_owner_change(request, user, body.role)
         changes = {}
@@ -238,8 +270,11 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         if body.role is not None:
             check_role(body.role)
             changes["role"] = body.role
-        if body.workspaces is not None:
-            changes["workspaces"] = [str(w)[:40] for w in body.workspaces][:50]
+        role_after = changes.get("role", user.get("role"))
+        if body.workspaces is not None or "role" in changes:
+            spaces = clean_spaces(request, role_after, body.workspaces if body.workspaces is not None else user.get("workspaces") or [])
+            if body.workspaces is not None or spaces != (user.get("workspaces") or []):
+                changes["workspaces"] = spaces
         if body.can_edit_contacts is not None:
             changes["can_edit_contacts"] = bool(body.can_edit_contacts)
         if body.password is not None:
@@ -262,7 +297,7 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
     @router.delete("/api/users/{email}")
     def remove_user(email: str, request: Request):
         user = auth.find_user(store, email)
-        if not user:
+        if not user or not manageable(request, user):
             raise HTTPException(404, "No login with that email.")
         guard_owner_change(request, user, removing=True)
         remaining = [u for u in auth.users(store) if u["email"] != user["email"]]

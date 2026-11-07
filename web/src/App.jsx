@@ -30,6 +30,7 @@ import Campaigns from "./pages/Campaigns.jsx";
 import HiringEngine from "./pages/HiringEngine.jsx";
 import MyDay from "./pages/MyDay.jsx";
 import Analytics from "./pages/Analytics.jsx";
+import Reports from "./pages/Reports.jsx";
 import Help from "./pages/Help.jsx";
 import ProspectSearch from "./pages/ProspectSearch.jsx";
 import { THEMES, getTheme, setTheme } from "./theme.js";
@@ -52,6 +53,7 @@ const PAGES = [
   ["signals", "Buying signals", Signals, "bell"],
   ["sources", "Data sources", DataSources, "layers"],
   ["analytics", "Analytics", Analytics, "chart"],
+  ["reports", "Reports", Reports, "tasks"],
   ["insights", "Insights", Insights, "chart"],
   ["intelligence", "Intelligence", Intelligence, "eye"],
   ["growth", "Free experience", Growth, "gift"],
@@ -78,7 +80,7 @@ const GROUPS_ALL = [
   ["Pipeline", ["prospects", "leads", "companies", "lists", "campaigns", "growth"]],
   ["Conversations", ["replies", "calls", "linkedin", "tasks", "meetings", "outbox"]],
   ["Content & automation", ["templates", "flows", "workflows", "stories", "prompts"]],
-  ["Analytics", ["analytics"]],
+  ["Analytics", ["analytics", "reports"]],
   ["Data", ["sources", "signals", "hygiene", "engine"]],
   ["Settings", ["setup", "integrations", "help"]],
 ];
@@ -86,8 +88,8 @@ const BY_ID = Object.fromEntries(PAGES.map((p) => [p[0], p]));
 // Pages whose every API call is owner-only: hidden from callers and viewers, and a short note if they open the link.
 const OWNER_PAGES = new Set(["engine"]);
 // A login limited to some workspaces sees only pages built from its own workspace's leads (the server refuses the rest).
-const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "replies", "calls", "tasks", "meetings", "outbox", "templates", "setup", "help"]);
-const isLimited = (me) => me.role !== "owner" && (me.workspaces || []).length > 0;
+const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "replies", "calls", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports"]);
+const isLimited = (me) => me.role !== "owner" && ((me.workspaces || []).length > 0 || me.role === "admin");
 const pageAllowed = (me, id) => (me.role === "owner" || !OWNER_PAGES.has(id)) && (!isLimited(me) || LIMITED_PAGES.has(id));
 const GROUPS = GROUPS_ALL.map(([g, ids]) => [g, ids.filter((id) => BY_ID[id])]).filter(([, ids]) => ids.length);
 // Old links to the separate Go live page now open the checklist inside Setup.
@@ -257,7 +259,7 @@ function Shell() {
     if (!auth.signedIn) { setMe(null); return; }
     api.me().then((m) => {
       setRole(m.role); setCanEditContacts(m.can_edit_contacts); setMe(m);
-      if (m.role === "caller" && !window.location.hash.replace(/^#\/?/, "")) setPage("myday");     // callers start on My day
+      if ((m.role === "caller" || m.role === "admin") && !window.location.hash.replace(/^#\/?/, "")) setPage("myday");     // callers start on My day
     }).catch(() => setMe({ role: "owner" }));
   }, [auth.signedIn]);
   const [spaces, setSpaces] = useState([]);

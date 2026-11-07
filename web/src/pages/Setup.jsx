@@ -191,7 +191,7 @@ function OwnPassword() {
   );
 }
 
-const ROLE_HELP = { owner: "everything", caller: "leads, calls, meetings, tasks", viewer: "read only" };
+const ROLE_HELP = { owner: "everything", admin: "a caller who also adds and manages logins for its own workspaces", caller: "leads, calls, meetings, tasks", viewer: "read only" };
 
 // Workspaces (owner only): one per client, so their leads, lists and numbers stay apart.
 function Workspaces({ onChanged }) {
@@ -220,7 +220,7 @@ function Workspaces({ onChanged }) {
 }
 
 // Team logins (owner only). Without OUTREACH_ADMIN_PASSWORD, the first login must be an owner and turns sign-in on.
-function Users() {
+function Users({ workspaceAdmin = false }) {
   const [rows, setRows] = useState(null);
   const [form, setForm] = useState({ email: "", name: "", role: "caller", password: "", workspaces: [] });
   const [message, setMessage] = useState("");
@@ -251,7 +251,7 @@ function Users() {
     <div className="card" style={{ marginBottom: 16 }} data-testid="users-card">
       <b>Team logins</b> <GuideButton keys={["app:team_logins", "setup:login"]} label="How do I add my team?" testId="users-guide" />
       <p className="sub" style={{ margin: "2px 0 8px" }}>
-        Give each person their own login. Owner (full access to all data and settings; only the super admin adds or removes owners): {ROLE_HELP.owner}. Caller: {ROLE_HELP.caller} (no settings, integrations or CSV exports). Viewer: {ROLE_HELP.viewer}.
+        Give each person their own login. Owner (full access to all data and settings; only the super admin adds or removes owners): {ROLE_HELP.owner}. Workspace admin: {ROLE_HELP.admin}. Caller: {ROLE_HELP.caller} (no settings, integrations or CSV exports). Viewer: {ROLE_HELP.viewer}.
       </p>
       {rows && rows.length > 0 && (
         <ul className="today-list">
@@ -261,9 +261,9 @@ function Users() {
               <span className="row">
                 <select aria-label={`Role for ${u.email}`} value={u.role} disabled={u.super_admin || (!isSuper && u.role === "owner")}
                   onChange={(e) => run(() => api.changeUser(u.email, { role: e.target.value }), "Role changed.")}>
-                  {Object.keys(ROLE_HELP).filter((r) => isSuper || r !== "owner" || u.role === "owner").map((r) => <option key={r} value={r}>{r}</option>)}
+                  {Object.keys(ROLE_HELP).filter((r) => (isSuper || r !== "owner" || u.role === "owner") && (!workspaceAdmin || r !== "owner")).map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
-                {u.role === "caller" && <label className="check-row"><input type="checkbox" checked={u.can_edit_contacts !== false}
+                {u.role === "caller" && !workspaceAdmin && <label className="check-row"><input type="checkbox" checked={u.can_edit_contacts !== false}
                   onChange={(e) => run(() => api.changeUser(u.email, { can_edit_contacts: e.target.checked }), e.target.checked ? "May edit contact details." : "Can no longer edit contact details.")} /> Can edit contacts</label>}
                 {u.role !== "owner" && spaces.length > 1 && <span className="row" title="Tick to limit this login to these workspaces; none ticked = all">
                   <small>Workspaces:</small>{spaces.map((w) => <label key={w.id} className="check-row"><input type="checkbox" checked={(u.workspaces || []).includes(w.id)} onChange={(e) => toggleSpace(u, w.id, e.target.checked)} /> {w.name}</label>)}</span>}
@@ -282,15 +282,15 @@ function Users() {
         <div className="split-2">
           <label>Role
             <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              {Object.keys(ROLE_HELP).filter((r) => isSuper || r !== "owner").map((r) => <option key={r} value={r}>{r}</option>)}
+              {Object.keys(ROLE_HELP).filter((r) => (isSuper || r !== "owner") && (!workspaceAdmin || r !== "owner")).map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </label>
           <label>Password (10+ characters)<input type="password" required minLength={10} autoComplete="new-password" value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
         </div>
-        {form.role !== "owner" && spaces.length > 1 && (
+        {form.role !== "owner" && spaces.length > (workspaceAdmin ? 1 : 1) && (
           <fieldset className="row" style={{ flexWrap: "wrap", gap: 10, border: 0, padding: 0, margin: "6px 0" }} data-testid="new-user-workspaces">
-            <legend className="sub" style={{ marginBottom: 4 }}>Workspaces this login may see (none ticked = every workspace)</legend>
+            <legend className="sub" style={{ marginBottom: 4 }}>Workspaces this login may see ({workspaceAdmin ? "none ticked = all of yours" : "none ticked = every workspace"}{form.role === "admin" ? "; an admin needs at least one" : ""})</legend>
             {spaces.map((w) => <label key={w.id} className="check-row"><input type="checkbox" checked={form.workspaces.includes(w.id)}
               onChange={(e) => setForm({ ...form, workspaces: e.target.checked ? [...form.workspaces, w.id] : form.workspaces.filter((x) => x !== w.id) })} /> {w.name}</label>)}
           </fieldset>
@@ -319,7 +319,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
         {role === "owner" && <button role="tab" aria-selected={tab === "brand"} className={tab === "brand" ? "on" : ""} onClick={() => setTab("brand")}>Brand &amp; offer</button>}
         <button role="tab" aria-selected={tab === "connections"} className={tab === "connections" ? "on" : ""} onClick={() => setTab("connections")}>Connections</button>
         {role === "owner" && <button role="tab" aria-selected={tab === "industry"} className={tab === "industry" ? "on" : ""} onClick={() => setTab("industry")}>Industry &amp; fields</button>}
-        {role === "owner" && <button role="tab" aria-selected={tab === "team"} className={tab === "team" ? "on" : ""} onClick={() => setTab("team")}>Team &amp; workspaces</button>}
+        {(role === "owner" || role === "admin") && <button role="tab" aria-selected={tab === "team"} className={tab === "team" ? "on" : ""} onClick={() => setTab("team")}>Team &amp; workspaces</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "backup"} className={tab === "backup" ? "on" : ""} onClick={() => setTab("backup")}>Backup &amp; restore</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "audit"} className={tab === "audit" ? "on" : ""} onClick={() => setTab("audit")}>Audit</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "health"} className={tab === "health" ? "on" : ""} onClick={() => setTab("health")}>System health</button>}
@@ -332,6 +332,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
       {tab === "audit" && role === "owner" && <AuditLog />}
       {tab === "health" && role === "owner" && <SystemHealth />}
       {tab === "team" && role === "owner" && <><Workspaces /><Users /><ScoringCard /></>}
+      {tab === "team" && role === "admin" && <Users workspaceAdmin />}
       {tab === "industry" && role === "owner" && <IndustrySetup />}
       {tab === "connections" && (
         <>

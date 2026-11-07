@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { api, setToken } from "../api.js";
+import { ForgotForm, ResetForm, resetTokenFromHash } from "./PasswordReset.jsx";
 import Icon from "../icons.jsx";
 import "../login.css";
 import { useBrand } from "../brand.js";
@@ -44,6 +45,7 @@ export default function Login({ onSignedIn }) {
   const [show, setShow] = useState(false);
   const [caps, setCaps] = useState(false);
   const pw = useRef(null);
+  const [mode, setMode] = useState(() => (resetTokenFromHash() ? "reset" : "login"));
   const brand = useBrand().public;
   const generic = !brand.is_default;
   const [first, ...rest] = String(brand.app_name || "").split(" ");
@@ -86,7 +88,9 @@ export default function Login({ onSignedIn }) {
       </header>
 
       <main className="login-main">
-        <form className="login-card" onSubmit={submit} aria-labelledby="login-heading" noValidate>
+        {mode === "forgot" && <ForgotForm initialEmail={email} onBack={() => setMode("login")} />}
+        {mode === "reset" && <ResetForm token={resetTokenFromHash()} onDone={() => setMode("login")} />}
+        {mode === "login" && <form className="login-card" onSubmit={submit} aria-labelledby="login-heading" noValidate>
           <p className="login-eyebrow">Welcome back</p>
           <h2 id="login-heading">Sign in to {brand.app_name}</h2>
           <p className="login-help">Use the admin password, or your work email and password if the owner added you to the team.</p>
@@ -122,8 +126,9 @@ export default function Login({ onSignedIn }) {
           <button className="login-submit" type="submit" disabled={busy} aria-busy={busy || undefined}>
             {busy ? <><span className="login-spinner" aria-hidden="true" />Signing in…</> : <>Sign in<Icon name="arrowRight" size={18} /></>}
           </button>
+          <button type="button" className="link" onClick={() => setMode("forgot")} data-testid="forgot-link" style={{ marginTop: 8 }}>Forgot password?</button>
           <p className="login-fine"><Icon name="lock" size={14} />Sessions stay on this browser tab only.</p>
-        </form>
+        </form>}
       </main>
 
       <section className="login-story" aria-labelledby="story-title">

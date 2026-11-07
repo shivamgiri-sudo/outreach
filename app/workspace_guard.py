@@ -40,6 +40,9 @@ LIMITED_OK = {
     # browser extension: pairing its own token, saving a profile (into this workspace), matching and its queue
     ("POST", "/api/extension/pair"), ("GET", "/api/extension/tokens"), ("DELETE", "/api/extension/tokens/{token_id}"),
     ("POST", "/api/extension/save-profile"), ("GET", "/api/extension/match"), ("GET", "/api/extension/queue"),
+    # workspace admins: logins of their own workspaces (the routes check every target and workspace)
+    ("GET", "/api/users"), ("POST", "/api/users"), ("PUT", "/api/users/{email}"), ("DELETE", "/api/users/{email}"),
+    ("GET", "/api/reports/daily"), ("GET", "/api/reports/daily.csv"), ("POST", "/api/reports/email"),
     ("POST", "/api/import/preview"), ("POST", "/api/import/commit"), ("GET", "/api/import/history"), ("POST", "/api/import/{import_id}/undo"),
 }
 LEAD_PARAMS = ("{lead_id}", "{task_id}")

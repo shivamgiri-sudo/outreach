@@ -31,6 +31,8 @@ def all_workspaces(store) -> list:
 
 def allowed_of(user: Optional[dict]) -> Optional[set]:
     user = user or {}
+    if user.get("role") == "admin" and not user.get("workspaces"):
+        return set()                                # a workspace admin always has workspaces; without one it sees nothing
     if user.get("role") == "owner" or not user.get("workspaces"):
         return None
     return set(user["workspaces"])

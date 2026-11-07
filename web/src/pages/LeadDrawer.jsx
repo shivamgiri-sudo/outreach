@@ -7,6 +7,7 @@ import LeadMeetings from "./LeadMeetings.jsx";
 import LeadActivity from "./LeadActivity.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
 import OtherContacts from "./OtherContacts.jsx";
+import { ContactPoints, LeadPeople } from "./LeadContacts.jsx";
 import SequencePicker from "./sequences/SequencePicker.jsx";
 import { useAlert, useConfirm } from "../Dialog.jsx";
 import LeadFlows from "./flows/LeadFlows.jsx";
@@ -100,6 +101,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
       <p className="sub">{lead.contact_name} {lead.title && `· ${lead.title}`}<br />{lead.email} {lead.phone && `· ${lead.phone}`}<PhoneTag lead={lead} />
         <br /><small>Source: {sourceLabel(lead)}</small></p>
       {canWrite() && canEditContacts() && <EditDetails lead={lead} onSaved={(r) => setLead(r)} />}
+      <ContactPoints lead={lead} onLead={setLead} />
       <div className="tip">
         <b>Suggested next step ({s.priority} priority, via {s.channel}):</b> {s.action}
         {s.pitch && <p style={{ margin: "6px 0 0" }}><b>What to say:</b> {s.pitch}</p>}
@@ -107,6 +109,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
       <LeadStage lead={lead} onLead={setLead} onError={setError} />
       {/* SLOT: overview panels (LeadOwner, LeadTags, OtherContacts …) — one line each */}
       <LeadAssign lead={lead} onChanged={setLead} />
+      <LeadPeople lead={lead} onLead={setLead} />
       <OtherContacts lead={lead} />
       <LeadMeetings lead={lead} onChanged={load} />
       {canWrite() && <>

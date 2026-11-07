@@ -11,7 +11,8 @@ from app.routes_auth import ANYONE, needed_role
 ADMIN = "admin-pass-123"
 WEB = Path(__file__).resolve().parent.parent / "web" / "src"
 API_FILES = ("api.js", "opsApi.js", "prospectsApi.js")
-OPEN_WRITES = {("POST", "/api/login"), ("POST", "/api/linkedin-runner/pair")}   # no user yet: sign in, swap a one-time runner code
+OPEN_WRITES = {("POST", "/api/login"), ("POST", "/api/linkedin-runner/pair"),   # no user yet: sign in, swap a one-time runner code
+               ("POST", "/api/password/forgot"), ("POST", "/api/password/reset")}   # forgot password: no login by design
 CALL = re.compile(r"""(?:request|apiRequest|upload)\(\s*([`"'])(/api[^`"']*)\1(.{0,200})""")
 
 
@@ -85,5 +86,7 @@ def test_every_page_calling_a_refused_write_checks_the_role():
 
 def test_can_write_matches_the_server_roles():
     text = (WEB / "api.js").read_text(encoding="utf-8")
-    assert 'export const canWrite = () => role === "owner" || role === "caller";' in text
+    assert 'export const canWrite = () => role === "owner" || role === "caller" || role === "admin";' in text
+    from app.routes_auth import allowed
+    assert allowed("admin", "caller") and not allowed("admin", "owner")
     assert needed_role("POST", "/api/stories") == "caller" and needed_role("PUT", "/api/settings") == "owner"

@@ -9,7 +9,8 @@ export const setRole = (r) => { role = r || "owner"; };
 export const isOwner = () => role === "owner";
 // Viewers are read only: the server refuses every change they send, so pages hide write controls behind canWrite().
 // Owner-only changes (settings, integrations, flows, sequence library...) use isOwner(), as the server's routes_auth.py.
-export const canWrite = () => role === "owner" || role === "caller";
+export const canWrite = () => role === "owner" || role === "caller" || role === "admin";
+export const isWorkspaceAdmin = () => role === "admin";
 let canEdit = true;
 export const canEditContacts = () => canEdit;
 export const setCanEditContacts = (v) => { canEdit = v !== false; };
@@ -224,6 +225,14 @@ export const api = {
   testIntegration: (id, to = "") => request(`/api/integrations/${id}/test`, { method: "POST", body: { to } }),
   authStatus: () => request("/api/auth/status"),
   login: (password, email = "") => request("/api/login", { method: "POST", body: { password, email } }),
+  forgotPassword: (email) => request("/api/password/forgot", { method: "POST", body: { email } }),
+  resetPassword: (token, password) => request("/api/password/reset", { method: "POST", body: { token, password } }),
+  addContactPoint: (id, kind, value) => request(`/api/leads/${id}/contact-points`, { method: "POST", body: { kind, value } }),
+  removeContactPoint: (id, kind, value) => request(`/api/leads/${id}/contact-points/remove`, { method: "POST", body: { kind, value } }),
+  primaryContactPoint: (id, kind, value) => request(`/api/leads/${id}/contact-points/primary`, { method: "POST", body: { kind, value } }),
+  addPerson: (id, body) => request(`/api/leads/${id}/people`, { method: "POST", body }),
+  changePerson: (id, pid, body) => request(`/api/leads/${id}/people/${pid}`, { method: "PUT", body }),
+  removePerson: (id, pid) => request(`/api/leads/${id}/people/${pid}`, { method: "DELETE" }),
   logout: () => request("/api/logout", { method: "POST" }),
   me: () => request("/api/me"),
   changeOwnPassword: (current, next) => request("/api/me/password", { method: "POST", body: { current, new: next } }),
@@ -361,7 +370,7 @@ export const api = {
   myDay: () => request("/api/my-day"),
   saveTargets: (targets, scope = "me") => request("/api/my-day/targets", { method: "PUT", body: { scope, targets } }),
   callQueue: (mine = false) => request(`/api/call-queue${mine ? "?mine=true" : ""}`),
-  callOutcome: (id, outcome, notes = "", callbackAt = null) => request(`/api/leads/${id}/call-outcome`, { method: "POST", body: { outcome, notes, callback_at: callbackAt } }),
+  callOutcome: (id, outcome, notes = "", callbackAt = null, to = "") => request(`/api/leads/${id}/call-outcome`, { method: "POST", body: { outcome, notes, callback_at: callbackAt, to } }),
   callScript: () => request("/api/call-script"),
   saveCallScript: (script, objections) => request("/api/call-script", { method: "PUT", body: { script, objections } }),
   resetCallScript: () => request("/api/call-script", { method: "DELETE" }),
