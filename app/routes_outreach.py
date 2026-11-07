@@ -54,6 +54,9 @@ class SettingsBody(BaseModel):
     retention_days_cold: Optional[int] = None
     privacy_url: Optional[str] = None
     whatsapp_template_params: Optional[dict] = None       # {template: how many values it takes, or their names in order}
+    track_email: Optional[bool] = None                    # open / click tracking on outreach emails (tracking.py)
+    alerts_email: Optional[bool] = None                   # alerts also go by email (alerts.py)
+    alert_managers: Optional[list] = None                 # names that also get yes / meeting / response-time alerts
 
 
 class LiveSendingBody(BaseModel):
@@ -254,6 +257,11 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
                 isinstance(v, list) and all(n in NAMED_PARAMS for n in v))
             if not all(isinstance(k, str) and ok(v) for k, v in (changes["whatsapp_template_params"] or {}).items()):
                 raise HTTPException(400, "WhatsApp template values must be a count (0-4) or a list of: " + ", ".join(NAMED_PARAMS))
+        if "alert_managers" in changes:
+            names = [" ".join(str(n).split())[:120] for n in changes["alert_managers"] or [] if isinstance(n, str) and n.strip()]
+            if len(names) > 20:
+                raise HTTPException(400, "At most 20 people get the manager alerts.")
+            changes["alert_managers"] = list(dict.fromkeys(names))
         if "privacy_url" in changes:
             changes["privacy_url"] = changes["privacy_url"].strip()
             parsed = urlparse(changes["privacy_url"])

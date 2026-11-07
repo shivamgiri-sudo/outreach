@@ -17,9 +17,10 @@ MAX_LINKS = 500
 LABEL = {"leads_added": "Leads added", "calls": "Calls", "calls_connected": "Calls connected", "interested": "Interested",
          "not_interested": "Not interested", "follow_ups": "Follow-ups asked", "bad_numbers": "Wrong / inactive numbers",
          "emails_sent": "Emails sent", "whatsapp_sent": "WhatsApp sent", "linkedin": "LinkedIn steps", "replies": "Replies received",
-         "meetings": "Meetings", "notes": "Notes", "stage_changes": "Stage changes", "tasks_done": "Tasks done"}
+         "meetings": "Meetings", "notes": "Notes", "stage_changes": "Stage changes", "tasks_done": "Tasks done",
+         "opens": "Emails opened", "clicks": "Links clicked"}
 TILES = ("leads_added", "calls", "calls_connected", "interested", "not_interested", "follow_ups", "emails_sent", "replies", "meetings")
-DAY_COLS = ("calls", "calls_connected", "interested", "not_interested", "follow_ups", "emails_sent", "whatsapp_sent", "replies", "meetings")
+DAY_COLS = ("calls", "calls_connected", "interested", "not_interested", "follow_ups", "emails_sent", "opens", "clicks", "replies", "meetings")
 
 
 def _hash(token: str) -> str:

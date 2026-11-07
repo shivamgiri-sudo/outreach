@@ -302,6 +302,9 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
     dialled = to if to and to in [lead.get("phone"), *(lead.get("phones") or [])] else (lead.get("phone") or "")
     activity = log_activity(store, lead_id, "call", {"outcome": outcome, "notes": notes, "by": who, "to": dialled})
     result = {"activity": activity, "task": None, "stage": lead["stage"], "consent_recorded": False, "phone_flagged": False}
+    if outcome in ("interested", "meeting_booked"):
+        from . import alerts
+        alerts.safe(store, "call_interested", lead_id, f"{who} logged a call: {outcome.replace('_', ' ')}." + (f" Notes: {notes[:300]}" if notes else ""), managers=True)
     stamp = iso(now)
     if outcome == "call_back":
         result["task"] = add_task(store, lead_id, "call", notes or "They asked to be called back.", due_at=callback_at, owner=who,

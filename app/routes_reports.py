@@ -12,6 +12,11 @@ from .hygiene import normalise_email
 PUBLIC_PREFIX = "/api/reports/file/"
 
 
+class SlaBody(BaseModel):
+    first_touch_hours: float = Field(gt=0, le=720)
+    reply_hours: float = Field(gt=0, le=720)
+
+
 class EmailBody(BaseModel):
     date_from: str = Field(default="", alias="from", max_length=10)
     to_date: str = Field(default="", alias="to", max_length=10)
@@ -40,6 +45,23 @@ def make_router(store, base_url_of, sender) -> APIRouter:
               who: str = Query("", max_length=120), kind: str = Query("", max_length=20)):
         rng = period(date_from, date_to, days)
         return {**daily_report.build(store, rng, who, kind), "range": analytics_range.public_range(rng)}
+
+    @router.get("/api/reports/sla")
+    def response_times(date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"), days: Optional[int] = None):
+        from . import sla
+        rng = period(date_from, date_to, days)
+        return {**sla.measure(store, rng), "range": analytics_range.public_range(rng)}
+
+    @router.put("/api/reports/sla-targets")
+    def sla_targets(body: SlaBody, request: Request):
+        role = (getattr(request.state, "user", None) or {"role": "owner"}).get("role")
+        if role != "owner":
+            raise HTTPException(403, "Only an owner can change the response-time targets.")
+        store.update("settings", lambda s: {**s, "sla_first_touch_hours": body.first_touch_hours, "sla_reply_hours": body.reply_hours})
+        audit.record(store, getattr(request.state, "user", None), "settings.change", "response-time targets",
+                     f"first touch {body.first_touch_hours} h, reply {body.reply_hours} h")
+        from . import sla
+        return sla.targets(store)
 
     @router.get("/api/reports/daily.csv")
     def daily_csv(request: Request, date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"),

@@ -5,15 +5,16 @@ import { ErrorState } from "../states.jsx";
 import PeriodPicker, { usePeriod } from "../PeriodPicker.jsx";
 import { HBars, SERIES, TrendChart } from "../charts.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
+import ResponseTimes from "./ResponseTimes.jsx";
 
 // Reports: the daily report (what was done each day), each person's numbers, and the full activity log with the exact
 // number / email / LinkedIn profile used. Download as CSV (owners and workspace admins).
 const LABEL = { leads_added: "Leads added", calls: "Calls", calls_connected: "Calls connected", interested: "Interested", not_interested: "Not interested",
   follow_ups: "Follow-ups", bad_numbers: "Wrong / inactive numbers", emails_sent: "Emails sent", whatsapp_sent: "WhatsApp sent", linkedin: "LinkedIn steps",
-  replies: "Replies received", meetings: "Meetings", notes: "Notes", stage_changes: "Stage changes", tasks_done: "Tasks done" };
+  replies: "Replies received", meetings: "Meetings", notes: "Notes", stage_changes: "Stage changes", tasks_done: "Tasks done", opens: "Emails opened", clicks: "Links clicked" };
 const KINDS = { "": "All actions", call: "Calls", email_sent: "Emails sent", whatsapp_sent: "WhatsApp sent", linkedin: "LinkedIn", reply: "Replies",
-  stage: "Stage changes", note: "Notes", meeting: "Meetings", lead_added: "Leads added", task_done: "Tasks done" };
-const DAY_COLS = ["leads_added", "calls", "calls_connected", "interested", "not_interested", "follow_ups", "emails_sent", "whatsapp_sent", "linkedin", "replies", "meetings", "tasks_done"];
+  stage: "Stage changes", note: "Notes", meeting: "Meetings", lead_added: "Leads added", task_done: "Tasks done", email_open: "Emails opened", email_click: "Links clicked" };
+const DAY_COLS = ["leads_added", "calls", "calls_connected", "interested", "not_interested", "follow_ups", "emails_sent", "opens", "clicks", "whatsapp_sent", "linkedin", "replies", "meetings", "tasks_done"];
 const pretty = (s) => String(s || "").replace(/_/g, " ");
 
 function istDay(d) {
@@ -80,10 +81,11 @@ export default function Reports() {
             ))}
           </div>
           <div className="tabs scroll" role="tablist" aria-label="Report sections" style={{ marginTop: 14 }}>
-            {[["daily", "Daily report"], ["team", "By person"], ["log", "Activity log"]].map(([id, label]) => (
+            {[["daily", "Daily report"], ["team", "By person"], ["log", "Activity log"], ["sla", "Response times"]].map(([id, label]) => (
               <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>{label}</button>
             ))}
           </div>
+          {tab === "sla" && <ResponseTimes period={period} />}
           {tab === "daily" && (
             <>
               <div className="card"><h3 style={{ marginTop: 0 }}>Each day</h3>

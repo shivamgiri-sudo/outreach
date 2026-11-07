@@ -123,6 +123,8 @@ def book(store, lead_id: str, body: dict, transport=request, resolver=None, now:
         meeting["notes"] = spec["notes"]
     updated = _update_lead(store, lead_id, lambda l: {**l, "meetings": [*(l.get("meetings") or []), meeting],
                                                       "timeline": [*l["timeline"], _event("meeting", f"Meeting booked: {title}, {ist_label(start)}")]})
+    from .. import alerts
+    alerts.safe(store, "meeting", lead_id, f"Meeting booked: {title}, {ist_label(start)}.", managers=True)
     invite = None
     if needs_our_invite(pid, body.get("send_invite")):
         invite = send_invite(store, updated, meeting, sender, "REQUEST")

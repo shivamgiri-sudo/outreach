@@ -144,6 +144,9 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
         fire(store, "reply", label, lead_id)
         if outcome["stage_to"] != outcome["stage_from"]:
             fire(store, "stage_change", outcome["stage_to"], lead_id)   # "stage changes" flows and rules see it too
+    if label not in ("auto_reply", "bounce") and not (effect == "applied" and label == "interested"):   # a yes gets its own alert
+        from . import alerts
+        alerts.safe(store, "reply", lead_id, f"Reply by {channel} ({label.replace('_', ' ')}): {clean[:400]}")
     return {"label": label, "effect": effect, "ai_label": ai_label}
 
 

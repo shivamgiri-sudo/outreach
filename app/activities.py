@@ -121,6 +121,8 @@ def on_became_interested(store, lead_id: str, why: str = "Said yes") -> dict:
     company = lead.get("company") or lead.get("domain") or "this lead"
     campaign = next((c.get("name") for c in store.read("campaigns") if lead.get("campaign_id") and c.get("id") == lead["campaign_id"]), None)
     origin = f" Found by campaign {campaign}." if campaign else ""
+    from . import alerts
+    alerts.safe(store, "interested", lead_id, f"{why}. A call task is on {caller_name(store)}'s list.", managers=True)
     return add_task(store, lead_id, "call", f"{why}. Call {company} through PD only, before 18:55.{origin}",
                     due_at=next_call_slot(now_utc()), owner=caller_name(store), priority="high", source="auto", dedupe_open=True)
 

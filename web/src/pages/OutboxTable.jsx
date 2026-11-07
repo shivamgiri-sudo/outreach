@@ -94,7 +94,9 @@ export default function OutboxTable({ refreshKey }) {
                 <td data-label="Step">{m.step}{m.manual ? <><br /><small>one-off{m.by ? ` by ${m.by}` : ""}</small></> : m.by && <><br /><small>sent now by {m.by}</small></>}{m.campaign && <><br /><small>{m.campaign}</small></>}</td>
                 <td data-label="Subject">{m.subject}<br /><small className="sub-inline">{m.preview}</small></td>
                 <td data-label="Status"><span className={`pill ${STATUS_PILL[m.delivered_at ? "delivered" : m.status] ?? "warn"}`} title={m.error || ""}>
-                  {m.delivered_at ? "delivered" : STATUS_LABEL[m.status] || m.status}</span></td>
+                  {m.delivered_at ? "delivered" : STATUS_LABEL[m.status] || m.status}</span>
+                  {m.opens > 0 && <><br /><span className="pill" data-testid="opened-pill" title={`First opened ${istLabel(m.opened_at)}. Mail apps can open emails by themselves, so treat opens as a rough sign.`}>opened{m.opens > 1 ? ` ×${m.opens}` : ""}</span></>}
+                  {m.clicks > 0 && <> <span className="pill ok" data-testid="clicked-pill" title={`First click ${istLabel(m.clicked_at)}`}>clicked{m.clicks > 1 ? ` ×${m.clicks}` : ""}</span></>}</td>
                 <td><button className="btn ghost" onClick={(e) => { e.stopPropagation(); setViewing(m.key); }} aria-label={`View email to ${m.to}`}>View</button></td>
               </tr>
             ))}</tbody>

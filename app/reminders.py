@@ -183,4 +183,12 @@ def _no_show_followups(store, now: datetime) -> int:
 def run_reminders(store, now: datetime, sender=None, base_url: str = "") -> dict:
     return {"task_reminders": _task_reminders(store, now, sender),
             "meeting_reminders": _meeting_reminders(store, now, sender, public_base_url(store, base_url)),
-            "no_show_tasks": _no_show_followups(store, now)}
+            "no_show_tasks": _no_show_followups(store, now), "sla_alerts": _sla(store, now)}
+
+
+def _sla(store, now: datetime) -> int:
+    from . import sla
+    try:
+        return sla.check(store, now)
+    except Exception:                               # response-time alerts must never stop the other reminders
+        return 0

@@ -17,7 +17,7 @@ from .source_stats import real
 LOG_LIMIT = 5000
 CONNECTED = {"connected", "interested", "not_interested", "meeting_booked", "call_back"}
 COUNTERS = ("leads_added", "calls", "calls_connected", "interested", "not_interested", "follow_ups", "bad_numbers", "emails_sent",
-            "whatsapp_sent", "linkedin", "replies", "meetings", "notes", "stage_changes", "tasks_done")
+            "whatsapp_sent", "linkedin", "replies", "meetings", "notes", "stage_changes", "tasks_done", "opens", "clicks")
 SYSTEM = "System"
 
 
@@ -71,6 +71,9 @@ def activity_log(store, rng: dict) -> list:
                 continue
             if is_person_reply(e):
                 rows.append(_row(at, "", lead, "reply", "Reply received", e.get("label") or e.get("kind") or "", e.get("from") or e.get("channel") or "", e.get("text")))
+            elif e.get("kind") in ("email_open", "email_click"):
+                rows.append(_row(at, "", lead, e["kind"], "Email opened" if e["kind"] == "email_open" else "Link clicked", "",
+                                 lead.get("email") or "", e.get("text")))
             elif e.get("kind") == "stage":
                 rows.append(_row(at, e.get("by"), lead, "stage", "Stage changed", _stage_target(e) or "", "", e.get("text")))
             elif e.get("kind") == "linkedin" and e.get("by"):
@@ -117,6 +120,10 @@ def _count(rows: list) -> Counter:
             c["stage_changes"] += 1
         elif k == "task_done":
             c["tasks_done"] += 1
+        elif k == "email_open":
+            c["opens"] += 1
+        elif k == "email_click":
+            c["clicks"] += 1
     c["interested"], c["not_interested"] = len(yes), len(no)
     return c
 

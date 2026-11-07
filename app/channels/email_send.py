@@ -202,7 +202,8 @@ def designed(store, message: dict, base_url: str) -> str:
     if store.read("settings").get("html_email") is False or not message.get("body"):
         return ""
     from ..email_html import render
-    return render(message["body"], base_url, brand=store)
+    from ..tracking import decorate
+    return decorate(store, render(message["body"], base_url, brand=store), message, base_url)
 
 
 def invite_attachments(message: dict) -> list:

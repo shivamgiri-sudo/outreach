@@ -48,7 +48,8 @@ def _summary(key: str, m: dict, lead: Optional[dict], campaigns: dict) -> dict:
             "to": m.get("to"), "subject": m.get("subject"), "step": m.get("step"), "variant": m.get("variant"), "status": m.get("status"),
             "sent_at": m.get("sent_at"), "delivered_at": m.get("delivered_at"), "error": m.get("error"), "by": m.get("by"),
             "manual": _is_manual(m), "campaign_id": cid, "campaign": campaigns.get(cid, "") if cid else "",
-            "preview": " ".join(str(m.get("body") or "").split())[:140]}
+            "preview": " ".join(str(m.get("body") or "").split())[:140],
+            "opens": int(m.get("opens") or 0), "clicks": int(m.get("clicks") or 0), "opened_at": m.get("opened_at"), "clicked_at": m.get("clicked_at")}
 
 
 def search(store, status: str = "", step: str = "", date_from: str = "", date_to: str = "", campaign_id: str = "", kind: str = "",

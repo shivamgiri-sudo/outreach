@@ -55,6 +55,7 @@ from .routes_analytics import make_router as make_analytics_router
 from .routes_contacts import make_router as make_contacts_router
 from .routes_password import PUBLIC_PATHS as PASSWORD_PUBLIC_PATHS, make_router as make_password_router
 from .routes_reports import PUBLIC_PREFIX as REPORT_FILE_PREFIX, make_router as make_reports_router
+from .routes_tracking import PUBLIC_PREFIX as TRACK_PREFIX, make_router as make_tracking_router
 from . import extension_api
 from .routes_extension import make_router as make_extension_router
 from .routes_compliance import make_router as make_compliance_router
@@ -247,6 +248,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                      # Forgot password (always the same answer) and the signed report download link (the token is the key).
                      or (path in PASSWORD_PUBLIC_PATHS and request.method == "POST")
                      or (path.startswith(REPORT_FILE_PREFIX) and request.method in ("GET", "HEAD"))
+                     or (path.startswith(TRACK_PREFIX) and request.method in ("GET", "HEAD"))      # email open / click tracking
                      or (path == "/api/activation/event" and webhook_secret(store, routes_growth.WEBHOOK_SECRET)
                          and hmac.compare_digest(request.headers.get("x-webhook-secret", "").encode("utf-8", "replace"),
                                                  webhook_secret(store, routes_growth.WEBHOOK_SECRET).encode("utf-8")))
@@ -300,6 +302,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
 
     email_sender = make_email_sender(store, email_transport, BASE_URL, channel_transport, smtp_factory)
     transactional_sender = make_transactional_sender(store, email_transport, channel_transport, smtp_factory)
+    from . import alerts as alerts_mod
+    alerts_mod.SENDER = transactional_sender
 
     def find(lead_id: str) -> tuple:
         leads = store.read("leads")
@@ -548,6 +552,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_reports_router(store, base_url_of, transactional_sender))
     app.include_router(make_password_router(store, base_url_of, transactional_sender))
     app.include_router(make_contacts_router(store, _present))
+    app.include_router(make_tracking_router(store, base_url_of))
     app.include_router(make_linkedin_router(store))
     app.include_router(make_lists_router(store, _present))
     app.include_router(make_companies_router(store))
