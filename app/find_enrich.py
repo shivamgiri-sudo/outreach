@@ -1,9 +1,12 @@
 """Fill in contacts for leads the owner already has (the second half of "Find & enrich leads").
 
-Per lead, cheapest first: the company's own public contact pages (robots.txt respected, free), then Apollo (organisation
-lookup, people search by domain for HR / talent / founder titles, one email reveal), then Hunter and Firecrawl when they
-are connected. Only empty fields are filled, every value keeps where it came from, closed leads are never picked, and
-paid calls stop at the credit limit. Apollo and Hunter request shapes follow their public docs and are tested with fakes
+Per lead, cheapest first: a fresh verified email already in the prospect database (free, see app/prospect_waterfall.py),
+the company's own public contact pages (robots.txt respected, free), then the paid APIs in the owner's order (priority,
+then cost per lookup; by default Apollo: organisation lookup, people search by domain for HR / talent / founder titles,
+one email reveal; then Hunter and Firecrawl when they are connected). Email lookups stop once the lead has an email.
+Only empty fields are filled, every value keeps where it came from, closed leads are never picked, and paid calls stop
+at the run's credit limit and at the owner's monthly lookup budget; every paid call is written to the spend ledger
+(pdb_lookups) through the run's Meter. Apollo and Hunter request shapes follow their public docs and are tested with fakes
 only: confirm with one small live run before relying on them.
 """
 import urllib.parse
@@ -11,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from . import campaign_pipeline as pipe
+from . import prospect_waterfall as cost
 from . import campaign_sources as src
 from .apollo import match_person_by_id
 from .enrich import find_public_contacts
@@ -30,19 +34,43 @@ MAX_OTHER_CONTACTS = 5
 NETWORK_ERRORS = (OSError, ValueError)
 APOLLO_ORG_ENRICH_URL = f"{src.APOLLO_BASE}/organizations/enrich"
 SEARCH_FIELDS = ("contact_name", "title", "linkedin_url", "apollo_person_id")
+PAID = ("apollo", "hunter", "firecrawl")
+DEFAULT_COSTS = {"apollo": 1.0, "hunter": 1.0, "firecrawl": 3.0}    # used only when a provider has no owner/registry cost
+
+
+def make_meter(store, now=None):
+    """The spend guard + ledger for one fill run (owner's monthly budget, costs and order from Prospect search > Spend)."""
+    return cost.Meter(store, now, defaults=DEFAULT_COSTS)
 
 
 class Context:
     """Everything one run shares: transports, connected providers, the credit budget, and what went wrong."""
 
-    def __init__(self, transports: dict, status: dict, titles: list, cap: int, taken: set, suppressed: set, erased: set):
+    def __init__(self, transports: dict, status: dict, titles: list, cap: int, taken: set, suppressed: set, erased: set, meter=None):
         self.transports, self.status, self.titles, self.cap = transports, status, titles, cap
         self.taken, self.suppressed, self.erased = taken, suppressed, erased
-        self.credits, self.disabled, self.out_of_budget = 0, set(), False
+        self.credits, self.disabled, self.out_of_budget, self.budget_hit = 0, set(), False, False
+        self.meter = meter                      # cost.Meter: cache, monthly budget, ledger (None = credit limit only)
         self.errors: dict = {}                  # (source, message) -> how many times
 
     def usable(self, pid: str) -> bool:
-        return bool(self.status.get(pid, {}).get("configured")) and pid not in self.disabled
+        return (bool(self.status.get(pid, {}).get("configured")) and pid not in self.disabled
+                and (self.meter is None or self.meter.enabled(pid)))
+
+    def within_budget(self, pid: str) -> bool:
+        """False (and the run stops) when a paid lookup would pass the owner's monthly budget."""
+        if self.meter is None or self.meter.can_spend(pid):
+            return True
+        self.out_of_budget = self.budget_hit = True
+        self.error("budget", self.meter.message())
+        return False
+
+    def lookup(self, pid: str, field: str, hit: bool, target: str = "") -> None:
+        if self.meter is not None:
+            self.meter.record(pid, field, bool(hit), target)
+
+    def order(self, ids) -> list:
+        return self.meter.order(ids) if self.meter is not None else list(ids)
 
     def can_spend(self, n: int) -> bool:
         if self.credits + n > self.cap:
@@ -51,7 +79,7 @@ class Context:
         return True
 
     def error(self, source: str, message: str) -> None:
-        key = (pipe.SOURCE_LABELS.get(source, source), message)
+        key = ("Lookup budget" if source == "budget" else pipe.SOURCE_LABELS.get(source, source), message)
         self.errors[key] = self.errors.get(key, 0) + 1
 
     def reject(self, pid: str) -> None:
@@ -194,18 +222,43 @@ def _crawl(work: dict, out: Outcome, domain: str, ctx: Context) -> None:
     _fill_contact(work, out, domain, emails, phones, "website", ctx)
 
 
-def _paid(pid: str, cost: int, ctx: Context, call):
-    """One paid call within the credit limit. Returns None when it was skipped or failed (the reason is recorded)."""
-    if not ctx.usable(pid) or not ctx.can_spend(cost):
+def _paid(pid: str, credits: int, ctx: Context, call, field: str = "email", target: str = "", hit=bool):
+    """One paid call within the credit limit and the monthly budget, written to the spend ledger (spend is counted only
+    when `hit(result)` says the answer was usable). Returns None when it was skipped or failed (the reason is recorded)."""
+    if not ctx.usable(pid) or not ctx.can_spend(credits) or not ctx.within_budget(pid):
         return None
     try:
-        ctx.credits += cost
-        return call()
+        ctx.credits += credits
+        result = call()
     except (PermissionError, src.KeyRejected):
         ctx.reject(pid)
     except NETWORK_ERRORS as exc:
         ctx.error(pid, f"Some lookups failed (last: {str(exc)[:120]}).")
+    else:
+        ctx.lookup(pid, field, hit(result), target)
+        return result
+    ctx.lookup(pid, field, False, target)
     return None
+
+
+def _cached(work: dict, out: Outcome, domain: str, ctx: Context) -> bool:
+    """Cache first: a fresh verified/valid email for this person (or the best-ranked one at the company) in the prospect
+    database costs nothing and ends the paid lookups. Recorded in the ledger as a cached lookup."""
+    if ctx.meter is None or work.get("email"):
+        return False
+    hit = ctx.meter.cached_email(domain, work.get("contact_name") or "", ctx.titles)
+    if not hit or not _usable_emails([{"value": hit["email"]}], ctx) or business_domain(hit["email"]) not in (None, domain):
+        return False
+    _fill_contact(work, out, domain, [{"value": hit["email"], "source": hit["source_url"], "name": hit.get("name") or "",
+                                       "title": hit.get("title") or ""}], [], "prospect_db", ctx)
+    if not work.get("email"):
+        return False
+    ctx.meter.record("prospect_db", "email", True, domain, cached=True)
+    if hit.get("linkedin_url") and not work.get("linkedin_url"):
+        work["linkedin_url"] = out.changes["linkedin_url"] = hit["linkedin_url"]
+        out.prov["linkedin_url"] = "prospect_db"
+    out.notes.append("from the prospect database (no lookup spent)")
+    return True
 
 
 def _attach_people(work: dict, out: Outcome, people: list) -> Optional[dict]:
@@ -229,13 +282,13 @@ def _attach_people(work: dict, out: Outcome, people: list) -> Optional[dict]:
 
 def _apollo(work: dict, out: Outcome, domain: str, ctx: Context) -> None:
     if not work.get("apollo_org_id"):
-        org = _paid("apollo", ORG_LOOKUP_CREDITS, ctx, lambda: apollo_org_by_domain(domain, ctx))
+        org = _paid("apollo", ORG_LOOKUP_CREDITS, ctx, lambda: apollo_org_by_domain(domain, ctx), "company", domain)
         if org:
             for field in ("apollo_org_id", "company_size", "city"):
                 if org.get(field) and not work.get(field):
                     work[field] = out.changes[field] = org[field]
                     out.prov[field] = "apollo:organization lookup"
-    people = _paid("apollo", PEOPLE_SEARCH_CREDITS, ctx, lambda: apollo_people_at(domain, ctx))
+    people = _paid("apollo", PEOPLE_SEARCH_CREDITS, ctx, lambda: apollo_people_at(domain, ctx), "people", domain)
     if not people:
         return
     primary = _attach_people(work, out, people)
@@ -246,7 +299,8 @@ def _apollo(work: dict, out: Outcome, domain: str, ctx: Context) -> None:
                                            "title": primary["title"]}], [], "apollo", ctx)
     elif primary["apollo_person_id"]:
         person = _paid("apollo", REVEAL_CREDITS, ctx, lambda: match_person_by_id(ctx.status["apollo"]["config"].get("api_key", ""),
-                                                                                 primary["apollo_person_id"], ctx.transports["post"]) or {})
+                                                                                 primary["apollo_person_id"], ctx.transports["post"]) or {},
+                       "email", domain, hit=_revealed)
         email = normalise_email((person or {}).get("email"))
         if email and not email.startswith(src.APOLLO_LOCKED_PREFIX) and business_domain(email) in (None, domain):
             if person.get("name") and " " in person["name"] and (work.get("contact_name") or "").count(" ") == 0:
@@ -255,18 +309,27 @@ def _apollo(work: dict, out: Outcome, domain: str, ctx: Context) -> None:
                                                "title": person.get("title") or ""}], [], "apollo", ctx)
 
 
-def _other_providers(work: dict, out: Outcome, domain: str, ctx: Context) -> None:
-    for pid, cost in (("hunter", 1), ("firecrawl", 3)):
-        if work.get("email") or not ctx.usable(pid):
-            continue
-        found = _paid(pid, cost, ctx, lambda p=pid: PROVIDERS[p]["find"](domain, work.get("company", ""), ctx.status[p]["config"],
-                                                                         ctx.transports, work.get("contact_name") or ""))
-        if found is None:
-            continue
-        ctx.credits += found.get("credits_used", cost) - cost            # replace the reserved amount by what it reports
-        if found.get("error"):
-            ctx.error(pid, found["error"])
-        _fill_contact(work, out, domain, found.get("emails") or [], found.get("phones") or [], pid, ctx)
+def _revealed(person) -> bool:
+    email = normalise_email((person or {}).get("email"))
+    return bool(email and not email.startswith(src.APOLLO_LOCKED_PREFIX))
+
+
+OTHER_CREDITS = {"hunter": 1, "firecrawl": 3}
+
+
+def _other_provider(pid: str, work: dict, out: Outcome, domain: str, ctx: Context) -> None:
+    credits = OTHER_CREDITS[pid]
+    if work.get("email") or not ctx.usable(pid):
+        return
+    found = _paid(pid, credits, ctx, lambda: PROVIDERS[pid]["find"](domain, work.get("company", ""), ctx.status[pid]["config"],
+                                                                    ctx.transports, work.get("contact_name") or ""),
+                  "email", domain, hit=lambda r: bool((r or {}).get("emails")))
+    if found is None:
+        return
+    ctx.credits += found.get("credits_used", credits) - credits          # replace the reserved amount by what it reports
+    if found.get("error"):
+        ctx.error(pid, found["error"])
+    _fill_contact(work, out, domain, found.get("emails") or [], found.get("phones") or [], pid, ctx)
 
 
 def enrich_lead(lead: dict, ctx: Context) -> Outcome:
@@ -274,7 +337,8 @@ def enrich_lead(lead: dict, ctx: Context) -> Outcome:
     out, work = Outcome(), dict(lead)
     domain = valid_domain(work.get("domain"))
     if not domain and ctx.usable("apollo") and (work.get("company") or "").strip():
-        org = _paid("apollo", ORG_LOOKUP_CREDITS, ctx, lambda: apollo_org_by_name(work["company"], ctx))
+        org = _paid("apollo", ORG_LOOKUP_CREDITS, ctx, lambda: apollo_org_by_name(work["company"], ctx), "domain", work["company"],
+                    hit=lambda r: bool(r and valid_domain(r.get("domain"))))
         if org and valid_domain(org["domain"]):
             domain = valid_domain(org["domain"])
             for field in ("website", "domain", "apollo_org_id"):
@@ -285,11 +349,19 @@ def enrich_lead(lead: dict, ctx: Context) -> Outcome:
     if not domain:
         ctx.error("website", "Some leads have no website, and Apollo could not supply one (not connected, or no match), so there was nothing to look up for them.")
         return out
+    _cached(work, out, domain, ctx)
     _crawl(work, out, domain, ctx)
-    if ctx.usable("apollo") and (not work.get("email") or not work.get("contact_name")):
-        _apollo(work, out, domain, ctx)
-    _other_providers(work, out, domain, ctx)
+    for pid in ctx.order(PAID):
+        if ctx.out_of_budget:
+            break
+        if pid == "apollo":
+            if ctx.usable("apollo") and (not work.get("email") or not work.get("contact_name")):
+                _apollo(work, out, domain, ctx)
+        else:
+            _other_provider(pid, work, out, domain, ctx)
     out.stop = ctx.out_of_budget
+    if ctx.meter is not None:
+        ctx.meter.flush()                       # the ledger is written per lead, so a crash mid-run loses no spend
     return out
 
 
