@@ -1,0 +1,83 @@
+# The office-runner Windows installer on a real Windows machine: paste the portal's one-liner into Windows PowerShell 5.1
+# and into PowerShell 7, check the install, install again over the running copy, uninstall.
+# A throwaway local portal only (127.0.0.1, fresh data file, generated password, no LinkedIn accounts): nothing here talks
+# to the live server or to LinkedIn.
+name: office-runner-windows
+
+on:
+  push:
+    branches: [ci/windows-runner]
+    paths:
+      - deploy/office-runner/**
+      - app/linkedin_runner*.py
+      - app/routes_linkedin_runner.py
+      - tools/linkedin_runner.mjs
+      - tools/linkedin_agent_pool.mjs
+      - deploy/linkedin-runtime/**
+      - scripts/ci/office_runner_windows.ps1
+      - .github/workflows/office-runner-windows.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: install (${{ matrix.shell }})
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [powershell, pwsh]
+    env:
+      OUTREACH_BASE_URL: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install the API's Python packages
+        run: python -m pip install -r requirements.txt
+
+      - name: Start a throwaway portal on 127.0.0.1:8000
+        shell: pwsh
+        run: |
+          $logs = Join-Path $env:RUNNER_TEMP 'office-runner-logs'
+          New-Item -ItemType Directory -Force -Path $logs | Out-Null
+          $password = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(24))
+          Write-Output "::add-mask::$password"
+          "OUTREACH_ADMIN_PASSWORD=$password" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          $env:OUTREACH_ADMIN_PASSWORD = $password
+          $env:OUTREACH_DATA_FILE = Join-Path $env:RUNNER_TEMP 'portal\store.json'
+          New-Item -ItemType Directory -Force -Path (Split-Path $env:OUTREACH_DATA_FILE) | Out-Null
+          Start-Process -FilePath python -ArgumentList '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000', '--workers', '1' `
+            -WorkingDirectory $env:GITHUB_WORKSPACE -WindowStyle Hidden `
+            -RedirectStandardOutput (Join-Path $logs 'api.out.log') -RedirectStandardError (Join-Path $logs 'api.err.log')
+          for ($i = 0; $i -lt 60; $i++) {
+            try { $s = Invoke-RestMethod http://127.0.0.1:8000/api/auth/status; if ($s.auth_required) { Write-Output 'Portal is up (login required).'; exit 0 } } catch { }
+            Start-Sleep -Seconds 1
+          }
+          Get-Content (Join-Path $logs 'api.err.log') -ErrorAction SilentlyContinue
+          throw 'The portal did not start.'
+
+      - name: Install, re-install and uninstall the office runner (${{ matrix.shell }})
+        shell: ${{ matrix.shell }}
+        run: |
+          & "$env:GITHUB_WORKSPACE\scripts\ci\office_runner_windows.ps1" -Shell '${{ matrix.shell }}'
+          exit $LASTEXITCODE
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: office-runner-logs-${{ matrix.shell }}
+          path: ${{ runner.temp }}/office-runner-logs
+          if-no-files-found: warn
