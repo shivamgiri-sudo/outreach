@@ -41,10 +41,15 @@ def _check(portal: str, code: str) -> None:
         raise ValueError("Bad pairing code.")
 
 
+# Windows PowerShell 5.1 offers only SSL3/TLS 1.0 by default, so the pasted line itself must switch TLS 1.2 on (3072)
+# before its first HTTPS request, or `irm` fails against a TLS 1.2+ server before the installer can do it.
+TLS12 = "[Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor 3072; "
+
+
 def commands(portal: str, code: str) -> dict:
     _check(portal, code)
     return {
-        "windows": f"powershell -NoProfile -ExecutionPolicy Bypass -Command \"irm '{portal}/api/linkedin-runner/install.ps1?code={code}' | iex\"",
+        "windows": f"powershell -NoProfile -ExecutionPolicy Bypass -Command \"{TLS12}irm '{portal}/api/linkedin-runner/install.ps1?code={code}' | iex\"",
         "mac": f"curl -fsSL '{portal}/api/linkedin-runner/install.sh?code={code}' | bash",
         "linux": f"curl -fsSL '{portal}/api/linkedin-runner/install.sh?code={code}' | bash",
     }

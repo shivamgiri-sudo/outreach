@@ -1,13 +1,15 @@
 # MCN LinkedIn office runner: installer for Windows 10/11 (Windows PowerShell 5.1 or PowerShell 7). The portal serves this
 # file with its address and a one-time pairing code filled in; paste the one line the portal shows (Start menu, type
 # "PowerShell", open it, paste, Enter):
-#   powershell -NoProfile -ExecutionPolicy Bypass -Command "irm '<portal>/api/linkedin-runner/install.ps1?code=XXXXXXXX' | iex"
+#   powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor 3072; irm '<portal>/api/linkedin-runner/install.ps1?code=XXXXXXXX' | iex"
+# (the TLS part is needed on Windows PowerShell 5.1, which offers only TLS 1.0 by default).
 # Everything goes into your own user folder (%LOCALAPPDATA%\MCN-LinkedIn-Runner); no administrator rights are needed,
 # except that winget may ask once to install Node.js:
 #   1. Node.js LTS if Node 18+ is missing (winget; otherwise the official Node.js 20 zip from nodejs.org, checksum verified)
 #   2. the runner files from the portal, Playwright (npm ci) and its Chromium browser
 #   3. connects this computer to the portal with the one-time code (the long-lived token is saved, readable only by you)
-#   4. starts the runner now and at every logon of this user (Task Scheduler)
+#   4. starts the runner now and at every logon of this user (Task Scheduler; if that is not allowed on this computer, a
+#      launcher in the user's Startup folder instead)
 # Set $env:MCN_NO_AUTOSTART = '1' before running to skip step 4.
 # Uninstall: powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\MCN-LinkedIn-Runner\uninstall.ps1", then press
 # Disconnect in the portal.
@@ -21,7 +23,14 @@ $Base = Join-Path $env:LOCALAPPDATA 'MCN-LinkedIn-Runner'
 $App = Join-Path $Base 'app'
 $Runner = Join-Path $App 'tools\linkedin_runner.mjs'
 $TaskName = 'MCN LinkedIn office runner'
+$StartupLink = Join-Path ([Environment]::GetFolderPath('Startup')) 'MCN LinkedIn office runner.vbs'
 function Say([string]$Message) { Write-Host "[MCN] $Message" }
+# Same bytes on Windows PowerShell 5.1 and PowerShell 7 (Set-Content -Encoding differs between them): .ps1 as UTF-8 with
+# BOM so 5.1 reads non-ASCII user folders right, .vbs as UTF-16 LE (WSH reads ANSI or UTF-16 only, never UTF-8).
+function Write-Text([string]$Path, [string[]]$Lines, [System.Text.Encoding]$Encoding) {
+  [IO.File]::WriteAllText($Path, (($Lines -join "`r`n") + "`r`n"), $Encoding)
+}
+function Quote-Single([string]$Text) { "'" + ($Text -replace "'", "''") + "'" }   # a PowerShell literal, safe for O'Brien
 
 try {
   [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
@@ -67,8 +76,12 @@ try {
   }
   $nodeDir = Split-Path -Parent $node
   $env:Path = "$nodeDir;$env:Path"
+  # npm/npx next to node.exe (nodejs.org, winget, nvm); version managers with shims (Volta, Scoop) keep them elsewhere
   $npm = Join-Path $nodeDir 'npm.cmd'
+  if (-not (Test-Path $npm)) { $npm = (Get-Command npm.cmd, npm.exe -ErrorAction SilentlyContinue | Select-Object -First 1).Source }
   $npx = Join-Path $nodeDir 'npx.cmd'
+  if (-not (Test-Path $npx)) { $npx = (Get-Command npx.cmd, npx.exe -ErrorAction SilentlyContinue | Select-Object -First 1).Source }
+  if (-not $npm -or -not $npx) { throw "Node.js was found ($node) but npm/npx were not. Reinstall Node.js LTS from nodejs.org and run this again." }
   Say "Node.js $(& $node -v) ($node)"
 
   # Stop a runner that is already installed (this is also how it is updated)
@@ -80,7 +93,7 @@ try {
   Say "Downloading the runner from $Portal ..."
   $zip = Join-Path $env:TEMP ("mcn-runner-" + [guid]::NewGuid() + '.zip')
   try { Invoke-WebRequest -UseBasicParsing "$Portal/api/linkedin-runner/bundle.zip?code=$Code" -OutFile $zip }
-  catch { throw 'Could not download the runner. The code may have expired (15 minutes): make a new one in the portal.' }
+  catch { throw "Could not download the runner ($($_.Exception.Message)). The code may have expired (15 minutes): make a new one in the portal." }
   if (Test-Path (Join-Path $App 'tools')) { Remove-Item -Recurse -Force (Join-Path $App 'tools') }
   New-Item -ItemType Directory -Force -Path $App | Out-Null
   Expand-Archive -Force $zip $App
@@ -101,31 +114,44 @@ try {
 
   # Starter (no console window; the LinkedIn browser window stays visible) and uninstaller
   $vbs = Join-Path $Base 'start-runner.vbs'
-  Set-Content -Encoding ASCII -Path $vbs -Value @(
+  $vbsLines = @(
     'Set shell = CreateObject("WScript.Shell")',
     ('shell.Run """' + $node + '"" ""' + $Runner + '""", 0, False')
   )
+  Write-Text $vbs $vbsLines ([System.Text.Encoding]::Unicode)
   $uninstall = Join-Path $Base 'uninstall.ps1'
-  Set-Content -Encoding UTF8 -Path $uninstall -Value @(
+  Write-Text $uninstall @(
     '# Removes the MCN LinkedIn office runner from this computer (the browser sessions too). Then press Disconnect in the portal.',
-    "Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false -ErrorAction SilentlyContinue",
+    "Unregister-ScheduledTask -TaskName $(Quote-Single $TaskName) -Confirm:`$false -ErrorAction SilentlyContinue",
+    "Remove-Item -Force -LiteralPath $(Quote-Single $StartupLink) -ErrorAction SilentlyContinue",
     'Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*MCN-LinkedIn-Runner*" -and $_.ProcessId -ne $PID } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }',
     'Start-Sleep -Seconds 2',
-    "Remove-Item -Recurse -Force '$Base' -ErrorAction SilentlyContinue",
+    "Remove-Item -Recurse -Force -LiteralPath $(Quote-Single $Base) -ErrorAction SilentlyContinue",
     'Write-Host "[MCN] The office runner is removed from this computer. Press Disconnect for it in the portal too."'
-  )
+  ) (New-Object System.Text.UTF8Encoding $true)
 
   # 4. Start now and at every logon of this user
+  Remove-Item -Force -LiteralPath $StartupLink -ErrorAction SilentlyContinue      # from an earlier install's fallback
   if ($env:MCN_NO_AUTOSTART -ne '1') {
-    $user = "$env:USERDOMAIN\$env:USERNAME"
-    $action = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$vbs`"" -WorkingDirectory $App
-    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
-    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
-    $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
-    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
-    Start-ScheduledTask -TaskName $TaskName
-    Say "Registered to start at every logon (Task Scheduler: '$TaskName') and started."
+    # The account name as Windows knows it (USERDOMAIN\USERNAME can differ for Microsoft / Entra ID accounts)
+    $user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    try {
+      $action = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$vbs`"" -WorkingDirectory $App
+      $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
+      $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
+      $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+      Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
+      Start-ScheduledTask -TaskName $TaskName
+      Say "Registered to start at every logon (Task Scheduler: '$TaskName') and started."
+    } catch {
+      # The computer is paired already (the code is used up), so do not stop here: start from the Startup folder instead.
+      Say "Task Scheduler refused ($($_.Exception.Message)); using the Startup folder instead."
+      Write-Text $StartupLink $vbsLines ([System.Text.Encoding]::Unicode)
+      Start-Process -FilePath 'wscript.exe' -ArgumentList "`"$vbs`""
+      Say "Started; it will also start at every logon ($StartupLink)."
+    }
   } else {
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue   # an earlier install's autostart
     Start-Process -FilePath 'wscript.exe' -ArgumentList "`"$vbs`""
     Say 'Started (not registered to start at logon).'
   }
