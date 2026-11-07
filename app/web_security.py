@@ -69,11 +69,11 @@ def is_https(request) -> bool:
 class RateLimiter:
     """Token bucket per key: `per_minute` requests, refilled smoothly. Remembers at most `max_keys` keys."""
 
-    def __init__(self, per_minute: int, max_keys: int = MAX_TRACKED, clock=time.monotonic):
+    def __init__(self, per_minute: int, max_keys: int = MAX_TRACKED, clock=None):
         self.capacity = float(per_minute)
         self.refill = per_minute / 60.0
         self.max_keys = max_keys
-        self.clock = clock
+        self.clock = clock or (lambda: time.monotonic())     # looked up per call, so tests can freeze it
         self._buckets = OrderedDict()
         self._lock = threading.Lock()
 

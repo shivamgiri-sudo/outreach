@@ -121,7 +121,8 @@ def test_urls_use_the_saved_public_address(tmp_path):
     assert c.get("/api/capture/catalogue", headers=bearer(owner)).json()["base_url"] == "https://outreach.example.in"
 
 
-def test_capture_addresses_are_rate_limited_per_address(tmp_path):
+def test_capture_addresses_are_rate_limited_per_address(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.web_security.time.monotonic", lambda: 1000.0)   # no refill mid-test on a slow machine
     app = create_app(data_file=tmp_path / "d.json")
     one, other = TestClient(app, client=("203.0.113.1", 1)), TestClient(app, client=("203.0.113.2", 1))
     path = "/api/inbound/capdeadbeef"

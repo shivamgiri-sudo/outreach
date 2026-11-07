@@ -40,7 +40,8 @@ def test_token_bucket_refills_and_forgets_old_callers():
     ("/api/webhooks/whatsapp/meta_cloud", "post", 120),
     ("/api/activation/event", "post", 120),
 ])
-def test_public_routes_are_rate_limited_per_address(tmp_path, path, method, limit):
+def test_public_routes_are_rate_limited_per_address(tmp_path, monkeypatch, path, method, limit):
+    monkeypatch.setattr("app.web_security.time.monotonic", lambda: 1000.0)   # no refill mid-test on a slow machine
     app = create_app(data_file=tmp_path / "d.json")
     one, other = TestClient(app, client=("203.0.113.1", 1)), TestClient(app, client=("203.0.113.2", 1))
     codes = [getattr(one, method)(path).status_code for _ in range(limit)]
