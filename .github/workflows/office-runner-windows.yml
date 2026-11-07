@@ -23,13 +23,17 @@ permissions:
 
 jobs:
   install:
-    name: install (${{ matrix.shell }})
+    name: install (${{ matrix.shell }}${{ matrix.node == 'none' && ', no Node.js' || '' }})
     runs-on: windows-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         shell: [powershell, pwsh]
+        node: [preinstalled]
+        include:
+          - shell: powershell
+            node: none
     env:
       OUTREACH_BASE_URL: http://127.0.0.1:8000
     steps:
@@ -51,7 +55,7 @@ jobs:
         if: matrix.shell == 'powershell'
         shell: powershell
         run: |
-          & "$env:GITHUB_WORKSPACE\scripts\ci\office_runner_windows.ps1" -Shell powershell
+          & "$env:GITHUB_WORKSPACE\scripts\ci\office_runner_windows.ps1" -Shell powershell -HideNode:$('${{ matrix.node }}' -eq 'none')
           exit $LASTEXITCODE
 
       - name: Install, re-install and uninstall the office runner (PowerShell 7)
@@ -65,6 +69,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: office-runner-logs-${{ matrix.shell }}
+          name: office-runner-logs-${{ matrix.shell }}-${{ matrix.node }}
           path: ${{ runner.temp }}/office-runner-logs
           if-no-files-found: warn

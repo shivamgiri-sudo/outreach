@@ -7,7 +7,8 @@
 param(
   [string]$Portal = 'http://127.0.0.1:8000',
   [ValidateSet('powershell', 'pwsh')][string]$Shell = 'powershell',
-  [string]$LogDir = (Join-Path $env:RUNNER_TEMP 'office-runner-logs')
+  [string]$LogDir = (Join-Path $env:RUNNER_TEMP 'office-runner-logs'),
+  [switch]$HideNode              # an office PC without Node.js: the installer must fetch it (winget or the nodejs.org zip)
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -45,7 +46,8 @@ function Paste([string]$Command, [string]$LogName) {
   Write-Host "  > $Command"
   $log = Join-Path $LogDir $LogName
   $ErrorActionPreference = 'Continue'      # native stderr (npm warnings) must not abort the driver on Windows PowerShell 5.1
-  $output = Invoke-Expression $Command 2>&1 | ForEach-Object { "$_" } | Tee-Object -FilePath $log
+  $output = @(Invoke-Expression $Command 2>&1 | ForEach-Object { "$_" } | ForEach-Object { Write-Host $_; $_ })
+  [IO.File]::WriteAllLines($log, [string[]]$output)
   return ($output -join "`n")
 }
 function Install-Once([string]$Label, [bool]$Replace, [string]$OldRunnerId) {
@@ -59,6 +61,9 @@ function Install-Once([string]$Label, [bool]$Replace, [string]$OldRunnerId) {
   Check ($out -match '\[MCN\] Done\.') "$Label`: installer printed Done"
   Check (Test-Path (Join-Path $Base 'app\tools\linkedin_runner.mjs')) "$Label`: runner files in $Base\app"
   Check (Test-Path (Join-Path $Base 'app\node_modules\playwright')) "$Label`: Playwright installed"
+  $chromium = @(Get-ChildItem (Join-Path $env:LOCALAPPDATA 'ms-playwright') -Directory -Filter 'chromium-*' -ErrorAction SilentlyContinue)
+  Check ($chromium.Count -gt 0) "$Label`: Playwright's Chromium downloaded ($($chromium.Name -join ', '))"
+  if ($HideNode -and $Label -eq 'install1') { Check ($out -match 'Installing Node.js LTS with winget|Downloading Node.js') "$Label`: the installer fetched Node.js itself" }
   $config = Join-Path $Base 'config.json'
   Check (Test-Path $config) "$Label`: runner config written"
   if (Test-Path $config) {
@@ -79,7 +84,7 @@ function Install-Once([string]$Label, [bool]$Replace, [string]$OldRunnerId) {
   Check ([bool]($view.runner -and $view.runner.online -and $view.runner.id -ne $OldRunnerId)) "$Label`: the portal shows the new office computer online (heartbeat)"
   Check (@($view.slots).Count -eq 0) "$Label`: no LinkedIn accounts in the CI portal (nothing opens linkedin.com)"
   Start-Sleep -Seconds 10        # a second copy started by both the task and the fallback would show up by now
-  $procs = Runner-Processes
+  $procs = @(Runner-Processes)
   $procs | ForEach-Object { Write-Host "  runner process $($_.ProcessId): $($_.CommandLine)" }
   Check ($procs.Count -eq 1) "$Label`: exactly one runner process on this computer"
   $logs = Join-Path $Base 'logs'
@@ -93,7 +98,8 @@ function Start-Portal {
   [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
   $password = [Convert]::ToBase64String($bytes)
   $env:OUTREACH_ADMIN_PASSWORD = $password                     # throwaway, this job only
-  $env:OUTREACH_DATA_FILE = Join-Path $LogDir 'portal-store.json'
+  $env:OUTREACH_DATA_FILE = Join-Path $env:RUNNER_TEMP 'portal\store.json'    # not in the uploaded logs
+  New-Item -ItemType Directory -Force -Path (Split-Path $env:OUTREACH_DATA_FILE) | Out-Null
   if (Test-Path $env:OUTREACH_DATA_FILE) { Remove-Item -Force $env:OUTREACH_DATA_FILE }
   if (-not $env:OUTREACH_BASE_URL) { $env:OUTREACH_BASE_URL = $Portal }
   $script:Api = Start-Process -FilePath python -ArgumentList '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000', '--workers', '1' `
@@ -109,6 +115,11 @@ function Start-Portal {
 
 try {
   Start-Portal
+  if ($HideNode) {
+    $kept = $env:Path -split ';' | Where-Object { $_ -and -not (Test-Path (Join-Path $_ 'node.exe')) }
+    $env:Path = $kept -join ';'
+    Write-Host "Node.js hidden from PATH; winget: $([bool](Get-Command winget.exe -ErrorAction SilentlyContinue))"
+  }
   Write-Host "Driver host: PowerShell $($PSVersionTable.PSVersion) ($($PSVersionTable.PSEdition)); one-liner host: $Shell"
   Write-Host "User: $([Security.Principal.WindowsIdentity]::GetCurrent().Name); admin: $(([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)); session: $((Get-Process -Id $PID).SessionId)"
   Step 'Log in to the throwaway portal'
@@ -132,7 +143,7 @@ try {
   Check ($null -eq (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue)) 'scheduled task removed'
   Check (-not (Test-Path $StartupLink)) 'Startup launcher removed'
   Check (-not (Test-Path $Base)) "install folder $Base removed"
-  Check ((Runner-Processes).Count -eq 0) 'no runner process left'
+  Check (@(Runner-Processes).Count -eq 0) 'no runner process left'
   Start-Sleep -Seconds 95                                           # past ONLINE_SECONDS (90)
   $view = Api GET '/api/linkedin-cloud'
   Check ([bool]($view.runner -and -not $view.runner.online)) 'the portal shows the office computer offline after uninstall'
