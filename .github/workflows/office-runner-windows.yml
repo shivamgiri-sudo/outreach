@@ -5,8 +5,9 @@
 name: office-runner-windows
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ci/windows-runner]
+    branches: [main, ci/windows-runner]
     paths:
       - deploy/office-runner/**
       - app/linkedin_runner*.py

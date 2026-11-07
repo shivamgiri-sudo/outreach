@@ -4,7 +4,7 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor 3072; irm '<portal>/api/linkedin-runner/install.ps1?code=XXXXXXXX' | iex"
 # (the TLS part is needed on Windows PowerShell 5.1, which offers only TLS 1.0 by default).
 # Everything goes into your own user folder (%LOCALAPPDATA%\MCN-LinkedIn-Runner); no administrator rights are needed:
-#   1. Node.js: the computer's own Node 18-24 if it has one, else the official Node.js 20 zip from nodejs.org (checksum
+#   1. Node.js: the computer's own Node 18-24 if it has one, else the official Node.js 22 zip from nodejs.org (checksum
 #      verified) inside that folder. Not winget: it installs the newest LTS, and Node 26 hangs Playwright 1.49's
 #      Chromium install for ever (found on the first real Windows run).
 #   2. the runner files from the portal, Playwright (npm ci) and its Chromium browser
@@ -19,7 +19,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $Portal = '__PORTAL__'
 $Code = '__CODE__'
-$NodeVersion = 'v20.18.1'
+$NodeVersion = 'v22.12.0'
 $Base = Join-Path $env:LOCALAPPDATA 'MCN-LinkedIn-Runner'
 $App = Join-Path $Base 'app'
 $Runner = Join-Path $App 'tools\linkedin_runner.mjs'
