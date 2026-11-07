@@ -59,6 +59,9 @@ function Install-Once([string]$Label, [bool]$Replace, [string]$OldRunnerId) {
   $out = Paste $made.commands.windows "install-$Label.log"
   Check ($out -notmatch 'Installation stopped') "$Label`: installer did not stop with an error"
   Check ($out -match '\[MCN\] Done\.') "$Label`: installer printed Done"
+  # Node 24 on Windows could crash while exiting right after pairing (libuv assertion, src\win\async.c); the runner must
+  # now exit cleanly, so the installer's 'stopped untidily' fallback must not be needed here.
+  Check ($out -notmatch 'Assertion failed|untidily') "$Label`: pairing step exited cleanly (no libuv assertion on exit)"
   Check (Test-Path (Join-Path $Base 'app\tools\linkedin_runner.mjs')) "$Label`: runner files in $Base\app"
   Check (Test-Path (Join-Path $Base 'app\node_modules\playwright')) "$Label`: Playwright installed"
   $chromium = @(Get-ChildItem (Join-Path $env:LOCALAPPDATA 'ms-playwright') -Directory -Filter 'chromium-*' -ErrorAction SilentlyContinue)
@@ -129,10 +132,27 @@ try {
   $view = Api GET '/api/linkedin-cloud'
   Check ($view.where -eq 'office' -and @($view.slots).Count -eq 0 -and -not $view.runner) 'fresh portal: office mode, no accounts, no runner'
 
+  $since = Get-Date
   $first = Install-Once 'install1' $false ''
+
+  Step 'Disconnect in the portal: the runner stops by itself and forgets its token'
+  Api DELETE "/api/linkedin-cloud/runner/$first" | Out-Null
+  $deadline = (Get-Date).AddSeconds(90)
+  while (@(Runner-Processes).Count -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 3 }
+  Check (@(Runner-Processes).Count -eq 0) 'runner process exited after Disconnect'
+  $log = Get-Content -Raw (Join-Path $Base 'logs\runner.log') -ErrorAction SilentlyContinue
+  Check ($log -match 'disconnected in the portal') 'runner log says it was disconnected'
+  Check ($log -notmatch 'Assertion failed') 'runner exited without a libuv assertion'
+  Check (-not (Get-Content -Raw (Join-Path $Base 'config.json') | ConvertFrom-Json).token) 'runner token deleted from config.json'
+  Check (-not (Test-Path (Join-Path $Base 'runner.lock'))) 'runner lock released'
+  $logs = Join-Path $Base 'logs'
+  if (Test-Path $logs) { Copy-Item -Recurse -Force $logs (Join-Path $LogDir 'runner-logs-disconnect') }
+
+  # Connecting the same computer again over the stopped install.
+  $second = Install-Once 'install2' $false $first
   # Installing again while it runs (how it is updated, or when someone pastes a new line): the portal asks to replace.
-  $second = Install-Once 'install2' $true $first
-  Check ($second -and $second -ne $first) 're-install replaced the office computer record'
+  $third = Install-Once 'install3' $true $second
+  Check ($third -and $third -ne $second) 're-install replaced the office computer record'
 
   Step 'Uninstall with the command the portal shows'
   $made = Api POST '/api/linkedin-cloud/runner/pair' @{ replace = $true }
@@ -147,6 +167,10 @@ try {
   Start-Sleep -Seconds 95                                           # past ONLINE_SECONDS (90)
   $view = Api GET '/api/linkedin-cloud'
   Check ([bool]($view.runner -and -not $view.runner.online)) 'the portal shows the office computer offline after uninstall'
+  $crashes = @(Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'Application Error'; StartTime = $since } -ErrorAction SilentlyContinue |
+    Where-Object { $_.Message -match 'node\.exe' })
+  $crashes | ForEach-Object { Write-Host "  crash: $($_.Message -split "`n" | Select-Object -First 3)" }
+  Check ($crashes.Count -eq 0) 'no node.exe crash in the Windows event log during the run'
 } catch {
   Check $false "driver error: $($_.Exception.Message) at $($_.InvocationInfo.PositionMessage)"
 } finally {

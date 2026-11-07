@@ -109,12 +109,16 @@ try {
   } finally { Pop-Location }
 
   # 3. Connect to the portal
+  $cfg = Join-Path $Base 'config.json'
+  $before = if (Test-Path -LiteralPath $cfg) { Get-Content -Raw -LiteralPath $cfg } else { '' }   # a re-install's old token
   & $node $Runner --portal $Portal --code $Code --pair-only
   if ($LASTEXITCODE -ne 0) {
-    # Node on Windows can crash while exiting (libuv assertion) AFTER the pairing worked: the saved token decides.
-    $cfg = Join-Path $Base 'config.json'
+    # Node on Windows can crash while exiting (libuv assertion) AFTER the pairing worked: a NEW saved token decides (an
+    # earlier install's token left in config.json must not make a failed pairing look like a success).
     $paired = $false
-    if (Test-Path -LiteralPath $cfg) { try { $paired = [bool]((Get-Content -Raw -LiteralPath $cfg | ConvertFrom-Json).token) } catch { } }
+    if (Test-Path -LiteralPath $cfg) {
+      try { $now = Get-Content -Raw -LiteralPath $cfg; $paired = ($now -ne $before) -and [bool](($now | ConvertFrom-Json).token) } catch { }
+    }
     if (-not $paired) { throw 'Could not connect this computer to the portal (see the message above).' }
     Say 'Connected (Node stopped untidily after saving the token; that is harmless).'
   }

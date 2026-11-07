@@ -101,8 +101,10 @@ if [ "$OS" = Linux ]; then
 fi
 
 # 3. Connect to the portal
+# A crash while Node exits AFTER pairing is harmless when a NEW token was saved (not a re-install's old one).
+BEFORE="$(cat "$BASE/config.json" 2>/dev/null || true)"
 "$NODE" "$RUNNER" --portal "$PORTAL" --code "$CODE" --pair-only --home "$BASE" \
-  || grep -q '"token"' "$BASE/config.json" 2>/dev/null \
+  || { grep -q '"token"' "$BASE/config.json" 2>/dev/null && [ "$(cat "$BASE/config.json")" != "$BEFORE" ]; } \
   || fail "Could not connect this computer to the portal (see the message above)."
 
 # Uninstaller
