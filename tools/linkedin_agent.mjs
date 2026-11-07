@@ -86,7 +86,10 @@ async function ensureLoggedIn(page) {
   const loggedIn = () => !/(login|authwall|signup|checkpoint)/.test(new URL(page.url()).pathname);
   if (loggedIn()) return;
   if (CLOUD) {
-    await cloudLogin({ page, api, base: LINKEDIN, log, sleep, settle: SETTLE, pollSeconds: LOGIN_POLL });
+    // A visible window (the office runner) has a person nearby: they may solve a CAPTCHA or log in by hand in it, and the
+    // agent carries on by itself. --person-at-window forces that for the tests, which run headless.
+    await cloudLogin({ page, api, base: LINKEDIN, log, sleep, settle: SETTLE, pollSeconds: LOGIN_POLL,
+      personAtWindow: !HEADLESS || !!args["person-at-window"], personWaitSeconds: Number(args["person-wait"] || 900) });
     await page.goto(LINKEDIN + "/feed/", { waitUntil: "domcontentloaded" });
     await sleep(SETTLE);
     if (!loggedIn()) throw new LoginNeeded("LinkedIn sent the browser back to the login page right after logging in");

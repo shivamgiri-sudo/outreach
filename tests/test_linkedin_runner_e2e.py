@@ -167,8 +167,11 @@ def check_ps1_structure(text):
     assert not stack, f"unclosed {stack}"
     for needle in ("SHASUMS256.txt", "Get-FileHash", "bundle.zip?code=", "ci --omit=dev",
                    "playwright install chromium", "--pair-only", "Register-ScheduledTask", "New-ScheduledTaskTrigger -AtLogOn",
-                   "MCN_NO_AUTOSTART", "uninstall.ps1", "icacls.exe"):
+                   "MCN_NO_AUTOSTART", "uninstall.ps1", "icacls.exe",
+                   # the starter waits for the runner (or the task ends and takes it down) and a watchdog restarts it
+                   '""", 0, True)', "-RepetitionInterval (New-TimeSpan -Minutes 5)", "-MultipleInstances IgnoreNew"):
         assert needle in text, needle
+    assert '0, False' not in text
     assert "--with-deps" not in text and "mcnr_" not in text and "mcnx_" not in text
 
 

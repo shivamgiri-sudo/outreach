@@ -154,6 +154,11 @@ async function main() {
     process.exit(0);
   }
   const release = takeLock();
+  // The runner is started without a console (start-runner.vbs), so a crash message on stderr is lost: write it to the
+  // log, and log every exit. Before this the runner could stop with nothing at all in runner.log (2026-11-07).
+  process.on("uncaughtException", (e) => { writeLog(`The office runner crashed: ${String(e && e.stack || e).split("\n").slice(0, 6).join(" | ")}`); process.exit(1); });
+  process.on("unhandledRejection", (e) => { writeLog(`The office runner crashed (unhandled promise): ${String(e && e.stack || e).split("\n").slice(0, 6).join(" | ")}`); process.exit(1); });
+  process.on("exit", (code) => writeLog(`The office runner stopped (exit code ${code}).`));
   const env = LINKEDIN_BASE ? { MCN_LINKEDIN_BASE: LINKEDIN_BASE } : {};
   const extra = LINKEDIN_BASE && !EXTRA.includes("--linkedin-base") ? [...EXTRA, "--linkedin-base", LINKEDIN_BASE] : EXTRA;
   const pool = createPool({ profilesDir: path.join(HOME, "profiles"), agentPath: AGENT, portal, extraArgs: extra, max: Number(args.max || 3),

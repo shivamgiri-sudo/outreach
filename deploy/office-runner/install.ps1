@@ -120,11 +120,16 @@ try {
     Say 'Connected (Node stopped untidily after saving the token; that is harmless).'
   }
 
-  # Starter (no console window; the LinkedIn browser window stays visible) and uninstaller
+  # Starter (no console window; the LinkedIn browser window stays visible) and uninstaller.
+  # It WAITS for the runner (Run(..., 0, True)). Not waiting let wscript exit at once, the scheduled task ended, and the
+  # runner it had started was killed with it 10-60 s later, silently, mid-login (seen on an office PC 2026-11-07: three
+  # starts from the task died, the same runner started outside the task kept going). Waiting also keeps the task
+  # "Running", so the 5-minute trigger below cannot start a second copy and restarts the runner when it has stopped.
   $vbs = Join-Path $Base 'start-runner.vbs'
+  $runLine = 'WScript.Quit shell.Run("""' + $node + '"" ""' + $Runner + '""", 0, True)'
   $vbsLines = @(
     'Set shell = CreateObject("WScript.Shell")',
-    ('shell.Run """' + $node + '"" ""' + $Runner + '""", 0, False')
+    $runLine
   )
   Write-Text $vbs $vbsLines ([System.Text.Encoding]::Unicode)
   $uninstall = Join-Path $Base 'uninstall.ps1'
@@ -146,9 +151,12 @@ try {
     try {
       $action = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$vbs`"" -WorkingDirectory $App
       $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
-      $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
+      # Watchdog: every 5 minutes. While the runner runs the task is still running and IgnoreNew skips the tick; after a
+      # crash or a kill the next tick starts it again (the logon trigger alone left it down until the next sign-in).
+      $watchdog = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5) -RepetitionInterval (New-TimeSpan -Minutes 5)
+      $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
       $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
-      Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
+      Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger @($trigger, $watchdog) -Settings $settings -Principal $principal -Force | Out-Null
       Start-ScheduledTask -TaskName $TaskName
       Say "Registered to start at every logon (Task Scheduler: '$TaskName') and started."
     } catch {

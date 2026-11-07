@@ -157,9 +157,9 @@ def test_supervisor_runs_the_agent_through_login_code_and_a_real_connect(cloud_l
     no_secret_anywhere(live)
 
 
-def run_cloud_agent(live, slot_id):
+def run_cloud_agent(live, slot_id, *extra):
     return live.spawn(["node", str(ROOT / "tools/linkedin_agent.mjs"), "--cloud", "--portal", f"http://127.0.0.1:{live.port}",
-                       "--profile", str(live.base / "profiles" / slot_id), *live.agent_args()], env={"MCN_TOKEN": live.token(slot_id)})
+                       "--profile", str(live.base / "profiles" / slot_id), *live.agent_args(), *extra], env={"MCN_TOKEN": live.token(slot_id)})
 
 
 @needs_browser
@@ -205,6 +205,39 @@ def test_a_captcha_stops_the_login_attempt_and_asks_for_a_person(cloud_live):
     assert live.slot_state(slot["id"])["state"] == "needs_manual"                 # it stays there, no retry on its own
     assert live.mock.LOGIN["attempts"] == ["sender@example.com"] and agent.poll() is None
     no_secret_anywhere(live)
+
+
+@needs_browser
+def test_with_a_person_at_the_window_a_captcha_waits_for_them_then_connects_without_a_restart(cloud_live):
+    """Office runner (visible window): the agent never solves the puzzle, it asks for a person, brings the window forward
+    and carries on by itself once the person is in. Before, it gave up and the owner had to log in AND press Restart."""
+    live = cloud_live
+    live.mock.LOGIN["mode"] = "captcha"
+    slot = live.call("/api/linkedin-cloud/slots", "POST", {"label": "Sales"})["slots"][0]
+    agent = run_cloud_agent(live, slot["id"], "--person-at-window")
+    live.wait_state(slot["id"], "needs_login", timeout=60)
+    live.call(f"/api/linkedin-cloud/slots/{slot['id']}/login", "POST", {"email": "sender@example.com", "password": SECRET})
+    s = live.wait_state(slot["id"], "needs_manual")
+    assert "Solve it in the LinkedIn window" in s["note"]
+    time.sleep(3)
+    assert live.slot_state(slot["id"])["state"] == "needs_manual" and agent.poll() is None     # waiting, not giving up
+    live.mock.LOGIN["by_hand"] = True                                             # the person solves the puzzle
+    s = live.wait_state(slot["id"], "connected")
+    assert s["account"] == "test-sender"
+    assert live.mock.LOGIN["attempts"] == ["sender@example.com"]                  # one login, no retry
+    no_secret_anywhere(live)
+
+
+@needs_browser
+def test_with_a_person_at_the_window_a_login_by_hand_is_noticed_while_waiting(cloud_live):
+    live = cloud_live
+    slot = live.call("/api/linkedin-cloud/slots", "POST", {"label": "Sales"})["slots"][0]
+    run_cloud_agent(live, slot["id"], "--person-at-window")
+    s = live.wait_state(slot["id"], "needs_login", timeout=60)
+    assert "log in yourself in the LinkedIn window" in s["note"]
+    live.mock.LOGIN["by_hand"] = True                                             # logged in by hand, no details in the portal
+    s = live.wait_state(slot["id"], "connected")
+    assert s["account"] == "test-sender" and live.mock.LOGIN["attempts"] == []
 
 
 # ---------------------------------------------------------------------------------------------------------------------

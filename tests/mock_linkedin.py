@@ -13,7 +13,7 @@ EVENTS = []
 # "captcha" (a puzzle page). LOGIN["attempts"] records every form post (the email only, never the password).
 LOGIN = {}
 LOGIN_DEFAULTS = {"required": False, "mode": "direct", "email": "sender@example.com", "password": "Correct-Horse-9", "code": "246810",
-                  "approved": False, "attempts": [], "codes": [], "accounts": {}}
+                  "approved": False, "by_hand": False, "attempts": [], "codes": [], "accounts": {}}
 # Several LinkedIn accounts (QA multi-account tests): LOGIN["accounts"] = {email: {"password", "slug", "name", "mode"}}. Each
 # logs in to its own session cookie (li_at=ok.<slug>), /in/me answers with that account, and every event records "by".
 
@@ -24,7 +24,9 @@ LOGIN_PAGE = """<html><head><title>LinkedIn Login</title></head><body><main>
   <input type="email" id="{r1}" name="session_key" autocomplete="username">
   <input type="password" id="{r2}" name="session_password" autocomplete="current-password">
   <button type="submit">Sign in</button>
-</form></main></body></html>"""
+</form></main>
+<script>setInterval(async () => {{ const r = await fetch('/_by_hand'); if ((await r.text()) === 'yes') location.href = '/checkpoint/by-hand'; }}, 700);</script>
+</body></html>"""
 CODE_PAGE = """<html><head><title>Security Verification | LinkedIn</title></head><body><main>
 <h1>Let's do a quick security check</h1><p>Enter the 6-digit code we sent to s***@example.com</p>{error}
 <form method="post" action="/checkpoint/challenge/verify">
@@ -37,7 +39,9 @@ APP_PAGE = """<html><head><title>Security Verification | LinkedIn</title></head>
 </main></body></html>"""
 CAPTCHA_PAGE = """<html><head><title>Security Verification | LinkedIn</title></head><body><main>
 <h1>Let's do a quick security check</h1><p>Solve this puzzle to continue.</p><iframe title="captcha" src="about:blank"></iframe>
-</main></body></html>"""
+</main>
+<script>setInterval(async () => { const r = await fetch('/_by_hand'); if ((await r.text()) === 'yes') location.href = '/checkpoint/by-hand'; }, 700);</script>
+</body></html>"""
 
 CONNECT_PAGE = """<html><body><main><h1>{name}</h1><span>{degree}</span>
 <div id="actions">{buttons}</div></main>
@@ -114,6 +118,10 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path == "/_approved":
             self._html("yes" if LOGIN["approved"] else "no"); return
+        if path == "/_by_hand":                               # tests: "a person logged in / solved the puzzle in the window"
+            self._html("yes" if LOGIN.get("by_hand") else "no"); return
+        if path == "/checkpoint/by-hand" and LOGIN.get("by_hand"):
+            self._go("/feed/", cookie=True); return
         if path == "/login":
             self._login_page(); return
         if path == "/checkpoint/approved" and LOGIN["approved"]:
