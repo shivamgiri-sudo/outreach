@@ -131,6 +131,7 @@ ACTIONS = {
     "settings.save": "Settings saved", "contact.edit": "Contact details corrected",
     "extension.save_profile": "Profile saved from LinkedIn (Chrome assistant)",
     "prospects.export": "Prospects exported", "prospects.import": "Prospects imported", "prospects.suppress": "Prospect suppressed",
+    "prospects.unsuppress": "Prospect opt-out undone", "prospects.unsuppress_refused": "Prospect un-suppress refused (global list)",
     "prospects.erase": "Prospect erased", "prospects.edit": "Prospect edited", "prospects.settings": "Prospect sources changed",
     "prospects.enrich": "Prospect emails looked up", "prospects.spend": "Lookup budget changed",
     "export.download": "Data downloaded", "backup.download": "Backup downloaded", "backup.restore": "Backup restored",

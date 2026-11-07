@@ -7,6 +7,8 @@ GET/POST/DELETE /api/prospects/saved-searches[/{id}]    per signed-in user
 POST   /api/prospects/export              {person_ids | filters} -> CSV (owner, audited, suppressed never included)
 POST   /api/prospects/import              {csv, source}
 POST   /api/prospects/suppress            {value, reason}
+GET    /api/prospects/suppressions        the prospect opt-out list (owner)
+POST   /api/prospects/unsuppress          {value} (owner, audited; refused while on a global do-not-contact/unsubscribe/erased list)
 DELETE /api/prospects/people/{id}         erasure
 PATCH  /api/prospects/people/{id}         manual edit (wins over every source)
 POST   /api/prospects/sync-crm            {force}
@@ -23,6 +25,7 @@ from pydantic import BaseModel, Field
 
 from . import audit, lists, prospect_db as P, prospect_ingest as ingest, prospect_search as S, prospect_waterfall as W
 from . import prospect_fields as F
+from . import prospect_unsuppress as U
 from .hygiene import csv_safe
 from .lead_model import build_lead, now_iso
 from .privacy import is_blocked
@@ -64,6 +67,10 @@ class ImportBody(BaseModel):
 class SuppressBody(BaseModel):
     value: str = Field(min_length=3, max_length=200)
     reason: str = Field("opt-out", max_length=200)
+
+
+class UnsuppressBody(BaseModel):
+    value: str = Field(min_length=3, max_length=200)
 
 
 class EditBody(BaseModel):
@@ -309,6 +316,26 @@ def make_router(store, transports=None) -> APIRouter:
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
         audit.record(store, getattr(request.state, "user", None), "prospects.suppress", out["kind"], f"{out['people']} people")
+        return out
+
+    @router.get("/api/prospects/suppressions")
+    def suppressions():
+        return {"rows": U.list_suppressions(store)}
+
+    @router.post("/api/prospects/unsuppress")
+    def unsuppress(body: UnsuppressBody, request: Request):
+        user = getattr(request.state, "user", None)
+        try:
+            out = U.unsuppress(store, body.value)
+        except U.Refused as exc:
+            audit.record(store, user, "prospects.unsuppress_refused", body.value.strip().lower()[:200], str(exc))
+            raise HTTPException(409, str(exc)) from None
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from None
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from None
+        audit.record(store, user, "prospects.unsuppress", out["unsuppressed"],
+                     f"{out['kind']}; {out['people']} people back, {out['kept']} kept suppressed (global lists)")
         return out
 
     @router.delete("/api/prospects/people/{person_id}")

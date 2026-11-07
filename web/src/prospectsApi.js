@@ -25,6 +25,8 @@ export const prospects = {
   exportCsv: (body) => apiDownload("/api/prospects/export", { body, withName: true }),
   importCsv: (csv, source) => request("/api/prospects/import", { method: "POST", body: { csv, source } }),
   suppress: (value, reason) => request("/api/prospects/suppress", { method: "POST", body: { value, reason } }),
+  suppressions: () => request("/api/prospects/suppressions"),
+  unsuppress: (value) => request("/api/prospects/unsuppress", { method: "POST", body: { value } }),
   erase: (id) => request(`/api/prospects/people/${encodeURIComponent(id)}`, { method: "DELETE" }),
   syncCrm: (force = false) => request("/api/prospects/sync-crm", { method: "POST", body: { force } }),
   settings: () => request("/api/prospects/settings"),
