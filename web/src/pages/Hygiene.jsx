@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useState } from "react";
 import { istDateLabel, istLabel } from "../time.js";
-import { api, canWrite } from "../api.js";
+import { api, canWrite, isOwner } from "../api.js";
 import { stageLabel, sourceLabel } from "../labels.js";
 import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import { useConfirm } from "../Dialog.jsx";
+import RestoreLandlines from "./RestoreLandlines.jsx";
 
 const GROUPS_SHOWN = 20;
 const FIELD_NAMES = {
@@ -169,10 +170,16 @@ export default function Hygiene({ go }) {
         <h3 style={{ marginTop: 0 }}>Different values to check ({report.conflicts})</h3>
         <Conflicts items={report.conflict_list} onResolve={resolve} busy={busy} />
       </div>
-      <div className="card">
+      <div className="card" style={isOwner() ? { marginBottom: 14 } : undefined}>
         <h3 style={{ marginTop: 0 }}>Standardise existing leads</h3>
         <Standardise count={report.needs_standardising} onChanged={(text) => { setMessage(text); load(); }} />
       </div>
+      {isOwner() && (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Restore landlines</h3>
+          <RestoreLandlines onChanged={(text) => { setMessage(text); load(); }} />
+        </div>
+      )}
     </>
   );
 }
