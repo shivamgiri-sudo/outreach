@@ -215,7 +215,7 @@ def _preview_row(lead: dict, would: str, sources: list, campaign: dict, blocked:
             "would_enrol": bool(rules.get("auto_enrol")) and qualified and in_chosen}
 
 
-def _preview_rows(plan: dict, campaign: dict, picked: list) -> list:
+def _preview_rows(plan: dict, campaign: dict, picked: list = ()) -> list:
     """What the run would do: discovered rows, then each hand-picked lead (the same check attach_leads makes)."""
     out = [_preview_row(item["lead"], item["would"], item["sources"], campaign) for item in plan["preview"][:MAX_PREVIEW]]
     for lead_id, lead, reason in picked:
