@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, canEditContacts, isOwner } from "../api.js";
+import { api, canEditContacts, canWrite, isOwner } from "../api.js";
 import { copyText } from "../clipboard.js";
 import { sourceLabel, stageLabel, useSourceRegistry } from "../labels.js";
 import { istLabel } from "../time.js";
@@ -99,7 +99,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
     <>
       <p className="sub">{lead.contact_name} {lead.title && `· ${lead.title}`}<br />{lead.email} {lead.phone && `· ${lead.phone}`}<PhoneTag lead={lead} />
         <br /><small>Source: {sourceLabel(lead)}</small></p>
-      {canEditContacts() && <EditDetails lead={lead} onSaved={(r) => setLead(r)} />}
+      {canWrite() && canEditContacts() && <EditDetails lead={lead} onSaved={(r) => setLead(r)} />}
       <div className="tip">
         <b>Suggested next step ({s.priority} priority, via {s.channel}):</b> {s.action}
         {s.pitch && <p style={{ margin: "6px 0 0" }}><b>What to say:</b> {s.pitch}</p>}
@@ -109,10 +109,12 @@ export default function LeadDrawer({ id, ids, onClose }) {
       <LeadAssign lead={lead} onChanged={setLead} />
       <OtherContacts lead={lead} />
       <LeadMeetings lead={lead} onChanged={load} />
-      <label htmlFor="note-box">Quick note</label>
-      <textarea id="note-box" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
-      <button className="btn" style={{ marginTop: 8 }} disabled={!note.trim()}
-        onClick={() => act(async () => { const r = await api.note(id_, note); setNote(""); return r; })}>Save note</button>
+      {canWrite() && <>
+        <label htmlFor="note-box">Quick note</label>
+        <textarea id="note-box" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+        <button className="btn" style={{ marginTop: 8 }} disabled={!note.trim()}
+          onClick={() => act(async () => { const r = await api.note(id_, note); setNote(""); return r; })}>Save note</button>
+      </>}
     </>
   );
 
@@ -136,11 +138,12 @@ export default function LeadDrawer({ id, ids, onClose }) {
       <h3>Email sequence</h3>
       {lead.sequence ? (
         <div><p className="sub">{sequenceStatus(lead.sequence)}</p>
-          {!lead.sequence.stopped && <button className="btn ghost" onClick={async () => (await confirm({ message: `Send ${lead.contact_name || lead.email} their next sequence email now? It goes at once (real email if real sending is on).`, confirmLabel: "Send now" }))
+          {!lead.sequence.stopped && canWrite() && <button className="btn ghost" onClick={async () => (await confirm({ message: `Send ${lead.contact_name || lead.email} their next sequence email now? It goes at once (real email if real sending is on).`, confirmLabel: "Send now" }))
             && act(async () => { const r = await api.emailNow(id_); say(`${r.mode === "live" ? "Sent" : "Practised (not sent)"}: ${r.step} → ${r.to}`); return r.lead; })}>Send email now</button>}</div>
-      ) : (
+      ) : canWrite() ? (
         <SequencePicker lead={lead} onStart={(sequenceId) => act(() => api.enrollIn(id_, sequenceId))} />
-      )}
+      ) : <p className="sub">Not on an email sequence.</p>}
+      {canWrite() && <>
       <label htmlFor="reply-box">Paste their reply (stops the sequence, detects yes / no / question)</label>
       <div className="row">
         <input id="reply-box" value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Yes please send the story" />
@@ -170,10 +173,12 @@ export default function LeadDrawer({ id, ids, onClose }) {
           )}
         </div>
       )}
+      </>}
 
       <h3 data-testid="wa-heading">{waHeading}</h3>
       <p className="sub">Only after they said yes to WhatsApp, and only to a mobile number. Free text only within 24 hours of their last message.</p>
       {isLandline(lead) && <div className="tip" data-testid="wa-landline">This lead's phone is a landline: call it, but WhatsApp and SMS are not sent to it.</div>}
+      {canWrite() && <>
       <div className="row">
         <select aria-label="WhatsApp message" value={waTemplate} onChange={(e) => setWaTemplate(e.target.value)} style={{ flex: 1 }}>
           <option value="first_after_yes">First message after yes</option>
@@ -187,6 +192,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
           say(waMode?.mode === "live" ? "WhatsApp sent." : "Practised (not sent): the WhatsApp message is in Outbox → WhatsApp messages."); return r; })}>Send</button>
       </div>
       {waTemplate === "custom" && <textarea aria-label="Your WhatsApp message" rows={2} style={{ marginTop: 8 }} value={waText} onChange={(e) => setWaText(e.target.value)} placeholder="Your message" />}
+      </>}
 
       <h3>LinkedIn</h3>
       <p className="sub">{lead.linkedin_seq
@@ -217,6 +223,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
           {lead.nudge && <div className="tip">{lead.nudge.text}</div>}
         </>
       ) : <p className="sub">No demo link yet.</p>}
+      {canWrite() && <>
       <div className="row" style={{ marginTop: 8 }}>
         <button className="btn ghost" onClick={async () => {
           try {
@@ -256,6 +263,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
           <option value="converted:1">Became a paying customer</option>
         </select>
       </label>
+      </>}
     </>
   );
 

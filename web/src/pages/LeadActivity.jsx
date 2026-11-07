@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { istLabel } from "../time.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import { useConfirm } from "../Dialog.jsx";
@@ -150,20 +150,20 @@ export default function LeadActivity({ lead, onChanged }) {
             · emails {summary.emails.sent} sent, {summary.emails.opens} opens, {summary.emails.replies} replies · LinkedIn {summary.linkedin.status || "—"}
             {summary.whatsapp.sent ? ` · WhatsApp ${summary.whatsapp.sent}` : ""}{summary.last_touch ? ` · last touch ${istLabel(summary.last_touch)}` : ""}
           </p>
-          <div className="row" style={{ flexWrap: "wrap", gap: 6 }} aria-label="Log a call in one click">
+          {canWrite() && <div className="row" style={{ flexWrap: "wrap", gap: 6 }} aria-label="Log a call in one click">
             <small className="sub">Log a call:</small>
             {QUICK_CALLS.map(([v, l]) => <button key={v} className="btn ghost" onClick={() => (v === "call_back" ? setCallback(new Date(Date.now() + 390 * 60000).toISOString().slice(0, 16))
               : run(() => api.callOutcome(lead.id, v), `Call logged: ${l}.`))}>{l}</button>)}
             {lead.email && !["unsubscribed", "disqualified"].includes(lead.stage) && <button className="btn ghost" onClick={() => setComposing(true)}>Write an email</button>}
-          </div>
-          {callback !== null && (
+          </div>}
+          {callback !== null && canWrite() && (
             <form className="row" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault();
               run(() => api.callOutcome(lead.id, "call_back", "", withIst(callback)), "Call logged; a call-back task was created.").then(() => setCallback(null)); }}>
               <label className="row" style={{ gap: 6 }}>Call back at (IST)<input type="datetime-local" required value={callback} onChange={(e) => setCallback(e.target.value)} /></label>
               <button className="btn" type="submit">Save</button><button className="btn ghost" type="button" onClick={() => setCallback(null)}>Cancel</button>
             </form>
           )}
-          {composing && <Composer lead={lead} onCancel={() => setComposing(false)} onDone={(m) => { setComposing(false); setMessage(m); load(); onChanged?.(); }} />}
+          {composing && canWrite() && <Composer lead={lead} onCancel={() => setComposing(false)} onDone={(m) => { setComposing(false); setMessage(m); load(); onChanged?.(); }} />}
         </div>
       )}
       <h3>Tasks &amp; follow-ups</h3>
@@ -173,21 +173,21 @@ export default function LeadActivity({ lead, onChanged }) {
             <li key={t.task_id} className={t.due_at && new Date(t.due_at) < new Date() ? "overdue" : ""}>
               <div><b>{t.title}</b>{t.body && <span className="sub"> — {t.body.slice(0, 120)}</span>}</div>
               <div className="sub">{t.due_at ? `Due ${istLabel(t.due_at)}` : "No due time"}{t.owner ? ` · ${t.owner}` : ""}</div>
-              <div className="row">
+              {canWrite() && <div className="row">
                 <button className="btn ghost" onClick={() => run(() => api.taskDoneById(t.task_id, ""), "Marked done.")}>Done</button>
                 <button className="btn ghost" onClick={() => run(() => api.updateTask(t.task_id, { snooze_minutes: 60 }), "Snoozed 1 hour.")}>+1 hour</button>
                 <button className="btn ghost" onClick={() => run(() => api.updateTask(t.task_id, { snooze_minutes: 1440 }), "Moved to tomorrow.")}>Tomorrow</button>
-              </div>
+              </div>}
             </li>
           ))}
         </ul>
       )}
-      <div className="row" style={{ margin: "8px 0" }}>
+      {canWrite() && <div className="row" style={{ margin: "8px 0" }}>
         <button className="btn ghost" onClick={() => setTaskForm({ title: "", text: "", due_at: "", owner: "", priority: "normal" })}>Add a task</button>
         <button className="btn ghost" onClick={() => setLogging(true)}>Log a call / meeting / note</button>
-      </div>
+      </div>}
 
-      {taskForm && (
+      {taskForm && canWrite() && (
         <form className="inline-form" onSubmit={saveTask}>
           <label>What needs doing?<input required value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
             placeholder="e.g. Send the pricing deck" /></label>
@@ -208,7 +208,7 @@ export default function LeadActivity({ lead, onChanged }) {
         </form>
       )}
 
-      {logging && (
+      {logging && canWrite() && (
         <form className="inline-form" onSubmit={saveActivity}>
           <label>What happened?
             <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>

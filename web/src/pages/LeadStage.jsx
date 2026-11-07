@@ -1,7 +1,7 @@
 // Stage control for the lead drawer: move forward in one click, pick any stage the rules allow (going back needs a
 // reason; an owner can force a skip with a reason), record "yes" consent and optionally move to Interested with a call task.
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { stageLabel } from "../labels.js";
 import { istLabel } from "../time.js";
 import { FORWARD } from "./LeadDrawerParts.jsx";
@@ -80,7 +80,7 @@ export default function LeadStage({ lead, onLead, onError }) {
   return (
     <section aria-label="Stage">
       <h3>Stage: {stageLabel(lead.stage)}</h3>
-      <div className="row" style={{ flexWrap: "wrap" }}>
+      {canWrite() && <div className="row" style={{ flexWrap: "wrap" }}>
         {nextOk && <button className="btn" disabled={busy} onClick={() => move(next)}>Move to {stageLabel(next)}</button>}
         {consentChannels(lead).length < CHANNELS.length && <button className="btn ghost" onClick={() => setForm("consent")}>
           {lead.consent ? "Record consent for another channel" : "Record “yes” consent"}</button>}
@@ -93,8 +93,8 @@ export default function LeadStage({ lead, onLead, onError }) {
           ))}
         </select>
         {lead.stage !== "unsubscribed" && <button className="btn ghost danger" onClick={() => setForm("unsubscribe")}>Unsubscribed</button>}
-      </div>
-      {chosen && (
+      </div>}
+      {chosen && canWrite() && (
         <form className="inline-form" onSubmit={(e) => { e.preventDefault(); move(chosen.stage, reason.trim(), chosen.rule === "owner"); }}>
           {chosen.why && <p className="sub" style={{ margin: 0 }}>{chosen.why}</p>}
           {needsReason && <label>Why? (saved on the lead with your name)
@@ -105,8 +105,8 @@ export default function LeadStage({ lead, onLead, onError }) {
           </div>
         </form>
       )}
-      {form === "consent" && <ConsentForm lead={lead} onCancel={() => setForm("")} onSaved={(l) => { onLead(l); setForm(""); }} />}
-      {form === "unsubscribe" && (
+      {form === "consent" && canWrite() && <ConsentForm lead={lead} onCancel={() => setForm("")} onSaved={(l) => { onLead(l); setForm(""); }} />}
+      {form === "unsubscribe" && canWrite() && (
         <div className="tip error" role="alert">
           This stops every email and WhatsApp to them for good and cannot be undone here.
           <div className="row" style={{ marginTop: 8 }}>

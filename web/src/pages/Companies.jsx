@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { istLabel } from "../time.js";
 import { ErrorState } from "../states.jsx";
 import { leadTerm, stageLabel } from "../labels.js";
@@ -104,10 +104,10 @@ function CompanyDetail({ companyKey, onClose }) {
               Furthest stage: <b>{stageLabel(d.best_stage)}</b> · last touch {when(d.last_touch)}
               {d.owners.length > 0 && <> · owner{d.owners.length > 1 ? "s" : ""}: {d.owners.join(", ")}</>}
             </p>
-            <div className="row" style={{ flexWrap: "wrap", margin: "10px 0" }}>
+            {canWrite() && <div className="row" style={{ flexWrap: "wrap", margin: "10px 0" }}>
               <button className="btn" disabled={busy || !ids.length} onClick={() => saveList(true)}>Start email for all contacts</button>
               <button className="btn ghost" disabled={busy || !ids.length} onClick={() => saveList(false)}>Save as list</button>
-            </div>
+            </div>}
             {msg && <p className="sub" role="status">{msg}</p>}
 
             <h3>People ({d.contacts_list.length})</h3>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, isOwner } from "../api.js";
+import { api, canWrite, isOwner } from "../api.js";
 import Icon from "../icons.jsx";
 import DrawerShell from "../DrawerShell.jsx";
 
@@ -153,6 +153,7 @@ function Report({ run, onOpenLeads }) {
 }
 
 export function FindLeadsCard({ onOpen }) {
+  if (!isOwner()) return null;                  // the server runs finds (preview too) for owners only
   return (
     <div className="card find-card" data-testid="find-card">
       <span className="stat-icon"><Icon name="search" /></span>
@@ -188,7 +189,7 @@ export default function FindLeadsDrawer({ onClose, go, onOpenLeads }) {
   }, []);
 
   useEffect(() => {              // the estimate follows the choices
-    if (live) return undefined;
+    if (live || !canWrite()) return undefined;
     const timer = setTimeout(() => api.findEstimate(body(false)).then(setEstimate).catch(() => {}), 350);
     return () => clearTimeout(timer);
   }, [body, live]);
@@ -256,10 +257,10 @@ export default function FindLeadsDrawer({ onClose, go, onOpenLeads }) {
 
         {error && <div className="tip error" role="alert" style={{ marginTop: 12 }}>{error}</div>}
         <div className="row" style={{ marginTop: 14 }}>
-          <button className="btn ghost" disabled={live} onClick={() => start(true)}>Preview</button>
+          {owner && <button className="btn ghost" disabled={live} onClick={() => start(true)}>Preview</button>}
           {owner
             ? <button className="btn cta" disabled={live} onClick={() => start(false)}>{live ? "Working…" : "Run now"}</button>
-            : <span className="sub">Only the owner can start a real run.</span>}
+            : <span className="sub">Only the owner can preview or start a run.</span>}
         </div>
         <p className="sub" style={{ margin: "8px 0 0" }}>Preview shows what would happen and saves nothing. It may search with Apollo or Google Places, which can use credits.</p>
 

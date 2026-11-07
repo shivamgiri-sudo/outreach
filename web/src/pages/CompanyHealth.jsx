@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { istDateLabel, istLabel } from "../time.js";
 
 const BAND = { strong: "ok", steady: "", "weak / unknown": "warn" };
@@ -16,9 +16,9 @@ export default function CompanyHealth({ lead }) {
     <section className="card" style={{ margin: "12px 0" }} aria-label="Company health" data-testid="company-health">
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
         <b>Company health {r && <span className={`pill ${BAND[r.band] || ""}`} style={{ marginLeft: 6 }}>{r.score}/100 · {r.band}</span>}</b>
-        <button className="btn ghost" onClick={build} disabled={busy}>{busy ? "Checking public sources…" : r ? "Refresh" : "Build health report"}</button>
+        {canWrite() && <button className="btn ghost" onClick={build} disabled={busy}>{busy ? "Checking public sources…" : r ? "Refresh" : "Build health report"}</button>}
       </div>
-      {!r && !busy && <p className="sub">Checks free public sources for {data?.domain || "the company's domain"}: its website, email setup, domain age, Wikidata and recent news. Takes about 10–20 seconds.</p>}
+      {!r && !busy && <p className="sub">{canWrite() ? "" : "No health report yet. "}Checks free public sources for {data?.domain || "the company's domain"}: its website, email setup, domain age, Wikidata and recent news. Takes about 10–20 seconds.</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {r && (
         <>

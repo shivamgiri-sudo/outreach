@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { istDateLabel, istLabel } from "../time.js";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { stageLabel, sourceLabel } from "../labels.js";
 import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
@@ -29,7 +29,7 @@ function LeadCard({ lead, suggested, others, onMerge, busy }) {
       <b>{lead.company || lead.domain || lead.id}</b>
       {suggested && <span><span className="pill ok">Suggested to keep</span></span>}
       <dl>{rows.filter(([, v]) => v).map(([k, v]) => <Fragment key={k}><dt>{k}</dt><dd>{v}</dd></Fragment>)}</dl>
-      <button className="btn ghost" disabled={busy} onClick={() => onMerge(lead, others)}>Keep this one, merge the others in</button>
+      {canWrite() && <button className="btn ghost" disabled={busy} onClick={() => onMerge(lead, others)}>Keep this one, merge the others in</button>}
     </div>
   );
 }
@@ -63,8 +63,10 @@ function Conflicts({ items, onResolve, busy }) {
         <b>{c.company || c.lead_id}</b> · {FIELD_NAMES[c.field] || c.field}: now “{String(c.kept)}”, {c.source} says “{String(c.incoming)}”
       </span>
       <span className="row">
-        <button className="btn ghost" disabled={busy} onClick={() => onResolve(c, "keep")}>Keep current</button>
-        <button className="btn ghost" disabled={busy} onClick={() => onResolve(c, "use_new")}>Use new</button>
+        {canWrite() && <>
+          <button className="btn ghost" disabled={busy} onClick={() => onResolve(c, "keep")}>Keep current</button>
+          <button className="btn ghost" disabled={busy} onClick={() => onResolve(c, "use_new")}>Use new</button>
+        </>}
       </span>
     </div>
   ));
@@ -90,8 +92,8 @@ function Standardise({ count, onChanged }) {
         website domains, city, state and country. Emails, stages and consent are never changed. {count} lead(s) would change.
       </p>
       {error && <p role="alert" className="tip error">{error}</p>}
-      {!plan && <button className="btn ghost" disabled={busy || count === 0} onClick={() => act(true)}>{busy ? "Checking…" : "Preview the clean-up"}</button>}
-      {plan && (
+      {!plan && canWrite() && <button className="btn ghost" disabled={busy || count === 0} onClick={() => act(true)}>{busy ? "Checking…" : "Preview the clean-up"}</button>}
+      {plan && canWrite() && (
         <>
           <ul>
             {plan.changes.slice(0, 30).map((c) => (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, isOwner } from "../api.js";
 import { istLabel } from "../time.js";
 import { useConfirm } from "../Dialog.jsx";
 import FlowEditor from "./flows/FlowEditor.jsx";
@@ -54,13 +54,13 @@ function FlowList({ onOpen }) {
         LinkedIn tasks, calls and meetings. Every message keeps the app's rules: consent before WhatsApp, practice mode, caps,
         business hours and the do-not-contact list.</p>
       {error && <div className="tip error" role="alert">{error}</div>}
-      <div className="row" style={{ marginBottom: 16 }}>
+      {isOwner() && <div className="row" style={{ marginBottom: 16 }}>
         <button type="button" className="btn" onClick={() => setPicking(!picking)} aria-expanded={picking}>New from template</button>
         <button type="button" className="btn ghost" onClick={() => create(() => api.createFlow({ name: "Untitled flow" }))}>Blank flow</button>
         <label className="btn ghost" style={{ cursor: "pointer" }}>Import a flow
           <input type="file" accept="application/json,.json" hidden onChange={(e) => { importFile(e.target.files?.[0]); e.target.value = ""; }} /></label>
-      </div>
-      {picking && (
+      </div>}
+      {picking && isOwner() && (
         <div className="grid g2" style={{ marginBottom: 16 }} data-testid="flow-templates">
           {templates.map((t) => (
             <div key={t.key} className="card">
@@ -75,7 +75,7 @@ function FlowList({ onOpen }) {
       )}
       <div className="card table-card">
         {flows === null ? <p className="empty">Loading…</p> : flows.length === 0 ? (
-          <p className="empty">No flows yet. Start from a template: the cold email one is the same as today's sequence.</p>
+          <p className="empty">{isOwner() ? "No flows yet. Start from a template: the cold email one is the same as today's sequence." : "No flows yet."}</p>
         ) : (
           <table className="stack-table">
             <thead><tr><th>Flow</th><th>Status</th><th>Starts when</th><th>Active leads</th><th>Last edited</th><th /></tr></thead>
@@ -91,7 +91,7 @@ function FlowList({ onOpen }) {
                     <td data-label="Last edited">{istLabel(f.updated_at)}</td>
                     <td className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
                       <button type="button" className="btn ghost" onClick={() => onOpen(f.id)} aria-label={`Open ${f.name}`}>Open</button>
-                      <button type="button" className="btn ghost danger" onClick={() => remove(f)} aria-label={`Delete ${f.name}`}>Delete</button></td>
+                      {isOwner() && <button type="button" className="btn ghost danger" onClick={() => remove(f)} aria-label={`Delete ${f.name}`}>Delete</button>}</td>
                   </tr>
                 );
               })}

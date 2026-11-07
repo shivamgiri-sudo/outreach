@@ -1,6 +1,6 @@
 // The owner's custom lead fields (Setup → Industry & fields): the drawer editor, the optional Leads columns and filters.
 import { useEffect, useState } from "react";
-import { apiRequest, canEditContacts } from "../api.js";
+import { apiRequest, canEditContacts, canWrite } from "../api.js";
 
 let cache = null;
 const listeners = new Set();
@@ -63,10 +63,10 @@ export function LeadCustomData({ lead, onSaved }) {
     <section data-testid="lead-custom-fields">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h3>Details</h3>
-        {canEditContacts() && !editing && <button type="button" className="btn ghost" onClick={() => setEditing(true)}>Edit details</button>}
+        {canWrite() && canEditContacts() && !editing && <button type="button" className="btn ghost" onClick={() => setEditing(true)}>Edit details</button>}
       </div>
       {msg && <p className="sub" role="status">{msg}</p>}
-      {editing ? (
+      {editing && canWrite() ? (
         <form onSubmit={save}>
           {fields.map((f) => (
             <label key={f.key} htmlFor={`cf-${f.key}`}>{f.label}

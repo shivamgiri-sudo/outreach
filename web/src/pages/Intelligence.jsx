@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { istLabel } from "../time.js";
-import { api, isOwner } from "../api.js";
+import { api, canWrite, isOwner } from "../api.js";
 import { ops } from "../opsApi.js";
 import { ErrorState } from "../states.jsx";
 
@@ -81,7 +81,7 @@ export default function Intelligence({ range, embedded = false }) {
           <h3 style={{ marginTop: 0 }}>Going cold ({d.stale.count})</h3>
           <p className="sub">Interested leads with no activity for {d.stale.days} days. Pick them up before they forget you.</p>
           {d.stale.leads.map((l) => <div key={l.id}><b>{l.company}</b> <small className="sub-inline">{l.stage} · last {when(l.last_touch)}</small></div>)}
-          {d.stale.count === 0 ? <p className="empty">Nothing is going cold.</p> : <button className="btn" onClick={remind} style={{ marginTop: 8 }}>Create follow-up tasks for all {d.stale.count}</button>}
+          {d.stale.count === 0 ? <p className="empty">Nothing is going cold.</p> : canWrite() && <button className="btn" onClick={remind} style={{ marginTop: 8 }}>Create follow-up tasks for all {d.stale.count}</button>}
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, getRole, isOwner } from "../api.js";
+import { api, canWrite, isOwner } from "../api.js";
 import LinkedInSequenceEditor from "./LinkedInSequenceEditor.jsx";
 import LinkedInCloud from "./LinkedInCloud.jsx";
 import { copyText } from "../clipboard.js";
@@ -20,13 +20,15 @@ function Settings({ cfg, onSave }) {
   return (
     <details className="card" style={{ marginBottom: 14 }}>
       <summary><b>LinkedIn settings</b> <span className="sub">— daily limit, who sends, case-study link</span></summary>
+      <fieldset className="ro-fieldset" disabled={!canWrite()}>
       <label>New connection requests per day (start with 10–15)
         <input type="number" min="1" max="40" value={form.linkedin_daily_connections} onChange={(e) => setForm({ ...form, linkedin_daily_connections: e.target.value })} /></label>
       <label>Who sends from the LinkedIn account
         <input value={form.linkedin_owner} placeholder="Name of the representative" onChange={(e) => setForm({ ...form, linkedin_owner: e.target.value })} /></label>
       <label>Case-study link (step 4 is skipped until a real link is set)
         <input value={form.case_study_url} placeholder="https://…" onChange={(e) => setForm({ ...form, case_study_url: e.target.value })} /></label>
-      <button className="btn" style={{ marginTop: 8 }} onClick={() => onSave({ ...form, linkedin_daily_connections: Number(form.linkedin_daily_connections) })}>Save</button>
+      </fieldset>
+      {canWrite() && <button className="btn" style={{ marginTop: 8 }} onClick={() => onSave({ ...form, linkedin_daily_connections: Number(form.linkedin_daily_connections) })}>Save</button>}
     </details>
   );
 }
@@ -50,8 +52,8 @@ function ToolBridge({ onDone }) {
       <div className="row">
         {isOwner() && <DownloadButton path={exportPath("linkedin_tool")} label="Export list for a LinkedIn tool" testId="download-linkedin-tool"
           title="CSV: firstName, lastName, companyName, title, profileUrl, message1 to message5" />}
-        <button type="button" className="btn ghost" data-testid="import-linkedin-results" onClick={() => file.current?.click()}>Import its results</button>
-        <input ref={file} type="file" accept=".csv,text/csv" hidden aria-label="Results file from the LinkedIn tool" onChange={(e) => pick(e.target.files?.[0])} />
+        {canWrite() && <button type="button" className="btn ghost" data-testid="import-linkedin-results" onClick={() => file.current?.click()}>Import its results</button>}
+        {canWrite() && <input ref={file} type="file" accept=".csv,text/csv" hidden aria-label="Results file from the LinkedIn tool" onChange={(e) => pick(e.target.files?.[0])} />}
       </div>
       <div className="tip" style={{ marginTop: 10 }} role="note">
         Automating LinkedIn is against LinkedIn's terms and can get an account restricted. If you use a tool, that is your own decision and risk;
@@ -250,14 +252,14 @@ function ConnectionNotes({ onMessage }) {
       {["A", "B"].map((v) => (
         <div key={v} style={{ marginTop: 10 }}>
           <label htmlFor={`note-${v}`}><b>Note {v}</b></label> <Score s={scores[v]} />
-          <textarea id={`note-${v}`} rows={3} value={draft[v]} maxLength={600} onChange={(e) => setDraft({ ...draft, [v]: e.target.value })} onBlur={(e) => rescore(v, e.target.value)} style={{ width: "100%" }} />
+          <textarea id={`note-${v}`} rows={3} value={draft[v]} maxLength={600} readOnly={!canWrite()} onChange={(e) => setDraft({ ...draft, [v]: e.target.value })} onBlur={(e) => canWrite() && rescore(v, e.target.value)} style={{ width: "100%" }} />
         </div>
       ))}
-      <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
-        <button className="btn" onClick={save} disabled={!isOwner()}>Save notes</button>
+      {canWrite() && <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
+        <button className="btn" onClick={save}>Save notes</button>
         <input aria-label="Who you are writing to" placeholder="Optional: who it is for (e.g. CHROs at IT services firms)" value={context} maxLength={500} onChange={(e) => setContext(e.target.value)} style={{ flex: 1, minWidth: 220 }} />
         <button className="btn ghost" onClick={write} disabled={busy}>{busy ? "Writing…" : "Write ideas with Claude"}</button>
-      </div>
+      </div>}
       {cur.changed_at && <small className="sub-inline">Last changed by {cur.changed_by} · {istLabel(cur.changed_at)}. Accept rates before this date belong to the old notes.</small>}
       {ideas && (
         <div style={{ marginTop: 10 }}>
@@ -299,7 +301,7 @@ export default function LinkedInQueue() {
       <LinkedInSequenceEditor onMessage={setMessage} />
       <ConnectionNotes onMessage={setMessage} />
       <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />
-      {getRole() !== "viewer" && <ChromeAssistant onMessage={setMessage} />}
+      {canWrite() && <ChromeAssistant onMessage={setMessage} />}
       {q && !q.case_study_set && <p className="sub">Step 4 (case study) is skipped until you add a real case-study link in the settings above.</p>}
 
       <div className="row dl-head">
@@ -318,9 +320,11 @@ export default function LinkedInQueue() {
           <div className="row">
             <button className="btn ghost" onClick={() => copyText(d.message).then(() => setMessage("Message copied. Paste it on LinkedIn."))}>Copy message</button>
             {/^https?:\/\//i.test(d.linkedin_url || "") && <a className="btn ghost" href={d.linkedin_url} target="_blank" rel="noopener noreferrer">Open profile</a>}
-            <button className="btn" onClick={() => act(() => api.linkedinSent(d.lead_id, d.step), `Step ${d.step} marked sent.`)}>Mark sent</button>
-            <button className="btn ghost" onClick={() => act(() => api.linkedinReplied(d.lead_id, ""), "Stopped. A task to answer them was added.")}>They replied</button>
-            <button className="btn ghost" onClick={() => setHelper(helper === d.lead_id ? null : d.lead_id)}>Reply helper</button>
+            {canWrite() && <>
+              <button className="btn" onClick={() => act(() => api.linkedinSent(d.lead_id, d.step), `Step ${d.step} marked sent.`)}>Mark sent</button>
+              <button className="btn ghost" onClick={() => act(() => api.linkedinReplied(d.lead_id, ""), "Stopped. A task to answer them was added.")}>They replied</button>
+              <button className="btn ghost" onClick={() => setHelper(helper === d.lead_id ? null : d.lead_id)}>Reply helper</button>
+            </>}
           </div>
           {helper === d.lead_id && <BranchHelper leadId={d.lead_id} onMessage={setMessage} />}
         </div>
@@ -331,10 +335,10 @@ export default function LinkedInQueue() {
         <ul className="task-list">{q?.waiting_for_acceptance.map((w) => (
           <li key={w.lead_id}><div><b>{w.name}</b> · {w.company}</div>
             <div className="sub">Request sent {w.since ? istLabel(w.since) : ""}</div>
-            <div className="row">
+            {canWrite() && <div className="row">
               <button className="btn" onClick={() => act(() => api.linkedinAccepted(w.lead_id), "Accepted. The first message is scheduled.")}>They accepted</button>
               <button className="btn ghost" onClick={() => act(() => api.linkedinStop(w.lead_id), "Stopped.")}>Stop</button>
-            </div></li>))}
+            </div>}</li>))}
         </ul>
       )}
 
@@ -343,7 +347,7 @@ export default function LinkedInQueue() {
         <ul className="task-list">{q?.suggestions.map((s) => (
           <li key={s.lead_id}><div><b>{s.name || "Contact"}</b> · {s.company}{s.title ? ` · ${s.title}` : ""}</div>
             <div className="sub">Angle: {PERSONA[s.persona] || s.persona}</div>
-            <div className="row"><button className="btn ghost" onClick={() => act(() => api.linkedinStart(s.lead_id), "Added. Step 1 is in today's list.")}>Start LinkedIn sequence</button></div></li>))}
+            {canWrite() && <div className="row"><button className="btn ghost" onClick={() => act(() => api.linkedinStart(s.lead_id), "Added. Step 1 is in today's list.")}>Start LinkedIn sequence</button></div>}</li>))}
         </ul>
       )}
     </>

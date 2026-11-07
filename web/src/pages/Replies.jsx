@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
@@ -55,7 +55,7 @@ function ReplyRow({ r, team, onChanged, onOpen, setMessage }) {
   const toggle = (p) => {
     const next = panel === p ? "" : p;
     setPanel(next);
-    if (next && !r.read) api.replyAction(r.key, "read").catch(() => {});
+    if (next && !r.read && canWrite()) api.replyAction(r.key, "read").catch(() => {});
     if (next === "reply" && !lead) api.lead(r.lead_id).then(setLead).catch((e) => setMessage(e.message));
   };
   const subject = r.subject ? (/^re:/i.test(r.subject) ? r.subject : `Re: ${r.subject}`) : `Re: your reply`;
@@ -80,9 +80,9 @@ function ReplyRow({ r, team, onChanged, onOpen, setMessage }) {
       <p style={{ margin: "6px 0" }}>{r.text.slice(0, 400)}{r.text.length > 400 ? "…" : ""}</p>
       <p className="sub" style={{ margin: "0 0 6px" }}>Next step: {r.next_step}</p>
       <div className="row" style={{ flexWrap: "wrap", gap: 6 }} aria-label="Reply actions">
-        <button className="btn" onClick={() => toggle("reply")}>Reply</button>
+        {canWrite() && <button className="btn" onClick={() => toggle("reply")}>Reply</button>}
         <button className="btn ghost" onClick={() => toggle("thread")} aria-expanded={panel === "thread"}>{panel === "thread" ? "Hide thread" : "Thread"}</button>
-        {r.handled
+        {canWrite() && <>{r.handled
           ? <button className="btn ghost" onClick={() => run("unhandled", {}, "Marked not handled.")}>Mark not handled</button>
           : <button className="btn ghost" onClick={() => run("handled", {}, "Marked handled.")}>Mark handled</button>}
         <button className="btn ghost" onClick={() => toggle("snooze")}>Snooze…</button>
@@ -92,16 +92,16 @@ function ReplyRow({ r, team, onChanged, onOpen, setMessage }) {
         </select>
         <select aria-label="Correct the label" value="" onChange={(e) => e.target.value && run("label", { label: e.target.value }, `Label set to ${LABEL_WORDS[e.target.value]}.`)}>
           <option value="">Change label…</option>{Object.entries(LABEL_WORDS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
+        </select></>}
       </div>
-      {panel === "snooze" && (
+      {panel === "snooze" && canWrite() && (
         <form className="row" style={{ marginTop: 8 }} onSubmit={(e) => { e.preventDefault(); run("snooze", { until: withIst(until) }, "Snoozed; a task will remind you then.").then(() => setPanel("")); }}>
           <label className="row" style={{ gap: 6 }}>Remind me at (IST)<input type="datetime-local" required value={until} onChange={(e) => setUntil(e.target.value)} /></label>
           <button className="btn" type="submit">Snooze</button><button className="btn ghost" type="button" onClick={() => setPanel("")}>Cancel</button>
         </form>
       )}
       {panel === "thread" && <Thread leadId={r.lead_id} />}
-      {panel === "reply" && (lead ? (lead.email
+      {panel === "reply" && canWrite() && (lead ? (lead.email
         ? <Composer lead={lead} initialSubject={subject} initialBody={quoted} note={`Replying to ${r.contact || r.company}'s ${CHANNEL_WORDS[r.channel] || ""} reply.`}
             onCancel={() => setPanel("")}
             onDone={(m) => { setPanel(""); setMessage(m); api.replyAction(r.key, "handled").then(onChanged).catch(onChanged); }} />

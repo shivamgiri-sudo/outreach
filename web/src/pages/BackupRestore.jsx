@@ -16,7 +16,7 @@ function Summary({ plan }) {
     <>
       <p className="sub" style={{ margin: "10px 0 6px" }}>
         Backup made {plan.backup.created_at_ist || plan.backup.created_at}{plan.backup.app_commit ? ` (app version ${plan.backup.app_commit})` : ""}.
-        {" "}Connection keys included: <b>{plan.backup.includes_secrets ? "yes" : "no"}</b>.
+        {" "}Connection keys and login passwords included: <b>{plan.backup.includes_secrets ? "yes" : "no"}</b>.
       </p>
       <div className="table-card">
         <table className="stack-table" data-testid="restore-summary">
@@ -65,14 +65,17 @@ export default function BackupRestore() {
           or to go back to today's state. For spreadsheets, use the download buttons on each page instead.
         </p>
         <DownloadButton path="/api/backup?include_secrets=0" filename="outreach-backup.json.gz" label="Download backup" className="btn" testId="download-backup" />
-        <p className="sub" style={{ margin: "6px 0 0" }}>Without connection keys: after a restore you enter them again on the Integrations page.</p>
+        <p className="sub" style={{ margin: "6px 0 0" }}>
+          Without connection keys, login password hashes or pairing tokens: after a restore you enter the keys again on the
+          Integrations page. Team logins already on the server keep their passwords.
+        </p>
         <label className="check-row">
           <input type="checkbox" checked={withSecrets} onChange={(e) => setWithSecrets(e.target.checked)} />
-          <span>Also include connection keys, passwords and secrets</span>
+          <span>Also include connection keys, login password hashes, tokens and secrets</span>
         </label>
         {withSecrets && (
           <div className="tip error" role="alert" style={{ marginTop: 8 }}>
-            <b>Careful: this file will hold your API keys, mailbox passwords, calendar tokens and the server secret in plain text.</b>{" "}
+            <b>Careful: this file will hold your API keys, mailbox passwords, calendar tokens, team login password hashes and the server secret in plain text.</b>{" "}
             Anyone who gets it can send email and WhatsApp as you and read your replies. Store it like a password (an encrypted
             drive or password manager). Never email it, chat it or put it in a shared folder. Delete it once you have moved.
             <div className="row" style={{ marginTop: 8 }}>
@@ -87,6 +90,11 @@ export default function BackupRestore() {
         <b>Restore from a backup</b>
         <p className="sub" style={{ margin: "2px 0 8px" }}>
           Replaces everything in this app with the file. First you see what would change; nothing happens until you confirm.
+        </p>
+        <p className="sub" style={{ margin: "0 0 8px" }}>
+          A backup made without keys has no login passwords. Restoring it does not sign anyone out of a working login: people
+          who already have a login here keep their current password, and logins only on this server stay. Logins that exist
+          only in the backup come back with no password; set one for each on the Team page before they can sign in.
         </p>
         <label htmlFor="restore-file">Backup file (.json.gz)</label>
         <input id="restore-file" type="file" accept=".gz,.json,application/gzip,application/json"

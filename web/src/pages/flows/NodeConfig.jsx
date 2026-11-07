@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../../api.js";
+import { api, isOwner } from "../../api.js";
 import { STAGE_ORDER, stageLabel } from "../../labels.js";
 import {
   ACTIVATION_EVENTS, BRANCH_HEADINGS, EMAIL_PLACEHOLDERS, IF_FIELDS, IF_OPS, PERSONAS, REPLY_LABELS, REPLY_OUTPUTS,
@@ -50,12 +50,13 @@ function WebhookBox({ flowId, saved, savedKey }) {
   const [hook, setHook] = useState(null);
   const [err, setErr] = useState("");
   useEffect(() => {
-    if (!saved) return undefined;
+    if (!saved || !isOwner()) return undefined;          // the address and its token are for owners only
     let alive = true;
     setErr("");
     api.flowWebhook(flowId).then((h) => alive && setHook(h)).catch((e) => alive && setErr(e.message || "Could not make the address."));
     return () => { alive = false; };
   }, [flowId, saved, savedKey]);
+  if (!isOwner()) return <p className="field-help">Only an owner can see this flow's address for other tools.</p>;
   if (!saved) return <p className="field-help">Save the flow and this flow's address for other tools appears here.</p>;
   if (err) return <p className="field-help" role="alert">{err}</p>;
   if (!hook) return <p className="field-help">Making the address…</p>;
@@ -300,7 +301,7 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
       )}
       <div className="row" style={{ marginTop: 12 }}>
         {onDuplicate && !isTrigger(node.type) && <button type="button" className="btn ghost" onClick={onDuplicate}>Duplicate (Ctrl+D)</button>}
-        <button type="button" className="btn ghost danger" onClick={onDelete}>Delete this step</button>
+        {onDelete && <button type="button" className="btn ghost danger" onClick={onDelete}>Delete this step</button>}
       </div>
     </section>
   );

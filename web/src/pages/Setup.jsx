@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, setToken } from "../api.js";
+import { api, isOwner, setToken } from "../api.js";
 import GoLive from "./GoLive.jsx";
 import BackupRestore from "./BackupRestore.jsx";
 import { useConfirm, usePrompt } from "../Dialog.jsx";
@@ -26,6 +26,7 @@ function Connector({ item, onSaved }) {
   const { data: guides } = useGuides();
   const [touched, touch] = useTouched();
   const gkey = `integration:${item.id}`;
+  const owner = isOwner();                     // connections are owner-only on the server
 
   const save = async () => {
     setSaving(true); setError("");
@@ -51,6 +52,7 @@ function Connector({ item, onSaved }) {
       <details open={item.status !== "configured"}>
         <summary>Set up in {item.steps.length} easy steps</summary>
         <ol className="steps">{item.steps.map((s) => <li key={s}>{s}</li>)}</ol>
+        <fieldset className="ro-fieldset" disabled={!owner}>
         {item.modes.length > 1 && (
           <div className="row">
             {item.modes.map((m) => (
@@ -74,17 +76,18 @@ function Connector({ item, onSaved }) {
             </div>
           );
         })}
+        </fieldset>
         {error && <p style={{ color: "var(--hot)" }}>{error}</p>}
-        <div className="row" style={{ marginTop: 12 }}>
+        {owner && <div className="row" style={{ marginTop: 12 }}>
           <button className="btn" disabled={saving} onClick={save}>{mode === "manual" ? "Use manual mode" : "Save"}</button>
-        </div>
+        </div>}
       </details>
-      <div className="row" style={{ marginTop: 10 }}>
+      {owner && <div className="row" style={{ marginTop: 10 }}>
         {item.id === "sending_domain" && (
           <input style={{ flex: 1, minWidth: 200 }} placeholder="Send the test email to (your address)" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
         )}
         <button className="btn ghost" disabled={testing} onClick={test}>{testing ? "Testing…" : "Test connection"}</button>
-      </div>
+      </div>}
       {testResult && (
         <p style={{ margin: "8px 0 0", color: testResult.ok ? "var(--ok)" : "var(--hot)" }}>
           {testResult.ok ? "✓ " : "✗ "}{testResult.message}

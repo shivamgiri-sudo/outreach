@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import Icon from "../icons.jsx";
 import { ErrorState } from "../states.jsx";
 import { stageLabel, sourceLabel, useSourceRegistry } from "../labels.js";
@@ -32,7 +32,7 @@ function TodayList({ today, onOpen, onDone, go }) {
                   ? <button className="btn ghost" onClick={() => go("calls")}>Open call desk</button>
                   : item.lead_id ? <button className="btn ghost" onClick={() => onOpen(item.lead_id)}>Open lead</button>
                     : <button className="btn ghost" onClick={() => go("tasks")}>Open tasks</button>}
-                {item.kind === "task" && <button className="btn ghost" onClick={() => onDone(item.task_index)}>Done</button>}
+                {item.kind === "task" && canWrite() && <button className="btn ghost" onClick={() => onDone(item.task_index)}>Done</button>}
               </div>
             </li>
           ))}
@@ -112,7 +112,7 @@ export default function Dashboard({ go }) {
           <h2>Dashboard</h2>
           <p className="sub">Who to talk to today, and where every lead stands.</p>
           <div className="row">
-            <button className="btn cta" onClick={() => go("leads")}><Icon name="plus" size={16} /> Add leads</button>
+            {canWrite() && <button className="btn cta" onClick={() => go("leads")}><Icon name="plus" size={16} /> Add leads</button>}
             <button className="btn glass" onClick={() => go("setup")}><Icon name="rocket" size={16} /> Go-live checklist</button>
           </div>
         </div>

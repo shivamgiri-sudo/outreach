@@ -166,7 +166,7 @@ export default function ProspectSearch() {
                 {canAdd && <button className="btn" disabled={busy} onClick={() => add()}>Add to leads</button>}
                 {canAdd && <button className="btn ghost" disabled={busy} onClick={addToList}>Add to list…</button>}
                 {canAdd && <button className="btn ghost" disabled={busy} onClick={addAndStart}>Add & start sequence</button>}
-                <button className="btn ghost" disabled={busy} onClick={findEmails}>Find emails…</button>
+                {canAdd && <button className="btn ghost" disabled={busy} onClick={findEmails}>Find emails…</button>}
                 {isOwner() && <button className="btn ghost" disabled={busy} onClick={exportCsv}>Export CSV</button>}
                 <button className="btn ghost" onClick={() => setPicked(new Set())}>Clear</button>
               </div>

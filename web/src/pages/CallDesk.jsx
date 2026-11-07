@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { stageLabel } from "../labels.js";
 import { istLabel } from "../time.js";
 import CallScript from "./CallScript.jsx";
@@ -58,7 +58,7 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
   }, [index, lead?.lead_id]);
 
   const record = async (outcome) => {
-    if (!lead || busy) return;
+    if (!lead || busy || !canWrite()) return;
     if (outcome === "call_back" && callback === null) { setCallback(inIstMinutes(60)); return; }
     setBusy(true); setMsg("");
     try {
@@ -110,6 +110,7 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
             {lead.recent_notes.map((n, i) => <li key={i}>{istLabel(n.at)} · {n.kind}{n.by ? ` · ${n.by}` : ""}: {n.text}</li>)}
           </ul>
         )}
+        {canWrite() && <>
         <label htmlFor="dial-notes">Notes (saved with the outcome)</label>
         <textarea id="dial-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What they said, next step" />
         {callback !== null && (
@@ -125,6 +126,7 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
           ))}
         </div>
         <p className="sub">Keys 1–7 log an outcome, S skips. {callback !== null ? MEANS.call_back : "Each outcome saves and moves to the next lead."}</p>
+        </>}
         {msg && <p className="error" role="alert">{msg}</p>}
         <button className="link" onClick={() => onOpen(lead.lead_id)}>Open the full lead</button>
       </div>

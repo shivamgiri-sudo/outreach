@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, isOwner } from "../api.js";
+import { api, canWrite, isOwner } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { istDayLabel, istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
@@ -59,8 +59,8 @@ function Item({ title, sub, item, onOpen, go, overdue }) {
       </div>
       <div className="row today-actions" style={ACTIONS_STYLE}>
         {item.phone && <a className={`btn ${next.action === "call" ? "" : "ghost"}`} href={`tel:${item.phone}`} title="Dial now">Call</a>}
-        {item.email && <button className={`btn ${next.action === "email" ? "" : "ghost"}`} onClick={() => onOpen(leadId, "activity")}>Write email</button>}
-        {item.phone && next.action === "whatsapp" && <button className="btn" onClick={() => onOpen(leadId, "outreach")}>WhatsApp</button>}
+        {item.email && canWrite() && <button className={`btn ${next.action === "email" ? "" : "ghost"}`} onClick={() => onOpen(leadId, "activity")}>Write email</button>}
+        {item.phone && next.action === "whatsapp" && canWrite() && <button className="btn" onClick={() => onOpen(leadId, "outreach")}>WhatsApp</button>}
         {next.action === "call" && item.phone && <button className="btn ghost" onClick={() => go("calls")} title="Call it from the call desk with the script">Call desk</button>}
         {leadId && <button className="btn ghost" onClick={() => onOpen(leadId)}>Open</button>}
       </div>
@@ -111,10 +111,10 @@ export default function MyDay({ go }) {
       </div>
       <p className="sub" style={{ marginTop: 0 }}>
         This week: {day.week.calls} calls, {day.week.connects} connects, {day.week.emails} emails, {day.week.linkedin} LinkedIn, {day.week.whatsapp} WhatsApp, {day.week.tasks_done} tasks done.
-        {" "}<button className="link" onClick={() => setEditing(!editing)}>{editing ? "Close targets" : "Change targets"}</button>
+        {canWrite() && <>{" "}<button className="link" onClick={() => setEditing(!editing)}>{editing ? "Close targets" : "Change targets"}</button></>}
         {!day.personal_targets && " (team targets)"}
       </p>
-      {editing && <TargetEditor day={day} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
+      {editing && canWrite() && <TargetEditor day={day} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
 
       <div className="grid gw">
         <Section title="Call-backs due" count={c.callbacks} empty="No call-backs due today." testId="myday-callbacks">
@@ -133,8 +133,8 @@ export default function MyDay({ go }) {
               <div className="today-text"><b>{t.title}</b>{t.company && <span className="sub"> — {t.company}</span>}
                 <div className="sub">{t.due_at ? `Due ${istLabel(t.due_at)}` : ""}{t.text ? ` · ${t.text.slice(0, 90)}` : ""}</div></div>
               <div className="row today-actions" style={ACTIONS_STYLE}>
-                <button className="btn ghost" onClick={() => api.taskDoneById(t.id, "").then(load)}>Done</button>
-                <button className="btn ghost" onClick={() => api.updateTask(t.id, { snooze_minutes: 1440 }).then(load)}>Tomorrow</button>
+                {canWrite() && <button className="btn ghost" onClick={() => api.taskDoneById(t.id, "").then(load)}>Done</button>}
+                {canWrite() && <button className="btn ghost" onClick={() => api.updateTask(t.id, { snooze_minutes: 1440 }).then(load)}>Tomorrow</button>}
                 {t.lead_id && <button className="btn ghost" onClick={() => openLead(t.lead_id)}>Open</button>}
               </div>
             </li>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../../api.js";
+import { api, isOwner } from "../../api.js";
 import { useModalFocus } from "../../DrawerShell.jsx";
 import { istLabel } from "../../time.js";
 import { CustomHttpBuilder, CustomWebhookMapper } from "./CustomBuilder.jsx";
@@ -40,6 +40,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
   useDialog(panel, onClose);
   const { data: guides } = useGuides();
   const keys = guideKeys(channel.id, start);
+  const owner = isOwner();                     // every change here (and the webhook addresses) is owner-only on the server
 
   const legacy = provider.legacy;
   const custom = provider.custom;
@@ -49,7 +50,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
   const canActivate = channel.kind === "exclusive" && !provider.active && ["configured", "error"].includes(provider.status);
 
   useEffect(() => {
-    if (provider.webhook) api.channelWebhooks(channel.id, provider.id).then((d) => setHook(d.webhooks[0])).catch(() => {});
+    if (provider.webhook && owner) api.channelWebhooks(channel.id, provider.id).then((d) => setHook(d.webhooks[0])).catch(() => {});
   }, []);
 
   const refresh = async () => {
@@ -89,7 +90,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
     window.location.assign(r.url);
   });
   const remove = () => act(async () => { await api.deleteChannel(channel.id, provider.id); onClose(); });
-  const next = async () => { if (step === 1 && !(await save())) return; setStep(Math.min(step + 1, last)); };
+  const next = async () => { if (step === 1 && owner && !(await save())) return; setStep(Math.min(step + 1, last)); };
   const target = TEST_TARGET[channel.id] && provider.id !== "click_to_call" && provider.id !== "custom_webhook" ? TEST_TARGET[channel.id] : null;
   const [urlLabel, secretLabel] = HOOK_LABELS[provider.webhook?.auth] || HOOK_LABELS.token;
 
@@ -127,6 +128,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
         {step === 1 && (
           <section>
             <p className="guide-row-actions"><GuideButton keys={keys} label="Where do I find these details?" testId="wizard-guide-details" /></p>
+            <fieldset className="ro-fieldset" disabled={!owner}>
             {legacy && provider.modes?.length > 1 && (
               <div className="row">
                 {provider.modes.map((m) => (
@@ -144,7 +146,8 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
                 onChange={(v) => setValues({ ...values, [f.key]: v })} />
             ))}
             {!custom && provider.fields.length === 0 && !legacy && <p className="sub">Nothing to type for this one. Click Save, then copy the webhook address.</p>}
-            <p className="field-help">Keys are stored on your server and shown masked afterwards.</p>
+            </fieldset>
+            <p className="field-help">{owner ? "Keys are stored on your server and shown masked afterwards." : "Only an owner can change these details."}</p>
           </section>
         )}
 
@@ -155,9 +158,9 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
             {meta.public_base_url?.includes("localhost") && (
               <p className="field-help">This uses a localhost address, which only works on this computer. Set your public web address in Setup first for a shared server.</p>
             )}
-            <button className="btn" disabled={busy || !provider.saved} onClick={connect} style={{ marginTop: 12 }}>
+            {owner && <button className="btn" disabled={busy || !provider.saved} onClick={connect} style={{ marginTop: 12 }}>
               {provider.oauth_connected ? "Reconnect" : "Connect"} {provider.title.split(" ")[0]}
-            </button>
+            </button>}
             {!provider.saved && <p className="field-help">Save your details in step 2 first.</p>}
             {provider.oauth_connected && <p className="result ok">✓ Connected. Run the test to confirm.</p>}
           </section>
@@ -166,7 +169,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
         {step === 2 && extraStep === "Webhook address" && (
           <section>
             <p>Paste this into <b>{provider.webhook.where}</b>{provider.webhook.events.length > 0 && <> and tick: {provider.webhook.events.join(", ")}</>}.</p>
-            {hook ? (
+            {!owner ? <p className="sub">Only an owner can see this address (it contains a secret).</p> : hook ? (
               <>
                 <CopyRow label={urlLabel} value={hook.url} testid="webhook-url" />
                 {secretLabel && <CopyRow label={secretLabel} value={hook.secret} testid="webhook-secret" />}
@@ -192,19 +195,19 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
         {step === last && (
           <section>
             <p className="sub">{provider.test}</p>
-            {target && (
+            {owner && target && (
               <label>{target[1]}
                 <input type={target[0]} value={test.to} placeholder={target[2]} onChange={(e) => setTest({ ...test, to: e.target.value })} />
               </label>
             )}
-            {channel.id === "whatsapp" && provider.id !== "custom_webhook" && (
+            {owner && channel.id === "whatsapp" && provider.id !== "custom_webhook" && (
               <label>Approved template name {provider.id === "meta_cloud" ? "(empty = Meta's hello_world)" : ""}
                 <input value={test.template} onChange={(e) => setTest({ ...test, template: e.target.value })} />
               </label>
             )}
             {provider.id === "custom_webhook" ? (
               <p>Use <b>Preview what the app reads</b> in step 2 with a sample payload to check the mapping.</p>
-            ) : (
+            ) : owner && (
               <div className="row" style={{ marginTop: 10 }}>
                 <button className="btn" disabled={busy || !provider.saved} onClick={runTest} data-testid="run-test">{busy ? "Testing…" : "Run test"}</button>
                 {provider.id === "imap" && provider.saved && (
@@ -212,7 +215,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
                 )}
               </div>
             )}
-            {!provider.saved && <p className="field-help">Save your details in step 2 first.</p>}
+            {owner && !provider.saved && <p className="field-help">Save your details in step 2 first.</p>}
             {test.result && (
               <div className={`tip ${test.result.ok ? "" : "error"}`} role="status" style={{ marginTop: 10 }} data-testid="test-result">
                 <b className={`result ${test.result.ok ? "ok" : "bad"}`}>{test.result.ok ? "✓ Works. " : "✗ Not yet. "}</b>{test.result.message}
@@ -226,7 +229,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
             {provider.last_test && !test.result && (
               <p className="field-help">Last test {istLabel(provider.last_test.at)}: {provider.last_test.ok ? "worked" : "failed"} — {provider.last_test.message}</p>
             )}
-            {canActivate && (
+            {owner && canActivate && (
               <button className="btn cta" style={{ marginTop: 12 }} disabled={busy} onClick={() => act(() => api.setActiveChannel(channel.id, provider.id))}>
                 Make this the active provider for {channel.title}
               </button>
@@ -237,10 +240,10 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
         <div className="wizard-foot">
           <div className="row">
             {step > 0 && <button className="btn ghost" onClick={() => setStep(step - 1)}>Back</button>}
-            {step < last && <button className="btn" disabled={busy} onClick={next}>{step === 1 ? (busy ? "Saving…" : "Save and continue") : "Next"}</button>}
-            {step === 1 && <button className="btn ghost" disabled={busy} onClick={save}>Save</button>}
+            {step < last && <button className="btn" disabled={busy} onClick={next}>{step === 1 && owner ? (busy ? "Saving…" : "Save and continue") : "Next"}</button>}
+            {step === 1 && owner && <button className="btn ghost" disabled={busy} onClick={save}>Save</button>}
           </div>
-          {provider.saved && !legacy && (confirmRemove
+          {owner && provider.saved && !legacy && (confirmRemove
             ? <span className="row"><button className="btn danger-solid" disabled={busy} onClick={remove}>Yes, remove these details</button>
                 <button className="btn ghost" onClick={() => setConfirmRemove(false)}>Keep</button></span>
             : <button className="btn ghost danger" disabled={busy} onClick={() => setConfirmRemove(true)}>Remove</button>)}

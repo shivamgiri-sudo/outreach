@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { copyText } from "../clipboard.js";
 import { istDate, istLabel, outsideBusinessHours } from "../time.js";
 import { getBrand } from "../brand.js";
@@ -71,10 +71,10 @@ export default function LeadMeetings({ lead, onChanged }) {
               </div>
               <div className="row">
                 {m.join_url && m.status === "scheduled" && <a className="btn ghost" href={m.join_url} target="_blank" rel="noreferrer">Join</a>}
-                {m.status === "scheduled" && new Date(m.start) < new Date() && (
+                {canWrite() && m.status === "scheduled" && new Date(m.start) < new Date() && (
                   <button className="btn ghost" disabled={busy} onClick={() => markDone(m.id)}>Mark done</button>
                 )}
-                {m.status === "scheduled" && (cancelling === m.id ? (
+                {canWrite() && m.status === "scheduled" && (cancelling === m.id ? (
                   <>
                     <button className="btn danger-solid" disabled={busy} onClick={() => cancel(m.id)}>Yes, cancel it</button>
                     <button className="btn ghost" onClick={() => setCancelling("")}>Keep</button>
@@ -85,12 +85,12 @@ export default function LeadMeetings({ lead, onChanged }) {
           ))}
         </ul>
       )}
-      {calendar === undefined && <p className="sub">Checking your calendar…</p>}
-      {calendar !== undefined && !active && (
+      {canWrite() && calendar === undefined && <p className="sub">Checking your calendar…</p>}
+      {canWrite() && calendar !== undefined && !active && (
         <p className="sub">No calendar connected yet. <a href="#integrations?tab=calendar">Connect one on the Integrations page</a> to book demos with a video link.</p>
       )}
-      {active && !form && <button className="btn ghost" onClick={openForm} disabled={lead.stage === "unsubscribed"}>Book a meeting ({active.title})</button>}
-      {active && form && (
+      {canWrite() && active && !form && <button className="btn ghost" onClick={openForm} disabled={lead.stage === "unsubscribed"}>Book a meeting ({active.title})</button>}
+      {canWrite() && active && form && (
         <form className="inline-form" onSubmit={book}>
           {active.id === "booking_link" && (
             <label className="row" style={{ fontWeight: 400 }}>

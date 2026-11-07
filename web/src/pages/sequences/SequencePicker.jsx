@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../../api.js";
+import { api, canWrite } from "../../api.js";
 import { humanDay } from "./lint.js";
 
 // Choose which email sequence to start for one lead, then start it. `onStart(sequenceId)` does the enrol call
@@ -9,6 +9,7 @@ export default function SequencePicker({ lead, onStart }) {
   const [chosen, setChosen] = useState("default");
   const [msg, setMsg] = useState("");
   useEffect(() => { api.sequences().then(setList).catch(() => setList([])); }, []);
+  if (!canWrite()) return null;                        // viewers cannot start a sequence
   if (!lead?.email) return <button className="btn ghost" disabled>No email — cannot start</button>;
   const pick = list.find((s) => s.id === chosen);
   const start = async () => {

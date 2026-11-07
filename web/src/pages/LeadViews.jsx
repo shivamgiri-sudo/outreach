@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, getRole } from "../api.js";
+import { api, canWrite } from "../api.js";
 
 // Saved Leads filters, per person (kept on the server). Pick one to apply it; save the current filters by name.
 export default function LeadViews({ filters, onApply }) {
@@ -8,7 +8,7 @@ export default function LeadViews({ filters, onApply }) {
   const [name, setName] = useState("");
   const [picked, setPicked] = useState("");
   const [error, setError] = useState("");
-  const canSave = getRole() !== "viewer";       // viewers are read-only, so they can't save views
+  const canSave = canWrite();       // viewers are read-only, so they can't save views
   const load = () => api.leadViews().then(setViews).catch(() => {});
   useEffect(() => { load(); }, []);
 

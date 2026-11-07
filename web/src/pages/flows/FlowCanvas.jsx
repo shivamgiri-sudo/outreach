@@ -11,7 +11,7 @@ const clamp = (v) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v));
 // output port to another card to connect them. Cards and connections are focusable buttons for keyboard users.
 const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
   const { nodes, edges, selected, problems, highlight, caller, onSelect, onDragStart, onPreviewMove, onCommitMove,
-    onKeyMove, onConnect, onDeleteEdge, onDeleteNode, onOpenConfig, onDropType, onAddFrom, onDuplicate, onToggleOff, stepResults } = props;
+    onKeyMove, onConnect, onDeleteEdge, onDeleteNode, onOpenConfig, onDropType, onAddFrom, onDuplicate, onToggleOff, stepResults, readOnly } = props;
   const svg = useRef(null);
   const [view, setView] = useState({ x: 40, y: 20, k: 1 });
   const [drag, setDrag] = useState(null);
@@ -157,7 +157,7 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
                 <path d={d} className="fb-edge-hit" />
                 <path d={d} className="fb-edge-line" markerEnd="url(#fb-arrow)" />
                 {label && <text x={mid.x} y={mid.y - 6} className="fb-edge-label">{label}</text>}
-                {isSel && (
+                {isSel && !readOnly && (
                   <g className="fb-edge-x" transform={`translate(${mid.x},${mid.y + 10})`} role="button" aria-label="Remove this connection"
                     onPointerDown={(ev) => { ev.stopPropagation(); onDeleteEdge(e.id); }}>
                     <circle r="11" /><path d="M-4,-4 L4,4 M4,-4 L-4,4" />
@@ -221,7 +221,7 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
                   );
                 })}
                 {outs.map((label, i) => {
-                  if (edges.some((e) => e.from === n.id && e.label === label)) return null;
+                  if (readOnly || edges.some((e) => e.from === n.id && e.label === label)) return null;
                   const px = (width * (i + 1)) / (outs.length + 1);
                   return (
                     <g key={`add-${label}`} className="fb-add" transform={`translate(${px},${NODE_H + 44})`} role="button" tabIndex={0}

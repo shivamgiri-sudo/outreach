@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api } from "../../api.js";
+import { api, isOwner } from "../../api.js";
 import FlowCanvas from "./FlowCanvas.jsx";
 import FlowListView from "./FlowListView.jsx";
 import NodePicker from "./NodePicker.jsx";
@@ -12,6 +12,7 @@ const PHONE = "(max-width: 600px)";
 const isPhone = () => typeof window !== "undefined" && window.matchMedia?.(PHONE).matches;
 const typing = (el) => el && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable);
 const STATUS = { active: ["ok", "Active"], paused: ["warn", "Paused"], draft: ["", "Draft"] };
+const NOOP = () => {};
 
 export default function FlowEditor({ flowId, catalog, onBack }) {
   const [flow, setFlow] = useState(null);
@@ -55,7 +56,8 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
     api.leads().then(setLeads).catch(() => setLeads([]));
   }, [flowId]);
 
-  const dirty = flow && keyOf(graph, meta) !== savedKey;
+  const owner = isOwner();                                   // flows are owner-only changes on the server
+  const dirty = owner && flow && keyOf(graph, meta) !== savedKey;
   const errors = checked.key === graphKey(graph) ? checked.list : [];
   const problems = useMemo(() => {
     const out = {};
@@ -145,6 +147,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       else if (mod && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+      else if (!isOwner()) return;
       else if (mod && e.key.toLowerCase() === "d" && selected?.kind === "node") { e.preventDefault(); duplicate(selected.id); }
       else if ((e.key === "Delete" || e.key === "Backspace") && selected
                && (e.target === document.body || e.target.closest?.(".fb-stage"))) {
@@ -220,7 +223,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
         <button type="button" className="btn ghost" onClick={() => (dirty ? setLeaving(true) : onBack())}>← All flows</button>
         <label className="fb-name" htmlFor="fb-name">
           <span className="sr-only">Flow name</span>
-          <input id="fb-name" value={meta.name} onChange={(e) => setMeta({ ...meta, name: e.target.value })} />
+          <input id="fb-name" readOnly={!owner} value={meta.name} onChange={(e) => setMeta({ ...meta, name: e.target.value })} />
         </label>
         <span className={`pill ${pill}`} data-testid="flow-status">{word}</span>
         <span className="sub-inline">v{flow.version}{dirty ? " · unsaved changes" : ""}</span>
@@ -235,21 +238,26 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
         </div>
       )}
       <div className="fb-bar" role="toolbar" aria-label="Flow actions">
-        <button type="button" className="btn" onClick={() => setPicker({ id: null, label: null, at: null })} data-testid="add-step"><b aria-hidden="true">+</b> Add step</button>
-        <button type="button" className="btn ghost" onClick={undo} disabled={!canUndo} aria-keyshortcuts="Control+Z">Undo</button>
-        <button type="button" className="btn ghost" onClick={redo} disabled={!canRedo} aria-keyshortcuts="Control+Y">Redo</button>
-        <button type="button" className="btn ghost" onClick={layout}>Auto-layout</button>
+        {owner && <>
+          <button type="button" className="btn" onClick={() => setPicker({ id: null, label: null, at: null })} data-testid="add-step"><b aria-hidden="true">+</b> Add step</button>
+          <button type="button" className="btn ghost" onClick={undo} disabled={!canUndo} aria-keyshortcuts="Control+Z">Undo</button>
+          <button type="button" className="btn ghost" onClick={redo} disabled={!canRedo} aria-keyshortcuts="Control+Y">Redo</button>
+          <button type="button" className="btn ghost" onClick={layout}>Auto-layout</button>
+        </>}
         <button type="button" className="btn ghost" aria-pressed={view === "list"} onClick={() => setView(view === "list" ? "canvas" : "list")}>
           {view === "list" ? "Canvas view" : "List view"}
         </button>
         <span className="fb-spacer" />
         <button type="button" className="btn ghost" onClick={exportFlow}>Export</button>
-        <button type="button" className="btn ghost" onClick={validate}>Validate</button>
-        <button type="button" className="btn" onClick={save} disabled={busy || !dirty}>Save</button>
-        {flow.status === "active"
-          ? <button type="button" className="btn ghost" onClick={pause}>Pause</button>
-          : <button type="button" className="btn cta" onClick={activate}>Activate</button>}
+        {owner && <>
+          <button type="button" className="btn ghost" onClick={validate}>Validate</button>
+          <button type="button" className="btn" onClick={save} disabled={busy || !dirty}>Save</button>
+          {flow.status === "active"
+            ? <button type="button" className="btn ghost" onClick={pause}>Pause</button>
+            : <button type="button" className="btn cta" onClick={activate}>Activate</button>}
+        </>}
       </div>
+      {!owner && <p className="sub" role="note">View only: only an owner can change, run or turn on flows.</p>}
       {note.text && <div className={`tip${note.bad ? " error" : ""}`} role={note.bad ? "alert" : "status"}>{note.text}</div>}
       {general.length > 0 && <div className="tip error" role="alert">{general.map((p, i) => <div key={i}>{p.message}</div>)}</div>}
       <div className="fb-main">
@@ -261,20 +269,22 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
               <FlowCanvas ref={canvas} nodes={graph.nodes} edges={graph.edges} selected={selected} problems={problems} highlight={highlight}
                 caller={catalog?.caller} onSelect={setSelected} onDragStart={() => { dragBefore.current = graphRef.current; }}
                 onPreviewMove={(id, x, y) => preview((g) => ({ ...g, nodes: g.nodes.map((n) => (n.id === id ? { ...n, x, y } : n)) }))}
-                onCommitMove={() => dragBefore.current && record(dragBefore.current)} onKeyMove={moveBy} onConnect={connect}
-                onDeleteEdge={deleteEdge} onDeleteNode={deleteNode} onOpenConfig={openConfig} onDropType={addNode}
-                onAddFrom={addFrom} onDuplicate={duplicate} onToggleOff={toggleOff} stepResults={stepResults} />
+                onCommitMove={() => dragBefore.current && record(dragBefore.current)} onKeyMove={moveBy} onConnect={owner ? connect : NOOP}
+                onDeleteEdge={owner ? deleteEdge : NOOP} onDeleteNode={owner ? deleteNode : NOOP} onOpenConfig={openConfig} onDropType={owner ? addNode : NOOP}
+                onAddFrom={owner ? addFrom : undefined} onDuplicate={owner ? duplicate : undefined} onToggleOff={owner ? toggleOff : undefined}
+                stepResults={stepResults} readOnly={!owner} />
             </>
           ) : (
             <FlowListView nodes={graph.nodes} edges={graph.edges} problems={problems} highlight={highlight} caller={catalog?.caller} onEdit={openConfig} />
           )}
         </div>
         <div className="fb-side">
+          <fieldset className="ro-fieldset" disabled={!owner}>
           {selectedNode ? (
             <NodeConfig key={selectedNode.id} flowId={flowId} node={selectedNode} nodes={graph.nodes} edges={graph.edges} catalog={catalog}
               problems={problems[selectedNode.id] || []} onChange={updateConfig} panelRef={config} savedNodes={flow.nodes} savedKey={savedKey}
               onConnect={(label, to) => (to ? connect(selectedNode.id, label, to) : unlink(selectedNode.id, label))}
-              onDelete={() => deleteNode(selectedNode.id)} onDuplicate={() => duplicate(selectedNode.id)} />
+              onDelete={owner ? () => deleteNode(selectedNode.id) : undefined} onDuplicate={owner ? () => duplicate(selectedNode.id) : undefined} />
           ) : (
             <section className="card fb-panel">
               <h3>Flow settings</h3>
@@ -286,8 +296,9 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
               <p className="field-help">Select a step to change it. {graph.nodes.length} step(s), {graph.edges.length} connection(s).</p>
             </section>
           )}
-          <SimulatePanel leads={leads} result={sim} busy={busy} onRun={simulate} onClear={() => setSim(null)} />
-          <EnrolPanel flow={flow} leads={leads} onDone={() => setRunsKey((k) => k + 1)} />
+          </fieldset>
+          {owner && <SimulatePanel leads={leads} result={sim} busy={busy} onRun={simulate} onClear={() => setSim(null)} />}
+          {owner && <EnrolPanel flow={flow} leads={leads} onDone={() => setRunsKey((k) => k + 1)} />}
           <RunsPanel flowId={flowId} refreshKey={`${runsKey}-${flow.status}`} />
         </div>
       </div>

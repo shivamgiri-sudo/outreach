@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, isOwner } from "../api.js";
 
 const TRIGGERS = {
   reply: { label: "They reply, and it sounds…", options: ["interested", "question", "not_now", "wrong_person", "unsubscribe", "other"] },
@@ -30,6 +30,7 @@ export default function Workflows() {
   const pickTrigger = (t) => set({ tType: t, tValue: TRIGGERS[t].options ? TRIGGERS[t].options[0] : "14" });
   const pickAction = (a) => set({ aType: a, aValue: ACTIONS[a].options ? ACTIONS[a].options[0] : "" });
 
+  const owner = isOwner();                     // rules are owner-only changes on the server
   const add = async () => {
     try {
       await api.addWorkflow({
@@ -53,7 +54,7 @@ export default function Workflows() {
       {message && <div className="tip" style={{ marginBottom: 12 }}>{message}</div>}
 
       <div className="grid g2">
-        <div className="card">
+        {owner && <div className="card">
           <h3 style={{ marginTop: 0 }}>New rule</h3>
           <label>Name</label>
           <input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Yes by email → WhatsApp" />
@@ -79,25 +80,26 @@ export default function Workflows() {
             <button className="btn" onClick={add}>Add rule</button>
             <button className="btn ghost" onClick={() => api.starterWorkflows().then(() => { setMessage("Suggested rules added."); load(); }, (e) => setMessage(e.message))}>Add suggested rules</button>
           </div>
-        </div>
+        </div>}
 
         <div className="card">
           <div className="row" style={{ justifyContent: "space-between" }}>
             <h3 style={{ margin: 0 }}>Your rules ({rules.length})</h3>
-            <button className="btn ghost" onClick={async () => { const r = await api.runTimeRules(); setMessage(`Checked time-based rules: ${r.ran} ran.`); }}>Check time-based rules now</button>
+            {owner && <button className="btn ghost" onClick={async () => { const r = await api.runTimeRules(); setMessage(`Checked time-based rules: ${r.ran} ran.`); }}>Check time-based rules now</button>}
           </div>
-          {rules.length === 0 && <p className="empty">No rules yet. Add the suggested ones to start.</p>}
+          {rules.length === 0 && <p className="empty">{owner ? "No rules yet. Add the suggested ones to start." : "No rules yet."}</p>}
           {rules.map((r) => (
             <div key={r.id} className="row" style={{ justifyContent: "space-between", margin: "10px 0" }}>
               <span style={{ flex: 1 }}>
                 <b>{r.name}</b><br />
                 <small>{describe("when", r.trigger, TRIGGERS)} → {describe("then", r.action, ACTIONS)}</small>
               </span>
-              <label className="row" style={{ fontWeight: 400, margin: 0 }}>
+              {!owner && <span className={`pill ${r.enabled ? "ok" : ""}`}>{r.enabled ? "On" : "Off"}</span>}
+              {owner && <label className="row" style={{ fontWeight: 400, margin: 0 }}>
                 <input type="checkbox" style={{ width: "auto" }} checked={r.enabled} onChange={(e) => { const enabled = e.target.checked; setRules((all) => all.map((x) => (x.id === r.id ? { ...x, enabled } : x))); api.toggleWorkflow(r.id, enabled).catch(load); }} />
                 On
-              </label>
-              <button className="btn ghost" onClick={() => api.deleteWorkflow(r.id).then(load).catch(() => load())}>Delete</button>
+              </label>}
+              {owner && <button className="btn ghost" onClick={() => api.deleteWorkflow(r.id).then(load).catch(() => load())}>Delete</button>}
             </div>
           ))}
         </div>
