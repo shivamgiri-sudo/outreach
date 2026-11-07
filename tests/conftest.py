@@ -13,3 +13,11 @@ def fixed_enrolment_clock(monkeypatch):
     monkeypatch.setattr(routes_outreach, "ALLOW_NOW_OVERRIDE", True)
     for name in ("OUTREACH_SECRET_KEY", "OUTREACH_ALLOW_PRIVATE_HOSTS", "OUTREACH_ENABLE_DOCS"):
         monkeypatch.delenv(name, raising=False)      # tests set these themselves when they need them
+
+
+@pytest.fixture(autouse=True)
+def frozen_rate_limit_clock(monkeypatch):
+    """Rate-limit buckets refill 2/s at 120/min; on a loaded machine a 120-request loop earned extra tokens.
+    Tests that check refill pass their own clock to RateLimiter."""
+    from app import web_security
+    monkeypatch.setattr(web_security, "_clock", lambda: 1000.0)
