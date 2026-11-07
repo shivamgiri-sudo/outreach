@@ -257,7 +257,9 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
     </>),
     call_task: () => (<>{owner("owner", "Who calls")}{text("note", "Note for the caller", { long: true, rows: 3, placeholder: "They said yes. Call through PD only, before 18:55." })}</>),
     meeting_link: () => (<>{owner("owner", "Who sends the link")}{text("note", "Note (optional)", { long: true, rows: 3 })}</>),
-    set_stage: () => select("stage", "Move to stage", STAGE_ORDER.map((s) => [s, stageLabel(s)]), "Only if the stage rules allow it; closed leads stay closed."),
+    set_stage: () => select("stage", "Move to stage",
+      [...(STAGE_ORDER.includes(c.stage) ? [] : [["", "Pick a stage…"]]), ...STAGE_ORDER.map((s) => [s, stageLabel(s)])],
+      "Only if the stage rules allow it; closed leads stay closed."),
     add_tag: () => text("tag", "Tag", { placeholder: "diwali-offer" }),
     notify: () => (<>{owner("to", "Who to notify")}{text("message", "Message", { long: true, rows: 3, placeholder: "No meeting two days after their yes. Follow up today." })}</>),
     webhook: () => (<>

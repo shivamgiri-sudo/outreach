@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from . import capture_connectors, routes_outreach
+from . import brand, capture_connectors, routes_outreach
 from .activation import EVENT_STEP
 from .activities import caller_name, team
 from .flow_engine import Context, enroll, flow_stats, present_run, stop_run, tick
@@ -131,7 +131,7 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
     @router.post("/api/flows")
     def create_flow(body: FlowBody):
         try:
-            flow = build_flow(body.name, body.description or "", body.nodes, body.edges, body.settings)
+            flow = build_flow(body.name, body.description or "", body.nodes, body.edges, body.settings, brand.stage_labels(store))
         except FlowError as exc:
             raise HTTPException(400, str(exc))
         store.update("flows", lambda rows: [*rows, flow])
@@ -145,7 +145,8 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
         if not body.nodes:
             raise HTTPException(400, "The file has no steps.")
         try:
-            flow = build_flow(f"{body.name or 'Imported flow'} (imported)"[:80], body.description or "", body.nodes, body.edges, body.settings)
+            flow = build_flow(f"{body.name or 'Imported flow'} (imported)"[:80], body.description or "", body.nodes, body.edges, body.settings,
+                              brand.stage_labels(store))
         except FlowError as exc:
             raise HTTPException(400, str(exc))
         store.update("flows", lambda rows: [*rows, flow])
@@ -167,7 +168,7 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
         changes = body.model_dump()
         try:
             updated = apply_edit(flow, changes, has_runs=any(r["flow_version"] == flow["version"] for r in runs_of(flow_id)),
-                                 team_names=_team_names(store))
+                                 team_names=_team_names(store), stage_labels=brand.stage_labels(store))
         except FlowError as exc:
             raise HTTPException(400, str(exc))
         return present(save(updated))

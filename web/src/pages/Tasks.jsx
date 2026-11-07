@@ -42,6 +42,8 @@ function TeamSettings({ onSaved }) {
   );
 }
 
+const PRIORITY_OPTIONS = [["high", "High"], ["normal", "Normal"], ["low", "Low"]];
+
 export default function Tasks() {
   const [board, setBoard] = useState(null);
   const [owner, setOwner] = useState("");
@@ -49,9 +51,10 @@ export default function Tasks() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [lead, setLead] = useState(null);
+  const [sort, setSort] = useState("due");
   const [newTask, setNewTask] = useState({ title: "", due_at: "", owner: "", priority: "normal" });
-  const load = () => { setError(""); api.taskBoard(owner).then(setBoard).catch((e) => setError(e.message)); };
-  useEffect(() => { load(); }, [owner]);
+  const load = () => { setError(""); api.taskBoard(owner, sort).then(setBoard).catch((e) => setError(e.message)); };
+  useEffect(() => { load(); }, [owner, sort]);
 
   const act = async (fn, done) => {
     try { await fn(); setMessage(done); load(); } catch (e) { setMessage(e.message); }
@@ -77,12 +80,19 @@ export default function Tasks() {
         <select aria-label="Owner" value={newTask.owner} onChange={(e) => setNewTask({ ...newTask, owner: e.target.value })}>
           <option value="">Unassigned</option>{(board?.team || []).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
         </select>
+        <select aria-label="Priority" value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}>
+          {PRIORITY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label} priority</option>)}
+        </select>
         <button className="btn" type="submit" disabled={!newTask.title.trim()}>Add</button>
       </form>}
       <div className="row" style={{ marginBottom: 10 }}>
         <label htmlFor="owner-filter" style={{ margin: 0 }}>Show tasks for</label>
         <select id="owner-filter" value={owner} onChange={(e) => setOwner(e.target.value)}>
           <option value="">Everyone</option>{(board?.team || []).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
+        </select>
+        <label htmlFor="task-sort" style={{ margin: 0 }}>Order by</label>
+        <select id="task-sort" value={sort} onChange={(e) => setSort(e.target.value)}>
+          <option value="due">Due time</option><option value="priority">Priority</option>
         </select>
         <span className="dl-group">
           <select aria-label="Tasks to download" value={bucket} onChange={(e) => setBucket(e.target.value)}>
@@ -108,6 +118,7 @@ export default function Tasks() {
                   <div>
                     <b>{t.title}</b>{t.company && <> · <button className="link" onClick={() => setLead(t.lead_id)}>{t.company}</button></>}
                     {t.priority === "high" && <span className="pill warn" style={{ marginLeft: 6 }}>High</span>}
+                    {t.priority === "low" && <span className="pill" style={{ marginLeft: 6 }}>Low</span>}
                     {t.lead_stage === "unsubscribed" && <span className="pill" style={{ marginLeft: 6 }}>lead unsubscribed</span>}
                   </div>
                   <div className="sub">
@@ -119,6 +130,9 @@ export default function Tasks() {
                       <button className="btn ghost" onClick={() => act(() => api.taskDoneById(t.id, ""), "Marked done.")}>Done</button>
                       <button className="btn ghost" onClick={() => act(() => api.updateTask(t.id, { snooze_minutes: 60 }), "Snoozed 1 hour.")}>+1 hour</button>
                       <button className="btn ghost" onClick={() => act(() => api.updateTask(t.id, { snooze_minutes: 1440 }), "Moved to tomorrow.")}>Tomorrow</button>
+                      <select aria-label="Change priority" value={t.priority || "normal"} onChange={(e) => act(() => api.updateTask(t.id, { priority: e.target.value }), "Priority changed.")}>
+                        {PRIORITY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                      </select>
                       <select aria-label="Reassign" value={t.owner || ""} onChange={(e) => act(() => api.updateTask(t.id, { owner: e.target.value }), "Reassigned.")}>
                         <option value="">Unassigned</option>{board.team.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
                       </select>

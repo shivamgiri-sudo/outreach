@@ -5,7 +5,7 @@ import FlowListView from "./FlowListView.jsx";
 import NodePicker from "./NodePicker.jsx";
 import NodeConfig from "./NodeConfig.jsx";
 import { EnrolPanel, RunsPanel, SimulatePanel } from "./FlowPanels.jsx";
-import { NODE_H, NODE_W, TYPES, isTrigger, outputsOf, startingConfig, titleOf } from "./catalog.js";
+import { NODE_H, NODE_W, TYPES, isTrigger, localProblems, outputsOf, startingConfig, titleOf } from "./catalog.js";
 import { autoLayout, snap, uid, useHistory } from "./graph.js";
 
 const PHONE = "(max-width: 600px)";
@@ -59,11 +59,13 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
   const owner = isOwner();                                   // flows are owner-only changes on the server
   const dirty = owner && flow && keyOf(graph, meta) !== savedKey;
   const errors = checked.key === graphKey(graph) ? checked.list : [];
+  const local = useMemo(() => localProblems(graph.nodes), [graph.nodes]);
   const problems = useMemo(() => {
     const out = {};
-    errors.forEach((p) => { if (p.node) (out[p.node] ||= []).push(p.message); });
+    local.forEach((p) => { (out[p.node] ||= []).push(p.message); });
+    errors.forEach((p) => { if (p.node && !local.some((l) => l.node === p.node)) (out[p.node] ||= []).push(p.message); });   // the local check says it first
     return out;
-  }, [errors]);
+  }, [errors, local]);
   const general = errors.filter((p) => !p.node);
   const highlight = useMemo(() => {
     const ids = new Set();
@@ -162,6 +164,11 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
   const body = () => ({ name: meta.name, description: meta.description, settings: { stop_on_reply: meta.stop_on_reply },
     nodes: graph.nodes, edges: graph.edges });
   const save = async () => {
+    if (local.length) {
+      setSelected({ kind: "node", id: local[0].node });
+      say(`Not saved: ${local[0].message}`, true);
+      return null;
+    }
     setBusy(true);
     try {
       const saved = await api.saveFlow(flowId, body());

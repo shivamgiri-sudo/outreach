@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 
 from .activation import EVENT_STEP
 from .channels.netguard import check_public_url
+from .flow_stage_check import resolve_set_stage
 from .stages import ALL_STAGES
 from .template_vars import BRAND_PLACEHOLDERS, CUSTOM_KEY, is_custom_placeholder
 from .whatsapp import TEMPLATES as WHATSAPP_TEMPLATES
@@ -524,12 +525,22 @@ def validate_flow(flow: dict, team_names=None) -> list:
 
 
 # ---------------------------------------------------------------- building and saving
-def build_flow(name: str, description: str = "", nodes=None, edges=None, settings=None) -> dict:
-    """A new draft. Raises FlowError when the graph cannot be saved."""
-    nodes, edges = normalise_graph(nodes if nodes is not None else blank_nodes(), edges or [])
+def _checked_graph(nodes, edges, stage_labels=None) -> tuple:
+    """Normalised nodes and edges, or FlowError for what cannot be saved (broken structure, a Set stage step with no
+    stage or one that is not a configured stage)."""
+    nodes, edges = normalise_graph(nodes, edges)
     problems = structure_errors(nodes, edges)
     if problems:
         raise FlowError(problems[0]["message"])
+    nodes, stage_problem = resolve_set_stage(nodes, stage_labels)
+    if stage_problem:
+        raise FlowError(stage_problem)
+    return nodes, edges
+
+
+def build_flow(name: str, description: str = "", nodes=None, edges=None, settings=None, stage_labels=None) -> dict:
+    """A new draft. Raises FlowError when the graph cannot be saved."""
+    nodes, edges = _checked_graph(nodes if nodes is not None else blank_nodes(), edges or [], stage_labels)
     stamp = now_iso()
     return {"id": new_id("f"), "name": clean_name(name), "description": str(description or "")[:MAX_DESCRIPTION],
             "status": "draft", "version": 1, "nodes": nodes, "edges": edges, "settings": normalise_settings(settings),
@@ -556,7 +567,7 @@ def graph_for_version(flow: dict, version: int) -> dict:
     return flow.get("versions", {}).get(str(version)) or graph_of(flow)
 
 
-def apply_edit(flow: dict, changes: dict, has_runs: bool, team_names=None) -> dict:
+def apply_edit(flow: dict, changes: dict, has_runs: bool, team_names=None, stage_labels=None) -> dict:
     """Return the flow with `changes` applied. Editing the steps of an active flow (or one with leads on it) makes a
     new version; leads already running keep the version they started on. An active flow must stay valid."""
     updated = dict(flow)
@@ -567,11 +578,8 @@ def apply_edit(flow: dict, changes: dict, has_runs: bool, team_names=None) -> di
     if changes.get("settings") is not None:
         updated["settings"] = normalise_settings({**flow.get("settings", {}), **changes["settings"]})
     if changes.get("nodes") is not None or changes.get("edges") is not None:
-        nodes, edges = normalise_graph(changes.get("nodes", flow["nodes"]) if changes.get("nodes") is not None else flow["nodes"],
-                                       changes["edges"] if changes.get("edges") is not None else flow["edges"])
-        problems = structure_errors(nodes, edges)
-        if problems:
-            raise FlowError(problems[0]["message"])
+        nodes, edges = _checked_graph(changes["nodes"] if changes.get("nodes") is not None else flow["nodes"],
+                                      changes["edges"] if changes.get("edges") is not None else flow["edges"], stage_labels)
         if flow["status"] == "active":
             problems = validate_graph(nodes, edges, team_names)
             if problems:
