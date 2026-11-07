@@ -9,15 +9,19 @@ Rollup rules: the company's stage is the furthest stage any contact reached; it 
 replied (a person, not an out-of-office) and not everyone there has left (not now, unsubscribed, disqualified); and it warns when two contacts are both in an active sequence and were touched (or enrolled) on the same IST
 day, so one employer is not hit twice in a day.
 """
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
 from . import company_health, workspaces
 from .activities import _normalise_task, lead_activity
 from .hygiene import business_domain
+from .jobs import _shared as is_shared_host
 from .replies import is_person_reply
 from .scoring import score_lead
 from .sequences import IST
+from .sheet_import import company_match_key
+from .standardise import NOT_COMPANY_SITES, registrable_domain
 from .stages import EXIT_STAGES, STAGES
 
 SORTS = ("last_touch", "contacts", "score", "health", "name")
@@ -47,10 +51,16 @@ def ist_day(raw) -> Optional[str]:
 
 
 def lead_domain(lead: dict) -> Optional[str]:
+    """The employer's own domain, reduced to its registrable part (careers.acme.com and mail.acme.com are acme.com).
+    Job boards and social sites (a LinkedIn page given as the website) never identify a company."""
     for value in (lead.get("domain"), lead.get("website"), lead.get("email")):
         domain = business_domain(value)
-        if domain:
-            return domain
+        if not domain or is_shared_host(domain):
+            continue
+        root = registrable_domain(domain) or domain
+        if root in NOT_COMPANY_SITES:
+            continue
+        return root
     return None
 
 
@@ -58,16 +68,27 @@ def norm_name(name) -> str:
     return " ".join(str(name or "").lower().split())
 
 
+def natural_key(name) -> tuple:
+    """Sort key for names: case-insensitive, and numbers by value ("Store 2" before "Store 10")."""
+    parts = re.split(r"(\d+)", norm_name(name).casefold())
+    return tuple((0, int(p), "") if p.isdigit() else (1, 0, p) for p in parts if p)
+
+
+def name_key(name) -> str:
+    """Company name for grouping: 'Acme Pvt. Ltd.' and 'ACME' are the same employer."""
+    return company_match_key(str(name or "")) or norm_name(name)
+
+
 def group_keys(leads: list) -> dict:
     """lead id -> company key ("d:acme.com", "n:acme", or "p:<lead id>" for a lone person)."""
     by_name = {}
     for l in leads:
-        domain, name = lead_domain(l), norm_name(l.get("company"))
+        domain, name = lead_domain(l), name_key(l.get("company"))
         if domain and name:
             by_name.setdefault(name, set()).add(domain)
     keys = {}
     for l in leads:
-        domain, name = lead_domain(l), norm_name(l.get("company"))
+        domain, name = lead_domain(l), name_key(l.get("company"))
         if domain:
             keys[l["id"]] = f"d:{domain}"
         elif name and len(by_name.get(name, ())) == 1:
@@ -234,9 +255,9 @@ def list_companies(store, q: str = "", sort: str = "last_touch", order: str = "d
         "contacts": lambda r: r["contacts"],
         "score": lambda r: r["score"],
         "health": lambda r: (r["health"] or {}).get("score") if r["health"] and r["health"].get("score") is not None else -1,
-        "name": lambda r: r["name"].lower(),
+        "name": lambda r: natural_key(r["name"]),
     }[sort]
-    rows.sort(key=lambda r: r["name"].lower())
+    rows.sort(key=lambda r: natural_key(r["name"]))
     rows.sort(key=keyfn, reverse=(order != "asc"))
     limit = max(1, min(int(limit or 50), MAX_LIMIT))
     offset = max(0, int(offset or 0))
