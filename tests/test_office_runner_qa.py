@@ -426,7 +426,8 @@ def test_install_ps1_static_check_https_base_only_the_short_code_and_every_step_
     body = ps[ps.index("\ntry {"):]                                                   # after the header comments
     at = [body.index(s) for s in steps]
     assert at == sorted(at), "installer steps out of order"
-    assert made["commands"]["windows"].startswith("powershell -NoProfile -ExecutionPolicy Bypass -Command \"irm 'https://outreach.example.com/")
+    assert made["commands"]["windows"].startswith("powershell -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol=")
+    assert "-bor 3072; irm 'https://outreach.example.com/" in made["commands"]["windows"]
     sh = https.get(f"/api/linkedin-runner/install.sh?code={code}").text
     assert "PORTAL='https://outreach.example.com'" in sh and sh.count(code) == 1 and not re.search(r"mcn[rx]_", sh)
 

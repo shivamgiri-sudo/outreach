@@ -31,6 +31,7 @@ OWNER_ROUTES = {
     ("PUT", "/api/linkedin/sequence"), ("POST", "/api/linkedin/sequence/reset"), ("PUT", "/api/lead-fields"),   # industry setup
     ("POST", "/api/presets/{preset_id}/apply"),
     ("POST", "/api/prospects/export"), ("POST", "/api/prospects/import"), ("POST", "/api/prospects/suppress"),       # prospect DB
+    ("GET", "/api/prospects/suppressions"), ("POST", "/api/prospects/unsuppress"),
     ("DELETE", "/api/prospects/people/{person_id}"), ("PATCH", "/api/prospects/people/{person_id}"), ("POST", "/api/prospects/sync-crm"),
     ("PUT", "/api/prospects/settings"), ("POST", "/api/prospects/enrich"), ("GET", "/api/prospects/spend"), ("PUT", "/api/prospects/spend"),
     ("PUT", "/api/insights/source-spend"), ("GET", "/api/inbound/log"), ("POST", "/api/inbound/{connector_id}/test"), ("POST", "/api/inbound/{connector_id}/sync"),

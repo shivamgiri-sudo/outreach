@@ -73,8 +73,9 @@ def budget_message(cap: float) -> str:
 class Meter:
     """Spend guard + ledger for one run. Rows are written once at the end (flush)."""
 
-    def __init__(self, store, now=None):
+    def __init__(self, store, now=None, defaults=None):
         self.store, self.now = store, now or datetime.now(timezone.utc)
+        self.defaults = dict(defaults or {})            # cost per lookup for paid APIs outside the source registry (e.g. Firecrawl)
         self.month = month_of(self.now)
         self.cfg = {p["id"]: p for p in provider_config(store)}
         self.cap = budget(store)
@@ -83,7 +84,16 @@ class Meter:
         self.rows, self.blocked = [], False
 
     def cost(self, spec_id: str) -> float:
-        return self.cfg.get(spec_id, {}).get("cost", 0.0)
+        if spec_id in self.cfg:
+            return self.cfg[spec_id]["cost"]
+        return float(self.defaults.get(spec_id, 0.0))
+
+    def enabled(self, spec_id: str) -> bool:
+        return self.cfg.get(spec_id, {}).get("enabled", True)
+
+    def order(self, ids) -> list:
+        """These provider ids by the owner's priority, then cost per lookup (cheapest first), then id."""
+        return sorted(ids, key=lambda i: (self.cfg.get(i, {}).get("priority", 0 if self.cost(i) == 0 else 10), self.cost(i), i))
 
     def can_spend(self, spec_id: str) -> bool:
         c = self.cost(spec_id)

@@ -334,7 +334,8 @@ class Runner:
         saved = self.store.read("integrations")
         ctx = fe.Context(self.transports, {pid: provider_status(saved, pid) for pid in ("apollo", "hunter", "firecrawl")},
                          params["titles"], max(0, params["max_credits"] - spent), {l.get("dedupe_key") for l in self.store.read("leads")},
-                         set(self.store.read("suppressed")), set(self.store.read("suppressed_hashes")))
+                         set(self.store.read("suppressed")), set(self.store.read("suppressed_hashes")),
+                         meter=fe.make_meter(self.store, now))         # cache first, owner's order, monthly budget, spend ledger
         for n, lead in enumerate(picks, start=1):
             out = fe.enrich_lead(lead, ctx)
             if fe.save_outcome(self.store, lead["id"], out, CAMPAIGN_NAME):
@@ -347,7 +348,8 @@ class Runner:
             self._set(run_id, done=base_done + n, enriched=report["existing_completed"], credits=spent + ctx.credits,
                       persist=n % PERSIST_EVERY == 0)
             if out.stop:
-                report["stopped_reason"] = (f"Stopped at the credit limit ({params['max_credits']}). {len(picks) - n + 1} lead(s) were not "
+                limit = "the monthly lookup budget" if ctx.budget_hit else f"the credit limit ({params['max_credits']})"
+                report["stopped_reason"] = (f"Stopped at {limit}. {len(picks) - n + 1} lead(s) were not "
                                             "fully checked; run again to carry on with them.")
                 break
         for (source, message), count in ctx.errors.items():

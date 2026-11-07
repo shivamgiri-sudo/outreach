@@ -270,7 +270,8 @@ def test_installers_embed_the_portal_address_and_the_code_and_nothing_else_secre
     made = code_for(c, owner)
     code = made["code"]
     assert made["portal"] == PORTAL and made["insecure"] is False
-    assert made["commands"]["windows"] == (f"powershell -NoProfile -ExecutionPolicy Bypass -Command \"irm '{PORTAL}/api/linkedin-runner/install.ps1"
+    assert made["commands"]["windows"] == (f"powershell -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol="
+                                           f"[Net.ServicePointManager]::SecurityProtocol -bor 3072; irm '{PORTAL}/api/linkedin-runner/install.ps1"
                                            f"?code={code}' | iex\"")
     assert made["commands"]["mac"] == made["commands"]["linux"] == f"curl -fsSL '{PORTAL}/api/linkedin-runner/install.sh?code={code}' | bash"
     for kind in ("ps1", "sh"):

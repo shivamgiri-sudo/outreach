@@ -23,6 +23,7 @@ Tables
   pdb_lookups     one row per provider lookup (provider, field, hit/miss, cached, cost, month) for spend tracking
   pdb_suppressions / pdb_erased / pdb_email_marks / pdb_crm_links / pdb_saved_searches / pdb_meta
 """
+import logging
 import os
 import re
 import sqlite3
@@ -31,6 +32,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 SCHEMA_VERSION = "1"
+log = logging.getLogger(__name__)
 
 DDL = [
     "CREATE TABLE IF NOT EXISTS pdb_meta (k {K} PRIMARY KEY, v {T})",
@@ -74,6 +76,15 @@ INDEXES = [
     ("pdb_signals", "s_dedupe", "company_id, dedupe"), ("pdb_crm_links", "l_person", "person_id"),
     ("pdb_crm_links", "l_company", "company_id"), ("pdb_saved_searches", "ss_owner", "owner"),
     ("pdb_lookups", "lk_month", "month, provider"),
+    # added after the first release (review of every search filter/sort against the plan); created if missing.
+    # Not added on purpose: indexes led by `suppressed` (almost every row is 0; SQLite, which has no ANALYZE stats here,
+    # then picks them over the sort indexes and every non-default sort got 2-4x slower at 100k rows in the benchmark).
+    ("pdb_people", "p_state", "state_l"), ("pdb_companies", "c_state", "state_l"),  # state filter (person OR company HQ)
+    ("pdb_companies", "c_employees", "employees"),                        # company "employees" sort
+    ("pdb_signals", "s_at", "at"),                                        # signal_days without a kind
+    ("pdb_crm_links", "l_person_ws", "person_id, workspace"),             # not_in_crm inside a workspace
+    ("pdb_crm_links", "l_company_ws", "company_id, workspace"),
+    ("pdb_lookups", "lk_at", "at"),                                       # hit rates over the last 90 days
 ]
 SQLITE_FTS = [
     "CREATE VIRTUAL TABLE IF NOT EXISTS pdb_people_fts USING fts5(title, search_all, content='pdb_people', "
@@ -330,12 +341,17 @@ class MySqlRepo(SqlRepo):
         return self._db
 
     def _indexes(self, cur) -> None:
-        """MySQL has no CREATE INDEX IF NOT EXISTS: read what exists and add only what is missing (new tables only)."""
+        """MySQL has no CREATE INDEX IF NOT EXISTS: read what exists and add only what is missing. On a table that already
+        has rows, a missing index is built online (InnoDB INPLACE, LOCK=NONE: reads and writes carry on); if the server
+        cannot do that, or it fails, the index is skipped with a warning and search still works (slower) - it never blocks."""
         cur.execute("SELECT DISTINCT table_name, index_name FROM information_schema.statistics WHERE table_schema = DATABASE()")
-        have = {(t.lower(), i.lower()) for t, i in cur.fetchall()}
+        have = {(str(t).lower(), str(i).lower()) for t, i in cur.fetchall()}
         for table, name, cols in INDEXES:
             if (table, name) not in have:
-                cur.execute(f"CREATE INDEX {name} ON {table} ({cols})")
+                try:
+                    cur.execute(f"CREATE INDEX {name} ON {table} ({cols}) ALGORITHM=INPLACE LOCK=NONE")
+                except Exception as exc:          # noqa: BLE001 - a missing index must not take the prospect DB down
+                    log.warning("prospect DB: index %s on %s not created (%s); search works without it", name, table, exc)
         for table, name, col in (("pdb_people", "ft_title", "title"), ("pdb_people", "ft_all", "search_all"),
                                  ("pdb_companies", "ft_name", "name"), ("pdb_companies", "ft_all", "search_all")):
             if (table, name) not in have:

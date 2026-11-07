@@ -1,6 +1,7 @@
 // Owner tab of Prospect search: lookup spend and budget, provider cost/order, which sources may be stored, import, sync.
 import { useEffect, useState } from "react";
 import { prospects } from "../prospectsApi.js";
+import { useConfirm } from "../Dialog.jsx";
 
 function Spend() {
   const [d, setD] = useState(null);
@@ -92,6 +93,47 @@ function Sources({ onChanged }) {
   );
 }
 
+function OptOuts({ version, onChanged }) {
+  const [rows, setRows] = useState(null);
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState("");
+  const confirm = useConfirm();
+  const load = () => prospects.suppressions().then((r) => setRows(r.rows)).catch((e) => setMsg(e.message));
+  useEffect(() => { load(); }, [version]);
+  const undo = async (value) => {
+    if (!(await confirm({ title: "Undo opt-out", message: `Allow ${value} back into searches, exports and lead adds?`, confirmLabel: "Un-suppress" }))) return;
+    setBusy(value); setMsg("");
+    try {
+      const r = await prospects.unsuppress(value);
+      setMsg(`Un-suppressed ${r.unsuppressed}: ${r.people} ${r.people === 1 ? "person" : "people"} back` + (r.kept ? `, ${r.kept} kept suppressed (do-not-contact, unsubscribe or erased).` : "."));
+      load(); onChanged?.();
+    } catch (e) { setMsg(e.message); } finally { setBusy(""); }
+  };
+  if (!rows) return <p className="sub">{msg || "Loading opt-outs…"}</p>;
+  return (
+    <section className="card" data-testid="prospect-optouts">
+      <h3>Opt-outs</h3>
+      <p className="sub">Undo an opt-out made here. Anyone on the do-not-contact, unsubscribe or erased lists always stays suppressed.</p>
+      {rows.length === 0 ? <p className="sub">No opt-outs.</p> : (
+        <div className="table-card">
+          <table className="ps-table">
+            <thead><tr><th>Email or domain</th><th>Kind</th><th>Reason</th><th>When</th><th /></tr></thead>
+            <tbody>{rows.map((r) => (
+              <tr key={r.value}>
+                <td>{r.value}</td><td>{r.kind}</td><td>{r.reason}</td><td>{(r.at || "").slice(0, 10)}</td>
+                <td>{r.blocked ? <small className="sub" title={r.blocked}>Locked: {r.blocked}</small> : (
+                  <button className="btn ghost" disabled={busy === r.value} aria-label={`Un-suppress ${r.value}`} onClick={() => undo(r.value)}>Un-suppress</button>
+                )}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
+      {msg && <p className="sub" role="status">{msg}</p>}
+    </section>
+  );
+}
+
 function Tools({ onChanged }) {
   const [csv, setCsv] = useState("");
   const [source, setSource] = useState("csv");
@@ -122,5 +164,7 @@ function Tools({ onChanged }) {
 }
 
 export default function ProspectAdmin({ onChanged }) {
-  return <div className="ps-admin"><Spend /><Sources onChanged={onChanged} /><Tools onChanged={onChanged} /></div>;
+  const [version, setVersion] = useState(0);
+  const changed = () => { setVersion((v) => v + 1); onChanged?.(); };
+  return <div className="ps-admin"><Spend /><Sources onChanged={onChanged} /><Tools onChanged={changed} /><OptOuts version={version} onChanged={onChanged} /></div>;
 }
