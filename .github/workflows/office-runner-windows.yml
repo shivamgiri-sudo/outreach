@@ -23,17 +23,19 @@ permissions:
 
 jobs:
   install:
-    name: install (${{ matrix.shell }}${{ matrix.node == 'none' && ', no Node.js' || '' }})
+    name: install (${{ matrix.shell }}, Node ${{ matrix.node }})
     runs-on: windows-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         shell: [powershell, pwsh]
-        node: [preinstalled]
+        node: ['24']                  # what the first real office PC had (Node 24.19)
         include:
           - shell: powershell
-            node: none
+            node: none                # no Node.js at all: the installer downloads its own
+          - shell: pwsh
+            node: '26'                # newer than Playwright 1.49 handles: the installer must use its own instead
     env:
       OUTREACH_BASE_URL: http://127.0.0.1:8000
     steps:
@@ -46,7 +48,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'          # what the first real office PC had (Node 24.19); the no-Node leg gets the installer's own Node 20
+          node-version: ${{ matrix.node == '26' && '26' || '24' }}   # the 'none' leg hides it from PATH
 
       - name: Install the API's Python packages
         run: python -m pip install -r requirements.txt
@@ -62,7 +64,7 @@ jobs:
         if: matrix.shell == 'pwsh'
         shell: pwsh
         run: |
-          & "$env:GITHUB_WORKSPACE\scripts\ci\office_runner_windows.ps1" -Shell pwsh
+          & "$env:GITHUB_WORKSPACE\scripts\ci\office_runner_windows.ps1" -Shell pwsh -NodeTooNew:$('${{ matrix.node }}' -eq '26')
           exit $LASTEXITCODE
 
       - name: Upload logs

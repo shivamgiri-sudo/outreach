@@ -3,7 +3,7 @@
 # pairing code filled in; paste the one line the portal shows:
 #   curl -fsSL '<portal>/api/linkedin-runner/install.sh?code=XXXXXXXX' | bash
 # Everything goes into your own user folder (no sudo):
-#   1. Node.js 20 LTS if Node 18+ is missing (the official archive from nodejs.org, checksum verified)
+#   1. Node.js 20 LTS if Node 18-24 is missing (the official archive from nodejs.org, checksum verified)
 #   2. the runner files from the portal, Playwright (npm ci) and its Chromium browser
 #   3. connects this computer to the portal with the one-time code (the long-lived token is saved, readable only by you)
 #   4. starts the runner now and at every login (macOS: a LaunchAgent; Linux: desktop autostart, or a systemd user
@@ -43,7 +43,8 @@ command -v curl >/dev/null || fail "curl is needed."
 command -v tar >/dev/null || fail "tar is needed."
 
 # 1. Node.js
-node_ok() { "$1" -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 18 ? 0 : 1)' >/dev/null 2>&1; }
+# Node 18-24 (Playwright 1.49 hangs installing Chromium under Node 26); a newer system Node gets the private Node 20.
+node_ok() { "$1" -e 'const m = Number(process.versions.node.split(".")[0]); process.exit(m >= 18 && m <= 24 ? 0 : 1)' >/dev/null 2>&1; }
 NODE=""
 if command -v node >/dev/null && node_ok "$(command -v node)"; then
   NODE=$(command -v node)

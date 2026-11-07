@@ -8,7 +8,8 @@ param(
   [string]$Portal = 'http://127.0.0.1:8000',
   [ValidateSet('powershell', 'pwsh')][string]$Shell = 'powershell',
   [string]$LogDir = (Join-Path $env:RUNNER_TEMP 'office-runner-logs'),
-  [switch]$HideNode              # an office PC without Node.js: the installer must fetch it (winget or the nodejs.org zip)
+  [switch]$HideNode,             # an office PC without Node.js: the installer must fetch its own (the nodejs.org zip)
+  [switch]$NodeTooNew            # the PC's Node is newer than Playwright 1.49 handles (26): the installer must not use it
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -66,7 +67,9 @@ function Install-Once([string]$Label, [bool]$Replace, [string]$OldRunnerId) {
   Check (Test-Path (Join-Path $Base 'app\node_modules\playwright')) "$Label`: Playwright installed"
   $chromium = @(Get-ChildItem (Join-Path $env:LOCALAPPDATA 'ms-playwright') -Directory -Filter 'chromium-*' -ErrorAction SilentlyContinue)
   Check ($chromium.Count -gt 0) "$Label`: Playwright's Chromium downloaded ($($chromium.Name -join ', '))"
-  if ($HideNode -and $Label -eq 'install1') { Check ($out -match 'Installing Node.js LTS with winget|Downloading Node.js') "$Label`: the installer fetched Node.js itself" }
+  if (($HideNode -or $NodeTooNew) -and $Label -eq 'install1') { Check ($out -match 'Downloading Node.js v') "$Label`: the installer fetched its own Node.js" }
+  if ($NodeTooNew -and $Label -eq 'install1') { Check ($out -match 'Not using Node.js v26') "$Label`: the installer skipped the too-new system Node.js" }
+  if ($HideNode -or $NodeTooNew) { Check ($out -match "Node.js v\d+\.\d+\.\d+ \($([regex]::Escape($Base))") "$Label`: the runner uses the private Node.js in $Base\node" }
   $config = Join-Path $Base 'config.json'
   Check (Test-Path $config) "$Label`: runner config written"
   if (Test-Path $config) {

@@ -131,7 +131,7 @@ def test_install_sh_is_valid_bash_and_ps1_is_well_formed(cloud_live):
 
 def check_ps1_structure(text):
     """Windows cannot be run here: check brackets / quotes balance outside strings and comments, and that every step is
-    present (Node via winget or the verified zip, bundle, npm ci, Chromium without --with-deps, pairing, Task Scheduler)."""
+    present (Node 18-24 or the verified zip, bundle, npm ci, Chromium without --with-deps, pairing, Task Scheduler)."""
     stack, i, n = [], 0, len(text)
     pairs = {"(": ")", "{": "}", "[": "]"}
     while i < n:
@@ -165,7 +165,7 @@ def check_ps1_structure(text):
             stack.pop()
         i += 1
     assert not stack, f"unclosed {stack}"
-    for needle in ("install --id OpenJS.NodeJS.LTS", "WaitForExit(300000)", "SHASUMS256.txt", "Get-FileHash", "bundle.zip?code=", "ci --omit=dev",
+    for needle in ("SHASUMS256.txt", "Get-FileHash", "bundle.zip?code=", "ci --omit=dev",
                    "playwright install chromium", "--pair-only", "Register-ScheduledTask", "New-ScheduledTaskTrigger -AtLogOn",
                    "MCN_NO_AUTOSTART", "uninstall.ps1", "icacls.exe"):
         assert needle in text, needle

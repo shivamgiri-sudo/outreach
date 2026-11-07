@@ -3,9 +3,10 @@
 # "PowerShell", open it, paste, Enter):
 #   powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor 3072; irm '<portal>/api/linkedin-runner/install.ps1?code=XXXXXXXX' | iex"
 # (the TLS part is needed on Windows PowerShell 5.1, which offers only TLS 1.0 by default).
-# Everything goes into your own user folder (%LOCALAPPDATA%\MCN-LinkedIn-Runner); no administrator rights are needed,
-# except that winget may ask once to install Node.js:
-#   1. Node.js LTS if Node 18+ is missing (winget; otherwise the official Node.js 20 zip from nodejs.org, checksum verified)
+# Everything goes into your own user folder (%LOCALAPPDATA%\MCN-LinkedIn-Runner); no administrator rights are needed:
+#   1. Node.js: the computer's own Node 18-24 if it has one, else the official Node.js 20 zip from nodejs.org (checksum
+#      verified) inside that folder. Not winget: it installs the newest LTS, and Node 26 hangs Playwright 1.49's
+#      Chromium install for ever (found on the first real Windows run).
 #   2. the runner files from the portal, Playwright (npm ci) and its Chromium browser
 #   3. connects this computer to the portal with the one-time code (the long-lived token is saved, readable only by you)
 #   4. starts the runner now and at every logon of this user (Task Scheduler; if that is not allowed on this computer, a
@@ -40,29 +41,18 @@ try {
   & icacls.exe $Base /inheritance:r /grant:r "*${sid}:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" | Out-Null
 
   # 1. Node.js
+  # Playwright 1.49 (deploy/linkedin-runtime) is tested up to Node 24; a newer system Node gets our private Node instead.
   function Find-Node {
     foreach ($candidate in @((Get-Command node.exe -ErrorAction SilentlyContinue).Source, (Join-Path $Base 'node\node.exe'))) {
       if ($candidate -and (Test-Path $candidate)) {
         $major = & $candidate -p "process.versions.node.split('.')[0]"
-        if ([int]$major -ge 18) { return $candidate }
+        if ([int]$major -ge 18 -and [int]$major -le 24) { return $candidate }
+        Say "Not using Node.js $(& $candidate -v) at $candidate (the runner needs Node 18 to 24)."
       }
     }
     return $null
   }
   $node = Find-Node
-  if (-not $node -and (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
-    Say 'Installing Node.js LTS with winget (Windows may ask for permission)...'
-    # Bounded: a winget/MSI install can wait forever (another install running, a permission prompt nobody sees); after
-    # 5 minutes the installer goes on with the portable Node.js zip below instead of hanging.
-    $wingetArgs = 'install --id OpenJS.NodeJS.LTS --exact --silent --accept-package-agreements --accept-source-agreements'
-    $wg = Start-Process -FilePath 'winget.exe' -ArgumentList $wingetArgs -NoNewWindow -PassThru
-    if (-not $wg.WaitForExit(300000)) {
-      try { $wg.Kill() } catch { }
-      Say 'winget did not finish within 5 minutes; using the Node.js download from nodejs.org instead.'
-    }
-    $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
-    $node = Find-Node
-  }
   if (-not $node) {
     $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
     $file = "node-$NodeVersion-win-$arch.zip"
