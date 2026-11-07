@@ -68,10 +68,18 @@ jobs:
           Get-Content (Join-Path $logs 'api.err.log') -ErrorAction SilentlyContinue
           throw 'The portal did not start.'
 
-      - name: Install, re-install and uninstall the office runner (${{ matrix.shell }})
-        shell: ${{ matrix.shell }}
+      - name: Install, re-install and uninstall the office runner (Windows PowerShell 5.1)
+        if: matrix.shell == 'powershell'
+        shell: powershell
         run: |
-          & "$env:GITHUB_WORKSPACE\scripts\ci\office_runner_windows.ps1" -Shell '${{ matrix.shell }}'
+          & "$env:GITHUB_WORKSPACE\scripts\ci\office_runner_windows.ps1" -Shell powershell
+          exit $LASTEXITCODE
+
+      - name: Install, re-install and uninstall the office runner (PowerShell 7)
+        if: matrix.shell == 'pwsh'
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE\scripts\ci\office_runner_windows.ps1" -Shell pwsh
           exit $LASTEXITCODE
 
       - name: Upload logs
