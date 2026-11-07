@@ -7,7 +7,8 @@ import { useConfirm } from "../Dialog.jsx";
 const TYPES = [["call", "Call"], ["meeting", "Meeting"], ["note", "Note"], ["email", "Email (sent outside the app)"],
   ["whatsapp", "WhatsApp (sent outside the app)"], ["linkedin", "LinkedIn message"], ["other", "Other"]];
 const OUTCOMES = [["", "—"], ["connected", "Connected"], ["no_answer", "No answer"], ["busy", "Busy"], ["call_back", "Asked to call back"],
-  ["interested", "Interested"], ["not_interested", "Not interested"], ["meeting_booked", "Meeting booked"], ["wrong_number", "Wrong number"]];
+  ["interested", "Interested"], ["not_interested", "Not interested"], ["meeting_booked", "Meeting booked"], ["wrong_number", "Wrong number"],
+  ["call_disconnected", "Call disconnected"], ["inactive_number", "Inactive number"]];
 const FILTERS = [["all", "All"], ["email", "Emails"], ["reply", "Replies"], ["call", "Calls"], ["linkedin", "LinkedIn"], ["whatsapp", "WhatsApp"], ["meeting", "Meetings"],
   ["task", "Tasks"], ["note", "Notes"]];
 const ICON = { email: "✉", whatsapp: "🟢", call: "📞", meeting: "📅", task: "☑", note: "📝", reply: "↩", linkedin: "in", sms: "💬" };
@@ -17,7 +18,11 @@ const withIst = (local) => (local ? `${local}:00+05:30` : null);
 const nowLocalIst = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 16);
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const QUICK_CALLS = [["no_answer", "No answer"], ["busy", "Busy"], ["call_back", "Call back"], ["connected", "Connected"], ["wrong_number", "Wrong number"]];
+const QUICK_CALLS = [["no_answer", "No answer"], ["busy", "Busy"], ["call_disconnected", "Call disconnected"], ["call_back", "Call back"], ["connected", "Connected"],
+  ["not_interested", "Not interested"], ["wrong_number", "Wrong number"], ["inactive_number", "Inactive number"]];
+const QUICK_CONFIRM = { not_interested: "Mark them not interested? They move to Disqualified and their emails stop.",
+  wrong_number: "Mark this number as wrong? They leave the call queue until the number is changed.",
+  inactive_number: "Mark this number inactive (not in service / switched off)? They leave the call queue until the number is changed." };
 
 // One printable page with everything about the contact: details, attempt counts and the full history (Save as PDF from print).
 function openReport(win, lead, items, s) {
@@ -106,6 +111,8 @@ export default function LeadActivity({ lead, onChanged }) {
   const [summary, setSummary] = useState(null);
   const [composing, setComposing] = useState(false);
   const [callback, setCallback] = useState(null);
+  const [remarks, setRemarks] = useState("");
+  const confirm = useConfirm();
   const load = () => Promise.all([api.leadActivity(lead.id).then(setItems), api.historySummary(lead.id).then(setSummary)]).catch((e) => setMessage(e.message));
   const report = () => { const win = window.open("", "_blank"); if (!win) { setMessage("Allow pop-ups to open the report."); return; }
     Promise.all([api.leadActivity(lead.id), api.historySummary(lead.id)]).then(([it, s]) => openReport(win, lead, it, s)).catch((e) => { win.close(); setMessage(e.message); }); };
@@ -152,13 +159,19 @@ export default function LeadActivity({ lead, onChanged }) {
           </p>
           {canWrite() && <div className="row" style={{ flexWrap: "wrap", gap: 6 }} aria-label="Log a call in one click">
             <small className="sub">Log a call:</small>
-            {QUICK_CALLS.map(([v, l]) => <button key={v} className="btn ghost" onClick={() => (v === "call_back" ? setCallback(new Date(Date.now() + 390 * 60000).toISOString().slice(0, 16))
-              : run(() => api.callOutcome(lead.id, v), `Call logged: ${l}.`))}>{l}</button>)}
+            {QUICK_CALLS.map(([v, l]) => <button key={v} className={`btn ghost${QUICK_CONFIRM[v] ? " danger" : ""}`} onClick={async () => {
+              if (v === "call_back") { setCallback(new Date(Date.now() + 390 * 60000).toISOString().slice(0, 16)); return; }
+              if (QUICK_CONFIRM[v] && !(await confirm({ message: QUICK_CONFIRM[v], confirmLabel: l }))) return;
+              run(() => api.callOutcome(lead.id, v, remarks.trim()), `Call logged: ${l}.`).then(() => setRemarks(""));
+            }}>{l}</button>)}
             {lead.email && !["unsubscribed", "disqualified"].includes(lead.stage) && <button className="btn ghost" onClick={() => setComposing(true)}>Write an email</button>}
           </div>}
+          {canWrite() && <label className="row" style={{ gap: 6, marginTop: 6, flexWrap: "wrap" }}>Remarks
+            <input data-testid="call-remarks" style={{ flex: "1 1 240px", minWidth: 0 }} value={remarks} onChange={(e) => setRemarks(e.target.value)}
+              placeholder="Optional: what they said; saved with the call you log" maxLength={500} /></label>}
           {callback !== null && canWrite() && (
             <form className="row" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault();
-              run(() => api.callOutcome(lead.id, "call_back", "", withIst(callback)), "Call logged; a call-back task was created.").then(() => setCallback(null)); }}>
+              run(() => api.callOutcome(lead.id, "call_back", remarks.trim(), withIst(callback)), "Call logged; a call-back task was created.").then(() => { setCallback(null); setRemarks(""); }); }}>
               <label className="row" style={{ gap: 6 }}>Call back at (IST)<input type="datetime-local" required value={callback} onChange={(e) => setCallback(e.target.value)} /></label>
               <button className="btn" type="submit">Save</button><button className="btn ghost" type="button" onClick={() => setCallback(null)}>Cancel</button>
             </form>

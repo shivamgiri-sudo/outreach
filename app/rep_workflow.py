@@ -174,7 +174,7 @@ def my_counts(store, names: set, since_day: str, until_day: Optional[str] = None
 # ---------------------------------------------------------------- next best action
 def phone_ok(lead: dict) -> bool:
     flag = lead.get("phone_status") or {}
-    return bool(lead.get("phone")) and not (flag.get("status") == "wrong_number" and flag.get("number") == lead.get("phone"))   # a corrected number counts again
+    return bool(lead.get("phone")) and not (flag.get("status") in ("wrong_number", "inactive_number") and flag.get("number") == lead.get("phone"))   # a corrected number counts again
 
 
 def next_action(lead: dict, reply: Optional[dict] = None, task: Optional[dict] = None) -> dict:
@@ -304,10 +304,11 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
     if outcome == "call_back":
         result["task"] = add_task(store, lead_id, "call", notes or "They asked to be called back.", due_at=callback_at, owner=who,
                                   priority="high", title="Call back", source="callback")
-    elif outcome == "wrong_number":
+    elif outcome in ("wrong_number", "inactive_number"):
         number = lead.get("phone") or ""
-        store.update_lead(lead_id, lambda l: {**l, "phone_status": {"status": "wrong_number", "number": number, "at": stamp, "by": who},
-                                              "timeline": [*l["timeline"], {"at": stamp, "kind": "phone_flag", "text": f"Phone {number} marked wrong number (by {who})", "by": who}]})
+        what = "wrong number" if outcome == "wrong_number" else "inactive (not in service / switched off)"
+        store.update_lead(lead_id, lambda l: {**l, "phone_status": {"status": outcome, "number": number, "at": stamp, "by": who},
+                                              "timeline": [*l["timeline"], {"at": stamp, "kind": "phone_flag", "text": f"Phone {number} marked {what} (by {who})", "by": who}]})
         result["phone_flagged"] = True
     elif outcome == "interested":
         def yes(l: dict) -> dict:

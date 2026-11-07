@@ -117,7 +117,7 @@ export default function LeadStage({ lead, onLead, onError }) {
       )}
       {lead.consent && <p className="sub" data-testid="consent-saved">Consent saved: “{lead.consent.text}” on {istLabel(lead.consent.at)}.
         {" "}Covers: {consentChannels(lead).map(channelName).join(", ") || "no channel yet"} (each channel needs its own yes).</p>}
-      {lead.phone_status?.status === "wrong_number" && lead.phone_status.number === lead.phone && <p className="sub"><span className="pill warn">Wrong number</span> {lead.phone_status.number} marked by {lead.phone_status.by} — fix it with Edit details.</p>}
+      {["wrong_number", "inactive_number"].includes(lead.phone_status?.status) && lead.phone_status.number === lead.phone && <p className="sub"><span className="pill warn">{lead.phone_status.status === "wrong_number" ? "Wrong number" : "Inactive number"}</span> {lead.phone_status.number} marked by {lead.phone_status.by} — fix it with Edit details.</p>}
     </section>
   );
 }

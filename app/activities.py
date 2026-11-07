@@ -15,7 +15,9 @@ from .sequences import IST
 CALL_CUTOFF = time(18, 30)          # leave room to dial before 18:55
 NEXT_DAY_CALL = time(11, 0)
 ACTIVITY_TYPES = ("call", "meeting", "note", "email", "whatsapp", "sms", "linkedin", "other")
-CALL_OUTCOMES = ("connected", "no_answer", "busy", "wrong_number", "call_back", "interested", "not_interested", "meeting_booked")
+CALL_OUTCOMES = ("connected", "no_answer", "busy", "wrong_number", "call_back", "interested", "not_interested", "meeting_booked",
+                 "call_disconnected", "inactive_number")
+BAD_NUMBER_OUTCOMES = ("wrong_number", "inactive_number")      # the number leaves the call queue until it is changed
 PRIORITIES = ("high", "normal", "low")
 DEFAULT_CALLER = "Sales team"
 TASK_TITLES = {
@@ -236,7 +238,7 @@ def history_summary(store, lead: dict) -> dict:
     return {
         "total_touches": len([i for i in items if i["direction"] == "out"]),
         "calls": {"attempts": len(calls), "outcomes": outcomes, "connected": sum(v for k, v in outcomes.items() if k in ("connected", "interested", "not_interested", "meeting_booked", "call_back")),
-                  "unanswered": outcomes.get("no_answer", 0) + outcomes.get("busy", 0), "last": last(calls)},
+                  "unanswered": outcomes.get("no_answer", 0) + outcomes.get("busy", 0) + outcomes.get("call_disconnected", 0) + outcomes.get("inactive_number", 0), "last": last(calls)},
         "emails": {"sent": len(real), "practice": len(emails_out) - len(real), "opens": eng.get("opens", 0), "clicks": eng.get("clicks", 0),
                    "replies": len([r for r in replies if r["type"] in ("email", "reply")]), "last": last(emails_out)},
         "whatsapp": {"sent": len([i for i in items if i["type"] == "whatsapp" and i["direction"] == "out"]), "last": last([i for i in items if i["type"] == "whatsapp"])},

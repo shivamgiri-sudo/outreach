@@ -99,6 +99,21 @@ def test_not_interested_disqualifies_and_wrong_number_flags_phone(tmp_path):
     assert acme not in ids and beta not in ids
 
 
+def test_inactive_number_leaves_the_queue_and_disconnected_counts_as_unanswered(tmp_path):
+    c = make(tmp_path, PW)
+    acme, beta = lead_named(c, "Acme")["id"], lead_named(c, "Beta Ltd")["id"]
+    r = c.post(f"/api/leads/{beta}/call-outcome", json={"outcome": "inactive_number", "notes": "switched off twice"}).json()
+    assert r["phone_flagged"] and r["lead"]["phone_status"]["status"] == "inactive_number"
+    give_consent(c, beta)
+    assert beta not in [q["lead_id"] for q in c.get("/api/call-queue").json()["queue"]]
+    r = c.post(f"/api/leads/{acme}/call-outcome", json={"outcome": "call_disconnected", "notes": "line dropped after hello"})
+    assert r.status_code == 200, r.text
+    summary = c.get(f"/api/leads/{acme}/history-summary").json()
+    assert summary["calls"]["unanswered"] == 1 and summary["calls"]["outcomes"] == {"call_disconnected": 1}
+    timeline = c.get(f"/api/leads/{acme}/activity").json()
+    assert "line dropped after hello" in str(timeline)              # the remark is saved with the call
+
+
 def test_call_queue_orders_callbacks_then_yes_then_consent(tmp_path):
     c = make(tmp_path, PW)
     acme, beta = lead_named(c, "Acme")["id"], lead_named(c, "Beta Ltd")["id"]
