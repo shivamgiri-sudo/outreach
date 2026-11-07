@@ -3,9 +3,10 @@
 # "PowerShell", open it, paste, Enter):
 #   powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor 3072; irm '<portal>/api/linkedin-runner/install.ps1?code=XXXXXXXX' | iex"
 # (the TLS part is needed on Windows PowerShell 5.1, which offers only TLS 1.0 by default).
-# Everything goes into your own user folder (%LOCALAPPDATA%\MCN-LinkedIn-Runner); no administrator rights are needed,
-# except that winget may ask once to install Node.js:
-#   1. Node.js LTS if Node 18+ is missing (winget; otherwise the official Node.js 20 zip from nodejs.org, checksum verified)
+# Everything goes into your own user folder (%LOCALAPPDATA%\MCN-LinkedIn-Runner); no administrator rights are needed:
+#   1. Node.js: the computer's own Node 18-24 if it has one, else the official Node.js 20 zip from nodejs.org (checksum
+#      verified) inside that folder. Not winget: it installs the newest LTS, and Node 26 hangs Playwright 1.49's
+#      Chromium install for ever (found on the first real Windows run).
 #   2. the runner files from the portal, Playwright (npm ci) and its Chromium browser
 #   3. connects this computer to the portal with the one-time code (the long-lived token is saved, readable only by you)
 #   4. starts the runner now and at every logon of this user (Task Scheduler; if that is not allowed on this computer, a
@@ -40,22 +41,18 @@ try {
   & icacls.exe $Base /inheritance:r /grant:r "*${sid}:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" | Out-Null
 
   # 1. Node.js
+  # Playwright 1.49 (deploy/linkedin-runtime) is tested up to Node 24; a newer system Node gets our private Node instead.
   function Find-Node {
     foreach ($candidate in @((Get-Command node.exe -ErrorAction SilentlyContinue).Source, (Join-Path $Base 'node\node.exe'))) {
       if ($candidate -and (Test-Path $candidate)) {
         $major = & $candidate -p "process.versions.node.split('.')[0]"
-        if ([int]$major -ge 18) { return $candidate }
+        if ([int]$major -ge 18 -and [int]$major -le 24) { return $candidate }
+        Say "Not using Node.js $(& $candidate -v) at $candidate (the runner needs Node 18 to 24)."
       }
     }
     return $null
   }
   $node = Find-Node
-  if (-not $node -and (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
-    Say 'Installing Node.js LTS with winget (Windows may ask for permission)...'
-    & winget.exe install --id OpenJS.NodeJS.LTS --exact --silent --accept-package-agreements --accept-source-agreements | Out-Host
-    $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
-    $node = Find-Node
-  }
   if (-not $node) {
     $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
     $file = "node-$NodeVersion-win-$arch.zip"
@@ -109,12 +106,16 @@ try {
   } finally { Pop-Location }
 
   # 3. Connect to the portal
+  $cfg = Join-Path $Base 'config.json'
+  $before = if (Test-Path -LiteralPath $cfg) { Get-Content -Raw -LiteralPath $cfg } else { '' }   # a re-install's old token
   & $node $Runner --portal $Portal --code $Code --pair-only
   if ($LASTEXITCODE -ne 0) {
-    # Node on Windows can crash while exiting (libuv assertion) AFTER the pairing worked: the saved token decides.
-    $cfg = Join-Path $Base 'config.json'
+    # Node on Windows can crash while exiting (libuv assertion) AFTER the pairing worked: a NEW saved token decides (an
+    # earlier install's token left in config.json must not make a failed pairing look like a success).
     $paired = $false
-    if (Test-Path -LiteralPath $cfg) { try { $paired = [bool]((Get-Content -Raw -LiteralPath $cfg | ConvertFrom-Json).token) } catch { } }
+    if (Test-Path -LiteralPath $cfg) {
+      try { $now = Get-Content -Raw -LiteralPath $cfg; $paired = ($now -ne $before) -and [bool](($now | ConvertFrom-Json).token) } catch { }
+    }
     if (-not $paired) { throw 'Could not connect this computer to the portal (see the message above).' }
     Say 'Connected (Node stopped untidily after saving the token; that is harmless).'
   }

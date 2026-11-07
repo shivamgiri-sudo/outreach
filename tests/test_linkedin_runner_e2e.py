@@ -131,7 +131,7 @@ def test_install_sh_is_valid_bash_and_ps1_is_well_formed(cloud_live):
 
 def check_ps1_structure(text):
     """Windows cannot be run here: check brackets / quotes balance outside strings and comments, and that every step is
-    present (Node via winget or the verified zip, bundle, npm ci, Chromium without --with-deps, pairing, Task Scheduler)."""
+    present (Node 18-24 or the verified zip, bundle, npm ci, Chromium without --with-deps, pairing, Task Scheduler)."""
     stack, i, n = [], 0, len(text)
     pairs = {"(": ")", "{": "}", "[": "]"}
     while i < n:
@@ -165,7 +165,7 @@ def check_ps1_structure(text):
             stack.pop()
         i += 1
     assert not stack, f"unclosed {stack}"
-    for needle in ("winget.exe install --id OpenJS.NodeJS.LTS", "SHASUMS256.txt", "Get-FileHash", "bundle.zip?code=", "ci --omit=dev",
+    for needle in ("SHASUMS256.txt", "Get-FileHash", "bundle.zip?code=", "ci --omit=dev",
                    "playwright install chromium", "--pair-only", "Register-ScheduledTask", "New-ScheduledTaskTrigger -AtLogOn",
                    "MCN_NO_AUTOSTART", "uninstall.ps1", "icacls.exe"):
         assert needle in text, needle
@@ -196,3 +196,36 @@ def test_install_sh_in_a_temporary_home_pairs_and_starts_the_runner(cloud_live, 
     wait_for(lambda: not (base / "runner.lock").exists(), 30, what="the runner to exit after revoke")
     out = subprocess.run(["bash", str(base / "uninstall.sh")], env=env, capture_output=True, text=True, timeout=60)
     assert out.returncode == 0 and not base.exists()
+
+
+def test_a_crash_after_pairing_counts_only_when_a_new_token_was_saved(tmp_path):
+    """Node 24 on Windows can crash while exiting after a good pairing (libuv assertion): the installers then go on when a
+    NEW token is in config.json. An earlier install's token must not make a failed re-pairing look connected."""
+    sh = (ROOT / "deploy" / "office-runner" / "install.sh").read_text()
+    step = sh[sh.index("# 3. Connect to the portal"):sh.index("# Uninstaller")]
+    base = tmp_path / "base"
+    base.mkdir()
+
+    def run(node_body: str, old_config):
+        cfg = base / "config.json"
+        if old_config is None:
+            cfg.unlink(missing_ok=True)
+        else:
+            cfg.write_text(old_config)
+        fake = tmp_path / "node"
+        fake.write_text("#!/usr/bin/env bash\n" + node_body + "\n")
+        fake.chmod(0o755)
+        script = (f'fail() {{ echo "FAILED: $1"; exit 1; }}\nNODE="{fake}"; RUNNER=r; PORTAL=p; CODE=c; BASE="{base}"\n'
+                  + step + '\necho CONTINUED\n')
+        return subprocess.run(["bash", "-c", script], capture_output=True, text=True, timeout=30).stdout
+
+    old = '{"portal": "p", "token": "mcnr_old"}'
+    writes_new_then_crashes = f"echo '{{\"portal\": \"p\", \"token\": \"mcnr_new\"}}' > '{base}/config.json'; exit 134"
+    assert "CONTINUED" in run(writes_new_then_crashes, None)               # first install, crash after saving the token
+    assert "CONTINUED" in run(writes_new_then_crashes, old)                # re-install, crash after saving a new token
+    assert "FAILED" in run("exit 2", old)                                  # re-install, pairing refused: old token only
+    assert "FAILED" in run("exit 2", None)
+    assert "CONTINUED" in run("exit 0", old)
+    ps = (ROOT / "deploy" / "office-runner" / "install.ps1").read_text(encoding="utf-8")
+    pair_at = ps.index("--pair-only")
+    assert ps.index("$before = ") < pair_at < ps.index("($now -ne $before)")

@@ -141,7 +141,7 @@ async function main() {
     const portal = portalArg || config.portal;
     if (!portal) { log("Give the portal address: --portal https://your-portal --code ABCD2345"); process.exit(2); }
     try { await pairWith(portal, String(args.code)); }
-    catch (e) { log(`Could not connect this computer: ${e.message}`); process.exit(2); }
+    catch (e) { log(`Could not connect this computer: ${e.message}`); process.exitCode = 2; return; }   // no process.exit() after fetch, see below
     config = readConfig();
     // Let Node finish on its own: process.exit() right after fetch() can trip a libuv assertion on Windows
     // ("!(handle->flags & UV_HANDLE_CLOSING)", src\win\async.c) and turn a good pairing into a crash.
@@ -167,7 +167,10 @@ async function main() {
     stopping = true;
     await pool.stopAll(why);
     release();
-    process.exit(code);
+    // Not process.exit() at once: right after fetch() it can trip a libuv assertion on Windows (see --pair-only). Node
+    // exits by itself when nothing is left; the timer (unref'd, so it never keeps Node alive) ends it if something is.
+    process.exitCode = code;
+    setTimeout(() => process.exit(code), 3000).unref();
   };
   process.on("SIGTERM", () => { log("SIGTERM: stopping all agents"); finish("the office runner is stopping", 0); });
   process.on("SIGINT", () => { log("Ctrl+C: stopping all agents"); finish("the office runner is stopping", 0); });
@@ -184,6 +187,7 @@ async function main() {
   if (!portal.startsWith("https://") && !/^http:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(portal)) log("Warning: the portal address is not HTTPS.");
   let failures = 0, lastBeat = 0, lastWhere = "";
   for (;;) {
+    if (stopping) return;                               // Ctrl+C / SIGTERM: finish() is stopping the agents; start nothing new
     let wait = INTERVAL;
     try {
       const data = await call(portal, config.token, "/api/linkedin-runner/slots");
