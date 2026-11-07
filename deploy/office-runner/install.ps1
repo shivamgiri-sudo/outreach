@@ -110,7 +110,14 @@ try {
 
   # 3. Connect to the portal
   & $node $Runner --portal $Portal --code $Code --pair-only
-  if ($LASTEXITCODE -ne 0) { throw 'Could not connect this computer to the portal (see the message above).' }
+  if ($LASTEXITCODE -ne 0) {
+    # Node on Windows can crash while exiting (libuv assertion) AFTER the pairing worked: the saved token decides.
+    $cfg = Join-Path $Base 'config.json'
+    $paired = $false
+    if (Test-Path -LiteralPath $cfg) { try { $paired = [bool]((Get-Content -Raw -LiteralPath $cfg | ConvertFrom-Json).token) } catch { } }
+    if (-not $paired) { throw 'Could not connect this computer to the portal (see the message above).' }
+    Say 'Connected (Node stopped untidily after saving the token; that is harmless).'
+  }
 
   # Starter (no console window; the LinkedIn browser window stays visible) and uninstaller
   $vbs = Join-Path $Base 'start-runner.vbs'

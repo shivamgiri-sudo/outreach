@@ -143,7 +143,9 @@ async function main() {
     try { await pairWith(portal, String(args.code)); }
     catch (e) { log(`Could not connect this computer: ${e.message}`); process.exit(2); }
     config = readConfig();
-    if (args["pair-only"]) process.exit(0);
+    // Let Node finish on its own: process.exit() right after fetch() can trip a libuv assertion on Windows
+    // ("!(handle->flags & UV_HANDLE_CLOSING)", src\win\async.c) and turn a good pairing into a crash.
+    if (args["pair-only"]) { process.exitCode = 0; return; }
   }
   const portal = portalArg || config.portal;
   if (!portal || !config.token) {

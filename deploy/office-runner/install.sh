@@ -101,7 +101,9 @@ if [ "$OS" = Linux ]; then
 fi
 
 # 3. Connect to the portal
-"$NODE" "$RUNNER" --portal "$PORTAL" --code "$CODE" --pair-only --home "$BASE" || fail "Could not connect this computer to the portal (see the message above)."
+"$NODE" "$RUNNER" --portal "$PORTAL" --code "$CODE" --pair-only --home "$BASE" \
+  || grep -q '"token"' "$BASE/config.json" 2>/dev/null \
+  || fail "Could not connect this computer to the portal (see the message above)."
 
 # Uninstaller
 cat > "$BASE/uninstall.sh" <<UNINSTALL
