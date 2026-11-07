@@ -123,10 +123,16 @@ def blocked_reason(store, person: dict) -> str:
     return ""
 
 
+def _best_phone(phones: list) -> str:
+    """A mobile first; otherwise the first number (an office landline is kept as the lead phone, for calls only)."""
+    from .hygiene import normalise_phone
+    return next((p for p in phones if normalise_phone(p)), phones[0] if phones else "")
+
+
 def _lead_row(person: dict) -> dict:
     c = person.get("company") or {}
     return {"company": c.get("name") or "", "contact_name": person.get("full_name") or "", "title": person.get("title") or "",
-            "email": person.get("email") if person.get("email_status") != "invalid" else "", "phone": (person.get("phones") or [""])[0],
+            "email": person.get("email") if person.get("email_status") != "invalid" else "", "phone": _best_phone(person.get("phones") or []),
             "website": f"https://{c['domain']}" if c.get("domain") else "", "country": person.get("country") or c.get("hq_country") or "",
             "linkedin_url": person.get("linkedin_url") or "", "city": person.get("city") or c.get("hq_city") or "",
             "state": person.get("state") or "", "sector": c.get("industry") or "", "company_size": str(c.get("employees") or "")}

@@ -118,9 +118,14 @@ def to_int(value):
 
 
 def clean_phone(value) -> str:
+    """A mobile, an office landline with its STD code (kept for calls), or a +country number; else ""."""
     phone = normalise_phone(str(value or ""))
     if phone:
         return phone
+    from .lead_model import source_phone
+    landline, kind = source_phone(value)
+    if kind == "landline":
+        return landline
     digits = re.sub(r"[^\d+]", "", str(value or ""))
     return digits if re.fullmatch(r"\+\d{8,15}", digits) else ""
 

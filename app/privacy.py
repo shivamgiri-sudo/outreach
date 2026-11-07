@@ -37,9 +37,16 @@ def hashes_for(email=None, phones=()) -> set:
     if normalise_email(email):
         out.add(contact_hash(normalise_email(email)))
     for phone in phones:
-        if normalise_phone(phone):
-            out.add(contact_hash(normalise_phone(phone)))
+        number = normalise_phone(phone) or _landline(phone)      # office landlines are kept on leads, so erase them too
+        if number:
+            out.add(contact_hash(number))
     return out
+
+
+def _landline(phone) -> str:
+    from .lead_model import source_phone                     # late import: lead_model -> hygiene, privacy is loaded by store
+    number, kind = source_phone(phone) if phone else ("", "")
+    return number if kind == "landline" else ""
 
 
 def linkedin_hash(url) -> str:

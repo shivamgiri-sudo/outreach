@@ -73,7 +73,7 @@ def test_apollo_hiring_filters_by_job_titles_and_reads_job_postings():
     row = out["rows"][0]
     assert row["company"] == "Gamma Care" and row["domain"] == "gamma-care.in" and row["open_roles"] == 3
     assert row["role"] == "Customer Support Associate and Customer Support Team Lead" and row["max_job_age_days"] == 33
-    assert row["phone"] == "+919811122233" and row["phone_type"] == "business" and out["requests"] == 2
+    assert row["phone"] == "+919811122233" and row["phone_type"] == "mobile" and out["requests"] == 2
 
 
 def test_apollo_hiring_needs_a_role():
@@ -100,9 +100,10 @@ def test_places_request_and_mapping():
     assert call["body"]["textQuery"] == "BPO in Pune" and call["body"]["regionCode"] == "IN" and call["body"]["pageSize"] == 20
     delta, epsilon = out["rows"]
     assert delta["company"] == "Delta Call Services" and delta["domain"] == "delta-calls.in" and delta["phone"] == "+919822233344"
-    assert delta["phone_type"] == "business" and delta["source"] == "google_places" and delta["source_url"] == "https://maps.google.com/?cid=1"
+    assert delta["phone_type"] == "mobile" and delta["source"] == "google_places" and delta["source_url"] == "https://maps.google.com/?cid=1"
     assert delta["city"] == "Pune" and "Baner" in delta["address"]
-    assert epsilon["domain"] == "" and epsilon["phone"] == "" and epsilon["company_phone"] == "020 2612 3456"   # landline kept raw
+    assert epsilon["domain"] == "" and epsilon["company_phone"] == "020 2612 3456"     # as Google gave it
+    assert epsilon["phone"] == "+912026123456" and epsilon["phone_type"] == "landline"   # owner rule: landline kept, calls only
     assert len(out["rows"]) == 2 and out["requests"] == 1
 
 

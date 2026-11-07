@@ -7,9 +7,9 @@ from datetime import datetime
 
 from . import campaign_sources as src, workspaces
 from .apollo import match_person_by_id
-from .hygiene import business_domain, dedupe_key, is_role_address, normalise_email, normalise_phone
+from .hygiene import business_domain, dedupe_key, is_role_address, normalise_email
 from .jobs import job_domain, job_key
-from .lead_model import build_lead, event, now_iso
+from .lead_model import build_lead, event, now_iso, source_phone
 from .providers import PROVIDERS, contact_changes, provider_status, valid_domain
 from .routes_jobs import _signals as job_signals, _upsert_jobs as upsert_jobs
 from .scoring import score_lead
@@ -92,7 +92,13 @@ def _merge(base: dict, row: dict) -> dict:
             base["provenance"].update({f: v for f, v in row["provenance"].items() if f in PERSON_FIELDS})
         elif (row.get("email"), row.get("contact_name")) != (base.get("email"), base.get("contact_name")):
             base["other_contacts"].append(_person(row))
+    if row.get("phone") and row.get("phone_type") == "mobile" and base.get("phone_type") == "landline":
+        base.update(phone=row["phone"], phone_type="mobile")       # a mobile beats an office landline
+        if "phone" in row["provenance"]:
+            base["provenance"]["phone"] = row["provenance"]["phone"]
     for field, value in row.items():
+        if field == "phone_type" and base.get("phone") and base.get("phone") != row.get("phone"):
+            continue                                                # the kind always belongs to the kept number
         if field in ("sources", "provenance", "other_contacts", "source", "source_url") or (field in PERSON_FIELDS and _has_person(base)):
             continue
         if field in SIGNAL_FIELDS and isinstance(value, int) and value > (base.get(field) or 0):
@@ -140,6 +146,10 @@ def build_candidate(cand: dict, campaign: dict):
     extras = {k: cand[k] for k in EXTRA_FIELDS if cand.get(k)}
     if cand.get("other_contacts"):
         extras["other_contacts"] = cand["other_contacts"]
+    if lead.get("phone"):              # the source's own reading of the number wins ("080 4000 1500" is a landline)
+        extras["phone_type"] = cand.get("phone_type") if cand.get("phone") == lead["phone"] and cand.get("phone_type") else lead.get("phone_type")
+    else:
+        extras.pop("phone_type", None)
     lead.update(extras, campaign_id=campaign["id"], provenance=prov, sources=cand["sources"],
                 domain=lead["domain"] or cand.get("domain") or None,
                 timeline=[event("created", f"Added by campaign {campaign['name']} from {labels}")])
@@ -233,8 +243,10 @@ def merge_into_existing(store, lead_id: str, cand: dict, campaign: dict) -> bool
             filled["email"] = normalise_email(filled["email"])
             filled["email_is_role"] = bool(filled["email"]) and is_role_address(filled["email"])
             filled["email_source"] = cand["provenance"].get("email", cand["sources"][0])
-        if filled.get("phone"):
-            filled["phone"] = normalise_phone(filled["phone"])
+        if filled.get("phone"):            # a mobile, or an office landline with its STD code (calls only)
+            filled["phone"], kind = source_phone(filled["phone"])
+            if filled["phone"]:
+                filled["phone_type"] = (cand.get("phone_type") if cand.get("phone_type") in ("mobile", "landline") else kind)
         filled = {k: v for k, v in filled.items() if v not in (None, "")}
         if not filled:
             return None
