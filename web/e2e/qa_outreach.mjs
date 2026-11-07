@@ -84,7 +84,7 @@ await step("Unsubscribe page names the company and reopening says already unsubs
 await step("'Can we talk on Tuesday?' is read as a yes; thread shows the words; WhatsApp practice is confirmed", async () => {
   await openLead("Zomato Ltd");
   await page.getByRole("tab", { name: "Outreach" }).click();
-  await page.locator("#reply-box").fill("Thanks. We are ramping up hiring next month. Can we talk on Tuesday at 3pm?");
+  await page.locator("#reply-box").fill("Thanks. We are ramping up hiring next month. Can we talk on Tuesday at 3pm? WhatsApp me the details.");   // naming WhatsApp = WhatsApp consent (per-channel rule)
   await page.getByRole("button", { name: "Log reply" }).click();
   await page.getByText(/^Detected: interested/).waitFor();
   await page.getByLabel("WhatsApp message", { exact: true }).selectOption("first_after_yes");

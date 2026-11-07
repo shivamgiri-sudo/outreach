@@ -12,14 +12,14 @@ const check = (ok, what) => { if (!ok) throw new Error(`FAILED: ${what}`); conso
 
 async function login(page) {
   await page.goto(`${UI}/`);
-  if (await page.locator("#pw").count()) {
+  if (await page.locator("#pw").waitFor({ timeout: 10000 }).then(() => true, () => false)) {   // the login box renders after the first API call
     await page.locator("#pw").fill(PASSWORD);
     await page.locator(".login-submit").click();
     await page.locator("#pw").waitFor({ state: "detached" });
   }
   await page.waitForLoadState("networkidle");
   const skip = page.getByRole("button", { name: "Skip setup" });
-  if (await skip.count()) await skip.click();
+  await skip.waitFor({ timeout: 8000 }).then(async () => { await skip.click(); await skip.waitFor({ state: "detached", timeout: 20000 }); }, () => {});   // the wizard opens a moment after sign-in
 }
 
 async function dragFromPicker(page, label, search) {

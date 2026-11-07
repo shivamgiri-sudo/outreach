@@ -15,7 +15,7 @@ await page.getByLabel("Password").fill(PASSWORD);
 await page.getByRole("button", { name: "Sign in" }).click();
 await page.locator("nav.side").waitFor();
 const skip = page.getByRole("button", { name: "Skip setup" });
-if (await skip.count()) await skip.click();
+await skip.waitFor({ timeout: 8000 }).then(async () => { await skip.click(); await skip.waitFor({ state: "detached", timeout: 20000 }); }, () => {});   // the wizard opens a moment after sign-in
 await page.goto(`${UI}/#leads`);
 
 await step("Import wizard refuses a CSV with an unclosed quote instead of making one junk lead", async () => {

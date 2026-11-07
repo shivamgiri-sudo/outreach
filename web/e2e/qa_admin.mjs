@@ -33,7 +33,7 @@ async function signIn(page, email, password) {
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.locator("main").waitFor();
   const later = page.getByRole("button", { name: "Skip setup" });         // the first-run wizard (owners, fresh install)
-  await later.waitFor({ timeout: 2500 }).then(() => later.click(), () => {});
+  await later.waitFor({ timeout: 8000 }).then(async () => { await later.click(); await later.waitFor({ state: "detached", timeout: 20000 }); }, () => {});
 }
 const nav = async (page, label) => { await page.locator("nav.side").getByRole("button", { name: label, exact: true }).click(); await page.waitForTimeout(700); };
 async function step(name, fn) {
@@ -120,7 +120,7 @@ await step("…and changes her own password from Setup > My password (all sessio
 });
 
 const vik = await session();
-await step("A viewer sees the view-only note, no Hiring engine, and no refused calls on LinkedIn or Free experience", async () => {
+await step("A viewer sees the view-only note, no Hiring engine, no refused calls on LinkedIn and no Save offer on Free experience", async () => {
   await signIn(vik.page, "vik@qa.test", "vik-pass-12345");
   await vik.page.getByTestId("viewer-note").waitFor();
   if (await vik.page.locator("nav.side").getByRole("button", { name: "Hiring engine", exact: true }).count()) throw new Error("Hiring engine in the viewer menu");
@@ -129,8 +129,8 @@ await step("A viewer sees the view-only note, no Hiring engine, and no refused c
   await vik.page.waitForTimeout(1500);
   if (vik.errors.length) throw new Error(vik.errors.join("; "));
   await nav(vik.page, "Free experience");
-  await vik.page.getByRole("button", { name: "Save offer" }).click();
-  await vik.page.getByText("Your role (viewer) cannot make changes").waitFor();
+  await vik.page.waitForTimeout(1500);
+  if (await vik.page.getByRole("button", { name: "Save offer" }).count()) throw new Error("viewer still sees Save offer");   // write controls are hidden from viewers
   if (vik.errors.some((e) => e.startsWith("pageerror"))) throw new Error(vik.errors.join("; "));
 });
 
