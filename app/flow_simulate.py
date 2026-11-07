@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from . import flow_actions as act
 from .activities import caller_name, next_call_slot
 from .channels.netguard import check_public_url
+from .contact_rules import LANDLINE_REASON, has_consent_for, lead_is_landline
 from .flows import graph_of, is_trigger, outputs_of, title_of
 from .senders import email_ready
 from .sequence_runner import NO_EMAIL_STAGES, get_settings
@@ -46,17 +47,21 @@ def _simulate_action(store, flow, node, lead, now, base_url) -> tuple:
         mode = "for real" if live else "practice only (Send for real is off)"
         return "next", f"would email “{composed[0]['subject']}” to {lead['email']} — {mode}; caps, warm-up and business hours apply", True
     if t == "whatsapp":
-        if not lead.get("consent"):
-            return "error", "would not send WhatsApp: no recorded consent", False
+        if not has_consent_for(lead, "whatsapp"):
+            return "error", "would not send WhatsApp: no recorded WhatsApp consent", False
         if not lead.get("phone"):
             return "error", "would not send WhatsApp: no phone number", False
+        if lead_is_landline(lead):
+            return "error", f"would not send WhatsApp: {LANDLINE_REASON}", False
         _, missing = act.text_for(store, lead, WHATSAPP_TEMPLATES.get(c.get("template"), ""), base_url, now)
         if missing:
             return "error", f"would not send WhatsApp: details missing ({', '.join(missing)})", False
         return "next", f"would send WhatsApp template {c.get('template')} (practice until WhatsApp is connected and on)", True
     if t == "sms":
-        if not lead.get("consent") or not lead.get("phone"):
-            return "error", "would not send SMS: needs recorded consent and a phone number", False
+        if not has_consent_for(lead, "sms") or not lead.get("phone"):
+            return "error", "would not send SMS: needs recorded SMS consent and a phone number", False
+        if lead_is_landline(lead):
+            return "error", f"would not send SMS: {LANDLINE_REASON}", False
         return "next", "would send the SMS (practice until SMS is connected and switched on)", True
     if t == "linkedin_task":
         if c.get("mode", "task") == "start_sequence":

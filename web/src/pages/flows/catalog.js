@@ -63,6 +63,7 @@ export const IF_FIELDS = {
   city: ["City", "text"], country: ["Country", "text"], title: ["Job title", "text"], persona: ["Persona (from title)", "persona"],
   get open_roles() { return [leadTerm("open_roles"), "number"]; }, source: ["Source", "text"], campaign_id: ["Campaign id", "text"], tag: ["Tag", "tags"],
   has_email: ["Has an email", "bool"], has_phone: ["Has a phone number", "bool"], has_consent: ["Has said yes (consent)", "bool"],
+  has_whatsapp_consent: ["Said yes to WhatsApp", "bool"], has_sms_consent: ["Said yes to SMS", "bool"], phone_is_landline: ["Phone is a landline", "bool"],
   has_meeting: ["Has a meeting", "bool"], has_replied: ["Has replied", "bool"],
   linkedin_accepted: ["LinkedIn invite accepted", "bool"], linkedin_status: ["LinkedIn sequence status", "text"],
 };

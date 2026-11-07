@@ -7,7 +7,7 @@ way imports do it; a value that would make the lead a duplicate of another lead 
 from typing import Optional
 
 from .hygiene import business_domain, company_domain, dedupe_key, is_role_address, normalise_email
-from .lead_model import event, now_iso
+from .lead_model import event, landline_key, now_iso
 from .standardise import parse_phone, phone_type
 from .standardise import linkedin_url
 
@@ -70,7 +70,9 @@ def edit_contact(store, lead_id: str, changes: dict, actor: dict, reason: str = 
     if not cleaned:
         return {"lead": current, "changed": []}
     probe = {**current, **cleaned}
-    new_key = dedupe_key(probe)
+    if "phone" in cleaned:
+        probe["phone_type"] = phone_type(cleaned["phone"]) if cleaned["phone"] else None
+    new_key = dedupe_key(probe) or landline_key(probe)      # an office landline alone still identifies the lead
     if not new_key:
         raise EditRefused("A lead needs at least an email, a phone or a website.")
     twin = next((l for l in leads if l["id"] != lead_id and l.get("dedupe_key") == new_key), None)

@@ -33,7 +33,8 @@ TEXT_PLACEHOLDERS = ("greeting", "first_name", "company", "role", "sender", "dem
 IF_FIELDS = {
     "score": "number", "open_roles": "number", "band": "text", "stage": "text", "city": "text", "country": "text",
     "title": "text", "persona": "text", "source": "text", "campaign_id": "text", "tag": "tags",
-    "has_email": "bool", "has_phone": "bool", "has_consent": "bool", "has_meeting": "bool", "has_replied": "bool",
+    "has_email": "bool", "has_phone": "bool", "has_consent": "bool", "has_whatsapp_consent": "bool",
+    "has_sms_consent": "bool", "phone_is_landline": "bool", "has_meeting": "bool", "has_replied": "bool",
     "linkedin_accepted": "bool", "linkedin_status": "text",
 }
 IF_OPS = ("eq", "ne", "gt", "lt", "contains", "in", "exists")

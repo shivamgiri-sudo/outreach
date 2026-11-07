@@ -6,12 +6,23 @@ import { stageLabel } from "../labels.js";
 import { istLabel } from "../time.js";
 import { FORWARD } from "./LeadDrawerParts.jsx";
 
-const CHANNELS = [["call", "Phone call"], ["whatsapp", "WhatsApp"], ["email", "Email"], ["any", "Any channel"]];
+// Consent is per channel: a yes on one channel never covers another (SMS needs its own yes too).
+const CHANNELS = [["call", "Phone call"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["email", "Email"]];
+const LEGACY_ANY = ["email", "call", "whatsapp"];            // older records saved as "any channel"
+export const consentChannels = (lead) => {
+  const c = lead?.consent;
+  const out = new Set(Object.keys(lead?.inbound_consent || {}));
+  if (c) (Array.isArray(c.channels) ? c.channels : CHANNELS.some(([v]) => v === c.channel) ? [c.channel] : LEGACY_ANY).forEach((x) => out.add(x));
+  return CHANNELS.map(([v]) => v).filter((v) => out.has(v));
+};
+const channelName = (v) => (CHANNELS.find(([c]) => c === v) || [v, v])[1];
 
 function ConsentForm({ lead, onSaved, onCancel }) {
+  const have = consentChannels(lead);
+  const open = CHANNELS.filter(([v]) => !have.includes(v));
   const [text, setText] = useState("");
-  const [channel, setChannel] = useState("call");
-  const [move, setMove] = useState(true);
+  const [channel, setChannel] = useState((open[0] || CHANNELS[0])[0]);
+  const [move, setMove] = useState(channel === "call");
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -29,7 +40,7 @@ function ConsentForm({ lead, onSaved, onCancel }) {
         <input autoFocus required value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. “Yes, call me” — call with Amit, 3 Nov" />
       </label>
       <label>They agreed to be contacted on
-        <select value={channel} onChange={(e) => pick(e.target.value)}>{CHANNELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+        <select value={channel} onChange={(e) => pick(e.target.value)}>{(open.length ? open : CHANNELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       </label>
       {canMove && (
         <label className="row" style={{ fontWeight: 400, gap: 8 }}>
@@ -71,7 +82,8 @@ export default function LeadStage({ lead, onLead, onError }) {
       <h3>Stage: {stageLabel(lead.stage)}</h3>
       <div className="row" style={{ flexWrap: "wrap" }}>
         {nextOk && <button className="btn" disabled={busy} onClick={() => move(next)}>Move to {stageLabel(next)}</button>}
-        {!lead.consent && <button className="btn ghost" onClick={() => setForm("consent")}>Record “yes” consent</button>}
+        {consentChannels(lead).length < CHANNELS.length && <button className="btn ghost" onClick={() => setForm("consent")}>
+          {lead.consent ? "Record consent for another channel" : "Record “yes” consent"}</button>}
         <select aria-label="Move to stage" value={target} onChange={(e) => setTarget(e.target.value)} style={{ minWidth: 180 }}>
           <option value="">Move to any stage…</option>
           {options.filter((o) => o.stage !== "unsubscribed").map((o) => (
@@ -103,7 +115,8 @@ export default function LeadStage({ lead, onLead, onError }) {
           </div>
         </div>
       )}
-      {lead.consent && <p className="sub">Consent saved: “{lead.consent.text}” on {istLabel(lead.consent.at)}</p>}
+      {lead.consent && <p className="sub" data-testid="consent-saved">Consent saved: “{lead.consent.text}” on {istLabel(lead.consent.at)}.
+        {" "}Covers: {consentChannels(lead).map(channelName).join(", ") || "no channel yet"} (each channel needs its own yes).</p>}
       {lead.phone_status?.status === "wrong_number" && lead.phone_status.number === lead.phone && <p className="sub"><span className="pill warn">Wrong number</span> {lead.phone_status.number} marked by {lead.phone_status.by} — fix it with Edit details.</p>}
     </section>
   );

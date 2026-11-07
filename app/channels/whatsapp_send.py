@@ -7,6 +7,7 @@ import json
 import re
 from urllib.parse import quote
 
+from ..contact_rules import messaging_block
 from .config import config_for
 from .custom_http import call_custom
 from .http import request
@@ -95,6 +96,8 @@ def _aisensy(values, to, name, lang, params, text, transport):
 
 def deliver_whatsapp(cfg: dict, to_phone: str, template_name: str = "", language: str = "", variables=None,
                      text: str = None, transport=request, resolver=None) -> dict:
+    if messaging_block(to_phone):                 # owner rule: landlines are for calls only
+        return {"status": "failed", "error": messaging_block(to_phone)}
     pid, values = cfg["provider"], cfg["values"]
     to = e164(to_phone)
     if not to:
@@ -132,6 +135,8 @@ def deliver_whatsapp(cfg: dict, to_phone: str, template_name: str = "", language
 def send_whatsapp(store, to_phone: str, template_name: str, language: str = "", variables=None, text: str = None,
                   transport=request, resolver=None) -> dict:
     """{"status": "sent"|"failed"|"dry_run", "provider_id"?, "error"?}. Real sends need live_whatsapp on."""
+    if messaging_block(to_phone):                 # never to a landline, not even as practice
+        return {"status": "failed", "error": messaging_block(to_phone)}
     cfg = config_for(store, "whatsapp")
     if not (cfg and store.read("settings").get("live_whatsapp")):
         return {"status": "dry_run"}

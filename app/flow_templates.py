@@ -51,7 +51,7 @@ def _cold_email_flow() -> dict:
 def _yes_flow() -> dict:
     nodes = [
         {"id": "trigger", "type": "trigger.reply", "config": {"label": "interested", "title": "They reply yes"}, "x": 300, "y": 60},
-        {"id": "consent", "type": "if", "config": {"title": "Consent recorded?", "field": "has_consent", "op": "eq", "value": "true"}, "x": 300, "y": 190},
+        {"id": "consent", "type": "if", "config": {"title": "WhatsApp consent recorded?", "field": "has_whatsapp_consent", "op": "eq", "value": "true"}, "x": 300, "y": 190},
         {"id": "wa", "type": "whatsapp", "config": {"template": "first_after_yes"}, "x": 120, "y": 320},
         {"id": "call", "type": "call_task", "config": {"note": "They said yes. Call through PD only, before 18:55."}, "x": 300, "y": 450},
         {"id": "wait", "type": "wait", "config": {"days": 2, "hours": 0, "business_hours": True}, "x": 300, "y": 580},

@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from .activities import add_task, on_became_interested
+from .contact_rules import add_consent
 from .ai import ai_classify
 from .hygiene import normalise_email, normalise_phone
 from .privacy import asks_for_erasure, record_consent
@@ -76,7 +77,7 @@ def reply_effect(lead: dict, label: str, text: str, channel: str = "email") -> t
     if lead["stage"] not in REPLY_CAN_MOVE:
         return changes, ("review" if label in ("interested", "not_interested", "not_now") else "logged")
     if label == "interested":
-        consent = {"text": text[:500], "at": _now(), "source": f"{channel} reply"}
+        consent = add_consent(lead, {"text": text[:500], "at": _now(), "source": f"{channel} reply", "channel": channel})
         return {**changes, "consent": consent, "stage": "interested"}, "applied"
     if label == "not_interested":
         return {**changes, "stage": "disqualified"}, "applied"

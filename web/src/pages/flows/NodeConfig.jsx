@@ -243,9 +243,9 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
         {text("body_no_role", "Text without a role", { long: true, rows: 5 })}
       </details>
     </>),
-    whatsapp: () => select("template", "Approved template", templates.map((t) => [t, pretty(t)]), "Sent only to leads who said yes (consent recorded)."),
+    whatsapp: () => select("template", "Approved template", templates.map((t) => [t, pretty(t)]), "Sent only to leads who said yes to WhatsApp (consent recorded), never to a landline."),
     sms: () => (<>
-      {text("text", "SMS text", { long: true, rows: 4, hint: "Must match your DLT-approved template. Include an opt-out." })}
+      {text("text", "SMS text", { long: true, rows: 4, hint: "Must match your DLT-approved template. Include an opt-out. Sent only with recorded SMS consent, never to a landline." })}
       <Chips names={withVars(TEXT_PLACEHOLDERS)} onInsert={insert} />
       {text("template_id", "DLT template id (optional)")}
     </>),

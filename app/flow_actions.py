@@ -22,6 +22,7 @@ from .activities import add_task, caller_name, next_call_slot, on_became_interes
 from .channels.http import request
 from .channels.netguard import check_public_url
 from .channels.sms_send import send_sms
+from .contact_rules import LANDLINE_REASON, has_consent_for, lead_is_landline
 from .flows import CUSTOM_FIELD_PREFIX, IF_FIELDS, is_custom_field, title_of
 from .growth_core import ensure_demo, get_offer
 from .hygiene import business_domain
@@ -110,6 +111,8 @@ def lead_facts(lead: dict) -> dict:
             "campaign_id": lead.get("campaign_id") or "", "tag": list(lead.get("tags") or []),
             "open_roles": lead.get("open_roles") or 0, "has_email": bool(lead.get("email")), "has_phone": bool(lead.get("phone")),
             "has_consent": bool(lead.get("consent")), "has_replied": replied,
+            "has_whatsapp_consent": has_consent_for(lead, "whatsapp"), "has_sms_consent": has_consent_for(lead, "sms"),
+            "phone_is_landline": lead_is_landline(lead),
             "has_meeting": any(m.get("status") in ("scheduled", "done") for m in lead.get("meetings") or []),
             "linkedin_accepted": bool((lead.get("linkedin_seq") or {}).get("accepted_at")),
             "linkedin_status": (lead.get("linkedin_seq") or {}).get("status") or "not_started", **custom_facts(lead)}
@@ -328,10 +331,12 @@ def do_whatsapp(store, flow, node, lead, now, ctx) -> dict:
 
 
 def do_sms(store, flow, node, lead, now, ctx) -> dict:
-    if not lead.get("consent"):
-        return refused("SMS not sent: no recorded consent. Ask for their yes first.")
+    if not has_consent_for(lead, "sms"):
+        return refused("SMS not sent: no recorded SMS consent (a yes for call, email or WhatsApp does not cover SMS).")
     if not lead.get("phone"):
         return refused("SMS not sent: this lead has no phone number")
+    if lead_is_landline(lead):
+        return refused(f"SMS not sent: {LANDLINE_REASON}")
     text, missing = text_for(store, lead, (node.get("config") or {}).get("text", ""), ctx.base_url, now)
     if missing:
         return refused(f"SMS not sent: details missing ({', '.join(missing)})")

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from .channels.http import request
 from .channels.security import server_secret
 from .channels.whatsapp_send import send_whatsapp
+from .contact_rules import LANDLINE_REASON, has_consent_for, lead_is_landline
 from .growth_core import ensure_demo
 from .privacy import is_blocked
 from .sequence_runner import NO_EMAIL_STAGES, get_settings
@@ -112,10 +113,13 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
     lead = ensure_demo(lead, now)
     if lead["stage"] in NO_EMAIL_STAGES:
         raise WhatsAppError(f"Lead is {lead['stage']}; WhatsApp is not allowed")
-    if not lead.get("consent"):
-        raise WhatsAppError("No recorded consent. Ask for their yes first.")
+    if not has_consent_for(lead, "whatsapp"):
+        raise WhatsAppError("No recorded WhatsApp consent. Ask for their yes to WhatsApp first."
+                            if lead.get("consent") else "No recorded consent. Ask for their yes first.")
     if not lead.get("phone"):
         raise WhatsAppError("This lead has no phone number")
+    if lead_is_landline(lead):
+        raise WhatsAppError(f"Not sent: {LANDLINE_REASON}. Call them instead.")
     if is_blocked(store, lead.get("email"), lead.get("phone")):
         raise WhatsAppError("This contact is on the do-not-contact list.")
     if template == "custom":

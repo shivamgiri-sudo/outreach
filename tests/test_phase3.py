@@ -173,6 +173,7 @@ def test_reply_interested_triggers_whatsapp(tmp_path):
     c = make_client(tmp_path)
     add_rule(c, {"type": "reply", "value": "interested"}, {"type": "whatsapp", "value": "first_after_yes"})
     lid = lead(c)["id"]
+    c.post(f"/api/leads/{lid}/consent", json={"text": "Yes to WhatsApp on a call", "channel": "whatsapp"})
     c.post(f"/api/leads/{lid}/reply", json={"text": "Yes please send the story"})
     assert c.get("/api/whatsapp/outbox").json()[0]["template"] == "first_after_yes"
     assert c.get(f"/api/leads/{lid}").json()["stage"] == "whatsapp_active"
@@ -182,6 +183,7 @@ def test_rule_that_cannot_run_creates_a_task_instead(tmp_path):
     c = make_client(tmp_path)
     add_rule(c, {"type": "reply", "value": "interested"}, {"type": "whatsapp", "value": "first_after_yes"})
     lid = lead(c, "Beta")["id"]                               # Beta has no phone
+    c.post(f"/api/leads/{lid}/consent", json={"text": "Yes to WhatsApp", "channel": "whatsapp"})
     c.post(f"/api/leads/{lid}/reply", json={"text": "Yes please send the story"})
     assert c.get("/api/whatsapp/outbox").json() == []
     assert any("phone" in t["text"].lower() for t in c.get("/api/tasks").json())

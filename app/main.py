@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from . import brand as brand_mod
 from . import integrations
 from .lead_model import build_lead as _build_lead, contactless_match as _contactless_match, event as _event, merge_contact as _merge_contact, now_iso as _now
+from .contact_rules import CONSENT_CHANNELS, add_consent
 from .prompt_gen import build_prompt, build_prompt_body, with_guardrails
 from .ai import ai_write_prompt
 from .scoring import score_lead
@@ -412,13 +413,16 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         text = body.text.strip()
         if len(text) < 3:
             raise HTTPException(400, "Write what they said and how (for example: 'Yes on a call with Amit, 3 Nov').")
+        channel = (body.channel or "any").strip().lower()
+        if channel not in (*CONSENT_CHANNELS, "any"):
+            raise HTTPException(400, "Pick the channel they agreed to: email, call, WhatsApp or SMS.")
         who = audit.actor_of(getattr(request.state, "user", None))["name"]
         saved = change_lead(lead_id, lambda lead: {
-            **lead, "consent": {"text": text[:500], "at": _now(), "source": body.source or "recorded by a person",
-                                "channel": body.channel or "any"},
+            **lead, "consent": add_consent(lead, {"text": text[:500], "at": _now(), "source": body.source or "recorded by a person",
+                                                  "channel": channel}),
             "consent_withdrawn_at": None,
-            "timeline": [*lead["timeline"], {**_event("consent", f"Said yes: {text[:500]} (recorded by {who})"), "by": who}]})
-        ledger_consent(store, lead_id, "given", body.channel or "any", text, body.source or "recorded by a person")
+            "timeline": [*lead["timeline"], {**_event("consent", f"Said yes ({channel}): {text[:500]} (recorded by {who})"), "by": who}]})
+        ledger_consent(store, lead_id, "given", channel, text, body.source or "recorded by a person")
         if body.move_to_interested:
             moved = store.update_lead(lead_id, lambda lead: {**lead, "stage": "interested", "timeline": [*lead["timeline"], {
                 **_event("stage", f"{lead['stage']} → interested (consent recorded by {who})"), "by": who}]}

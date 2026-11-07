@@ -74,6 +74,8 @@ def test_flow_whatsapp_and_sms_wait_for_business_hours(world_factory):
     """Bug: email waited for Mon-Fri 9-18 IST but a flow's WhatsApp / SMS went out at night and on Sundays."""
     w = world_factory(ist(7, 22, 0), LEADS)                      # Saturday 22:00 IST
     w.consent("Skyline Realty")
+    r = w.c.post(f"/api/leads/{w.id('Skyline Realty')}/consent", json={"text": "Yes to SMS too", "channel": "sms"})   # SMS needs its own yes
+    assert r.status_code == 200
     flow = w.flow("wa", [node("t", "trigger.manual"), node("wa", "whatsapp", template="pilot_offer"),
                          node("sms", "sms", text="{{greeting}} {{sender}} here. Reply STOP to opt out.")],
                   [edge("t", "wa"), edge("wa", "sms")])
@@ -120,6 +122,7 @@ def test_simulation_uses_fields_walks_repeats_and_applies_the_assumed_reply(worl
     """Bugs: the dry run ignored Set fields in later emails (said 'would not email'), skipped Repeat rounds, and an
     assumed yes did not give the consent a real yes gives (so it predicted 'no WhatsApp')."""
     w = world_factory(ist(3, 10, 0), LEADS)
+    w.consent("Ledgerly")                       # consent is per channel: the assumed email yes alone would not open WhatsApp
     flow = w.flow("sim", [node("t", "trigger.manual"), node("sv", "set_vars", values=[{"name": "pitch", "value": "an offer for {{company}}"}]),
                           mail("m", body="{{greeting}} {{pitch}}." + SIGN_OFF), node("lp", "loop", times=2), node("w", "wait", hours=4),
                           node("wr", "wait_for_reply", days=2), node("wa", "whatsapp", template="first_after_yes")],

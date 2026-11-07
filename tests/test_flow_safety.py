@@ -21,7 +21,8 @@ def c(tmp_path):
 
 
 def consent(c, lead_id):
-    c.post(f"/api/leads/{lead_id}/consent", json={"text": "Yes on a call with Priya", "channel": "whatsapp"})
+    for channel in ("whatsapp", "sms"):                 # consent is per channel: WhatsApp and SMS each need a yes
+        c.post(f"/api/leads/{lead_id}/consent", json={"text": f"Yes to {channel} on a call with Priya", "channel": channel})
 
 
 def sent_anything(c, lead_id):
@@ -90,7 +91,7 @@ def test_sms_needs_consent_and_stays_practice_until_connected(c):
     tick(c)
     rows = [a for a in store_of(c).read("activities") if a["type"] == "sms"]
     assert [(r["lead_id"], r["outcome"]) for r in rows] == [(acme, "dry_run")]
-    assert "no recorded consent" in {r["lead_id"]: r["stop_reason"] for r in runs(c, flow)}[beta]
+    assert "no recorded SMS consent" in {r["lead_id"]: r["stop_reason"] for r in runs(c, flow)}[beta]
 
 
 # ---------------------------------------------------------------- email rules

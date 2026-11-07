@@ -133,6 +133,7 @@ def test_healthcare_clinic_reply_flow_whatsapp_with_and_without_consent(world_fa
     w.tick(ist(3, 15, 0))
     w.unsubscribe("CarePlus Diagnostics")
     w.tick(ist(4, 18, 30))                                       # Wed 18:30: after hours
+    w.consent("Sunrise Multispeciality Clinic")                  # consent is per channel: an email yes alone is not a WhatsApp yes
     assert w.reply("Sunrise Multispeciality Clinic", "Yes please, interested. We need 3 nurses.")["label"] == "interested"
     assert w.reply("SmileCare Dental", "Do you have candidates in Bengaluru? What is the price?")["label"] == "question"
     assert set(w.runs(warm)) == {"Sunrise Multispeciality Clinic", "SmileCare Dental"}

@@ -45,10 +45,27 @@ def linkedin_profile_url(raw) -> str:
     return url if url.startswith("https://www.linkedin.com/in/") else ""
 
 
+def lead_phone(raw) -> tuple:
+    """(e164, kind) for a lead's main phone: a mobile, or an office landline with its STD code (kept for calls only)."""
+    mobile = normalise_phone(raw)
+    if mobile:
+        return mobile, "mobile"
+    from .standardise import parse_phone     # late import: standardise imports hygiene, which this module imports
+    found, _problem = parse_phone(str(raw)) if raw else (None, None)
+    return (found[0], "landline") if found and found[1] == "landline" else (None, None)
+
+
+def landline_key(lead: dict) -> Optional[str]:
+    """Dedupe key for a lead whose only contact is a landline (landlines are shared by an office, so only as a last resort)."""
+    phone = lead.get("phone")
+    return f"phone:{phone}" if phone and lead.get("phone_type") == "landline" else None
+
+
 def build_lead(row: dict, source: str, allow_company_key: bool = False, fallback_key: str = "") -> Optional[dict]:
     row = {k.strip().lower(): (v.strip() if isinstance(v, str) else "" if v is None else v) for k, v in row.items() if k}
     custom = {k[7:]: v for k, v in row.items() if k.startswith("custom:") and v not in ("", None)}   # see lead_import.quick_rows
     email = normalise_email(row.get("email"))
+    phone, kind = lead_phone(row.get("phone"))
     lead = {
         "id": uuid.uuid4().hex[:10],
         "company": row.get("company", ""),
@@ -56,7 +73,8 @@ def build_lead(row: dict, source: str, allow_company_key: bool = False, fallback
         "title": row.get("title", ""),
         "email": email,
         "email_is_role": bool(email and is_role_address(email)),
-        "phone": normalise_phone(row.get("phone")),
+        "phone": phone,
+        **({"phone_type": kind} if phone else {}),
         "website": row.get("website", ""),
         "domain": business_domain(row.get("website")) or business_domain(email),
         "country": row.get("country", ""),
@@ -73,7 +91,7 @@ def build_lead(row: dict, source: str, allow_company_key: bool = False, fallback
                              "role": row.get("role", "")[:120]}.items() if v},
         **({"custom": custom} if custom else {}),
     }
-    lead["dedupe_key"] = dedupe_key(lead) or (f"company:{lead['company'].lower()}" if allow_company_key and lead["company"] else None) or fallback_key or None
+    lead["dedupe_key"] = dedupe_key(lead) or landline_key(lead) or (f"company:{lead['company'].lower()}" if allow_company_key and lead["company"] else None) or fallback_key or None
     if not lead["dedupe_key"]:
         return None
     from .workspaces import stamp_new          # late import: workspaces imports this module

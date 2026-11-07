@@ -3,6 +3,7 @@
 send_sms(...) returns "dry_run" unless the channel is connected AND settings.live_sms is true.
 In India the text must match a DLT-approved template; MSG91 and Fast2SMS send by template only.
 """
+from ..contact_rules import messaging_block
 from .config import config_for
 from .custom_http import call_custom
 from .http import request
@@ -56,6 +57,8 @@ ADAPTERS = {"msg91": _msg91, "twilio_sms": _twilio, "fast2sms": _fast2sms}
 
 def deliver_sms(cfg: dict, to_phone: str, text: str = "", template_id: str = None, variables=None, transport=request,
                 resolver=None) -> dict:
+    if messaging_block(to_phone):                 # owner rule: landlines are for calls only
+        return {"status": "failed", "error": messaging_block(to_phone)}
     pid, values = cfg["provider"], cfg["values"]
     to = e164(to_phone)
     if not to:
@@ -78,6 +81,8 @@ def deliver_sms(cfg: dict, to_phone: str, text: str = "", template_id: str = Non
 def send_sms(store, to_phone: str, text: str = "", template_id: str = None, variables=None, transport=request,
              resolver=None) -> dict:
     """{"status": "sent"|"failed"|"dry_run", "provider_id"?, "error"?}. Real sends need live_sms on."""
+    if messaging_block(to_phone):                 # never to a landline, not even as practice
+        return {"status": "failed", "error": messaging_block(to_phone)}
     cfg = config_for(store, "sms")
     if not (cfg and store.read("settings").get("live_sms")):
         return {"status": "dry_run"}

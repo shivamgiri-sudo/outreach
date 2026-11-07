@@ -203,7 +203,7 @@ def test_simulate_reports_refusals_for_closed_leads_and_missing_consent(c):
     flow = make_flow(c, [TRIGGER, node("wa", "whatsapp", template="first_after_yes")], chain("t", "wa"))
     acme = lead(c)["id"]
     path = c.post(f"/api/flows/{flow['id']}/simulate", json={"lead_id": acme}).json()["path"]
-    assert path[-1]["ok"] is False and "no recorded consent" in path[-1]["result"]
+    assert path[-1]["ok"] is False and "no recorded WhatsApp consent" in path[-1]["result"]
     unsubscribe(c, acme)
     result = c.post(f"/api/flows/{flow['id']}/simulate", json={"lead_id": acme}).json()
     assert "Would not start" in result["ended"]

@@ -88,7 +88,7 @@ def sheet_leads(rows: list) -> list:
         website_from_email = business_domain(email)
         lead = build_lead({
             "company": _first(group, "Company Name"), "contact_name": _first(group, "Contact Person"),
-            "title": _first(group, "Designation"), "email": email, "phone": mobiles[0] if mobiles else "",
+            "title": _first(group, "Designation"), "email": email, "phone": mobiles[0] if mobiles else next((l for p in phones for l in p["landlines"]), ""),
             "website": f"https://{website_from_email}" if website_from_email else "",
             "country": "IN",
         }, "bmi_sheet", allow_company_key=True)
@@ -126,7 +126,7 @@ def demo_leads(rows: list) -> list:
         lead = build_lead({
             "company": row.get("Company Name", "").strip(), "contact_name": row.get("Contact Person", "").strip(),
             "title": row.get("Designation", "").strip(), "email": email,
-            "phone": phones["mobiles"][0] if phones["mobiles"] else "",
+            "phone": (phones["mobiles"] or phones["landlines"] or [""])[0],
             "website": f"https://{domain}" if domain else "", "country": "IN",
         }, "bmi_sheet:demo", allow_company_key=True)
         if lead is None:
