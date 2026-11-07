@@ -1,6 +1,6 @@
 // Flow builder: every step type with its words, icon, outputs, starting settings and one-line summary.
 // The server validates the same types (app/flows.py); this file only decides how they look and read.
-import { leadTerm, stageLabel } from "../../labels.js";
+import { STAGE_ORDER, leadTerm, stageLabel } from "../../labels.js";
 
 export const GRID = 20;
 export const NODE_W = 220;
@@ -129,6 +129,13 @@ export const iconOf = (type) => TYPES[type]?.[2] || "bolt";
 export const helpOf = (type) => TYPES[type]?.[5] || "";
 export const isTrigger = (type) => String(type).startsWith("trigger.");
 export const titleOf = (node) => (node.config?.title || "").trim() || labelOf(node.type);
+// Problems the editor can see before saving (the server refuses the same at save): a Set stage step needs a real stage.
+export function localProblems(nodes = []) {
+  return nodes.filter((n) => n.type === "set_stage" && !STAGE_ORDER.includes(n.config?.stage))
+    .map((n) => ({ node: n.id, message: n.config?.stage
+      ? `"${n.config.stage}" is not one of your stages. Pick the stage to move the lead to.`
+      : "Pick the stage to move the lead to." }));
+}
 export const startingConfig = (type) => JSON.parse(JSON.stringify(TYPES[type]?.[4] || {}));
 
 export function outputsOf(node, edges = []) {
