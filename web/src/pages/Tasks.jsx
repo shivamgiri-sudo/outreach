@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite, isOwner } from "../api.js";
 import { EmptyArt, ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
@@ -69,8 +69,8 @@ export default function Tasks() {
         Reminders arrive 15 minutes before a task is due, and again if it's an hour overdue.</p>
       {error && <ErrorState message="Tasks could not load." detail={error} onRetry={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
-      <TeamSettings onSaved={load} />
-      <form className="card row" style={{ marginBottom: 14 }} onSubmit={add}>
+      {isOwner() && <TeamSettings onSaved={load} />}
+      {canWrite() && <form className="card row" style={{ marginBottom: 14 }} onSubmit={add}>
         <input aria-label="New task" placeholder="New task, e.g. Send case study to Acme" value={newTask.title} style={{ flex: 2, minWidth: 200 }}
           onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} />
         <input aria-label="Due (IST)" type="datetime-local" value={newTask.due_at} onChange={(e) => setNewTask({ ...newTask, due_at: e.target.value })} />
@@ -78,7 +78,7 @@ export default function Tasks() {
           <option value="">Unassigned</option>{(board?.team || []).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
         </select>
         <button className="btn" type="submit" disabled={!newTask.title.trim()}>Add</button>
-      </form>
+      </form>}
       <div className="row" style={{ marginBottom: 10 }}>
         <label htmlFor="owner-filter" style={{ margin: 0 }}>Show tasks for</label>
         <select id="owner-filter" value={owner} onChange={(e) => setOwner(e.target.value)}>
@@ -94,7 +94,7 @@ export default function Tasks() {
       </div>
       {board && BUCKETS.every(([key]) => board[key].length === 0) && (
         <div className="card empty"><EmptyArt name="tasks" />
-          <p>{owner ? `No tasks for ${owner}.` : "No tasks yet. Add one above; when a lead says yes, a call task for the caller appears here automatically."}</p></div>
+          <p>{owner ? `No tasks for ${owner}.` : `No tasks yet.${canWrite() ? " Add one above;" : ""} When a lead says yes, a call task for the caller appears here automatically.`}</p></div>
       )}
       {board && !BUCKETS.every(([key]) => board[key].length === 0) && BUCKETS.map(([key, label]) => (
         <div key={key} className="card" style={{ marginBottom: 12 }}>
@@ -114,7 +114,7 @@ export default function Tasks() {
                     {t.due_at ? istLabel(t.due_at) : "No due time"}{t.owner ? ` · ${t.owner}` : ""}{t.text ? ` · ${t.text.slice(0, 140)}` : ""}
                     {t.done_at ? ` · done ${istLabel(t.done_at)}` : ""}
                   </div>
-                  {key !== "done" && (
+                  {key !== "done" && canWrite() && (
                     <div className="row">
                       <button className="btn ghost" onClick={() => act(() => api.taskDoneById(t.id, ""), "Marked done.")}>Done</button>
                       <button className="btn ghost" onClick={() => act(() => api.updateTask(t.id, { snooze_minutes: 60 }), "Snoozed 1 hour.")}>+1 hour</button>

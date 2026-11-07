@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { api, getRole } from "../api.js";
+import { api, canWrite } from "../api.js";
 
 // Who works this lead. Choices come from the team list and the logins; every change is logged on the lead.
 export function LeadOwner({ lead, onChanged }) {
   const [owners, setOwners] = useState([]);
   const [error, setError] = useState("");
-  const canEdit = getRole() !== "viewer";
+  const canEdit = canWrite();
   useEffect(() => { api.leadOwners().then((r) => setOwners(r.owners)).catch(() => {}); }, []);
   const choices = lead.owner && !owners.includes(lead.owner) ? [lead.owner, ...owners] : owners;
   const change = async (owner) => {
@@ -30,7 +30,7 @@ export function LeadOwner({ lead, onChanged }) {
 export function LeadTags({ lead, onChanged }) {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
-  const canEdit = getRole() !== "viewer";
+  const canEdit = canWrite();
   const tags = lead.tags || [];
   const run = async (add, remove) => {
     setError("");

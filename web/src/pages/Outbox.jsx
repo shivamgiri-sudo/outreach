@@ -36,7 +36,7 @@ function SendingBanner({ status, onResume, onClearPractice }) {
         <div className="tip" role="alert" style={{ marginTop: 8 }}>
           <b>Sending is paused.</b> {status.paused.reason}{" "}
           {status.paused.resume_at ? `It restarts by itself at ${istLabel(status.paused.resume_at)}.` : "A person must resume it."}
-          <div className="row" style={{ marginTop: 6 }}><button className="btn" onClick={onResume}>Resume sending now</button></div>
+          {isOwner() && <div className="row" style={{ marginTop: 6 }}><button className="btn" onClick={onResume}>Resume sending now</button></div>}
         </div>
       )}
       {status.mode !== "live" && status.live_blockers?.length > 0 && (
@@ -103,7 +103,7 @@ export default function Outbox({ go }) {
         onClearPractice={() => act(api.clearPractice, (r) => `Removed ${r.outbox} practice row(s). Live sending will start each lead from Email 1.`)} />
       <LiveSendingSwitch onChanged={load} />
       <Downloads />
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card" style={{ marginBottom: 14 }}><fieldset className="ro-fieldset" disabled={!isOwner()}>
         <div className="row">
           <div><label>Sender name</label><input value={cfg.sender_name || ""} onChange={(e) => setCfg({ ...cfg, sender_name: e.target.value })} /></div>
           <div><label>Max emails per day</label><input type="number" min="1" max="500" value={cfg.daily_cap} onChange={(e) => setCfg({ ...cfg, daily_cap: e.target.value })} /></div>
@@ -124,13 +124,13 @@ export default function Outbox({ go }) {
             <button className="btn" onClick={run}>Run sequences now</button>
           </div>
         ) : <p className="sub" style={{ marginTop: 10 }}>Only an owner changes these settings or runs the sequences by hand.</p>}
-      </div>
+      </fieldset></div>
       {status && (status.send_failed.length > 0 || status.stuck.length > 0) && (
         <div className="card" style={{ marginBottom: 14 }}>
           {status.send_failed.length > 0 && (
             <div className="row" style={{ justifyContent: "space-between" }}>
               <span>{status.send_failed.length} lead(s) stopped after 3 failed sends.</span>
-              <button className="btn ghost" onClick={() => act(api.resumeFailed, (r) => `Resumed ${r.resumed} sequence(s).`)}>Resume them</button>
+              {isOwner() && <button className="btn ghost" onClick={() => act(api.resumeFailed, (r) => `Resumed ${r.resumed} sequence(s).`)}>Resume them</button>}
             </div>
           )}
           {status.stuck.length > 0 && (

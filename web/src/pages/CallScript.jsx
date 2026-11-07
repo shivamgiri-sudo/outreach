@@ -1,7 +1,7 @@
 // The call script and objection answers, filled with the lead's name, role and company. Owners edit it here
 // (saved on the server as settings.call_script, so every caller sees the same words).
 import { useState } from "react";
-import { api, isOwner } from "../api.js";
+import { api, canWrite } from "../api.js";
 
 // `vars` are the brand values from the server ({{my_company}}, {{my_value_1}}, …), filled the same way.
 export function fillScript(text, lead, rep, vars = {}, roleFallback = "your open roles") {
@@ -83,7 +83,7 @@ export default function CallScript({ data, lead, rep, onChanged }) {
     <div data-testid="call-script">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h3 style={{ margin: 0 }}>Call script{lead ? ` for ${lead.contact_name || lead.company}` : ""}</h3>
-        {isOwner() && <button className="btn ghost" onClick={() => setEditing(true)}>Edit script</button>}
+        {canWrite() && <button className="btn ghost" onClick={() => setEditing(true)}>Edit script</button>}
       </div>
       {data.script.map((s, i) => <p key={i}><Line label={<><b>{s.title}:</b> </>} text={s.text} lead={lead} rep={rep} data={data} /></p>)}
       <button className="link" onClick={() => setShowObjections(!showObjections)} aria-expanded={showObjections}>

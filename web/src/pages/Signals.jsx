@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { istDateLabel, istLabel } from "../time.js";
-import { api } from "../api.js";
+import { api, canWrite, isOwner } from "../api.js";
 import { ErrorState } from "../states.jsx";
 
 const KIND_WORDS = { keyword: "Keyword", competitor: "Competitor", company: "Company" };
@@ -33,7 +33,7 @@ export default function Signals() {
       <p className="sub">Watch keywords, competitors or companies and see fresh public news about them: hiring drives, new centres, expansion. You choose which company becomes a lead. This reads only the public news feed, never LinkedIn.</p>
       {error && <ErrorState message="Signals could not load." detail={error} onRetry={load} />}
       <section className="card" style={{ marginBottom: 14 }}>
-        <div className="row">
+        {isOwner() && <div className="row">
           <select aria-label="What to watch" value={kind} onChange={(e) => setKind(e.target.value)}>
             {Object.entries(KIND_WORDS).map(([k, w]) => <option key={k} value={k}>{w}</option>)}
           </select>
@@ -43,11 +43,11 @@ export default function Signals() {
           <button className="btn" disabled={busy || text.trim().length < 2} onClick={() => act(async () => { await api.addWatch(kind, text.trim()); setText(""); }, "Added.")}>Watch</button>
           <button className="btn ghost" disabled={busy || !(data?.watch || []).length}
             onClick={() => act(() => api.runSignals(), (r) => `${r.new} new article(s)${r.errors?.length ? `, ${r.errors.length} feed(s) failed` : ""}.`)}>Check now</button>
-        </div>
+        </div>}
         <div className="chips" style={{ marginTop: 8 }}>
           {(data?.watch || []).map((w) => (
             <span key={w.id} className="chip">{KIND_WORDS[w.kind]}: {w.text}{" "}
-              <button type="button" className="link" aria-label={`Stop watching ${w.text}`} onClick={() => act(() => api.dropWatch(w.id), "Removed.")}>×</button></span>
+              {isOwner() && <button type="button" className="link" aria-label={`Stop watching ${w.text}`} onClick={() => act(() => api.dropWatch(w.id), "Removed.")}>×</button>}</span>
           ))}
           {data && data.watch.length === 0 && <span className="sub">Nothing watched yet.</span>}
         </div>
@@ -59,13 +59,13 @@ export default function Signals() {
           <option value="new">New</option><option value="added">Made into leads</option><option value="dismissed">Dismissed</option><option value="all">All</option>
         </select>
       </div>
-      {data && items.length === 0 && <p className="empty">No articles here. Add something to watch and press Check now.</p>}
+      {data && items.length === 0 && <p className="empty">No articles here.{isOwner() ? " Add something to watch and press Check now." : ""}</p>}
       {items.map((i) => (
         <div key={i.id} className="card" style={{ marginBottom: 10 }}>
           <div><a href={i.link} target="_blank" rel="noopener noreferrer">{i.title}</a></div>
           <div className="sub">{i.source}{i.published ? ` · ${istDateLabel(i.published)}` : ""} · {KIND_WORDS[i.kind]}: {i.watch}
             {i.status === "added" && <> · <span className="pill ok">lead made</span></>}</div>
-          {i.status === "new" && (
+          {i.status === "new" && canWrite() && (
             <div className="row" style={{ marginTop: 6 }}>
               <input aria-label="Company name" placeholder="Company this is about" value={nameFor(i)} maxLength={80}
                 onChange={(e) => setNames({ ...names, [i.id]: e.target.value })} />

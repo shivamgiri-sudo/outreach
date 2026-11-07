@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { copyText } from "../clipboard.js";
 
 const START = { use_ai: true, channel: "email", industry: "", role: "", tone: "warm", language: "English", goal: "", story: "", dos: "", donts: "" };
@@ -50,7 +50,7 @@ export default function PromptGenerator() {
             <input type="checkbox" style={{ width: "auto" }} checked={!!spec.use_ai} onChange={(e) => set("use_ai", e.target.checked)} />
             Write it with Claude (richer wording; the honesty rules are still added by the app)
           </label>
-          <button className="btn" style={{ marginTop: 12 }} onClick={generate} disabled={busy}>{busy ? "Writing…" : "Generate prompt"}</button>
+          {canWrite() && <button className="btn" style={{ marginTop: 12 }} onClick={generate} disabled={busy}>{busy ? "Writing…" : "Generate prompt"}</button>}
         </div>
         <div className="card">
           <div className="row" style={{ justifyContent: "space-between" }}>

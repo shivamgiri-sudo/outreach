@@ -41,9 +41,9 @@ function ProviderCard({ channel, provider, onOpen, onActivate }) {
         </small>
       )}
       <div className="row prov-actions">
-        <button className="btn" onClick={onOpen}>{provider.saved ? "Open" : "Set up"}</button>
+        <button className="btn" onClick={onOpen}>{!isOwner() ? "View" : provider.saved ? "Open" : "Set up"}</button>
         <GuideButton keys={guideKeys(channel.id, provider)} testId={`card-guide-${channel.id}-${provider.id}`} />
-        {channel.kind === "exclusive" && !provider.active && ready && (
+        {isOwner() && channel.kind === "exclusive" && !provider.active && ready && (
           <button className="btn ghost" onClick={onActivate}>Make active</button>
         )}
       </div>
@@ -59,11 +59,11 @@ function ChannelIntro({ channel, onLive, go }) {
       <p className="sub">{channel.about}</p>
       {["live_whatsapp", "live_sms"].includes(channel.live_flag) && (
         <div className={`tip ${live ? "error" : ""}`}>
-          <label className="row" style={{ margin: 0 }}>
+          {isOwner() ? <label className="row" style={{ margin: 0 }}>
             <input type="checkbox" checked={live} data-testid={`live-${channel.id}`}
               onChange={(e) => { setLive(e.target.checked); onLive(channel.live_flag, e.target.checked); }} />
             Send for real
-          </label>
+          </label> : <b>Send for real: {live ? "on" : "off"}</b>}
           <p style={{ margin: "4px 0 0" }}>
             {live ? "On: messages go to real phones through the active provider. Consent and opt-out rules still apply."
               : "Off (practice mode): messages are prepared and shown, but not delivered."}
@@ -99,7 +99,7 @@ export default function Integrations({ go }) {
     if (query.toString()) window.history.replaceState(null, "", "#integrations");
   }, []);
   useEffect(() => {
-    if (tab === "webhooks") api.channelWebhooks().then((d) => setHooks(d.webhooks)).catch((e) => setError(e.message));
+    if (tab === "webhooks" && isOwner()) api.channelWebhooks().then((d) => setHooks(d.webhooks)).catch((e) => setError(e.message));
   }, [tab, data]);
 
   if (!data) return error ? <ErrorState message="Could not load integrations" detail={error} onRetry={load} /> : <p className="empty">Loading…</p>;
@@ -129,7 +129,7 @@ export default function Integrations({ go }) {
       )}
       {error && <div className="tip error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
       <div className="tabs scroll" role="tablist" aria-label="Channels">
-        {[...data.channels.map((c) => [c.id, c.title, c.status]), ...EXTRA_TABS].map(([id, label, status]) => (
+        {[...data.channels.map((c) => [c.id, c.title, c.status]), ...EXTRA_TABS.filter(([id]) => isOwner() || id === "custom")].map(([id, label, status]) => (
           <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => setTab(id)} data-testid={`tab-${id}`}>
             {label}{status === "configured" && <span className="tab-dot" aria-label="connected" />}
           </button>
@@ -160,7 +160,7 @@ export default function Integrations({ go }) {
         </>
       )}
 
-      {tab === "webhooks" && (
+      {tab === "webhooks" && isOwner() && (
         <div className="card">
           <b>Addresses to paste into provider dashboards</b>
           <p className="sub" style={{ margin: "2px 0 12px" }}>

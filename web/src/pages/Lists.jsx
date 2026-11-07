@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { istLabel } from "../time.js";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
@@ -76,7 +76,7 @@ function EnrichedBanner({ onDone }) {
     <div className="card" style={{ marginBottom: 14, borderLeft: "4px solid var(--accent, #2563eb)" }}>
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
         <div><b>{s.enriched} enriched leads</b> · <b>{s.email_ready}</b> from {s.companies} companies are ready for email and not started yet.</div>
-        {!confirm && <button className="btn" disabled={!s.email_ready} onClick={() => setConfirm(true)}>Start email campaigning</button>}
+        {!confirm && canWrite() && <button className="btn" disabled={!s.email_ready} onClick={() => setConfirm(true)}>Start email campaigning</button>}
       </div>
       {confirm && (
         <div className="tip" role="alert" style={{ marginTop: 8 }}>
@@ -111,11 +111,11 @@ function ListDetail({ id, onChanged, onClose }) {
         <div><h3 style={{ margin: 0 }}>{d.name}</h3><p className="sub" style={{ margin: 0 }}>Made by {d.created_by} · {when(d.created_at)} · {d.stats.members} leads in {d.stats.companies} companies · {d.stats.open_rate ?? 0}% open, {d.stats.reply_rate ?? 0}% reply, {d.stats.accept_rate ?? 0}% LinkedIn accept</p></div>
         <button className="btn ghost" onClick={onClose}>Close</button>
       </div>
-      <div className="row" style={{ margin: "10px 0", flexWrap: "wrap" }}>
+      {canWrite() && <div className="row" style={{ margin: "10px 0", flexWrap: "wrap" }}>
         <button className="btn" onClick={() => setAskEmail(true)}>Start email {picked.length ? `for ${picked.length} selected` : "for all"}</button>
         <button className="btn ghost" onClick={() => run(api.listStartLinkedIn, "LinkedIn started")}>Start LinkedIn {picked.length ? `for ${picked.length} selected` : "for all"}</button>
         {picked.length > 0 && <button className="btn ghost" onClick={async () => { await api.listMembers(id, { remove: picked }); setPicked([]); load(); onChanged(); }}>Remove selected from list</button>}
-      </div>
+      </div>}
       {askEmail && (
         <ConfirmDialog title="Start the email sequence?" confirmLabel={`Yes, start for ${picked.length || d.members.length}`} onCancel={() => setAskEmail(false)}
           onConfirm={() => { setAskEmail(false); run(api.listStartEmail, "Email started"); }}>
@@ -128,11 +128,11 @@ function ListDetail({ id, onChanged, onClose }) {
       {msg && <p className="sub" role="status">{msg}</p>}
       <div className="table-scroll">
         <table>
-          <thead><tr><th><input type="checkbox" aria-label="Select all" checked={all} onChange={() => setPicked(all ? [] : d.members.map((m) => m.id))} /></th><th>Lead</th><th>Contact</th><th>Journey</th></tr></thead>
+          <thead><tr>{canWrite() && <th><input type="checkbox" aria-label="Select all" checked={all} onChange={() => setPicked(all ? [] : d.members.map((m) => m.id))} /></th>}<th>Lead</th><th>Contact</th><th>Journey</th></tr></thead>
           <tbody>
             {d.members.map((m) => (
               <tr key={m.id}>
-                <td><input type="checkbox" aria-label={`Select ${m.company}`} checked={picked.includes(m.id)} onChange={() => setPicked((p) => (p.includes(m.id) ? p.filter((x) => x !== m.id) : [...p, m.id]))} /></td>
+                {canWrite() && <td><input type="checkbox" aria-label={`Select ${m.company}`} checked={picked.includes(m.id)} onChange={() => setPicked((p) => (p.includes(m.id) ? p.filter((x) => x !== m.id) : [...p, m.id]))} /></td>}
                 <td><button className="linkish" onClick={() => setLead(m.id)}><b>{m.company || m.contact_name}</b></button><br /><small>{m.contact_name} · {stageLabel(m.stage)}</small></td>
                 <td><small>{m.email || "no email"}<br />{m.phone || ""}{m.linkedin_url ? " · LinkedIn" : ""}</small></td>
                 <td><Journey j={m.journey} /></td>
@@ -169,9 +169,9 @@ export default function Lists() {
       {error && <ErrorState message="Lists could not load." detail={error} onRetry={load} />}
       <EnrichedBanner onDone={load} />
       <div className="grid g2">
-        <CompanyPicker onCreated={(r) => { load(); setOpen(r.id); }} />
+        {canWrite() && <CompanyPicker onCreated={(r) => { load(); setOpen(r.id); }} />}
         <div className="card table-card" style={{ padding: 0, minWidth: 0 }}>
-          {rows && rows.length === 0 && <p className="empty">No lists yet. Choose companies on the left, or select leads on the Leads page and press “Save as list”.</p>}
+          {rows && rows.length === 0 && <p className="empty">{canWrite() ? "No lists yet. Choose companies on the left, or select leads on the Leads page and press “Save as list”." : "No lists yet."}</p>}
           {rows && rows.length > 0 && (
             <div className="table-scroll"><table>
               <thead><tr><th>List</th><th>Leads</th><th>Email</th><th>LinkedIn</th><th /></tr></thead>
@@ -184,7 +184,7 @@ export default function Lists() {
                       <br /><small data-testid="list-email-rates"><b>{r.stats.open_rate ?? 0}%</b> open · <b>{r.stats.reply_rate ?? 0}%</b> reply</small></td>
                     <td><small>{r.stats.linkedin_started} started · {r.stats.linkedin_accepted} accepted</small>
                       <br /><small><b>{r.stats.accept_rate ?? 0}%</b> accept</small></td>
-                    <td><button className="btn ghost" onClick={() => remove(r.id)} aria-label={`Delete ${r.name}`}>Delete</button></td>
+                    <td>{canWrite() && <button className="btn ghost" onClick={() => remove(r.id)} aria-label={`Delete ${r.name}`}>Delete</button>}</td>
                   </tr>
                 ))}
               </tbody>

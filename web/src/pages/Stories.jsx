@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 
 const EMPTY = { title: "", industry: "", result: "", quote: "", permission: false };
 
@@ -17,7 +17,7 @@ export default function Stories() {
       <h2>Success stories</h2>
       <p className="sub">Only real results with the customer's permission. Stories without permission are never sent.</p>
       <div className="grid g2">
-        <div className="card">
+        {canWrite() && <div className="card">
           <h3 style={{ marginTop: 0 }}>Add a story</h3>
           <label>Title</label><input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Retail chain filled 12 roles" />
           <label>Industry</label><input value={form.industry} onChange={(e) => set("industry", e.target.value)} />
@@ -28,7 +28,7 @@ export default function Stories() {
             The customer allowed us to share this
           </label>
           <button className="btn" disabled={!form.title.trim()} onClick={add}>Save story</button>
-        </div>
+        </div>}
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Library</h3>
           {stories.length === 0 && <p className="empty">No stories yet. Add the first one after a pilot customer agrees.</p>}

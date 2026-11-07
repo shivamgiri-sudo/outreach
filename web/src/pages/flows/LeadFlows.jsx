@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../../api.js";
+import { api, canWrite, isOwner } from "../../api.js";
 import { istLabel } from "../../time.js";
 
 const PILL = { running: "ok", waiting: "ok", done: "", stopped: "warn", error: "warn" };
@@ -51,12 +51,12 @@ export default function LeadFlows({ lead, onChanged }) {
                   </details>
                 )}
               </div>
-              {["running", "waiting"].includes(r.status) && <button type="button" className="btn ghost" onClick={() => stop(r.id)}>Stop</button>}
+              {canWrite() && ["running", "waiting"].includes(r.status) && <button type="button" className="btn ghost" onClick={() => stop(r.id)}>Stop</button>}
             </li>
           ))}
         </ul>
       )}
-      {runs !== null && startable.length > 0 && (
+      {isOwner() && runs !== null && startable.length > 0 && (     /* enrolling in a flow is an owner change on the server */
         <div className="row">
           <label htmlFor={`lead-flow-${lead.id}`} className="sr-only">Start a flow</label>
           <select id={`lead-flow-${lead.id}`} style={{ flex: 1, width: "auto" }} value={pick} onChange={(e) => setPick(e.target.value)}>

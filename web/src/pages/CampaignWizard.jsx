@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { PreviewTable, RunReport } from "./CampaignReport.jsx";
 
 const EXAMPLES = {
@@ -277,11 +277,11 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
             <li>Ready for email: score {r.min_score}+{r.require_business_email ? ", business email" : ""}{r.skip_role_addresses ? ", no shared mailboxes" : ""}; up to {r.max_new_leads_per_run} new leads a run.</li>
             <li>{r.auto_enrol ? `Qualifying leads start the email sequence “${(sequences.find((q) => q.id === (r.sequence_id || "default")) || { name: "Default (6 emails)" }).name}” (sending rules still apply).` : "Nobody is emailed automatically; you start the sequence yourself."} {r.caller || "The caller"} gets an update after each run.</li>
           </ul>
-          <div className="row" style={{ marginTop: 12 }}>
+          {canWrite() && <div className="row" style={{ marginTop: 12 }}>
             <button className="btn ghost" disabled={!!busy || !anySource} onClick={() => act("preview")}>{busy === "preview" ? "Searching… (can take a minute)" : "Run now (preview)"}</button>
             <button className="btn" disabled={!!busy || !anySource} onClick={() => act("real")}>{busy === "real" ? "Running… (can take a few minutes)" : "Run for real"}</button>
             <button className="btn ghost" disabled={!!busy} onClick={() => { setBusy("save"); setError(""); save().catch((e) => setError(e.message)).finally(() => setBusy("")); }}>Save without running</button>
-          </div>
+          </div>}
           {!anySource && <p className="sub" style={{ margin: "8px 0 0" }}>Pick at least one source in step 2.</p>}
           <p className="sub" style={{ margin: "8px 0 0" }}>The preview searches the sources (paid ones can use credits) but saves nothing and does not look up missing emails.</p>
         </div>

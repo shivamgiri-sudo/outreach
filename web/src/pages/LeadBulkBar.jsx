@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, getRole, isOwner } from "../api.js";
+import { api, canWrite, isOwner } from "../api.js";
 import { STAGE_LABELS, stageLabel } from "../labels.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import ConfirmDialog from "./ConfirmDialog.jsx";
@@ -35,7 +35,7 @@ export default function LeadBulkBar({ picked, pageIds, owners, spaces, onDone, o
   const [ask, setAsk] = useState(null);        // { action, value, title, label, danger }
   const [tagText, setTagText] = useState("");
   const [force, setForce] = useState(false);
-  const caller = getRole() !== "viewer";
+  const caller = canWrite();
 
   const run = async (action, value = null) => {
     setBusy(action);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, isOwner } from "../api.js";
+import { api, canWrite, isOwner } from "../api.js";
 import { EmptyArt } from "../states.jsx";
 import { BAND_LABELS, STAGE_LABELS, STAGE_ORDER, sourceId, sourceLabel, sourceOptions, stageLabel, useSourceRegistry } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
@@ -240,12 +240,12 @@ export default function Leads({ go }) {
     <>
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div><h2>Leads</h2><p className="sub">Sorted by buying-signal score. Click a lead to see what to say.</p></div>
-        <div className="row">
+        {canWrite() && <div className="row">
           <button className="btn ghost" onClick={() => setShowScrape(!showScrape)}>Find contacts on a website</button>
           <button className="btn ghost" onClick={() => setShowJobs(!showJobs)}>Read job pages</button>
           <button className="btn ghost" onClick={() => { setShowImport(!showImport); setShowWizard(false); }}>Quick paste</button>
           <button className="btn" onClick={() => { setShowWizard(!showWizard); setShowImport(false); }}>Import leads</button>
-        </div>
+        </div>}
       </div>
       <FindLeadsCard onOpen={() => setFinding(true)} />
       {onlyIds && (
@@ -254,7 +254,7 @@ export default function Leads({ go }) {
         </div>
       )}
       {finding && <FindLeadsDrawer go={go} onClose={() => { setFinding(false); load(); }} onOpenLeads={(ids) => { setOnlyIds(ids); setQuery(""); setStage(""); setBand(""); }} />}
-      {showWizard && <ImportWizard onClose={() => { setShowWizard(false); load(); }} onDone={load} />}
+      {showWizard && canWrite() && <ImportWizard onClose={() => { setShowWizard(false); load(); }} onDone={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message} <button className="linkish" aria-label="Dismiss message" onClick={() => setMessage("")}>✕</button></div>}
 
       {quality && quality.total > 0 && (
@@ -264,17 +264,17 @@ export default function Leads({ go }) {
             <b>{quality.missing_decision_maker}</b> no decision maker, <b>{quality.missing_website}</b> no website.
           </span>
           <span className="row">
-            <button className="btn ghost" disabled={enriching || quality.enrichable_now === 0} onClick={runEnrich}>
+            {canWrite() && <button className="btn ghost" disabled={enriching || quality.enrichable_now === 0} onClick={runEnrich}>
               {enriching ? "Checking websites…" : `Fill gaps from company websites (${quality.enrichable_now})`}
-            </button>
-            {apolloReady && <button className="btn ghost" title="Uses up to 10 Apollo credits" onClick={runApollo}>Look up emails in Apollo (10)</button>}
+            </button>}
+            {apolloReady && canWrite() && <button className="btn ghost" title="Uses up to 10 Apollo credits" onClick={runApollo}>Look up emails in Apollo (10)</button>}
             {isOwner() && <button className="btn ghost" onClick={downloadApolloList}>Download list for Apollo</button>}
             {go && <button className="btn ghost" onClick={() => go("hygiene")}>Duplicates and clean-up</button>}
           </span>
         </div>
       )}
 
-      {showScrape && (
+      {showScrape && canWrite() && (
         <div className="card" style={{ marginBottom: 14 }}>
           <p className="sub">Reads public contact details from a page (honours robots.txt, keeps the source link). Only public business contacts.</p>
           <div className="row">
@@ -285,7 +285,7 @@ export default function Leads({ go }) {
         </div>
       )}
 
-      {showJobs && (
+      {showJobs && canWrite() && (
         <div className="card" style={{ marginBottom: 14 }}>
           <b>Read job openings (hiring signals)</b>
           <p className="sub">Give a company careers page link, or paste page HTML, or paste a CSV with columns company,title,location,date_posted,website. More open roles and older or reposted jobs raise the lead score.</p>
@@ -295,7 +295,7 @@ export default function Leads({ go }) {
         </div>
       )}
 
-      {showImport && (
+      {showImport && canWrite() && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div className="row">
             <div style={{ flex: 1 }}>
@@ -352,29 +352,29 @@ export default function Leads({ go }) {
           </span>
         </div>
       )}
-      {picked.length > 0 && (
+      {picked.length > 0 && canWrite() && (
         <LeadBulkBar picked={picked} pageIds={visible.map((l) => l.id)} owners={owners} spaces={spaces} onClear={() => setPicked([])}
           onDone={(msg, changed) => { setMessage(msg); if (changed) { setPicked([]); load(); } }} />
       )}
 
       <div className="card table-card">
         {leads.length === 0 ? (
-          <div className="empty"><EmptyArt name="leads" /><p>No leads yet. Click “Import leads” to add your first list.</p></div>
+          <div className="empty"><EmptyArt name="leads" /><p>{canWrite() ? "No leads yet. Click “Import leads” to add your first list." : "No leads yet."}</p></div>
         ) : shown.length === 0 ? (
           <p className="empty">No leads match. <button className="linkish" onClick={clearFilters}>Clear the filters</button></p>
         ) : (
           <table className="leads-table">
             <thead><tr>
-              <th><label className="pick-hit"><input type="checkbox" aria-label="Select all shown" checked={allPicked}
-                onChange={() => setPicked(allPicked ? [] : shown.map((l) => l.id))} /></label></th>
+              {canWrite() && <th><label className="pick-hit"><input type="checkbox" aria-label="Select all shown" checked={allPicked}
+                onChange={() => setPicked(allPicked ? [] : shown.map((l) => l.id))} /></label></th>}
               {header("company", "Company")}<th>Contact</th>{header("stage", "Stage")}{header("score", "Score")}<th>Owner</th><th>Tags</th>{tableFields.map((f) => <th key={f.key}>{f.label}</th>)}<th>Source</th>{header("activity", "Last activity")}{header("due", "Next task due")}<th>Next step</th>
             </tr></thead>
             <tbody>
               {visible.map((l) => (
                 <tr key={l.id} className="click" onClick={() => setOpen(l.id)}>
-                  <td className="pick" onClick={(e) => e.stopPropagation()}>
+                  {canWrite() && <td className="pick" onClick={(e) => e.stopPropagation()}>
                     <label className="pick-hit"><input type="checkbox" aria-label={`Select ${l.company || l.domain || l.contact_name}`} checked={picked.includes(l.id)} onChange={() => togglePick(l.id)} /></label>
-                  </td>
+                  </td>}
                   <td data-label="Company"><button className="linkish" onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{l.company || l.domain || l.contact_name}</b></button>{l.is_test && <span className="pill warn" style={{ marginLeft: 6 }}>Test</span>}</td>
                   <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small></td>
                   <td data-label="Stage">{stageLabel(l.stage)}</td>

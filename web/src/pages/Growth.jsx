@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api.js";
+import { api, canWrite, isOwner } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { getBrand } from "../brand.js";
 
@@ -50,12 +50,14 @@ export default function Growth() {
       <div className="grid g2">
         <div className="card">
           <h3 style={{ marginTop: 0 }}>The free offer</h3>
+          <fieldset className="ro-fieldset" disabled={!isOwner()}>
           {OFFER_FIELDS.map(([key, label]) => (
             <div key={key}><label>{label}</label><input type="number" min="0" value={offer[key]} onChange={(e) => num(key, e.target.value)} /></div>
           ))}
           <label>Where “Use this draft” sends them</label>
           <input value={offer.claim_url} onChange={(e) => setOffer({ ...offer, claim_url: e.target.value })} />
-          <button className="btn" style={{ marginTop: 12 }} onClick={saveOffer}>Save offer</button>
+          </fieldset>
+          {isOwner() && <button className="btn" style={{ marginTop: 12 }} onClick={saveOffer}>Save offer</button>}
           <p className="sub" style={{ marginTop: 10 }}>
             These numbers appear in emails and demo pages. The limits themselves must also be set inside {getBrand().public.product_name}, or free use has no ceiling.
           </p>
@@ -88,12 +90,12 @@ export default function Growth() {
 
         <div className="card">
           <h3 style={{ marginTop: 0 }}>How many emails can we safely send?</h3>
-          <div className="row">
+          <fieldset className="ro-fieldset row" disabled={!isOwner()}>
             <div style={{ flex: 1 }}><label>Mailboxes</label><input type="number" min="0" value={offer.mailboxes} onChange={(e) => num("mailboxes", e.target.value)} /></div>
             <div style={{ flex: 1 }}><label>Emails per mailbox per day</label><input type="number" min="0" value={offer.per_mailbox_per_day} onChange={(e) => num("per_mailbox_per_day", e.target.value)} /></div>
             <div style={{ flex: 1 }}><label>Leads to reach</label><input type="number" min="0" value={offer.target_leads} onChange={(e) => num("target_leads", e.target.value)} /></div>
-          </div>
-          <button className="btn ghost" style={{ marginTop: 10 }} onClick={saveOffer}>Recalculate</button>
+          </fieldset>
+          {isOwner() && <button className="btn ghost" style={{ marginTop: 10 }} onClick={saveOffer}>Recalculate</button>}
           <p><b>{g.capacity.daily}</b> a day, <b>{g.capacity.monthly}</b> a month.
             {g.capacity.days_needed && <> About <b>{g.capacity.days_needed}</b> working days to reach {offer.target_leads} leads.</>}</p>
           {g.capacity.warning && <p style={{ color: "var(--hot)" }}>{g.capacity.warning}</p>}
@@ -105,16 +107,16 @@ export default function Growth() {
           {partners.map((p) => (
             <div className="row" key={p.id} style={{ marginBottom: 6 }}>
               <span style={{ flex: 1 }}><b>{p.name}</b> <small>{p.kind} · {p.contact}</small></span>
-              <select style={{ width: "auto" }} value={p.status} onChange={(e) => api.partnerStatus(p.id, e.target.value).then(load).catch((err) => setMessage(err.message))}>
+              {canWrite() ? <select style={{ width: "auto" }} value={p.status} onChange={(e) => api.partnerStatus(p.id, e.target.value).then(load).catch((err) => setMessage(err.message))}>
                 {PARTNER_STATUSES.map((s) => <option key={s}>{s}</option>)}
-              </select>
+              </select> : <span className="pill">{p.status}</span>}
             </div>
           ))}
-          <div className="row">
+          {canWrite() && <div className="row">
             <input style={{ flex: 2 }} placeholder="Name" value={newPartner.name} onChange={(e) => setNewPartner({ ...newPartner, name: e.target.value })} />
             <input style={{ flex: 2 }} placeholder="Contact" value={newPartner.contact} onChange={(e) => setNewPartner({ ...newPartner, contact: e.target.value })} />
             <button className="btn" disabled={!newPartner.name.trim()} onClick={addPartner}>Add</button>
-          </div>
+          </div>}
         </div>
       </div>
     </>

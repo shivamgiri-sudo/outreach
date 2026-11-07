@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, getRole, isOwner } from "../../api.js";
+import { api, canWrite as roleCanWrite, isOwner } from "../../api.js";
 import { copyText } from "../../clipboard.js";
 import { lintText } from "./lint.js";
 
@@ -15,8 +15,8 @@ export default function Snippets({ me }) {
   const [copied, setCopied] = useState("");
   const load = () => api.snippets().then(setRows).catch((e) => setMsg(e.message));
   useEffect(() => { load(); }, []);
-  const canWrite = getRole() !== "viewer";
-  const mayChange = (s) => isOwner() || (me?.email && s.created_by_email === me.email);
+  const canWrite = roleCanWrite();
+  const mayChange = (s) => isOwner() || (canWrite && me?.email && s.created_by_email === me.email);
   const save = async (e) => {
     e.preventDefault(); setMsg("");
     try {

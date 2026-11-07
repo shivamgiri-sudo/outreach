@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, getToken, getWorkspace, setCanEditContacts, setRole, setToken, setWorkspace } from "./api.js";
+import { api, canWrite, getToken, getWorkspace, setCanEditContacts, setRole, setToken, setWorkspace } from "./api.js";
 import Icon from "./icons.jsx";
 import { stageLabel } from "./labels.js";
 import Login from "./pages/Login.jsx";
@@ -133,7 +133,7 @@ function Bell({ onOpen }) {
           ))}
           <div className="row" style={{ marginTop: 8 }}>
             <button className="btn ghost" onClick={() => { setOpen(false); onOpen(); }}>Open tasks</button>
-            {items.length > 0 && <button className="btn ghost" onClick={() => api.markNotificationsRead().then(() => setItems([]))}>Mark all read</button>}
+            {items.length > 0 && canWrite() && <button className="btn ghost" onClick={() => api.markNotificationsRead().then(() => setItems([]))}>Mark all read</button>}
           </div>
         </div>
       )}

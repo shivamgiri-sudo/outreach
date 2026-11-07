@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { istLabel } from "../time.js";
-import { api } from "../api.js";
+import { api, canWrite } from "../api.js";
 import { sourceLabel, sourceOptions, useSourceRegistry } from "../labels.js";
 
 // Four steps: add the list, check the columns, dry run (nothing saved), import (with undo).
@@ -199,6 +199,7 @@ export default function ImportWizard({ onClose, onDone }) {
   const commit = () => run(async () => { setResult(await api.importCommit(body())); setStep(3); onDone?.(); });
   const undo = (id) => api.importUndo(id).then((r) => { setUndone(r); onDone?.(); return r; });
   const readFile = (file) => { if (!file) return; setFileName(file.name); file.text().then(setCsv); };
+  if (!canWrite()) return null;                // viewers can't import (the server refuses)
 
   return (
     <div className="card" style={{ marginBottom: 14 }}>
