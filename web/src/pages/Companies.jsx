@@ -110,7 +110,7 @@ function CompanyDetail({ companyKey, onClose }) {
             </div>}
             {msg && <p className="sub" role="status">{msg}</p>}
 
-            <h3>People ({d.contacts_list.length})</h3>
+            <h3>People ({d.contacts_list.length + (d.more_people?.length || 0)})</h3>
             <div data-testid="company-contacts">
               {d.contacts_list.map((c) => (
                 <div key={c.id} className="row" style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap", gap: 6 }}>
@@ -128,6 +128,18 @@ function CompanyDetail({ companyKey, onClose }) {
                     {c.in_sequence && <span className="pill rec">Email sequence</span>}
                     {c.in_linkedin && <span className="pill rec">LinkedIn</span>}
                   </span>
+                </div>
+              ))}
+              {(d.more_people || []).map((c, i) => (
+                <div key={`more-${i}`} className="row" data-testid="company-more-person" style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap", gap: 6 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <b>{c.contact_name || c.email || "Unnamed contact"}</b>
+                    {c.title && <small className="sub-inline"> · {c.title}</small>}
+                    <div><small className="sub">
+                      {c.email || "no email"}{c.phone ? ` · ${c.phone}` : ""} · kept on <button className="linkish" onClick={() => setLead(c.kept_on)}>{c.kept_on_name}</button>'s record
+                    </small></div>
+                  </div>
+                  <span className="chips"><span className="pill" title="Found with another lead at this company; not a separate lead yet">Also at this company</span></span>
                 </div>
               ))}
             </div>
@@ -183,7 +195,7 @@ export default function Companies() {
           {SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <button className="btn ghost" aria-label={`Order: ${order === "desc" ? "highest first" : "lowest first"}`} onClick={() => { setOrder(order === "desc" ? "asc" : "desc"); setOffset(0); }}>
-          {order === "desc" ? "High → low" : "Low → high"}
+          {sort === "name" ? (order === "desc" ? "Z → A" : "A → Z") : order === "desc" ? "High → low" : "Low → high"}
         </button>
       </div>
       {error && <ErrorState message="Could not load companies" detail={error} onRetry={load} />}

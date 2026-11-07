@@ -32,3 +32,14 @@ def test_sort_by_name_is_case_insensitive_and_numeric(tmp_path):
     c = make_client(tmp_path, csv=csv)
     asc = c.get("/api/companies", params={"sort": "name", "order": "asc"}).json()["items"]
     assert [r["name"] for r in asc] == ["Alpha", "beta", "Store 2", "store 10", "zeta"]
+
+
+def test_a_person_merged_into_another_lead_is_still_shown(tmp_path):
+    from app.companies import more_people
+    members = [{"id": "a", "contact_name": "Ravi Kumar", "email": "ravi@acme.com", "company": "Acme",
+                "other_contacts": [{"contact_name": "Priya Shah", "email": "priya@acme.com", "title": "HR Head"},
+                                   {"contact_name": "Ravi Kumar", "email": "ravi@acme.com"}]},
+               {"id": "b", "contact_name": "Meera Iyer", "email": "meera@acme.com",
+                "other_contacts": [{"contact_name": "Priya Shah", "email": "PRIYA@acme.com"}]}]
+    extra = more_people(members)
+    assert [(c["contact_name"], c["kept_on"]) for c in extra] == [("Priya Shah", "a")]

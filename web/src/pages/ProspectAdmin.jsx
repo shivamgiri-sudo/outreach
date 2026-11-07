@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { prospects } from "../prospectsApi.js";
 import { useConfirm } from "../Dialog.jsx";
+import { istDateLabel } from "../time.js";
 
 function Spend() {
   const [d, setD] = useState(null);
@@ -120,7 +121,7 @@ function OptOuts({ version, onChanged }) {
             <thead><tr><th>Email or domain</th><th>Kind</th><th>Reason</th><th>When</th><th /></tr></thead>
             <tbody>{rows.map((r) => (
               <tr key={r.value}>
-                <td>{r.value}</td><td>{r.kind}</td><td>{r.reason}</td><td>{(r.at || "").slice(0, 10)}</td>
+                <td>{r.value}</td><td>{r.kind}</td><td>{r.reason}</td><td>{istDateLabel(r.at)}</td>
                 <td>{r.blocked ? <small className="sub" title={r.blocked}>Locked: {r.blocked}</small> : (
                   <button className="btn ghost" disabled={busy === r.value} aria-label={`Un-suppress ${r.value}`} onClick={() => undo(r.value)}>Un-suppress</button>
                 )}</td>

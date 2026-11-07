@@ -8,11 +8,12 @@ export default function OtherContacts({ lead }) {
   const [data, setData] = useState(null);
   const [open, setOpen] = useState(null);
   useEffect(() => { setData(null); api.companyOfLead(lead.id).then(setData).catch(() => setData({ others: [] })); }, [lead.id]);
-  if (!data || !data.others?.length) return null;
+  const more = data?.more_people || [];
+  if (!data || (!data.others?.length && !more.length)) return null;
   const shown = data.others.slice(0, 12);
   return (
     <section className="card" style={{ margin: "12px 0" }} aria-label="Other people at this company" data-testid="other-contacts">
-      <b>Other people at {data.name || "this company"} ({data.others.length})</b>
+      <b>Other people at {data.name || "this company"} ({data.others.length + more.length})</b>
       {data.others.some((o) => o.in_sequence) && <p className="sub" style={{ margin: "4px 0" }}>Someone else here is already in an email sequence — avoid contacting two people on the same day.</p>}
       <div>
         {shown.map((o) => (
@@ -24,6 +25,18 @@ export default function OtherContacts({ lead }) {
             <span className="chips" style={{ margin: 0 }}>
               <span className="pill">{stageLabel(o.stage)}</span>
               {o.in_sequence && <span className="pill rec">In sequence</span>}
+            </span>
+          </div>
+        ))}
+        {more.map((c, i) => (
+          <div key={`more-${i}`} className="row" data-testid="other-contact-extra" style={{ justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--line)", gap: 6, flexWrap: "wrap" }}>
+            <span style={{ minWidth: 0 }}>
+              <b>{c.contact_name || c.email || "Unnamed contact"}</b>
+              {c.title && <small className="sub-inline"> · {c.title}</small>}
+              <small className="sub-inline"> · {c.email || "no email"}{c.phone ? ` · ${c.phone}` : ""}</small>
+            </span>
+            <span className="chips" style={{ margin: 0 }}>
+              <span className="pill" title={`Kept on ${c.kept_on_name}'s record when the two were merged; not a separate lead`}>{c.kept_on === lead.id ? "Kept on this record" : "Also at this company"}</span>
             </span>
           </div>
         ))}

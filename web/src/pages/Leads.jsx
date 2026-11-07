@@ -377,8 +377,8 @@ export default function Leads({ go }) {
                     <label className="pick-hit"><input type="checkbox" aria-label={`Select ${l.company || l.domain || l.contact_name}`} checked={picked.includes(l.id)} onChange={() => togglePick(l.id)} /></label>
                   </td>}
                   <td data-label="Company"><button className="linkish" onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{l.company || l.domain || l.contact_name}</b></button>{l.is_test && <span className="pill warn" style={{ marginLeft: 6 }}>Test</span>}</td>
-                  <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small>{!l.email && <PhoneTag lead={l} />}</td>
-                  <td data-label="Stage">{stageLabel(l.stage)}</td>
+                  <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small><PhoneTag lead={l} /></td>
+                  <td data-label="Stage">{stageLabel(l.stage)}{l.do_not_contact && <span className="pill warn" style={{ marginLeft: 6 }} title="On the do-not-contact list: never emailed, called or messaged">Do not contact</span>}</td>
                   <td data-label="Score"><span className={`pill ${l.band}`}>{l.score} · {l.band}</span></td>
                   <td data-label="Owner">{l.owner || <small className="sub">—</small>}</td>
                   <td data-label="Tags">{(l.tags || []).length ? (l.tags || []).map((t) => <span key={t} className="pill rec" style={{ margin: "0 4px 2px 0" }}>{t}</span>) : <small className="sub">—</small>}</td>

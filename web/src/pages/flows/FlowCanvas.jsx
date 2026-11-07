@@ -194,7 +194,7 @@ const FlowCanvas = forwardRef(function FlowCanvas(props, ref) {
             const cls = `fb-node g-${groupOf(n.type)}${isSel ? " sel" : ""}${issues.length ? " bad" : ""}${highlight.has(n.id) ? " on" : ""}${off ? " off" : ""}`;
             return (
               <g key={n.id} data-node-id={n.id} className={cls} transform={`translate(${n.x},${n.y})`} tabIndex={0} role="button"
-                aria-pressed={isSel} aria-label={`${titleOf(n)}: ${summary}${issues.length ? `. Problem: ${issues.join(" ")}` : ""}. Arrow keys move it, Enter edits, Delete removes.`}
+                aria-pressed={isSel} aria-label={`${titleOf(n)}: ${summary}${issues.length ? `. Problem: ${issues.join(" ").replace(/\.+$/, "")}` : ""}. Arrow keys move it, Enter edits, Delete removes.`}
                 onPointerDown={(e) => startNode(e, n)} onFocus={() => onSelect({ kind: "node", id: n.id })}
                 onKeyDown={(e) => keyNode(e, n)} onDoubleClick={() => onOpenConfig(n.id)}>
                 <title>{[titleOf(n), summary, ...issues].join(" — ")}</title>

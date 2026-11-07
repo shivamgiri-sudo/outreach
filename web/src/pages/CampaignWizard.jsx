@@ -95,7 +95,7 @@ function LeadPicker({ picked, onChange }) {
       <div style={{ maxHeight: 180, overflowY: "auto", marginTop: 6 }}>
         {shown.map((l) => (
           <Check key={l.id} checked={picked.includes(l.id)} onChange={(on) => onChange(on ? [...picked, l.id] : picked.filter((x) => x !== l.id))}>
-            {l.company || l.domain} <small className="sub-inline">{l.email || "no email yet"}</small>
+            {l.company || l.domain} <small className="sub-inline">{l.email || "no email yet"}</small>{l.do_not_contact && <span className="pill warn" style={{ marginLeft: 6 }}>Do not contact: left out</span>}
           </Check>
         ))}
       </div>

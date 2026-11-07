@@ -200,6 +200,29 @@ def overlap_warnings(rows: list, numbers: dict) -> list:
     return out
 
 
+def more_people(members: list) -> list:
+    """People kept on a lead's other_contacts (a second person merged in on import or enrichment) who are not
+    leads themselves: shown next to the leads so nobody at the company is hidden."""
+    known_emails = {(l.get("email") or "").strip().lower() for l in members if l.get("email")}
+    known_names = {norm_name(l.get("contact_name")) for l in members if l.get("contact_name")}
+    out, seen = [], set()
+    for l in members:
+        for c in l.get("other_contacts") or []:
+            if not isinstance(c, dict):
+                continue
+            email = (c.get("email") or "").strip().lower()
+            name = norm_name(c.get("contact_name"))
+            key = email or name
+            if not key or key in seen or (email and email in known_emails) or (not email and name and name in known_names):
+                continue
+            seen.add(key)
+            out.append({"contact_name": c.get("contact_name") or "", "title": c.get("title") or "", "email": c.get("email") or "",
+                        "phone": c.get("phone") or "", "linkedin_url": c.get("linkedin_url") or "",
+                        "kept_on": l["id"], "kept_on_name": l.get("contact_name") or l.get("email") or l.get("company") or ""})
+    out.sort(key=lambda c: (c["contact_name"] or c["email"]).lower())
+    return out
+
+
 def summarise(store, key: str, rows: list, numbers: dict, health_cache: dict) -> dict:
     stages = [l.get("stage", "new") for l in rows]
     scores = [score_lead({**l, "consent_yes": bool(l.get("consent"))})["score"] for l in rows]
@@ -212,7 +235,7 @@ def summarise(store, key: str, rows: list, numbers: dict, health_cache: dict) ->
         "key": key,
         "name": _company_name(rows, key),
         "domain": domain,
-        "contacts": len(rows),
+        "contacts": len(rows) + len(more_people(rows)),
         "best_stage": best_stage(stages),
         "engaged": replies > 0 and not all(s in EXIT_STAGES for s in stages),
         "touches": sum(numbers[l["id"]]["touches"] for l in rows),
@@ -288,7 +311,7 @@ def detail(store, key: str) -> Optional[dict]:
         timeline += [{**item, "contact": who} for item in lead_activity(store, l)]
     timeline.sort(key=lambda i: parse_when(i.get("at")) or _EPOCH, reverse=True)
     domain = summary["domain"]
-    return {**summary, "contacts_list": contacts, "timeline": timeline[:MAX_TIMELINE], "timeline_total": len(timeline),
+    return {**summary, "contacts_list": contacts, "more_people": more_people(members), "timeline": timeline[:MAX_TIMELINE], "timeline_total": len(timeline),
             "warnings": overlap_warnings(members, numbers),
             "health_report": company_health.cached(store, domain) if domain else None,
             "open_tasks": sum(n["open_tasks"] for n in numbers.values()),
@@ -303,5 +326,5 @@ def of_lead(store, lead_id: str) -> Optional[dict]:
             others = [{"id": l["id"], "contact_name": l.get("contact_name", ""), "title": l.get("title", ""), "email": l.get("email"),
                        "stage": l.get("stage", "new"), "in_sequence": seq_active(l)} for l in members if l["id"] != lead_id]
             others.sort(key=lambda c: (-stage_rank(c["stage"]), c["contact_name"].lower()))
-            return {"key": key, "name": _company_name(members, key), "others": others}
+            return {"key": key, "name": _company_name(members, key), "others": others, "more_people": more_people(members)}
     return None
