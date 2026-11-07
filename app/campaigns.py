@@ -196,25 +196,37 @@ def new_report(dry_run: bool, trigger: str, now: datetime) -> dict:
             "enrolled": 0, "errors": [], "credits_used_estimate": 0, "sources": {}, "lead_ids": []}
 
 
-def _preview_rows(plan: dict, campaign: dict) -> list:
-    rules, out = campaign["rules"], []
-    for item in plan["preview"][:MAX_PREVIEW]:
-        lead = item["lead"]
-        score = pipe.present_score(lead)["score"] if item["would"] in ("add", "merge") else None
-        reasons = pipe.qualify_reasons(lead, rules, score) if score is not None else []
-        if reasons and not lead.get("email"):
-            reasons = [r if r != "no email found yet" else "no email yet (the real run looks for one)" for r in reasons]
-        out.append({"company": lead.get("company", ""), "contact_name": lead.get("contact_name", ""), "email": lead.get("email") or "",
-                    "domain": lead.get("domain") or "", "phone": lead.get("phone") or "", "role": lead.get("role") or "",
-                    "sources": [pipe.SOURCE_LABELS.get(s, s) for s in item["sources"]], "would": item["would"], "score": score,
-                    "qualified": score is not None and not reasons, "reasons": reasons,
-                    "would_enrol": bool(rules.get("auto_enrol")) and score is not None and not reasons})
+def _only_companies(campaign: dict) -> set:
+    return {c.strip().lower() for c in (campaign["rules"].get("only_companies") or []) if c and c.strip()}
+
+
+def _preview_row(lead: dict, would: str, sources: list, campaign: dict, blocked: str = None) -> dict:
+    rules, only = campaign["rules"], _only_companies(campaign)
+    score = pipe.present_score(lead)["score"] if would in ("add", "merge", "attach") else None
+    reasons = pipe.qualify_reasons(lead, rules, score) if score is not None else ([blocked] if blocked else [])
+    if reasons and not lead.get("email"):
+        reasons = [r if r != "no email found yet" else "no email yet (the real run looks for one)" for r in reasons]
+    qualified = score is not None and not reasons
+    in_chosen = not only or (lead.get("company") or "").strip().lower() in only
+    return {"company": lead.get("company", ""), "contact_name": lead.get("contact_name", ""), "email": lead.get("email") or "",
+            "domain": lead.get("domain") or "", "phone": lead.get("phone") or "", "role": lead.get("role") or "",
+            "sources": [pipe.SOURCE_LABELS.get(s, s) for s in sources], "would": would, "score": score,
+            "qualified": qualified, "reasons": reasons,
+            "would_enrol": bool(rules.get("auto_enrol")) and qualified and in_chosen}
+
+
+def _preview_rows(plan: dict, campaign: dict, picked: list) -> list:
+    """What the run would do: discovered rows, then each hand-picked lead (the same check attach_leads makes)."""
+    out = [_preview_row(item["lead"], item["would"], item["sources"], campaign) for item in plan["preview"][:MAX_PREVIEW]]
+    for lead_id, lead, reason in picked:
+        out.append(_preview_row(lead or {"id": lead_id, "company": f"Lead {lead_id}"}, "attach_blocked" if reason else "attach",
+                                ["attached"], campaign, blocked=reason))
     return out
 
 
 def _enrol(store, campaign: dict, ids: list, report: dict) -> None:
     refused = {}
-    only = {c.strip().lower() for c in (campaign["rules"].get("only_companies") or []) if c and c.strip()}
+    only = _only_companies(campaign)
     if only:                                   # the owner chose which companies this campaign may email
         by_id = {l["id"]: l for l in store.read("leads")}
         kept = [i for i in ids if (by_id.get(i, {}).get("company") or "").strip().lower() in only]
@@ -278,8 +290,11 @@ def run_campaign(store, campaign_id: str, transports: dict, dry_run: bool = Fals
         candidates = pipe.merge_rows(rows)
         plan = pipe.plan_additions(store, campaign, candidates, report)
         if dry_run:
-            report["preview"] = _preview_rows(plan, campaign)
+            picked = pipe.plan_attach(store, campaign, campaign["sources"].get("csv_import_ids") or [])
+            report["preview"] = _preview_rows(plan, campaign, picked)
             report["new"] = sum(1 for p in plan["preview"] if p["would"] == "add")
+            report["attached"] = sum(1 for _, _, reason in picked if not reason)
+            pipe.report_left_out(report, picked)
             report["merged"] = len(plan["merge"])
             report["qualified"] = sum(1 for p in report["preview"] if p["qualified"])
             report["enrolled"] = sum(1 for p in report["preview"] if p["would_enrol"])

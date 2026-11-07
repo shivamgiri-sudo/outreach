@@ -5,7 +5,7 @@ or send saved while a run is working is never overwritten. Leads past the early 
 """
 from datetime import datetime
 
-from . import campaign_sources as src
+from . import campaign_sources as src, workspaces
 from .apollo import match_person_by_id
 from .hygiene import business_domain, dedupe_key, is_role_address, normalise_email, normalise_phone
 from .jobs import job_domain, job_key
@@ -250,30 +250,67 @@ def merge_into_existing(store, lead_id: str, cand: dict, campaign: dict) -> bool
     return bool(done)
 
 
+def attach_block_reason(lead, campaign: dict, suppressed: set):
+    """Why a picked lead cannot join this campaign, or None when it can. Shared by the real run and the preview."""
+    if lead is None:
+        return "not found (deleted?)"
+    if not workspaces.visible(lead):
+        return "in another workspace"
+    if lead.get("do_not_contact"):
+        return "on the do-not-contact list"
+    if lead.get("email") and lead["email"] in suppressed:
+        return "unsubscribed or bounced (suppressed)"
+    if lead["stage"] in CLOSED_STAGES:
+        return f"marked {lead['stage']}"
+    if lead.get("campaign_id") not in (None, campaign["id"]):
+        return "already in another campaign"
+    if lead.get("sequence"):
+        return "already in the email sequence"
+    if lead["stage"] not in EARLY_STAGES:
+        return f"past the early stages (stage: {lead['stage']})"
+    return None
+
+
+def plan_attach(store, campaign: dict, ids: list) -> list:
+    """Each picked id once, with its lead (or None) and the reason it is left out (None = it joins)."""
+    suppressed = set(store.read("suppressed"))
+    by_id = {l["id"]: l for l in store.read("leads")}
+    return [(lead_id, by_id.get(lead_id), attach_block_reason(by_id.get(lead_id), campaign, suppressed))
+            for lead_id in dict.fromkeys(ids)]
+
+
+def report_left_out(report: dict, planned: list) -> None:
+    left = {}
+    for _, _, reason in planned:
+        if reason:
+            left[reason] = left.get(reason, 0) + 1
+    if left:
+        add_error(report, "attached", f"{sum(left.values())} picked lead(s) were left out: "
+                                      + "; ".join(f"{n} {reason}" for reason, n in left.items()) + ".")
+
+
 def attach_leads(store, campaign: dict, ids: list, report: dict) -> None:
     """Existing leads picked by id (an earlier import) join the campaign, when still early-stage and not emailed."""
     suppressed = set(store.read("suppressed"))
-    attached = skipped = 0
-    for lead_id in dict.fromkeys(ids):
+    planned = plan_attach(store, campaign, ids)
+    attached, final = 0, []
+    for lead_id, lead, reason in planned:
         ok = {}
 
         def change(lead: dict):
-            if (lead.get("campaign_id") not in (None, campaign["id"]) or lead["stage"] not in EARLY_STAGES
-                    or lead.get("sequence") or (lead.get("email") and lead["email"] in suppressed)):
+            why = attach_block_reason(lead, campaign, suppressed)       # re-checked inside the atomic update
+            ok["reason"] = why
+            if why or lead.get("campaign_id") == campaign["id"]:
                 return None
-            ok["joined"] = lead.get("campaign_id") != campaign["id"]
-            ok["fine"] = True
-            if not ok["joined"]:
-                return None
+            ok["joined"] = True
             return {**lead, "campaign_id": campaign["id"],
                     "timeline": [*lead["timeline"], event("campaign", f"Added to campaign {campaign['name']}")]}
-        store.update_lead(lead_id, change)
+        if lead is not None:
+            store.update_lead(lead_id, change)
         attached += bool(ok.get("joined"))
-        skipped += not ok.get("fine")
+        final.append((lead_id, lead, ok.get("reason", reason)))
     report["attached"] = attached
-    if skipped:
-        add_error(report, "attached", f"{skipped} picked lead(s) were left out: not found, in another campaign, past the "
-                                      "early stages, already emailed, or suppressed.")
+    report_left_out(report, final)
 
 
 def scope(store, campaign_id: str) -> list:

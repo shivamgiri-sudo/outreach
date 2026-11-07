@@ -7,6 +7,7 @@ export const STATUS = {
 const WOULD = {
   add: "Would add", merge: "Would fill gaps of a lead you have", duplicate: "Already in your leads",
   suppressed: "Skipped: unsubscribed, bounced or disqualified", over_cap: "Over this run's limit", no_contact: "Skipped: nothing to identify it",
+  attach: "Picked by you: would join", attach_blocked: "Picked by you: left out",
 };
 
 export function StatusPill({ status }) {
@@ -40,7 +41,7 @@ export function RunReport({ report, onOpenLeads }) {
       </div>
       <p className="sub" style={{ margin: "10px 0 0" }}>
         {report.merged ? `${report.merged} existing lead(s) completed. ` : ""}
-        {report.attached ? `${report.attached} picked lead(s) joined. ` : ""}
+        {report.attached ? (report.dry_run ? `${report.attached} picked lead(s) would be included. ` : `${report.attached} picked lead(s) joined. `) : ""}
         {report.over_cap ? `${report.over_cap} left for the next run (limit per run). ` : ""}
         {!report.dry_run && `Emails checked: ${v.valid || 0} verified, ${v.unverified || 0} format-checked only, ${v.invalid || 0} bad, ${v.risky || 0} unsure. `}
         Credits used (estimate): {report.credits_used_estimate}.
@@ -74,7 +75,7 @@ export function PreviewTable({ rows }) {
               <td data-label="Score">{r.score ?? "—"}</td>
               <td data-label="What would happen">{WOULD[r.would] || r.would}</td>
               <td data-label="Ready for email?">
-                {r.score === null ? "—" : r.qualified ? <span className="pill ok">{r.would_enrol ? "Yes, sequence would start" : "Yes"}</span>
+                {r.score === null ? (r.reasons?.length ? <small>{r.reasons.join("; ")}</small> : "—") : r.qualified ? <span className="pill ok">{r.would_enrol ? "Yes, sequence would start" : "Yes"}</span>
                   : <small>{r.reasons.join("; ")}</small>}
               </td>
             </tr>
