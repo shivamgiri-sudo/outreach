@@ -303,7 +303,8 @@ def test_multi_day_undo_of_day_one_keeps_leads_the_day_three_reexport_merged_int
 # ------------------------------------------------------------------ quick paste (/api/leads/import)
 def test_quick_paste_people_export(client):
     r = post(client, "/api/leads/import", csv=PEOPLE, source="apollo")
-    assert r == {"created": 148, "duplicates": 5, "rejected": 4, "merged": 11}   # one lead per person, not per company
+    # one lead per person, not per company; 3 rows with only an office landline are now kept (merged into their company)
+    assert r == {"created": 148, "duplicates": 5, "rejected": 1, "merged": 14}
     all_leads = leads(client)
     emails = [lead["email"] for lead in all_leads if lead.get("email")]
     assert LOCKED not in emails and OWNER not in emails and len(emails) == len(set(emails))
@@ -312,14 +313,13 @@ def test_quick_paste_people_export(client):
     again = post(client, "/api/leads/import", csv=PEOPLE, source="apollo")
     # limitation (see report): Harish's row was merged into Royal Caterers by filling its domain, his own email was
     # dropped, so a second paste still creates him once
-    assert again["created"] == 1 and again["duplicates"] == 163
+    assert again["created"] == 1 and again["duplicates"] == 166         # incl. the 3 landline-only rows, now kept
 
 
 def test_quick_paste_accounts_and_edited(client):
     a = post(client, "/api/leads/import", csv=ACCOUNTS, source="apollo")
-    # limitation (see report): quick paste keys only on email, mobile or website, so 8 landline-only accounts
-    # without a website are rejected (the smart import keeps all 57 companies)
-    assert a == {"created": 49, "duplicates": 2, "rejected": 8, "merged": 0}
+    # landline-only accounts without a website are kept now (owner rule: landlines are kept), as the smart import does
+    assert a == {"created": 57, "duplicates": 2, "rejected": 0, "merged": 0}
     e = post(client, "/api/leads/import", csv=EDITED, source="apollo")
     assert e["created"] + e["duplicates"] + e["rejected"] + e["merged"] == 63
 

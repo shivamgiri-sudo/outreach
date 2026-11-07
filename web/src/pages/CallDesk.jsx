@@ -4,6 +4,7 @@ import { stageLabel } from "../labels.js";
 import { istLabel } from "../time.js";
 import CallScript from "./CallScript.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
+import PhoneTag from "./PhoneTag.jsx";
 
 // [outcome, button label, key]. Every outcome is logged with the signed-in person's name.
 const OUTCOMES = [["connected", "Connected", "1"], ["no_answer", "No answer", "2"], ["busy", "Busy", "3"], ["call_back", "Call back…", "4"],
@@ -102,7 +103,7 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
         <p className="sub" style={{ margin: 0 }}>{lead.contact_name}{lead.title ? ` · ${lead.title}` : ""}{lead.role ? ` · hiring ${lead.role}` : ""}
           <br /><span className="pill">{stageLabel(lead.stage)}</span> {lead.score != null && <span className={`pill ${lead.band || ""}`}>{lead.score} · {lead.band}</span>}
           {lead.consent && <span className="pill ok" style={{ marginLeft: 4 }}>consent</span>}</p>
-        <a className="btn dial-btn" href={dialLink(lead.phone)} style={{ display: "inline-block", margin: "10px 0", fontSize: 18 }} data-testid="dial-link">Call {lead.phone}</a>
+        <a className="btn dial-btn" href={dialLink(lead.phone)} style={{ display: "inline-block", margin: "10px 0", fontSize: 18 }} data-testid="dial-link">Call {lead.phone}</a><PhoneTag lead={lead} />
         <Summary s={summary} />
         {lead.recent_notes.length > 0 && (
           <ul className="sub" style={{ paddingLeft: 18, margin: "4px 0" }}>
@@ -170,7 +171,7 @@ export default function CallDesk() {
                         <td><button className="link" onClick={() => setOpen(l.lead_id)}><b>{l.company || l.contact_name}</b></button><br />
                           <small>{l.contact_name}{l.score != null ? ` · score ${l.score}` : ""}</small></td>
                         <td>{l.reason}{l.due_at ? <div className="sub">due {istLabel(l.due_at)}</div> : null}</td>
-                        <td><a href={dialLink(l.phone)}>{l.phone}</a><br /><button className="link" onClick={() => setWalking([...queue.slice(i), ...queue.slice(0, i)])}>Call from here</button></td>
+                        <td><a href={dialLink(l.phone)}>{l.phone}</a><PhoneTag lead={l} /><br /><button className="link" onClick={() => setWalking([...queue.slice(i), ...queue.slice(0, i)])}>Call from here</button></td>
                       </tr>
                     ))}
                   </tbody>

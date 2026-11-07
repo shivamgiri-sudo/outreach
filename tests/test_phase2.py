@@ -58,6 +58,9 @@ def test_whatsapp_sends_dry_run_and_advances_stage(client):
     lid = leads_by_company(client)["Acme"]["id"]
     client.post(f"/api/leads/{lid}/reply", json={"text": "Yes please send the story"})
     r = client.post(f"/api/leads/{lid}/whatsapp", json={"template": "first_after_yes"})
+    assert r.status_code == 400 and "WhatsApp consent" in r.json()["detail"]      # an email yes is email consent only
+    client.post(f"/api/leads/{lid}/consent", json={"text": "Yes, WhatsApp me", "channel": "whatsapp"})
+    r = client.post(f"/api/leads/{lid}/whatsapp", json={"template": "first_after_yes"})
     assert r.status_code == 200
     msg = client.get("/api/whatsapp/outbox").json()[0]
     assert msg["to"] == "+919876543210" and msg["status"] == "dry_run"

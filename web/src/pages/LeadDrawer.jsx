@@ -14,6 +14,7 @@ import LeadStage from "./LeadStage.jsx";
 import { EditDetails, InlineForm, LeadOrigin, PrivacyActions, SIGNAL_LABELS, linkedinDrafts, replyMeaning, sequenceStatus } from "./LeadDrawerParts.jsx";
 import LeadAssign from "./LeadAssign.jsx";
 import { LeadCustomData } from "./LeadCustomFields.jsx";
+import PhoneTag, { isLandline } from "./PhoneTag.jsx";
 
 // The lead drawer is a header (name, score, stage, prev/next) over five tabs. HOW TO ADD A SMALL PANEL:
 //   - lead-level facts / ownership / tags / other contacts  -> the OVERVIEW tab, at the "SLOT: overview panels" line;
@@ -96,7 +97,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
 
   const overview = (
     <>
-      <p className="sub">{lead.contact_name} {lead.title && `· ${lead.title}`}<br />{lead.email} {lead.phone && `· ${lead.phone}`}
+      <p className="sub">{lead.contact_name} {lead.title && `· ${lead.title}`}<br />{lead.email} {lead.phone && `· ${lead.phone}`}<PhoneTag lead={lead} />
         <br /><small>Source: {sourceLabel(lead)}</small></p>
       {canEditContacts() && <EditDetails lead={lead} onSaved={(r) => setLead(r)} />}
       <div className="tip">
@@ -171,7 +172,8 @@ export default function LeadDrawer({ id, ids, onClose }) {
       )}
 
       <h3 data-testid="wa-heading">{waHeading}</h3>
-      <p className="sub">Only after they said yes, and only to a mobile number. Free text only within 24 hours of their last message.</p>
+      <p className="sub">Only after they said yes to WhatsApp, and only to a mobile number. Free text only within 24 hours of their last message.</p>
+      {isLandline(lead) && <div className="tip" data-testid="wa-landline">This lead's phone is a landline: call it, but WhatsApp and SMS are not sent to it.</div>}
       <div className="row">
         <select aria-label="WhatsApp message" value={waTemplate} onChange={(e) => setWaTemplate(e.target.value)} style={{ flex: 1 }}>
           <option value="first_after_yes">First message after yes</option>

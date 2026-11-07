@@ -13,6 +13,7 @@ from typing import Optional
 from .activities import (ACTIVITY_TYPES, add_task, caller_name, ensure_task_ids, history_summary, iso, log_activity, now_utc,
                          task_buckets, team)
 from .sequences import IST
+from .contact_rules import add_consent, has_consent_for
 from .stages import ALL_STAGES, EXIT_STAGES, STAGES, TERMINAL, can_move
 
 CLOSED = ("unsubscribed", "disqualified", "not_now", "customer", "advocate")
@@ -311,9 +312,9 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
     elif outcome == "interested":
         def yes(l: dict) -> dict:
             changes = {}
-            if not l.get("consent"):
-                changes["consent"] = {"text": f"Said yes on a phone call with {who}" + (f": {notes[:300]}" if notes else ""), "at": stamp,
-                                      "source": "phone call", "channel": "call"}
+            if not has_consent_for(l, "call"):           # a yes on the phone is call consent only, added to any earlier yes
+                changes["consent"] = add_consent(l, {"text": f"Said yes on a phone call with {who}" + (f": {notes[:300]}" if notes else ""),
+                                                     "at": stamp, "source": "phone call", "channel": "call"})
                 changes["consent_withdrawn_at"] = None
                 result["consent_recorded"] = True
             has_consent = bool(l.get("consent") or changes.get("consent"))

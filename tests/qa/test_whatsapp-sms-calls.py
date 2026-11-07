@@ -141,6 +141,9 @@ def test_custom_text_needs_a_whatsapp_message_not_an_email_reply(c, monkeypatch)
     from app.inbound import apply_reply
     apply_reply(store, lead["id"], "Yes, send me the details", "email")
     assert fresh(c, lead["id"])["consent"]
+    with pytest.raises(WhatsAppError, match="WhatsApp consent"):        # an email yes is email consent only
+        whatsapp.send(store, lead["id"], "custom", "Hi, quick question", clock.now, BASE)
+    consent(c, lead["id"])                                               # their yes to WhatsApp, recorded by a person
     with pytest.raises(WhatsAppError, match="24 hours"):
         whatsapp.send(store, lead["id"], "custom", "Hi, quick question", clock.now, BASE)
     # their WhatsApp message opens it ...

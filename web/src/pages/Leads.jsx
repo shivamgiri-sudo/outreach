@@ -12,6 +12,7 @@ import LeadBulkBar from "./LeadBulkBar.jsx";
 import LeadViews from "./LeadViews.jsx";
 import { istDateLabel, istLabel } from "../time.js";
 import { CustomFilters, customMatches, showValue, useLeadFields } from "./LeadCustomFields.jsx";
+import PhoneTag from "./PhoneTag.jsx";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
 const SHEET_SOURCES = { "Team sheet — Leads tab": "leads", "Team sheet — Demo Shared tab": "demo", "Team sheet — Decision Makers tab": "decision_makers" };
@@ -376,7 +377,7 @@ export default function Leads({ go }) {
                     <label className="pick-hit"><input type="checkbox" aria-label={`Select ${l.company || l.domain || l.contact_name}`} checked={picked.includes(l.id)} onChange={() => togglePick(l.id)} /></label>
                   </td>
                   <td data-label="Company"><button className="linkish" onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{l.company || l.domain || l.contact_name}</b></button>{l.is_test && <span className="pill warn" style={{ marginLeft: 6 }}>Test</span>}</td>
-                  <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small></td>
+                  <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small>{!l.email && <PhoneTag lead={l} />}</td>
                   <td data-label="Stage">{stageLabel(l.stage)}</td>
                   <td data-label="Score"><span className={`pill ${l.band}`}>{l.score} · {l.band}</span></td>
                   <td data-label="Owner">{l.owner || <small className="sub">—</small>}</td>

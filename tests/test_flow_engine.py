@@ -262,6 +262,7 @@ def test_reply_trigger_starts_the_yes_template(c):
     flow = c.post("/api/flows/templates/yes_whatsapp_call").json()
     c.post(f"/api/flows/{flow['id']}/activate")
     acme = lead(c)["id"]
+    c.post(f"/api/leads/{acme}/consent", json={"text": "Yes to WhatsApp on a call", "channel": "whatsapp"})   # per-channel consent
     c.post(f"/api/leads/{acme}/reply", json={"text": "Yes please send it"})
     assert runs(c, flow)[0]["lead_id"] == acme
     tick(c, T0)
