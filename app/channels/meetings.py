@@ -141,8 +141,9 @@ def lead_meetings(store, lead_id: str) -> list:
 
 
 def all_meetings(store, start: datetime = None, end: datetime = None) -> list:
+    from .. import workspaces
     out = []
-    for lead in store.read("leads"):
+    for lead in workspaces.filter_rows(store.read("leads")):
         for m in lead.get("meetings") or []:
             try:
                 at = parse_time(m.get("start"))
@@ -156,7 +157,8 @@ def all_meetings(store, start: datetime = None, end: datetime = None) -> list:
 
 def cancel(store, meeting_id: str, transport=request, resolver=None, sender=None) -> dict:
     """Cancel at the provider where possible, then mark it cancelled on the lead (and withdraw our invite)."""
-    lead = next((l for l in store.read("leads") if any(m.get("id") == meeting_id for m in l.get("meetings") or [])), None)
+    from .. import workspaces
+    lead = next((l for l in workspaces.filter_rows(store.read("leads")) if any(m.get("id") == meeting_id for m in l.get("meetings") or [])), None)
     if lead is None:
         raise LookupError("Meeting not found")
     meeting = next(m for m in lead["meetings"] if m["id"] == meeting_id)
@@ -187,7 +189,8 @@ def cancel(store, meeting_id: str, transport=request, resolver=None, sender=None
 def mark_done(store, meeting_id: str) -> dict:
     """The meeting happened: mark it done and close its no-show follow-up task, if one was created."""
     from ..activities import complete_task
-    lead = next((l for l in store.read("leads") if any(m.get("id") == meeting_id for m in l.get("meetings") or [])), None)
+    from .. import workspaces
+    lead = next((l for l in workspaces.filter_rows(store.read("leads")) if any(m.get("id") == meeting_id for m in l.get("meetings") or [])), None)
     if lead is None:
         raise LookupError("Meeting not found")
     meeting = next(m for m in lead["meetings"] if m["id"] == meeting_id)

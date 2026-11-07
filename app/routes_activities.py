@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from . import workspaces
 from .activities import (ACTIVITY_TYPES, CALL_OUTCOMES, PRIORITIES, add_task, complete_task, ensure_task_ids,
                          TASK_SORTS, history_summary, lead_activity, log_activity, now_utc, task_buckets, team, update_task, iso)
 
@@ -67,7 +68,7 @@ def make_router(store, transactional_sender=None) -> APIRouter:
 
     def lead_or_404(lead_id: str) -> dict:
         lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
-        if lead is None:
+        if lead is None or not workspaces.visible(lead):
             raise HTTPException(404, "Lead not found")
         return lead
 

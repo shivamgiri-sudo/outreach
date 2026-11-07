@@ -29,6 +29,7 @@ from .routes_workspaces import make_router as make_workspaces_router
 from fastapi.responses import JSONResponse
 
 from . import auth
+from . import workspace_guard
 from .routes_auth import LOCAL_OWNER, make_router as make_auth_router, role_guard
 from .web_security import make_limiters, rate_limit_middleware, security_headers_middleware
 from .autorun import start_background
@@ -224,7 +225,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         if lead is not None and workspaces_mod.ws_of(lead) not in allowed:
             raise HTTPException(404, "Not found")
 
-    app = FastAPI(title="Outreach OS", dependencies=[Depends(role_guard), Depends(workspaces_mod.scope_dependency), Depends(lead_scope_guard)], docs_url="/docs" if docs else None,
+    app = FastAPI(title="Outreach OS", dependencies=[Depends(role_guard), Depends(workspace_guard.guard), Depends(workspaces_mod.scope_dependency), Depends(lead_scope_guard)], docs_url="/docs" if docs else None,
                   redoc_url="/redoc" if docs else None, openapi_url="/openapi.json" if docs else None)
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
                        allow_methods=["*"], allow_headers=["*"], expose_headers=["X-Renewed-Token"])
@@ -356,7 +357,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         def merge_in(leads: list) -> list:
             keys = lambda l: {l["dedupe_key"], *(f"{k}:{l.get(k)}" for k in ("email", "phone", "domain"))}   # merges re-key
             seen = set().union(*map(keys, leads))
-            created = duplicates = rejected = merged = suppressed = 0
+            mine = set().union(*map(keys, workspaces_mod.filter_rows(leads))) if workspaces_mod.scoped() else seen
+            created = duplicates = rejected = merged = suppressed = elsewhere = 0
             for row in rows:
                 lead = _build_lead(row, body.source)
                 if lead is None:
@@ -364,8 +366,11 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                 elif lead_hashes(lead) & erased or (lead.get("email") or "") in blocked:
                     suppressed += 1                  # this person asked for their data to be erased
                 elif lead["dedupe_key"] in seen:
-                    duplicates += 1
-                elif (target := _contactless_match(leads, lead)) is not None:
+                    if lead["dedupe_key"] in mine:
+                        duplicates += 1
+                    else:
+                        elsewhere += 1               # held in another workspace: skipped, nothing about it shown
+                elif (target := _contactless_match(leads, lead)) is not None and workspaces_mod.visible(leads[target]):
                     leads[target] = _merge_contact(leads[target], lead)
                     seen |= keys(leads[target]) | {lead["dedupe_key"]}
                     merged += 1
@@ -373,7 +378,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                     seen.add(lead["dedupe_key"])
                     leads.append(lead)
                     created += 1
-            stats.update(created=created, duplicates=duplicates, rejected=rejected, merged=merged, **({"suppressed": suppressed} if suppressed else {}))
+            stats.update(created=created, duplicates=duplicates, rejected=rejected, merged=merged, **({"suppressed": suppressed} if suppressed else {}),
+                         **({"elsewhere": elsewhere} if elsewhere else {}))
             return leads
         store.update("leads", merge_in)
         return stats

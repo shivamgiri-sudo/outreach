@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from . import workspaces
 from . import audit, landline_restore, lead_fields
 from .header_map import FIELDS, detect_format, loose_header, map_columns
 from .hygiene_report import apply_standardise, report, standardise_changes
@@ -137,7 +138,8 @@ def make_router(store) -> APIRouter:
         if result["source_opt_outs"]:          # a "no" recorded in the source CRM goes on the do-not-contact list
             store.update("suppressed", lambda rows: [*rows, *(e for e in result["source_opt_outs"] if e not in rows)])
         entry = {"id": import_id, "at": now_iso(), "source": ctx["source"], "format": ctx["format"]["name"],
-                 "summary": result["summary"], "created": holder["fingerprints"], "merged_ids": result["merged_ids"]}
+                 "summary": result["summary"], "created": holder["fingerprints"], "merged_ids": result["merged_ids"],
+                 "workspace": workspaces.for_new_lead()}
         _collection(store, "imports")
         store.update("imports", lambda rows: [*rows, entry][-HISTORY_KEPT:])
         if body.remember_mapping:
@@ -149,7 +151,7 @@ def make_router(store) -> APIRouter:
 
     @router.get("/api/import/history")
     def history():
-        rows = _collection(store, "imports")
+        rows = workspaces.filter_rows(_collection(store, "imports"))       # each workspace sees its own imports
         return [{"id": r["id"], "at": r["at"], "source": r["source"], "format": r["format"], "summary": r["summary"],
                  "created": len(r.get("created") or {}), "merged": len(r.get("merged_ids") or []),
                  "undone_at": r.get("undone_at"), "undo": r.get("undo")} for r in reversed(rows)]
@@ -157,7 +159,7 @@ def make_router(store) -> APIRouter:
     @router.post("/api/import/{import_id}/undo")
     def undo(import_id: str):
         entry = next((r for r in _collection(store, "imports") if r["id"] == import_id), None)
-        if entry is None:
+        if entry is None or not workspaces.visible(entry):
             raise HTTPException(404, "Import not found")
         if entry.get("undone_at"):
             raise HTTPException(400, "This import was already undone.")

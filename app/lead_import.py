@@ -266,6 +266,8 @@ def lead_from_record(rec: dict, source: str, import_id: str, at: str, taken: set
     }
     if import_id:
         lead["import_id"] = import_id
+    from .workspaces import stamp_new
+    lead = stamp_new(lead)                     # into the workspace picked for this request (main when none)
     key = basic_dedupe_key(lead) or (f"linkedin:{rec['linkedin_url']}" if rec["linkedin_url"] else
                                      f"company:{company_key(rec['company'])}|{city_key(rec['city'])}")
     lead["dedupe_key"] = key if key not in taken else f"{key}#{lead_id}"
@@ -281,7 +283,12 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
                import_id: str = "", today: Optional[date] = None, at: Optional[str] = None, custom_fields: Optional[list] = None) -> dict:
     """Dedupe and merge `table` rows into `leads` (changed in place). Returns what happened to every row."""
     today, at = today or date.today(), at or now_iso()
-    index = LeadIndex(leads)
+    from . import workspaces
+    scoped = workspaces.scoped()
+    index = LeadIndex(leads, include=workspaces.visible if scoped else None)      # merge only into this workspace's leads
+    elsewhere = LeadIndex(leads, include=lambda l: not workspaces.visible(l)) if scoped else None
+    if scoped:
+        index.keys = {l.get("dedupe_key") for l in leads}       # dedupe keys stay unique across workspaces
     created, touched = {}, {}
     blocked_aliases = {email_alias_key(e) for e in suppressed}
     out = {k: [] for k in ("created_ids", "merged_ids", "merges", "duplicates", "unchanged", "rejected", "skipped",
@@ -333,6 +340,9 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
             if reason:
                 out["rejected"].append({"row": n, "reason": reason, "values": row})
                 action = "rejected"
+        if action is None and elsewhere is not None and _same_person(elsewhere.match(rec)):
+            out["skipped"].append({"row": n, "reason": ELSEWHERE, "values": row})      # nothing about the other lead is shown
+            action = "skipped"
         if action is None:
             action = _place(leads, index, rec, n, source, import_id, at, created, touched, out, warn)
         counts[action] += 1
@@ -347,6 +357,13 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
         "warnings": dict(Counter(w["kind"] for w in out["warnings"])),
     }
     return out
+
+
+ELSEWHERE = "Already held in another workspace (skipped)"
+
+
+def _same_person(hit) -> bool:
+    return hit is not None and hit[1] != "company"
 
 
 def _place(leads, index, rec, n, source, import_id, at, created, touched, out, warn) -> str:

@@ -189,7 +189,8 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
 
     @router.get("/api/quality")
     def quality():
-        leads = store.read("leads")
+        from . import workspaces
+        leads = workspaces.filter_rows(store.read("leads"))
         return {
             "total": len(leads),
             "missing_email": sum(1 for lead in leads if not lead.get("email")),

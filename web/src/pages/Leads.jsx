@@ -227,6 +227,7 @@ export default function Leads({ go }) {
       }
       const r = await api.importCsv(csv, source);
       setMessage(`Added ${r.created}, merged ${r.merged} into companies already found from job pages, skipped ${r.duplicates} duplicates, rejected ${r.rejected} with no contact details.`
+        + (r.elsewhere ? ` Skipped ${r.elsewhere} already held in another workspace.` : "")
         + (r.suppressed ? ` Left out ${r.suppressed} on the do-not-contact list or erased at their request (they are never imported again).` : ""));
       setShowImport(false);
       setCsv(SAMPLE);

@@ -75,13 +75,14 @@ def has_person(rec: dict) -> bool:
 class LeadIndex:
     """Lookup tables over a list of leads (the list is changed in place as rows are merged or added)."""
 
-    def __init__(self, leads: list):
+    def __init__(self, leads: list, include=None):
         self.leads = leads
         self.email, self.alias, self.phone, self.domain_name, self.domain = {}, {}, {}, {}, {}
         self.company, self.blocks, self.keys = {}, {}, set()
         self.ckey, self.ldomain, self.linkedin = {}, {}, {}
         for i in range(len(leads)):
-            self.add(i)
+            if include is None or include(leads[i]):
+                self.add(i)
 
     def _people(self, lead: dict):
         yield "primary", lead

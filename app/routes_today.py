@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from . import workspaces
 from .activities import ensure_task_ids, iso, now_utc
 from .sequences import IST
 
@@ -113,6 +114,9 @@ def make_router(store, present) -> APIRouter:
     def task_done(body: DoneBody):
         rows = store.read("tasks")
         if not 0 <= body.task_index < len(rows):
+            raise HTTPException(404, "Task not found")
+        lead_id = rows[body.task_index].get("lead_id")
+        if workspaces.scoped() and not (lead_id and workspaces.lead_visible(store, lead_id)):
             raise HTTPException(404, "Task not found")
         stamp = iso(now_utc())
         store.update("tasks", lambda current: [{**t, "done": True, "status": "done", "done_at": stamp} if i == body.task_index else t for i, t in enumerate(current)])

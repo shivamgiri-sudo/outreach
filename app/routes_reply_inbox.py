@@ -45,7 +45,8 @@ def make_router(store) -> APIRouter:
 
     @router.get("/api/reply-inbox")
     def inbox(label: str = "", channel: str = "", only_action: bool = False, limit: int = 200, assignee: str = ""):
-        data = build_inbox(store.read("leads"), label=label if label in LABELS_SHOWN else "", channel=channel[:20],
+        from . import workspaces
+        data = build_inbox(workspaces.filter_rows(store.read("leads")), label=label if label in LABELS_SHOWN else "", channel=channel[:20],
                            only_action=only_action, limit=limit, state=store.read("settings").get("reply_state") or {},
                            assignee=assignee[:120])
         inbox_rows, outbox_rows = store.read("inbox"), store.read("outbox")
@@ -61,7 +62,8 @@ def make_router(store) -> APIRouter:
             raise HTTPException(400, f"action must be one of: {', '.join(ACTIONS)}")
         lead_id = body.key.split("|", 1)[0]
         lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
-        if lead is None or "|" not in body.key:
+        from . import workspaces
+        if lead is None or "|" not in body.key or not workspaces.visible(lead):
             raise HTTPException(404, "Reply not found")
         who, stamp = _who(store, request), iso(now_utc())
         change, task = {}, None

@@ -18,7 +18,7 @@ const WARNING_LABELS = {
 };
 
 const ACTIONS = { create: "New lead", merge: "Adds details to a lead you have", duplicate: "Same as an earlier row",
-  unchanged: "Already here, nothing new", rejected: "Left out", skipped: "Skipped (do not contact)" };
+  unchanged: "Already here, nothing new", rejected: "Left out", skipped: "Skipped (do not contact, or held in another workspace)" };
 
 // A leading = + - @ would run as a formula in Excel or Sheets; prefix it with ' so it stays plain text.
 const safeCell = (v) => { const t = String(v ?? ""); return `"${(/^[=+\-@\t\r]/.test(t) ? "'" + t : t).replace(/"/g, '""')}"`; };

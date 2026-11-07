@@ -51,6 +51,7 @@ class UserBody(BaseModel):
     name: str = ""
     role: str = "caller"
     password: str
+    workspaces: list = []          # ids; empty = every workspace. Set at creation so a client's login never starts open.
 
 
 class OwnPasswordBody(BaseModel):
@@ -212,8 +213,14 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
             guard_owner_change(request, {"email": email, "role": body.role})
         if not owner_left([*auth.users(store), {"role": body.role}]):
             raise HTTPException(400, "The first login must be an owner (no admin password is set).")
+        from . import workspaces as ws_mod
+        known = {w["id"] for w in ws_mod.all_workspaces(store)}
+        spaces = [str(w)[:40] for w in body.workspaces or []][:50]
+        if any(w not in known for w in spaces):
+            raise HTTPException(400, "Pick workspaces from the list.")
         user = {"email": email, "name": body.name.strip()[:80] or email, "role": body.role,
-                "password_hash": auth.hash_password(body.password), "created_at": auth.now_iso()}
+                "password_hash": auth.hash_password(body.password), "created_at": auth.now_iso(),
+                **({"workspaces": spaces} if spaces and body.role != "owner" else {})}
         store.update("settings", lambda s: {**s, "users": [*(s.get("users") or []), user]})
         from . import audit
         audit.record(store, actor(request), "user.add", email, f"role {body.role}")

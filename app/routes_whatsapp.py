@@ -33,7 +33,8 @@ def make_router(store, present) -> APIRouter:
 
     @router.get("/api/whatsapp/outbox")
     def whatsapp_outbox():
-        return list(reversed(store.read("whatsapp_outbox")))
+        from . import workspaces
+        return list(reversed(workspaces.filter_by_lead(store, store.read("whatsapp_outbox"))))
 
     @router.get("/api/whatsapp/status")
     def whatsapp_status():

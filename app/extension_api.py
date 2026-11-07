@@ -245,7 +245,8 @@ def queue(store, account: str = "") -> dict:
     q = li.queue(store)
     settings = store.read("settings")
     leads = {l["id"]: l for l in store.read("leads")}
-    mine = lambda lead: not account or owner_of(lead) in ("", account)
+    from . import workspaces
+    mine = lambda lead: (not account or owner_of(lead) in ("", account)) and workspaces.visible(lead)
     due = []
     for d in q["due"]:
         lead = leads.get(d["lead_id"]) or {}

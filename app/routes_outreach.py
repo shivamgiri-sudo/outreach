@@ -200,9 +200,15 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
     def with_event(lead: dict, kind: str, text: str) -> list:
         return [*lead["timeline"], _event(kind, text)]
 
+    LIMITED_HIDDEN = ("workspaces", "reply_state", "import_mappings", "team", "live_sending_changed")
+
     @router.get("/api/settings")
-    def read_settings():
-        return settings()
+    def read_settings(request: Request):
+        from .workspace_guard import limited
+        shown = settings()
+        if limited(getattr(request.state, "user", None)):         # other clients' names, reply notes and team stay out
+            shown = {k: v for k, v in shown.items() if k not in LIMITED_HIDDEN}
+        return shown
 
     def live_switch(request: Request, on: bool, how: str) -> None:
         """Keep who switched real sending and when, and put it in the audit trail."""
@@ -269,14 +275,18 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
             live_switch(request, bool(changes["live_sending"]), "changed with the settings form")
         return settings()
 
+    def mine() -> list:
+        from . import workspaces
+        return workspaces.filter_rows(store.read("leads"))
+
     @router.get("/api/sending/status")
     def sending_status():
         now = datetime.now(timezone.utc)
         live = bool(get_settings(store).get("live_sending")) and bool(email_ready(store))
         return {"mode": "live" if live else "practice", "paused": sending_paused(store, now), "rates": _rates(store, now),
                 "live_blockers": live_blockers(store, BASE_URL),
-                "stuck": [l["id"] for l in store.read("leads") if (l.get("sequence") or {}).get("in_flight")],
-                "send_failed": [l["id"] for l in store.read("leads") if (l.get("sequence") or {}).get("stopped") == "send_failed"]}
+                "stuck": [l["id"] for l in mine() if (l.get("sequence") or {}).get("in_flight")],
+                "send_failed": [l["id"] for l in mine() if (l.get("sequence") or {}).get("stopped") == "send_failed"]}
 
     @router.post("/api/sending/resume")
     def resume_sending():
@@ -313,7 +323,8 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
 
     @router.get("/api/inbox")
     def inbox():
-        return list(reversed(store.read("inbox")))[:500]
+        from . import workspaces
+        return list(reversed(workspaces.filter_by_lead(store, store.read("inbox"))))[:500]
 
     @router.post("/api/leads/{lead_id}/enroll")
     def enroll(lead_id: str, body: Optional[EnrollBody] = None):
@@ -365,7 +376,8 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
                    date_to: str = Query("", alias="to"), campaign_id: str = "", kind: str = "", q: str = ""):
         """Without `page`: every row, newest first (older callers). With `page`: one page of the filtered rows."""
         if page is None:
-            return list(reversed(store.read("outbox")))
+            from . import workspaces
+            return list(reversed(workspaces.filter_by_lead(store, store.read("outbox"))))
         from . import outbox_view
         return outbox_view.search(store, status=status[:20], step=step[:120], date_from=date_from[:10], date_to=date_to[:10],
                                   campaign_id=campaign_id[:40], kind=kind[:20], q=q, page=page, size=size)

@@ -222,7 +222,7 @@ function Workspaces({ onChanged }) {
 // Team logins (owner only). Without OUTREACH_ADMIN_PASSWORD, the first login must be an owner and turns sign-in on.
 function Users() {
   const [rows, setRows] = useState(null);
-  const [form, setForm] = useState({ email: "", name: "", role: "caller", password: "" });
+  const [form, setForm] = useState({ email: "", name: "", role: "caller", password: "", workspaces: [] });
   const [message, setMessage] = useState("");
   const [spaces, setSpaces] = useState([]);
   const [isSuper, setIsSuper] = useState(true);
@@ -239,7 +239,7 @@ function Users() {
   };
   const add = (e) => {
     e.preventDefault();
-    run(() => api.addUser(form), `Login added for ${form.email}.`).then((ok) => ok && setForm({ email: "", name: "", role: "caller", password: "" }));
+    run(() => api.addUser(form), `Login added for ${form.email}.`).then((ok) => ok && setForm({ email: "", name: "", role: "caller", password: "", workspaces: [] }));
   };
   const confirm = useConfirm();
   const ask = usePrompt();
@@ -288,6 +288,13 @@ function Users() {
           <label>Password (10+ characters)<input type="password" required minLength={10} autoComplete="new-password" value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
         </div>
+        {form.role !== "owner" && spaces.length > 1 && (
+          <fieldset className="row" style={{ flexWrap: "wrap", gap: 10, border: 0, padding: 0, margin: "6px 0" }} data-testid="new-user-workspaces">
+            <legend className="sub" style={{ marginBottom: 4 }}>Workspaces this login may see (none ticked = every workspace)</legend>
+            {spaces.map((w) => <label key={w.id} className="check-row"><input type="checkbox" checked={form.workspaces.includes(w.id)}
+              onChange={(e) => setForm({ ...form, workspaces: e.target.checked ? [...form.workspaces, w.id] : form.workspaces.filter((x) => x !== w.id) })} /> {w.name}</label>)}
+          </fieldset>
+        )}
         <button className="btn" type="submit">Add login</button>
       </form>
       {message && <p className="sub" role="status">{message}</p>}

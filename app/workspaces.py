@@ -126,3 +126,35 @@ def counts(store) -> dict:
     for l in store.read("leads"):
         out[ws_of(l)] = out.get(ws_of(l), 0) + 1
     return out
+
+
+def scoped() -> bool:
+    """This request sees only some workspaces (a limited login, or a workspace picked in the menu)."""
+    selected, allowed = _SCOPE.get()
+    return selected is not None or allowed is not None
+
+
+def visible_lead_ids(store) -> Optional[set]:
+    """Ids of leads this request may see, or None when it may see everything."""
+    if not scoped():
+        return None
+    return {l["id"] for l in store.read("leads") if isinstance(l, dict) and l.get("id") and visible(l)}
+
+
+def filter_by_lead(store, rows, key: str = "lead_id") -> list:
+    """Rows tied to a lead (outbox, inbox, meetings, activities) that this request may see. In a scoped request a row
+    with no lead (an unmatched email) is hidden too, since nothing says whose it is."""
+    ids = visible_lead_ids(store)
+    rows = list(rows or [])
+    return rows if ids is None else [r for r in rows if isinstance(r, dict) and r.get(key) in ids]
+
+
+def lead_visible(store, lead_id) -> bool:
+    ids = visible_lead_ids(store)
+    return ids is None or lead_id in ids
+
+
+def only_visible_ids(store, lead_ids) -> list:
+    """The ids from a request body that this request may act on (others are dropped silently, as if missing)."""
+    ids = visible_lead_ids(store)
+    return [i for i in (lead_ids or []) if ids is None or i in ids]

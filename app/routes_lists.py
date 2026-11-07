@@ -84,7 +84,7 @@ def make_router(store, present) -> APIRouter:
 
     @router.delete("/api/lists/{list_id}")
     def remove(list_id: str, request: Request):
-        row = lists.get(store, list_id)
+        row = found(list_id)
         if not lists.delete(store, list_id):
             raise HTTPException(404, "List not found")
         audit.record(store, getattr(request.state, "user", None), "list.delete", (row or {}).get("name") or list_id,

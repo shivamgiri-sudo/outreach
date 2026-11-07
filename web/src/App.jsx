@@ -85,6 +85,10 @@ const GROUPS_ALL = [
 const BY_ID = Object.fromEntries(PAGES.map((p) => [p[0], p]));
 // Pages whose every API call is owner-only: hidden from callers and viewers, and a short note if they open the link.
 const OWNER_PAGES = new Set(["engine"]);
+// A login limited to some workspaces sees only pages built from its own workspace's leads (the server refuses the rest).
+const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "replies", "calls", "tasks", "meetings", "outbox", "templates", "setup", "help"]);
+const isLimited = (me) => me.role !== "owner" && (me.workspaces || []).length > 0;
+const pageAllowed = (me, id) => (me.role === "owner" || !OWNER_PAGES.has(id)) && (!isLimited(me) || LIMITED_PAGES.has(id));
 const GROUPS = GROUPS_ALL.map(([g, ids]) => [g, ids.filter((id) => BY_ID[id])]).filter(([, ids]) => ids.length);
 // Old links to the separate Go live page now open the checklist inside Setup.
 const ALIASES = { golive: "setup" };
@@ -317,7 +321,7 @@ function Shell() {
             <Icon name="search" size={16} /><span>Search…</span><kbd>Ctrl K</kbd>
           </button>
         )}
-        {GROUPS.map(([group, all]) => [group, all.filter((id) => me.role === "owner" || !OWNER_PAGES.has(id))]).filter(([, ids]) => ids.length).map(([group, ids]) => (
+        {GROUPS.map(([group, all]) => [group, all.filter((id) => pageAllowed(me, id))]).filter(([, ids]) => ids.length).map(([group, ids]) => (
           <div className="nav-group" key={group} role="group" aria-label={group}>
             <span className="nav-title" aria-hidden="true">{group}</span>
             {ids.map((id) => (
@@ -341,8 +345,8 @@ function Shell() {
       </nav>
       <main>
         {me.role === "viewer" && <p className="tip" role="note" data-testid="viewer-note" style={{ marginBottom: 12 }}>You have a view-only login: you can look at everything, but changes are refused. Ask an owner if you need to change something.</p>}
-        {me.role !== "owner" && OWNER_PAGES.has(page)
-          ? <><h2>{BY_ID[page][1]}</h2><p className="empty" role="status">Only an owner can open this page.</p></>
+        {!pageAllowed(me, page)
+          ? <><h2>{BY_ID[page][1]}</h2><p className="empty" role="status">{isLimited(me) ? "This page is not available for logins limited to a workspace." : "Only an owner can open this page."}</p></>
           : <Current key={`${page}:${space}`} go={go} onSetupChanged={refreshPending} role={me.role} onOpenWizard={me.role === "owner" ? () => setWizard(true) : undefined} />}
       </main>
       {phone && (

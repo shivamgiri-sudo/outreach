@@ -76,8 +76,9 @@ def make_router(store) -> APIRouter:
 
     @router.get("/api/extension/match")
     def match(request: Request, profile_url: str = Query("", max_length=2000), name: str = Query("", max_length=200), company: str = Query("", max_length=200)):
+        from . import workspaces
         lead = ext.find_lead(store, profile_url, name, company)
-        return ext.describe(store, lead, account_of(request)) if lead else ext.no_match()
+        return ext.describe(store, lead, account_of(request)) if lead and workspaces.visible(lead) else ext.no_match()
 
     @router.get("/api/extension/queue")
     def queue(request: Request):
