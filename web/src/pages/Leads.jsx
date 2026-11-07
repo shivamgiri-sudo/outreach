@@ -39,12 +39,42 @@ export function phoneMatches(phone, query) {
   return want.length >= 6 && /^[\d\s()+.-]+$/.test(String(query).trim()) && String(phone || "").replace(/\D/g, "").includes(want);
 }
 
-function matches(lead, query, stage, band, onlyIds, sources = [], inboundOnly = false, owner = "", tag = "", me = {}) {
+// "Has" filter: every ticked detail must be on the lead (tick Phone + Email for leads with both).
+export const HAS_FIELDS = [["phone", "Phone number"], ["email", "Email"], ["linkedin", "LinkedIn profile"]];
+export function hasDetail(lead, what) {
+  if (what === "phone") return Boolean(String(lead.phone || "").trim());
+  if (what === "email") return Boolean(String(lead.email || "").trim());
+  if (what === "linkedin") return /linkedin\.com\/(in|pub)\//i.test(String(lead.linkedin_url || ""));
+  return true;
+}
+
+function HasFilter({ leads, value, onChange }) {
+  const count = (w) => leads.filter((l) => hasDetail(l, w)).length;
+  const toggle = (w) => onChange(value.includes(w) ? value.filter((x) => x !== w) : [...value, w]);
+  const label = value.length ? `With ${value.map((w) => HAS_FIELDS.find(([k]) => k === w)[1].split(" ")[0].replace("Phone", "phone").replace("Email", "email")).join(" + ")}` : "Any contact details";
+  return (
+    <details className="multi-filter">
+      <summary aria-label="Filter by contact details" data-testid="has-filter">{label}</summary>
+      <div className="multi-pop" role="group" aria-label="Contact details">
+        {HAS_FIELDS.map(([w, text]) => (
+          <label key={w} className="row" style={{ margin: 0 }}>
+            <input type="checkbox" checked={value.includes(w)} onChange={() => toggle(w)} /> With {text.toLowerCase()} <small>({count(w)})</small>
+          </label>
+        ))}
+        <small className="sub">Tick more than one to see leads that have all of them (e.g. phone + email).</small>
+        {value.length > 0 && <button type="button" className="linkish" onClick={() => onChange([])}>Clear</button>}
+      </div>
+    </details>
+  );
+}
+
+function matches(lead, query, stage, band, onlyIds, sources = [], inboundOnly = false, owner = "", tag = "", me = {}, has = []) {
   const q = query.trim().toLowerCase();
   const text = [lead.company, lead.domain, lead.contact_name, lead.email, lead.phone, lead.role].join(" ").toLowerCase();
   return (!q || text.includes(q) || phoneMatches(lead.phone, q)) && (!stage || lead.stage === stage) && (!band || lead.band === band) && (!onlyIds || onlyIds.includes(lead.id))
     && (!sources.length || sources.includes(sourceId(lead))) && (!inboundOnly || Boolean(lead.inbound)) && ownerMatches(lead, owner, me)
-    && (!tag || (lead.tags || []).some((t) => String(t).toLowerCase() === tag.toLowerCase()));
+    && (!tag || (lead.tags || []).some((t) => String(t).toLowerCase() === tag.toLowerCase()))
+    && has.every((w) => hasDetail(lead, w));
 }
 
 // A short plain-English line about the campaign, ad or form behind a lead (shown as a tooltip and in the drawer).
@@ -94,6 +124,7 @@ export default function Leads({ go }) {
   const [inboundOnly, setInboundOnly] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState("");
   const [tagFilter, setTagFilter] = useState("");
+  const [hasFilter, setHasFilter] = useState([]);
   const [customFilter, setCustomFilter] = useState({});
   const { fields: customFields } = useLeadFields();
   const tableFields = customFields.filter((f) => f.show_in_table);
@@ -207,20 +238,20 @@ export default function Leads({ go }) {
 
   const readFile = (file) => file && file.text().then(setCsv);
 
-  const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me)
+  const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, hasFilter)
     && customMatches(l, customFilter, customFields)).sort(SORTS[sort]),
-    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields]);
+    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter]);
   const allTags = useMemo(() => [...new Set(leads.flatMap((l) => l.tags || []).map(String))].sort((a, b) => a.localeCompare(b)), [leads]);
-  const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, sort };
+  const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, has: hasFilter, sort };
   const applyView = (f) => {
     setQuery(f.query || ""); setStage(f.stage || ""); setBand(f.band || ""); setSrcFilter(f.sources || []); setInboundOnly(Boolean(f.inbound));
-    setOwnerFilter(f.owner || ""); setTagFilter(f.tag || ""); setSort(SORTS[f.sort] ? f.sort : "score"); setOnlyIds(null);
+    setOwnerFilter(f.owner || ""); setTagFilter(f.tag || ""); setHasFilter(Array.isArray(f.has) ? f.has : []); setSort(SORTS[f.sort] ? f.sort : "score"); setOnlyIds(null);
   };
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const safePage = Math.min(page, pages - 1);
-  useEffect(() => { setPage(0); }, [query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, pageSize, customFilter]);
+  useEffect(() => { setPage(0); }, [query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, pageSize, customFilter, hasFilter]);
   const visible = shown.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const togglePick = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const allPicked = shown.length > 0 && shown.every((l) => picked.includes(l.id));
@@ -228,8 +259,8 @@ export default function Leads({ go }) {
   const [spaces, setSpaces] = useState([]);
   useEffect(() => { api.workspaces().then(setSpaces).catch(() => {}); }, []);
 
-  const filtered = Boolean(query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter || customOn);
-  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); };
+  const filtered = Boolean(query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter || customOn || hasFilter.length);
+  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); setHasFilter([]); };
 
   const header = (key, label) => (
     <th aria-sort={sort === key ? (key === "score" ? "descending" : "ascending") : "none"}>
@@ -332,6 +363,7 @@ export default function Leads({ go }) {
             {Object.entries(BAND_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <SourceFilter leads={leads} value={srcFilter} onChange={setSrcFilter} />
+          <HasFilter leads={leads} value={hasFilter} onChange={setHasFilter} />
           <select aria-label="Filter by owner" value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
             <option value="">All owners</option>
             <option value="__me">My leads</option>
@@ -348,7 +380,7 @@ export default function Leads({ go }) {
           <span className="sub" style={{ margin: 0 }}>Showing {shown.length} of {leads.length}</span>
           <span className="dl-group">
             <DownloadButton path={exportPath("leads")} label="Download all" title="Every lead as a CSV that opens in Excel" testId="download-leads-all" />
-            {filtered && <DownloadButton path={exportPath("leads", { q: query.trim(), stage, band, source: srcFilter.join(","), inbound: inboundOnly ? "1" : "", tag: tagFilter })} body={onlyIds || ownerFilter || customOn ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
+            {filtered && <DownloadButton path={exportPath("leads", { q: query.trim(), stage, band, source: srcFilter.join(","), inbound: inboundOnly ? "1" : "", tag: tagFilter })} body={onlyIds || ownerFilter || customOn || hasFilter.length ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
               title="Only the leads that match the search and filters" testId="download-leads-shown" />}
           </span>
         </div>

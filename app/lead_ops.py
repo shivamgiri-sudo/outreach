@@ -25,7 +25,7 @@ BULK_MAX = 5000
 VIEWS_KEY = "lead_views"
 VIEWS_PER_USER = 30
 VIEW_NAME_MAX = 60
-VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort")
+VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort", "has")
 BULK_ACTIONS = ("stage", "owner", "tag_add", "tag_remove", "do_not_contact", "delete", "enroll")
 
 
@@ -306,6 +306,8 @@ def _clean_filters(raw) -> dict:
         value = raw.get(key)
         if key == "sources":
             out[key] = [str(s)[:60] for s in (value or []) if s][:30] if isinstance(value, list) else []
+        elif key == "has":                          # contact-details filter: phone / email / linkedin
+            out[key] = [w for w in ("phone", "email", "linkedin") if isinstance(value, list) and w in value]
         elif key == "inbound":
             out[key] = bool(value)
         else:

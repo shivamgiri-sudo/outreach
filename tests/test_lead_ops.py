@@ -188,3 +188,10 @@ def test_lead_list_has_last_activity_and_next_task_due(tmp_path):
     got = lead(c, "Acme")
     assert got["next_task_due"] == soon.isoformat(timespec="seconds") and got["last_activity_at"]
     assert lead(c, "Beta")["next_task_due"] is None
+
+
+def test_saved_view_keeps_the_contact_details_filter():
+    from app.lead_ops import _clean_filters
+    assert _clean_filters({"has": ["email", "linkedin", "fax"]})["has"] == ["email", "linkedin"]
+    assert _clean_filters({"has": "phone"})["has"] == []
+    assert _clean_filters({})["has"] == []
