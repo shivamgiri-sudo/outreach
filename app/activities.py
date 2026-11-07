@@ -259,8 +259,13 @@ def _when(item: dict) -> datetime:
     return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
 
 
-def task_buckets(tasks: list, now: datetime) -> dict:
-    """Open tasks split into overdue / today / upcoming / no due date (IST days)."""
+PRIORITY_RANK = {"high": 0, "normal": 1, "low": 2}
+TASK_SORTS = ("due", "priority")
+
+
+def task_buckets(tasks: list, now: datetime, sort: str = "due") -> dict:
+    """Open tasks split into overdue / today / upcoming / no due date (IST days). Each bucket is ordered by due time
+    (then priority), or with sort="priority" by priority (then due time)."""
     today = now.astimezone(IST).date()
     out = {"overdue": [], "today": [], "upcoming": [], "no_date": []}
     for t in tasks:
@@ -277,6 +282,9 @@ def task_buckets(tasks: list, now: datetime) -> dict:
             out["today"].append(t)
         else:
             out["upcoming"].append(t)
+    def key(t):
+        due, rank = t.get("due_at") or "9999", PRIORITY_RANK.get(t.get("priority"), 1)
+        return (rank, due) if sort == "priority" else (due, rank)
     for rows in out.values():
-        rows.sort(key=lambda t: (t.get("due_at") or "9999", {"high": 0, "normal": 1, "low": 2}.get(t.get("priority"), 1)))
+        rows.sort(key=key)
     return out

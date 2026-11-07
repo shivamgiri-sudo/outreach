@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from .activities import (ACTIVITY_TYPES, CALL_OUTCOMES, PRIORITIES, add_task, complete_task, ensure_task_ids,
-                         history_summary, lead_activity, log_activity, now_utc, task_buckets, team, update_task, iso)
+                         TASK_SORTS, history_summary, lead_activity, log_activity, now_utc, task_buckets, team, update_task, iso)
 
 
 class ActivityBody(BaseModel):
@@ -100,7 +100,9 @@ def make_router(store, transactional_sender=None) -> APIRouter:
         return {"activity": row, "follow_up_task": task}
 
     @router.get("/api/tasks/board")
-    def board(owner: Optional[str] = None):
+    def board(owner: Optional[str] = None, sort: str = "due"):
+        if sort not in TASK_SORTS:
+            raise HTTPException(400, "sort must be due or priority")
         ensure_task_ids(store)
         from . import workspaces
         all_leads = store.read("leads")
@@ -114,13 +116,14 @@ def make_router(store, transactional_sender=None) -> APIRouter:
             if lead.get("stage") == "unsubscribed" and t.get("source") not in ("person", "activity") and t.get("kind") not in ("review", "erasure_request"):
                 continue
             rows.append({**t, "company": lead.get("company") or lead.get("domain") or "", "lead_stage": lead.get("stage")})
-        buckets = task_buckets(rows, now_utc())
+        buckets = task_buckets(rows, now_utc(), sort)
         done = sorted((t for t in rows if t.get("status") == "done"), key=lambda t: t.get("done_at") or "", reverse=True)[:50]
         return {**buckets, "done": done, "team": team(store),
                 "counts": {k: len(v) for k, v in buckets.items()}}
 
     @router.post("/api/tasks")
     def create_task(body: TaskBody):
+        body.priority = (body.priority or "normal").strip().lower()
         if body.lead_id:
             lead_or_404(body.lead_id)
         if body.priority not in PRIORITIES:
@@ -140,9 +143,10 @@ def make_router(store, transactional_sender=None) -> APIRouter:
                 if getattr(body, key) is not None:
                     out[key] = getattr(body, key)
             if body.priority is not None:
-                if body.priority not in PRIORITIES:
+                priority = body.priority.strip().lower()
+                if priority not in PRIORITIES:
                     raise HTTPException(400, "priority must be high, normal or low")
-                out["priority"] = body.priority
+                out["priority"] = priority
             if due:
                 out["due_at"] = iso(due)
             if body.snooze_minutes:
