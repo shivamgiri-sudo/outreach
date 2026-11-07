@@ -3,10 +3,10 @@ import re
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import lead_fields
+from . import audit, landline_restore, lead_fields
 from .header_map import FIELDS, detect_format, loose_header, map_columns
 from .hygiene_report import apply_standardise, report, standardise_changes
 from .lead_import import fingerprint, read_table, run_import, trim_lists
@@ -14,6 +14,7 @@ from .hygiene import is_role_address
 from .lead_merge import merge_leads
 from .lead_model import event, now_iso
 from .privacy import hashes_for
+from .routes_exports import require_owner
 from .standardise import email_alias_key
 
 MAX_CSV_CHARS = 15_000_000
@@ -248,6 +249,35 @@ def make_router(store) -> APIRouter:
         else:
             store.update("leads", collect)
         return {"dry_run": body.dry_run, "changed": len(found), "changes": found[:200]}
+
+    @router.get("/api/hygiene/restore-landlines")
+    def restore_landlines_plan(request: Request):
+        """Owner only. Dry run: leads with an empty phone whose own data holds a landline with STD code."""
+        require_owner(request)
+        return {**landline_restore.plan(store), "last_run": landline_restore.last_run(store)}
+
+    @router.post("/api/hygiene/restore-landlines")
+    def restore_landlines_apply(request: Request):
+        require_owner(request)
+        user = getattr(request.state, "user", None)
+        result = landline_restore.apply(store, audit.actor_of(user)["name"])
+        audit.record(store, user, "hygiene.restore_landlines", f"{result['changed']} lead(s)",
+                     f"run {result['run_id']}; empty phones filled with a landline from the lead's own data")
+        return {**result, "last_run": landline_restore.last_run(store)}
+
+    @router.post("/api/hygiene/restore-landlines/{run_id}/undo")
+    def restore_landlines_undo(run_id: str, request: Request):
+        require_owner(request)
+        user = getattr(request.state, "user", None)
+        try:
+            result = landline_restore.undo(store, run_id[:20], audit.actor_of(user)["name"])
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        audit.record(store, user, "hygiene.restore_landlines_undo", f"{result['reverted']} lead(s)",
+                     f"run {run_id[:20]}; {result['kept']} left as they were (changed since)")
+        return {**result, "last_run": landline_restore.last_run(store)}
 
     @router.post("/api/hygiene/resolve-conflict")
     def resolve(body: ResolveBody):

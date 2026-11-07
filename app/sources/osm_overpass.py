@@ -6,7 +6,8 @@ Data licence: ODbL, (c) OpenStreetMap contributors; the OSM link is kept as the 
 if you add one, your contact address, as the policy asks."""
 import re
 
-from ..hygiene import normalise_email, normalise_phone
+from ..hygiene import normalise_email
+from ..lead_model import source_phone
 from ..campaign_sources import own_site
 from .base import SourceSpec, company_row, field
 
@@ -41,7 +42,7 @@ def map_element(el: dict, city: str) -> dict:
     mail = normalise_email(tags.get("email") or tags.get("contact:email"))
     row = company_row("osm_overpass", tags.get("name", ""), website=site, city=tags.get("addr:city") or city,
                       source_url=f"https://www.openstreetmap.org/{el.get('type', 'node')}/{el.get('id', '')}",
-                      phone=normalise_phone(phone) or "", company_phone=phone, phone_type="business" if phone else "",
+                      phone=source_phone(phone)[0], company_phone=phone, phone_type=source_phone(phone)[1],
                       email=mail or "", address=", ".join(tags[k] for k in ("addr:housenumber", "addr:street", "addr:city") if tags.get(k)))
     row["domain"] = domain
     return row

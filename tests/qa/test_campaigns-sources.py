@@ -115,8 +115,9 @@ def test_hiring_companies_from_realistic_org_search_and_postings():
     assert len(out["rows"]) == 30 and out["requests"] == 31 and out["failed_lookups"] == 0     # the nameless org is skipped
     rows = {r["apollo_org_id"]: r for r in out["rows"]}
     mobile, landline, sanitized, facebook = rows[orgs[0]["id"]], rows[orgs[1]["id"]], rows[orgs[2]["id"]], rows[orgs[5]["id"]]
-    assert mobile["phone"] == "+919000020000" and mobile["phone_type"] == "business"
-    assert landline["phone"] == "" and landline["company_phone"].startswith("+91 20 0712") and landline["phone_type"] == "business"
+    assert mobile["phone"] == "+919000020000" and mobile["phone_type"] == "mobile"
+    # owner rule: an office landline with its STD code is kept as the phone (calls only, never WhatsApp/SMS)
+    assert landline["phone"].startswith("+91200712") and landline["company_phone"].startswith("+91 20 0712") and landline["phone_type"] == "landline"
     assert sanitized["phone"].startswith("+919000")
     assert facebook["website"] == "" and facebook["domain"] == "" and facebook["company"]
     assert rows[orgs[8]["id"]]["domain"] == orgs[8]["primary_domain"]       # website_url null: primary_domain used
@@ -158,8 +159,8 @@ def test_places_six_searches_map_to_business_rows():
     assert io.calls[-1]["body"]["pageSize"] <= 20                             # last search asks only for what is missing
     rows = out["rows"]
     assert not any(any(s in r["domain"] for s in SOCIAL_OR_ATS) for r in rows)
-    assert all(r["phone"] == "" or r["phone"].startswith("+919") for r in rows)
-    assert all(r["phone_type"] == ("business" if r["company_phone"] else "") for r in rows)
+    assert all(r["phone"] == "" or r["phone"].startswith("+91") for r in rows)
+    assert all(r["phone_type"] == ("" if not r["phone"] else "mobile" if r["phone"].startswith("+919") else "landline") for r in rows)
     assert all(r["country"] == "IN" and r["city"] in ("Pune", "Bengaluru", "Gurugram") for r in rows)
     assert all(r["source_url"].startswith("https://maps.google.com/?cid=") for r in rows)
     closed = [p["displayName"]["text"] for q in load("places_text_search.json").values() for p in q["places"]

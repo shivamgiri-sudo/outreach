@@ -285,7 +285,7 @@ def test_places_leads_keep_the_office_phone_as_business(tmp_path):
     camp = create(c, sources={"google_places": True})
     assert run(c, camp["id"])["new"] == 1
     delta = by_company(c, "Delta Call Services")
-    assert delta["phone"] == "+919822233344" and delta["phone_type"] == "business" and delta["domain"] == "delta-calls.in"
+    assert delta["phone"] == "+919822233344" and delta["phone_type"] == "mobile" and delta["domain"] == "delta-calls.in"
     assert delta["phone_source"] == "google_places:https://maps.google.com/?cid=1" and delta.get("consent") is None
 
 

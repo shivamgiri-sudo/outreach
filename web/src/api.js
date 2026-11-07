@@ -99,6 +99,9 @@ export const api = {
   importUndo: (id) => request(`/api/import/${id}/undo`, { method: "POST" }),
   hygieneReport: () => request("/api/hygiene/report"),
   hygieneMerge: (keepId, mergeIds) => request("/api/hygiene/merge", { method: "POST", body: { keep_id: keepId, merge_ids: mergeIds } }),
+  restoreLandlinesPlan: () => request("/api/hygiene/restore-landlines"),
+  restoreLandlines: () => request("/api/hygiene/restore-landlines", { method: "POST" }),
+  undoRestoreLandlines: (runId) => request(`/api/hygiene/restore-landlines/${encodeURIComponent(runId)}/undo`, { method: "POST" }),
   hygieneStandardise: (dryRun) => request("/api/hygiene/standardise", { method: "POST", body: { dry_run: dryRun } }),
   resolveConflict: (leadId, conflictId, choice) =>
     request("/api/hygiene/resolve-conflict", { method: "POST", body: { lead_id: leadId, conflict_id: conflictId, choice } }),

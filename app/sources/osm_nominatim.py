@@ -5,7 +5,8 @@ GET https://nominatim.openstreetmap.org/search?q=&format=jsonv2&countrycodes=in&
 -> [{name, display_name, osm_type, osm_id, extratags: {website, phone, email}, address: {city}}].
 This is a light lookup (a few queries per run, cached 7 days), not a crawler. Data licence ODbL."""
 from ..campaign_sources import own_site
-from ..hygiene import normalise_email, normalise_phone
+from ..hygiene import normalise_email
+from ..lead_model import source_phone
 from .base import SourceSpec, company_row, field
 from .osm_overpass import agent
 
@@ -19,7 +20,7 @@ def map_place(p: dict, city: str) -> dict:
     phone = extra.get("phone") or extra.get("contact:phone") or ""
     row = company_row("osm_nominatim", p.get("name") or "", website=site, city=(p.get("address") or {}).get("city") or city,
                       source_url=f"https://www.openstreetmap.org/{p.get('osm_type', 'node')}/{p.get('osm_id', '')}",
-                      phone=normalise_phone(phone) or "", company_phone=phone, phone_type="business" if phone else "",
+                      phone=source_phone(phone)[0], company_phone=phone, phone_type=source_phone(phone)[1],
                       email=normalise_email(extra.get("email") or extra.get("contact:email")) or "", address=str(p.get("display_name", ""))[:300])
     row["domain"] = domain
     return row

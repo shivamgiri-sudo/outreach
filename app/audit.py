@@ -136,6 +136,7 @@ ACTIONS = {
     "prospects.unsuppress": "Prospect opt-out undone", "prospects.unsuppress_refused": "Prospect un-suppress refused (global list)",
     "prospects.erase": "Prospect erased", "prospects.edit": "Prospect edited", "prospects.settings": "Prospect sources changed",
     "prospects.enrich": "Prospect emails looked up", "prospects.spend": "Lookup budget changed",
+    "hygiene.restore_landlines": "Landlines restored to leads", "hygiene.restore_landlines_undo": "Landline restore undone",
     "export.download": "Data downloaded", "backup.download": "Backup downloaded", "backup.restore": "Backup restored",
 }
 MAX_DETAIL = 500

@@ -13,10 +13,10 @@ from datetime import datetime
 from typing import Optional
 
 from .apollo import APOLLO_BASE
-from .hygiene import business_domain, company_domain, normalise_email, normalise_phone, safe_http_url
+from .hygiene import business_domain, company_domain, normalise_email, safe_http_url
 from .job_discover import discover_jobs
 from .jobs import is_job_board, job_age_days, parse_job_postings
-from .lead_model import to_int
+from .lead_model import source_phone, to_int
 
 APOLLO_PEOPLE_SEARCH_URL = f"{APOLLO_BASE}/mixed_people/api_search"
 APOLLO_COMPANY_SEARCH_URL = f"{APOLLO_BASE}/mixed_companies/search"
@@ -123,12 +123,19 @@ def apollo_people(target: dict, key: str, post, max_results: int) -> dict:
     return {"rows": [r for r in rows if r["company"] or r["domain"]][:max_results], "requests": requests}
 
 
+def _phone_fields(phone_raw) -> dict:
+    """The company number as the lead phone: a mobile, or an office landline with its STD code (phone_type "landline":
+    callable, never WhatsApp/SMS). The number as the source gave it stays in company_phone."""
+    phone, kind = source_phone(phone_raw)
+    return {"phone": phone, "company_phone": str(phone_raw or ""), "phone_type": kind}
+
+
 def map_apollo_org(org: dict) -> dict:
     phone_raw = (org.get("primary_phone") or {}).get("number") if isinstance(org.get("primary_phone"), dict) else None
     phone_raw = phone_raw or org.get("sanitized_phone") or org.get("phone") or ""
     website, domain = own_site(org.get("website_url") or (f"https://{org['primary_domain']}" if org.get("primary_domain") else ""))
     return {"company": str(org.get("name") or "").strip(), "website": website, "domain": domain,
-            "phone": normalise_phone(phone_raw) or "", "company_phone": str(phone_raw or ""), "phone_type": "business" if phone_raw else "",
+            **_phone_fields(phone_raw),
             "city": str(org.get("city") or "").strip(), "country": _country(org.get("country")),
             "company_size": to_int(org.get("estimated_num_employees")), "apollo_org_id": str(org.get("id") or ""),
             "source": "apollo_hiring", "source_url": "https://app.apollo.io"}
@@ -223,7 +230,7 @@ def map_place(place: dict, city: str) -> dict:
     place_id = str(place.get("id") or "")
     maps_url = safe_http_url(place.get("googleMapsUri")) or (f"https://www.google.com/maps/place/?q=place_id:{place_id}" if place_id else "")
     return {"company": str((place.get("displayName") or {}).get("text") or "").strip(), "website": website, "domain": domain,
-            "phone": normalise_phone(phone_raw) or "", "company_phone": str(phone_raw), "phone_type": "business" if phone_raw else "",
+            **_phone_fields(phone_raw),
             "address": str(place.get("formattedAddress") or "")[:300], "city": city, "country": "IN",
             "google_place_id": place_id, "source": "google_places", "source_url": maps_url}
 

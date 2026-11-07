@@ -55,6 +55,21 @@ def lead_phone(raw) -> tuple:
     return (found[0], "landline") if found and found[1] == "landline" else (None, None)
 
 
+def source_phone(raw) -> tuple:
+    """(e164, kind) for a number a lead source gave (Apollo, Google Places, OpenStreetMap...), or ("", "").
+    Read with the importer's rules: a mobile is preferred; otherwise an office landline with its STD code is kept
+    (callable, never WhatsApp/SMS). "080 4000 1500" is a Bengaluru landline, not the mobile 80400 01500."""
+    if not raw:
+        return "", ""
+    from .standardise import parse_phones   # late import: standardise imports hygiene, which this module imports
+    numbers = parse_phones(str(raw))["numbers"]
+    for wanted in ("mobile", "landline"):
+        for e164, kind in numbers:
+            if kind == wanted:
+                return e164, kind
+    return "", ""
+
+
 def landline_key(lead: dict) -> Optional[str]:
     """Dedupe key for a lead whose only contact is a landline (landlines are shared by an office, so only as a last resort)."""
     phone = lead.get("phone")
