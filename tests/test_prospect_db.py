@@ -195,3 +195,34 @@ def test_schema_creation_is_idempotent_and_lazy(store, tmp_path):
     repo._ready = False
     repo.ensure()                                                                  # create-if-not-exists only: safe to repeat
     assert repo.scalar("SELECT v FROM pdb_meta WHERE k = 'schema'") == "1"
+
+
+def test_mysql_missing_indexes_are_built_online_and_a_failure_never_blocks():
+    """Fake MySQL connection: existing indexes are skipped, missing ones use INPLACE/LOCK=NONE, an error is only logged."""
+    from app.prospect_repo import INDEXES
+    sql = []
+
+    class Cur:
+        def execute(self, stmt, params=()):
+            sql.append(stmt)
+            if "CREATE INDEX p_state" in stmt:
+                raise RuntimeError("lock wait timeout")
+        def fetchall(self):
+            return [("pdb_people", "p_company"), ("PDB_PEOPLE", "FT_TITLE")]
+        def fetchone(self):
+            return None
+
+    class Conn:
+        def cursor(self):
+            return Cur()
+        def commit(self):
+            pass
+        def ping(self, reconnect=True):
+            pass
+
+    repo = MySqlRepo("mysql://u:p@127.0.0.1:3306/x", connect=lambda **kw: Conn())
+    repo.ensure()
+    made = [s for s in sql if s.startswith("CREATE INDEX")]
+    assert not any(" p_company " in s for s in made) and len(made) == len(INDEXES) - 1
+    assert all(s.endswith("ALGORITHM=INPLACE LOCK=NONE") for s in made)
+    assert not any("ft_title" in s for s in sql if s.startswith("CREATE FULLTEXT")) and repo._ready
