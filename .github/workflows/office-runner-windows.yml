@@ -5,7 +5,6 @@
 name: office-runner-windows
 
 on:
-  workflow_dispatch:
   push:
     branches: [main, ci/windows-runner]
     paths:
