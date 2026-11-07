@@ -124,7 +124,7 @@ def test_campaign_auto_enrols_into_the_industry_sequence_and_replies_hand_over(w
 
     # the first company replies yes on Wednesday: its sequence stops, the rule WhatsApps (consent came with the yes)
     w.now = ist(4, 11, 0)
-    assert w.reply(first, "Yes, interested. Please call me.")["label"] == "interested"
+    assert w.reply(first, "Yes, interested. Please WhatsApp me or call me.")["label"] == "interested"   # naming WhatsApp in the reply is WhatsApp consent
     wa = w.whatsapps(first)
     if w.full(first).get("phone"):
         assert [m["template"] for m in wa] == ["first_after_yes"] and wa[0]["status"] == "dry_run"
