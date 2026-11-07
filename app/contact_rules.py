@@ -68,3 +68,27 @@ def add_consent(lead: dict, record: dict) -> dict:
     new = {channel} if channel in CONSENT_CHANNELS else set(LEGACY_ANY) if channel in ("", "any") else set()   # e.g. a LinkedIn yes
     keep = consent_channels({"consent": lead.get("consent")}) if lead.get("consent") else set()
     return {**record, "channels": [c for c in CONSENT_CHANNELS if c in keep | new]}
+
+
+# A positive reply that names another channel ("yes, WhatsApp me on 98xxxxxxxx", "call me tomorrow")
+# is written consent for that channel too. A plain "yes, interested" covers only the channel it came on.
+import re as _re
+
+_NAMED = {
+    "whatsapp": _re.compile(r"\b(whats\s?app|wa\s+me|on\s+wa)\b", _re.I),
+    "call": _re.compile(r"\b(call\s+me|give\s+(me\s+)?a\s+(call|ring)|ring\s+me|phone\s+me|you\s+can\s+call|happy\s+to\s+(take\s+a\s+)?call)\b", _re.I),
+    "sms": _re.compile(r"\b(sms|text\s+me|send\s+(me\s+)?a\s+text)\b", _re.I),
+}
+_NEGATION = _re.compile(r"\b(no|not|don'?t|do\s+not|never|stop|without)\b[^.!?,;\n]{0,25}$", _re.I)
+
+
+def channels_named_in_reply(text: str) -> set:
+    """Channels a positive reply explicitly invites us to use, ignoring negated mentions ("no WhatsApp please")."""
+    found = set()
+    for channel, pattern in _NAMED.items():
+        for hit in pattern.finditer(text or ""):
+            before = (text or "")[max(0, hit.start() - 40):hit.start()]
+            if not _NEGATION.search(before):
+                found.add(channel)
+                break
+    return found

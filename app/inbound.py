@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from .activities import add_task, on_became_interested
-from .contact_rules import add_consent
+from .contact_rules import CONSENT_CHANNELS, add_consent, channels_named_in_reply
 from .ai import ai_classify
 from .hygiene import normalise_email, normalise_phone
 from .privacy import asks_for_erasure, record_consent
@@ -78,6 +78,9 @@ def reply_effect(lead: dict, label: str, text: str, channel: str = "email") -> t
         return changes, ("review" if label in ("interested", "not_interested", "not_now") else "logged")
     if label == "interested":
         consent = add_consent(lead, {"text": text[:500], "at": _now(), "source": f"{channel} reply", "channel": channel})
+        named = channels_named_in_reply(text) - set(consent["channels"])
+        if named:                                   # "yes, WhatsApp me" is written consent for WhatsApp too
+            consent = {**consent, "channels": [c for c in CONSENT_CHANNELS if c in set(consent["channels"]) | named]}
         return {**changes, "consent": consent, "stage": "interested"}, "applied"
     if label == "not_interested":
         return {**changes, "stage": "disqualified"}, "applied"

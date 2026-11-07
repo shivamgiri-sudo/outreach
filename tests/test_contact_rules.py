@@ -160,3 +160,24 @@ def test_email_yes_reply_is_email_consent_only(c):
     saved = next(l for l in store_of(c).read("leads") if l["id"] == acme)
     assert saved["consent"] and consent_channels(saved) == {"email"}
     assert not has_consent_for(saved, "whatsapp") and not has_consent_for(saved, "sms")
+
+
+def test_email_yes_that_names_whatsapp_or_call_is_consent_for_it(c):
+    from app.inbound import apply_reply
+    acme = lead(c)["id"]
+    patch_lead(c, acme, stage="contacted")
+    apply_reply(store_of(c), acme, "Yes interested, please WhatsApp me on 9876543210 or call me after 4.", channel="email")
+    saved = next(l for l in store_of(c).read("leads") if l["id"] == acme)
+    assert consent_channels(saved) == {"email", "whatsapp", "call"}
+    assert not has_consent_for(saved, "sms")
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("Sounds good, no WhatsApp please, email only", set()),
+    ("Yes. Don't call me, just send a text", {"sms"}),
+    ("Interested! Happy to take a call on Monday", {"call"}),
+    ("Yes, interested", set()),
+])
+def test_channels_named_in_reply_ignores_negations(text, expected):
+    from app.contact_rules import channels_named_in_reply
+    assert channels_named_in_reply(text) == expected
