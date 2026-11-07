@@ -47,27 +47,6 @@ jobs:
       - name: Install the API's Python packages
         run: python -m pip install -r requirements.txt
 
-      - name: Start a throwaway portal on 127.0.0.1:8000
-        shell: pwsh
-        run: |
-          $logs = Join-Path $env:RUNNER_TEMP 'office-runner-logs'
-          New-Item -ItemType Directory -Force -Path $logs | Out-Null
-          $password = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(24))
-          Write-Output "::add-mask::$password"
-          "OUTREACH_ADMIN_PASSWORD=$password" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
-          $env:OUTREACH_ADMIN_PASSWORD = $password
-          $env:OUTREACH_DATA_FILE = Join-Path $env:RUNNER_TEMP 'portal\store.json'
-          New-Item -ItemType Directory -Force -Path (Split-Path $env:OUTREACH_DATA_FILE) | Out-Null
-          Start-Process -FilePath python -ArgumentList '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000', '--workers', '1' `
-            -WorkingDirectory $env:GITHUB_WORKSPACE -WindowStyle Hidden `
-            -RedirectStandardOutput (Join-Path $logs 'api.out.log') -RedirectStandardError (Join-Path $logs 'api.err.log')
-          for ($i = 0; $i -lt 60; $i++) {
-            try { $s = Invoke-RestMethod http://127.0.0.1:8000/api/auth/status; if ($s.auth_required) { Write-Output 'Portal is up (login required).'; exit 0 } } catch { }
-            Start-Sleep -Seconds 1
-          }
-          Get-Content (Join-Path $logs 'api.err.log') -ErrorAction SilentlyContinue
-          throw 'The portal did not start.'
-
       - name: Install, re-install and uninstall the office runner (Windows PowerShell 5.1)
         if: matrix.shell == 'powershell'
         shell: powershell

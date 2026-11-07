@@ -87,7 +87,28 @@ function Install-Once([string]$Label, [bool]$Replace, [string]$OldRunnerId) {
   return $view.runner.id
 }
 
+function Start-Portal {
+  # In this step, not an earlier one: Actions ends a step's background processes when the step finishes.
+  $bytes = New-Object byte[] 24
+  [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+  $password = [Convert]::ToBase64String($bytes)
+  $env:OUTREACH_ADMIN_PASSWORD = $password                     # throwaway, this job only
+  $env:OUTREACH_DATA_FILE = Join-Path $LogDir 'portal-store.json'
+  if (Test-Path $env:OUTREACH_DATA_FILE) { Remove-Item -Force $env:OUTREACH_DATA_FILE }
+  if (-not $env:OUTREACH_BASE_URL) { $env:OUTREACH_BASE_URL = $Portal }
+  $script:Api = Start-Process -FilePath python -ArgumentList '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000', '--workers', '1' `
+    -WorkingDirectory (Resolve-Path (Join-Path $PSScriptRoot '..\..')) -WindowStyle Hidden -PassThru `
+    -RedirectStandardOutput (Join-Path $LogDir 'api.out.log') -RedirectStandardError (Join-Path $LogDir 'api.err.log')
+  for ($i = 0; $i -lt 60; $i++) {
+    try { if ((Invoke-RestMethod -UseBasicParsing "$Portal/api/auth/status").auth_required) { Write-Host 'Portal is up (login required).'; return } } catch { }
+    Start-Sleep -Seconds 1
+  }
+  Get-Content (Join-Path $LogDir 'api.err.log') -ErrorAction SilentlyContinue | Write-Host
+  throw 'The portal did not start.'
+}
+
 try {
+  Start-Portal
   Write-Host "Driver host: PowerShell $($PSVersionTable.PSVersion) ($($PSVersionTable.PSEdition)); one-liner host: $Shell"
   Write-Host "User: $([Security.Principal.WindowsIdentity]::GetCurrent().Name); admin: $(([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)); session: $((Get-Process -Id $PID).SessionId)"
   Step 'Log in to the throwaway portal'
@@ -118,6 +139,7 @@ try {
 } catch {
   Check $false "driver error: $($_.Exception.Message) at $($_.InvocationInfo.PositionMessage)"
 } finally {
+  if ($script:Api) { Stop-Process -Id $script:Api.Id -Force -ErrorAction SilentlyContinue }
   $runnerLog = Join-Path $Base 'logs'
   if (Test-Path $runnerLog) { Copy-Item -Recurse -Force $runnerLog (Join-Path $LogDir 'runner-logs') }
 }
