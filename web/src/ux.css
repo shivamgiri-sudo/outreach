@@ -136,3 +136,4 @@ label.pick-hit input { margin: 0; }
   .onb-label { display: none; }
   .onb-steps li.on .onb-label { display: inline; }
 }
+.ro-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }   /* wraps a form shown read-only (viewers): <fieldset disabled> */

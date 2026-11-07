@@ -7,6 +7,9 @@ let role = "owner";
 export const getRole = () => role;
 export const setRole = (r) => { role = r || "owner"; };
 export const isOwner = () => role === "owner";
+// Viewers are read only: the server refuses every change they send, so pages hide write controls behind canWrite().
+// Owner-only changes (settings, integrations, flows, sequence library...) use isOwner(), as the server's routes_auth.py.
+export const canWrite = () => role === "owner" || role === "caller";
 let canEdit = true;
 export const canEditContacts = () => canEdit;
 export const setCanEditContacts = (v) => { canEdit = v !== false; };
