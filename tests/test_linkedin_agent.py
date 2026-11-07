@@ -27,6 +27,14 @@ def test_agent_is_off_until_the_owner_switches_it_on(rig):
     assert ctl["may_connect"] and ctl["may_message"] and ctl["connections_left_today"] == 12
 
 
+def test_send_without_a_note_is_an_owner_switch_passed_to_the_agent(rig):
+    c, owner, store = rig
+    assert agent.control(store, TUE_11)["allow_no_note"] is False          # off by default: notes stay the norm
+    r = c.put("/api/linkedin-agent", json={"connect_without_note": True}, headers=bearer(owner))
+    assert r.status_code == 200 and r.json()["config"]["connect_without_note"] is True
+    assert agent.control(store, TUE_11)["allow_no_note"] is True
+
+
 def test_working_hours_and_weekends_are_respected(rig):
     c, owner, store = rig
     agent.save_config(store, {"enabled": True})

@@ -15,6 +15,7 @@ class ConfigBody(BaseModel):
     start_hour: Optional[int] = None
     end_hour: Optional[int] = None
     weekdays_only: Optional[bool] = None
+    connect_without_note: Optional[bool] = None
     gap_minutes: Optional[int] = None
     check_replies: Optional[bool] = None
     resume_account: Optional[str] = None

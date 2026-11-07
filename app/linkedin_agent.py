@@ -38,7 +38,8 @@ def _mine(rows: list, account: str) -> list:
     return [r for r in rows if (r.get("account") or "") == account]
 MAX_LOG = 400
 DEFAULTS = {"enabled": False, "weekly_connections": 80, "daily_messages": 25, "start_hour": 9, "end_hour": 18,
-            "weekdays_only": True, "gap_minutes": 6, "check_replies": False}
+            "weekdays_only": True, "gap_minutes": 6, "check_replies": False,
+            "connect_without_note": False}     # free accounts run out of connection notes each month
 LIMITS = {"weekly_connections": (1, 100), "daily_messages": (0, 100), "start_hour": (0, 23), "end_hour": (1, 24), "gap_minutes": (3, 60)}
 ACTION_KINDS = ("connect", "message")
 KINDS = ("connect", "message", "accepted", "replied", "error", "paused", "started")
@@ -54,7 +55,7 @@ def save_config(store, changes: dict) -> dict:
     for key, value in changes.items():
         if key not in DEFAULTS or value is None:
             continue
-        if key in ("enabled", "weekdays_only", "check_replies"):
+        if key in ("enabled", "weekdays_only", "check_replies", "connect_without_note"):
             clean[key] = bool(value)
         else:
             low, high = LIMITS[key]
@@ -117,7 +118,7 @@ def control(store, now: Optional[datetime] = None, account: str = "") -> dict:
     active = cfg["enabled"] and in_hours and not hold
     return {"enabled": cfg["enabled"], "active_now": active, "why_not": why, "wait_seconds": wait,
             "may_connect": active and left_connect > 0 and wait == 0, "may_message": active and left_message > 0 and wait == 0,
-            "connections_left_today": left_connect, "messages_left_today": left_message, "check_replies": cfg["check_replies"],
+            "connections_left_today": left_connect, "messages_left_today": left_message, "check_replies": cfg["check_replies"], "allow_no_note": cfg["connect_without_note"],
             "gap_minutes": cfg["gap_minutes"], "counts": c, "account": account}
 
 

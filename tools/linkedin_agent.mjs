@@ -190,6 +190,7 @@ async function findConnect(page, name) {
   return null;
 }
 
+let portalAllowsNoNote = false;                   // the portal switch "send without a note" (control.allow_no_note)
 async function doConnect(page, lead, note) {
   if (!tokens(lead.name).length) return { done: false, why: "the lead has no name, so the right Connect button cannot be told apart" };
   if (await isPending(page, lead.name)) return { done: true, already: "pending" };
@@ -206,9 +207,9 @@ async function doConnect(page, lead, note) {
     if (note.length > 300) return { done: false, why: "the note is longer than 300 characters" };
     await addNote.click(); await sleep(500);
     await dialog.locator("textarea").first().fill(note);
-  } else if (!ALLOW_NO_NOTE) {
+  } else if (!(ALLOW_NO_NOTE || portalAllowsNoNote)) {
     await page.keyboard.press("Escape");
-    return { done: false, why: "LinkedIn will not let this account add a note (monthly limit). Use --allow-no-note to send without one", stopNotes: true };
+    return { done: false, why: "LinkedIn will not let this account add a note (monthly limit). Tick \"send without a note\" under Limits to send it anyway", stopNotes: true };
   }
   await sleep(300);
   await dialog.getByRole("button", { name: /^send( invitation| now)?$|^send without a note$/i }).first().click();
@@ -265,11 +266,12 @@ async function oneCycle(page, state) {
       log(`accepted: ${w.name}`);
     }
   }                                    // looking at profiles is a read: it does not use up this cycle's action
+  portalAllowsNoNote = !!ctl.allow_no_note;
   if (ctl.wait_seconds > 0) return { idle: `waiting ${ctl.wait_seconds}s between actions` };
   for (const item of queue.due) {
     if (!item.profile_url) continue;
     const kind = item.kind === "connect" ? "connect" : "message";
-    if ((kind === "connect" && (!ctl.may_connect || state.noNotes && !ALLOW_NO_NOTE)) || (kind === "message" && !ctl.may_message)) continue;
+    if ((kind === "connect" && (!ctl.may_connect || state.noNotes && !(ALLOW_NO_NOTE || portalAllowsNoNote))) || (kind === "message" && !ctl.may_message)) continue;
     const info = await api(`/api/extension/match?profile_url=${encodeURIComponent(item.profile_url)}`);
     if (!info.can_send || !info.message) { log(`skip ${item.name}: ${info.reason}`); continue; }
     if (!DRY && !(await claim(item.lead_id))) continue;

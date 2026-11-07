@@ -173,6 +173,7 @@ function LinkedInAgent({ onMessage }) {
           <label>End hour (India time)<input type="number" min="1" max="24" value={form.end_hour} onChange={num("end_hour")} /></label>
         </div>
         <label className="check-row"><input type="checkbox" checked={form.weekdays_only} onChange={(e) => setForm({ ...form, weekdays_only: e.target.checked })} /> Monday to Friday only</label>
+        <label className="check-row"><input type="checkbox" checked={!!form.connect_without_note} onChange={(e) => setForm({ ...form, connect_without_note: e.target.checked })} /> When LinkedIn will not allow a note (free accounts get only a few a month), send the connection request without one</label>
         <button className="btn" style={{ marginTop: 8 }} onClick={() => save({ ...form, enabled: undefined }, "Limits saved.")}>Save limits</button>
       </details>
       {st.log.length > 0 && (
