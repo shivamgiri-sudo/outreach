@@ -165,7 +165,7 @@ def check_ps1_structure(text):
             stack.pop()
         i += 1
     assert not stack, f"unclosed {stack}"
-    for needle in ("winget.exe install --id OpenJS.NodeJS.LTS", "SHASUMS256.txt", "Get-FileHash", "bundle.zip?code=", "ci --omit=dev",
+    for needle in ("install --id OpenJS.NodeJS.LTS", "WaitForExit(300000)", "SHASUMS256.txt", "Get-FileHash", "bundle.zip?code=", "ci --omit=dev",
                    "playwright install chromium", "--pair-only", "Register-ScheduledTask", "New-ScheduledTaskTrigger -AtLogOn",
                    "MCN_NO_AUTOSTART", "uninstall.ps1", "icacls.exe"):
         assert needle in text, needle

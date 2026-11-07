@@ -52,7 +52,14 @@ try {
   $node = Find-Node
   if (-not $node -and (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
     Say 'Installing Node.js LTS with winget (Windows may ask for permission)...'
-    & winget.exe install --id OpenJS.NodeJS.LTS --exact --silent --accept-package-agreements --accept-source-agreements | Out-Host
+    # Bounded: a winget/MSI install can wait forever (another install running, a permission prompt nobody sees); after
+    # 5 minutes the installer goes on with the portable Node.js zip below instead of hanging.
+    $wingetArgs = 'install --id OpenJS.NodeJS.LTS --exact --silent --accept-package-agreements --accept-source-agreements'
+    $wg = Start-Process -FilePath 'winget.exe' -ArgumentList $wingetArgs -NoNewWindow -PassThru
+    if (-not $wg.WaitForExit(300000)) {
+      try { $wg.Kill() } catch { }
+      Say 'winget did not finish within 5 minutes; using the Node.js download from nodejs.org instead.'
+    }
     $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
     $node = Find-Node
   }

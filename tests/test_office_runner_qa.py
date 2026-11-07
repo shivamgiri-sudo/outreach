@@ -421,7 +421,7 @@ def test_install_ps1_static_check_https_base_only_the_short_code_and_every_step_
     assert "$Portal = 'https://outreach.example.com'" in ps and "http://" not in ps.replace("http://www.apple.com", "")
     assert ps.count(code) == 1 and "__PORTAL__" not in ps and "__CODE__" not in ps
     assert not re.search(r"mcn[rx]_|password|secret", ps, re.I)
-    steps = ["icacls.exe", "Find-Node", "winget.exe install", "SHASUMS256.txt", "Stop-ScheduledTask", "bundle.zip?code=$Code",
+    steps = ["icacls.exe", "Find-Node", "OpenJS.NodeJS.LTS", "SHASUMS256.txt", "Stop-ScheduledTask", "bundle.zip?code=$Code",
              "ci --omit=dev", "playwright install chromium", "--pair-only", "uninstall.ps1", "Register-ScheduledTask", "Start-ScheduledTask"]
     body = ps[ps.index("\ntry {"):]                                                   # after the header comments
     at = [body.index(s) for s in steps]
