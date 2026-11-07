@@ -1,6 +1,7 @@
 // Owner tab of Prospect search: lookup spend and budget, provider cost/order, which sources may be stored, import, sync.
 import { useEffect, useState } from "react";
 import { prospects } from "../prospectsApi.js";
+import { useConfirm } from "../Dialog.jsx";
 
 function Spend() {
   const [d, setD] = useState(null);
@@ -96,14 +97,15 @@ function OptOuts({ version, onChanged }) {
   const [rows, setRows] = useState(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState("");
+  const confirm = useConfirm();
   const load = () => prospects.suppressions().then((r) => setRows(r.rows)).catch((e) => setMsg(e.message));
   useEffect(() => { load(); }, [version]);
   const undo = async (value) => {
-    if (!window.confirm(`Allow ${value} back into searches, exports and lead adds?`)) return;
+    if (!(await confirm({ title: "Undo opt-out", message: `Allow ${value} back into searches, exports and lead adds?`, confirmLabel: "Un-suppress" }))) return;
     setBusy(value); setMsg("");
     try {
       const r = await prospects.unsuppress(value);
-      setMsg(`Un-suppressed ${r.unsuppressed}: ${r.people} people back` + (r.kept ? `, ${r.kept} kept suppressed (do-not-contact, unsubscribe or erased).` : "."));
+      setMsg(`Un-suppressed ${r.unsuppressed}: ${r.people} ${r.people === 1 ? "person" : "people"} back` + (r.kept ? `, ${r.kept} kept suppressed (do-not-contact, unsubscribe or erased).` : "."));
       load(); onChanged?.();
     } catch (e) { setMsg(e.message); } finally { setBusy(""); }
   };
