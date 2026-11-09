@@ -25,7 +25,7 @@ BULK_MAX = 5000
 VIEWS_KEY = "lead_views"
 VIEWS_PER_USER = 30
 VIEW_NAME_MAX = 60
-VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort", "has")
+VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort", "has", "li_stage")
 BULK_ACTIONS = ("stage", "owner", "tag_add", "tag_remove", "do_not_contact", "delete", "enroll")
 
 
@@ -317,6 +317,9 @@ def _clean_filters(raw) -> dict:
             out[key] = [w for w in ("phone", "email", "linkedin") if isinstance(value, list) and w in value]
         elif key == "inbound":
             out[key] = bool(value)
+        elif key == "li_stage":                      # LinkedIn stage filter (app/linkedin_stages.FILTER_KEYS)
+            from .linkedin_stages import FILTER_KEYS
+            out[key] = value if value in FILTER_KEYS else ""
         else:
             out[key] = str(value or "")[:120]
     return out

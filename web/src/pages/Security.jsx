@@ -7,7 +7,7 @@ import { useConfirm } from "../Dialog.jsx";
 // history. Workspace admins: the history of their own workspaces' logins only (the server filters it too).
 const EMPTY = { person: "", result: "", event: "", date_from: "", date_to: "" };
 const PAGE = 50;
-const EVENTS = { login: "Sign in", logout: "Sign out", password_reset: "Password reset", password_reset_request: "Reset link asked" };
+const EVENTS = { login: "Sign in", logout: "Sign out", password_reset: "Password reset", password_reset_request: "Reset link asked", password_change: "Password changed" };
 const RESULTS = { success: ["ok", "Success"], failure: ["hot", "Failed"], pending: ["warn", "Waiting for code"] };
 
 function TwoStepPolicy() {

@@ -178,8 +178,10 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         caller = client_ip(request)
         if limiter.locked(caller):
             raise HTTPException(429, "Too many wrong passwords. Wait a minute and try again.")
+        from . import login_log
         if not stored or not auth.check_password(stored.get("password_hash", ""), body.current[:auth.MAX_PASSWORD_CHARS]):
             limiter.record_failure(caller)
+            login_log.record(store, request, "password_change", user.get("email", ""), "failure", "current password not right")
             raise HTTPException(400, "Your current password is not right.")
         limiter.reset(caller)
         check_password(body.new)
@@ -188,6 +190,7 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         changes = {"password_hash": auth.hash_password(body.new), "password_changed_at": auth.now_iso()}
         store.update("settings", lambda s: {**s, "users": [{**u, **changes} if isinstance(u, dict) and u.get("email") == stored["email"] else u
                                                            for u in s.get("users") or []]})
+        login_log.record(store, request, "password_change", stored["email"], "success")
         from . import audit
         audit.record(store, user, "user.change", stored["email"], "changed own password")
         return {"ok": True}

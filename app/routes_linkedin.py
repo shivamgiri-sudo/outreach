@@ -154,7 +154,8 @@ def make_router(store) -> APIRouter:
                                   {"step": f"LinkedIn step {body.step}"}, provenance.linkedin_enrolment(lead), "linkedin",
                                   hours=provenance.HOURS_PERSON)
         try:
-            return li.mark_sent(store, lead_id, body.step, origin=origin)
+            from .routes_extension import _with_ai_note
+            return li.mark_sent(store, lead_id, body.step, origin=_with_ai_note(store, lead, body.step, origin))
         except LookupError as exc:
             raise HTTPException(404, str(exc))
         except ValueError as exc:

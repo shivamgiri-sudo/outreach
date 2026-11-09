@@ -23,14 +23,17 @@ def _linkedin(store, lead: dict, settings: dict, tasks: list) -> Optional[dict]:
     state = lead.get("linkedin_seq")
     if not state:
         return None
-    sent_at = {}
+    sent_at, ai_steps = {}, {}
     for e in lead.get("timeline") or []:
         text = str(e.get("text") or "")
         if e.get("kind") == "linkedin" and text.startswith("LinkedIn step ") and text.endswith(" sent"):
             try:
-                sent_at[int(text.split()[2])] = _t(e.get("at"))
+                n = int(text.split()[2])
             except (ValueError, IndexError):
                 continue
+            sent_at[n] = _t(e.get("at"))
+            if (e.get("origin") or {}).get("ai_drafted"):
+                ai_steps[n] = (e.get("origin") or {}).get("ai_approved_by") or "a person"
     agent_rows = [(r, _t(r.get("at"))) for r in linkedin_agent.log_rows(store) if r.get("lead_id") == lead["id"]]
 
     def by(at):
@@ -48,7 +51,7 @@ def _linkedin(store, lead: dict, settings: dict, tasks: list) -> Optional[dict]:
         row = {"n": s["n"], "kind": s["kind"], "purpose": s.get("purpose", "")}
         if s["n"] in done:
             at = sent_at.get(s["n"])
-            row.update(state="done", at=_iso(at), by=by(at))
+            row.update(state="done", at=_iso(at), by=by(at), **({"note": f"AI-drafted note, approved by {ai_steps[s['n']]}"} if s["n"] in ai_steps else {}))
         elif s.get("needs") and not settings.get(s["needs"]):
             row.update(state="skipped", note="Skipped until a case-study link is set")
         elif s["n"] in open_task:

@@ -147,7 +147,8 @@ def make_router(store) -> APIRouter:
             refuse(info)
         if info["message"]["step"] != body.step:
             refuse(info, f"The step to send now is {info['message']['step']}, not {body.step}.")
-        li.mark_sent(store, lead_id, body.step, origin=_agent_origin(store, lead_or_404(lead_id), body.step, account_of(request), request))
+        li.mark_sent(store, lead_id, body.step, origin=_with_ai_note(store, lead_or_404(lead_id), body.step,
+                                                                     _agent_origin(store, lead_or_404(lead_id), body.step, account_of(request), request)))
         return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id))}
 
     @router.post("/api/extension/leads/{lead_id}/accepted")
@@ -208,6 +209,13 @@ def make_router(store) -> APIRouter:
             raise HTTPException(exc.status, exc.message)
 
     return router
+
+
+def _with_ai_note(store, lead: dict, step: int, origin: dict) -> dict:
+    """Step 1 with a connection note that was AI-drafted: say so, and who approved it (saved it on the LinkedIn page)."""
+    from .opener_lab import ai_note
+    who = ai_note(store.read("settings"), lead) if step == 1 else ""
+    return {**origin, "ai_drafted": True, "ai_approved_by": who} if who else origin
 
 
 def _agent_origin(store, lead: dict, step: int, account: str, request: Request) -> dict:

@@ -122,7 +122,34 @@ def candidates(store, context: str = "", n: int = 4, transport=post_json) -> dic
         notes = BUILT_IN[:n]
     out = [{"text": t[:600], **score_note(t)} for t in notes[:n] if t]
     out.sort(key=lambda r: -r["score"])
+    if source == "claude":                       # remembered so a note saved from (an edit of) one is marked AI-drafted
+        keep = [_norm(r["text"]) for r in out]
+        store.update("settings", lambda s: {**s, AI_KEY: [*(s.get(AI_KEY) or []), *keep][-AI_KEEP:]})
     return {"source": source, "candidates": out}
+
+
+AI_KEY, AI_KEEP = "linkedin_ai_note_candidates", 40
+
+
+def _norm(text: str) -> str:
+    return " ".join(str(text or "").lower().split())
+
+
+def _from_ai(store, text: str) -> bool:
+    """The saved note is an AI candidate or a light edit of one (same opening and mostly the same words)."""
+    mine = _norm(text)
+    words = set(mine.split())
+    for cand in store.read("settings").get(AI_KEY) or []:
+        theirs = set(cand.split())
+        if mine == cand or (mine[:40] == cand[:40]) or (words and len(words & theirs) / max(len(words | theirs), 1) >= 0.7):
+            return True
+    return False
+
+
+def ai_note(settings: dict, lead: dict) -> str:
+    """Who approved the AI-drafted connection note this lead gets ("" when it is not AI-drafted)."""
+    variant = (lead.get("linkedin_seq") or {}).get("variant") or "A"
+    return ((settings.get("linkedin_connect_variants") or {}).get("ai") or {}).get(variant, "")
 
 
 def current(store) -> dict:
@@ -145,6 +172,11 @@ def save(store, a: Optional[str], b: Optional[str], by: str, stamp: str) -> dict
         changes[key] = " ".join(text.split())
     if not changes:
         raise ValueError("Nothing to save.")
-    store.update("settings", lambda s: {**s, "linkedin_connect_variants": {**(s.get("linkedin_connect_variants") or {}), **changes,
-                                                                           "changed_at": stamp, "changed_by": by}})
+    ai_by = {k: by for k, t in changes.items() if _from_ai(store, t)}
+
+    def apply(s):
+        old = s.get("linkedin_connect_variants") or {}
+        ai = {k: v for k, v in (old.get("ai") or {}).items() if k not in changes}
+        return {**s, "linkedin_connect_variants": {**old, **changes, "ai": {**ai, **ai_by}, "changed_at": stamp, "changed_by": by}}
+    store.update("settings", apply)
     return current(store)

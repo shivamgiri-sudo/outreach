@@ -246,10 +246,10 @@ export default function Leads({ go }) {
     && customMatches(l, customFilter, customFields) && liStageMatches(l, liStage)).sort(SORTS[sort]),
     [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter, liStage]);
   const allTags = useMemo(() => [...new Set(leads.flatMap((l) => l.tags || []).map(String))].sort((a, b) => a.localeCompare(b)), [leads]);
-  const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, has: hasFilter, sort };
+  const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, has: hasFilter, li_stage: liStage, sort };
   const applyView = (f) => {
     setQuery(f.query || ""); setStage(f.stage || ""); setBand(f.band || ""); setSrcFilter(f.sources || []); setInboundOnly(Boolean(f.inbound));
-    setOwnerFilter(f.owner || ""); setTagFilter(f.tag || ""); setHasFilter(Array.isArray(f.has) ? f.has : []); setSort(SORTS[f.sort] ? f.sort : "score"); setOnlyIds(null);
+    setOwnerFilter(f.owner || ""); setTagFilter(f.tag || ""); setHasFilter(Array.isArray(f.has) ? f.has : []); setLiStage(f.li_stage || ""); setSort(SORTS[f.sort] ? f.sort : "score"); setOnlyIds(null);
   };
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
