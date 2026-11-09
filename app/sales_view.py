@@ -13,7 +13,7 @@ from typing import Optional
 
 from .replies import is_person_reply
 from .sales_calc import FLead
-from .sales_model import (DATE_KEYS, ENGAGEMENTS, FITS, INQUIRY, RECYCLED, STAGES, WON, clean_status, money, parse_dt, stage_index)
+from .sales_model import DATE_KEYS, ENGAGEMENTS, FITS, INQUIRY, STAGES, WON, clean_status, money, parse_dt
 from .source_names import canonical, label_of
 
 HUMAN_KINDS = ("call", "email", "linkedin", "whatsapp", "sms")
@@ -113,15 +113,13 @@ def funnel_lead(lead: dict, auto: Optional[dict] = None) -> FLead:
         last_activity = last
     fit = str(s.get("fit") or "").strip().upper()[:1]
     eng = str(s.get("engagement") or "").strip().capitalize()
-    st = stage_index(status)
-    prob = s.get("prob") if s.get("prob") is not None else None
     return FLead(
         id=lead.get("id") or "", created=created, company=lead.get("company") or lead.get("contact_name") or "",
         contact=lead.get("contact_name") or "", industry=str(s.get("industry") or lead.get("sector") or ""), service=str(s.get("service") or ""),
         source=source_of(lead), owner=str(lead.get("owner") or ""), fit=fit if fit in FITS else "", engagement=eng if eng in ENGAGEMENTS else "",
         status=status, first_response=first_response, dates=dates, closed=closed, recycled=parse_dt(sd.get("recycled")),
         lost_stage=str(s.get("lost_stage") or ""), lost_reason=str(s.get("lost_reason") or ""), est=money(s.get("est_value")),
-        prob=prob if prob is not None else (0 if status == RECYCLED else 0), last_activity=last_activity,
+        prob=s.get("prob") or 0, last_activity=last_activity,
         closed_value=money(s.get("closed_value")), tenure=money(s.get("tenure")), tcv=money(s.get("tcv")) or (
             money(s.get("closed_value")) * (money(s.get("tenure")) or 12) if status == WON and money(s.get("closed_value")) else 0),
         backfilled=[x.strip() for x in str(s.get("backfilled") if isinstance(s.get("backfilled"), str) else ",".join(s.get("backfilled") or [])).split(",") if x.strip()],

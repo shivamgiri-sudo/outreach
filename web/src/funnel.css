@@ -1,0 +1,57 @@
+/* Sales funnel page + the lead drawer's sales stage panel. Uses the app's colour tokens, so dark mode follows. */
+.g3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.sf-controls { margin-bottom: 14px; display: grid; gap: 10px; }
+.sf-controls label { margin: 0; }
+.sf-controls input[type="date"] { width: auto; }
+.sf-presets .btn { padding: 6px 12px; min-height: 34px; }
+.sf-multis { gap: 8px; }
+.sf-strip { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin: 0 0 14px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); font-size: 13px; color: var(--muted); }
+.sf-live { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent); }
+.sf-live.bad { background: #dc2626; box-shadow: 0 0 0 4px rgba(220,38,38,.2); }
+.sf-tiles { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); margin-bottom: 20px; }
+.sf-tile { text-align: left; cursor: pointer; display: grid; gap: 2px; align-content: start; font: inherit; color: inherit; }
+.sf-tile:hover { border-color: var(--brand); }
+.sf-tile .sf-tile-label { color: var(--muted); font-weight: 600; font-size: 13px; }
+.sf-tile b { font-size: 28px; margin-top: 2px; overflow-wrap: anywhere; }
+.sf-change { font-weight: 700; }
+.sf-change.up, .sf-up { color: var(--ok); } .sf-change.down, .sf-down { color: var(--hot); } .sf-change.flat { color: var(--muted); }
+section[aria-labelledby^="sf-h-"] { margin: 26px 0 0; }
+section[aria-labelledby^="sf-h-"] > h3 { margin: 0 0 12px; font-size: 18px; }
+.sf-funnel { display: grid; gap: 8px; }
+.sf-funnel-row { display: grid; grid-template-columns: 78px minmax(0, 1fr) 54px; gap: 10px; align-items: center; }
+.sf-funnel-label { font-weight: 600; font-size: 13px; }
+.sf-funnel-bar { position: relative; display: block; height: 30px; padding: 0; border: 0; border-radius: 8px; background: var(--bg); cursor: pointer; text-align: left; }
+.sf-funnel-bar:disabled { cursor: default; }
+.sf-funnel-fill { position: absolute; inset: 0 auto 0 0; border-radius: 8px; transition: width .5s ease; }
+.sf-funnel-bar b { position: relative; padding-left: 10px; line-height: 30px; color: var(--ink); mix-blend-mode: normal; text-shadow: 0 0 3px var(--panel), 0 0 3px var(--panel); }
+.sf-funnel-conv { text-align: right; color: var(--muted); font-weight: 700; }
+.sf-pairs { display: grid; gap: 8px; }
+.sf-pair { display: grid; grid-template-columns: 112px minmax(0, 1fr) 120px; gap: 10px; align-items: center; border: 0; background: none; padding: 4px 0; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.sf-pair:disabled { cursor: default; opacity: .75; }
+.sf-pair-bars { position: relative; height: 22px; background: var(--bg); border-radius: 6px; overflow: hidden; }
+.sf-pair-fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; transition: width .5s ease; opacity: .45; }
+.sf-pair-fill.weighted { opacity: 1; background: var(--brand); height: 8px; top: 7px; border-radius: 4px; }
+.sf-pair-num { display: grid; text-align: right; }
+.sf-pair-num small { color: var(--muted); }
+.sf-key { display: inline-block; width: 12px; height: 8px; border-radius: 3px; margin: 0 4px 0 8px; vertical-align: middle; }
+.sf-key.weighted { background: var(--brand); }
+.sf-pair-nums { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.sf-pair-nums > div { display: grid; }
+.sf-pair-nums b { font-size: 24px; line-height: 1.2; }
+.sf-pair-nums small { color: var(--muted); }
+.sf-gauge { text-align: center; max-width: 280px; margin: 0 auto; }
+.sf-grid td { min-width: 70px; }
+.card h4 { margin: 0 0 10px; }
+.table-card-inner table { margin-top: 4px; }
+@media (max-width: 760px) {
+  .sf-tile b { font-size: 22px; }
+  .sf-funnel-row { grid-template-columns: 62px minmax(0, 1fr) 46px; }
+  .sf-pair { grid-template-columns: 90px minmax(0, 1fr); } .sf-pair-num { grid-column: 1 / -1; text-align: left; grid-auto-flow: column; justify-content: space-between; }
+  .sf-controls input[type="date"] { width: 100%; }
+  [data-testid="sales-funnel"] .card { padding: 14px; }
+}
+/* lead drawer: sales stage panel */
+.ls-panel { margin: 14px 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.ls-panel h3 { margin: 0 0 6px; }
+.ls-panel .ls-grid { display: grid; gap: 8px 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
+.ls-history { margin: 8px 0 0; padding-left: 16px; font-size: 13px; }

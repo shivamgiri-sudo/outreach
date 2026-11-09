@@ -186,11 +186,13 @@ def compute(all_leads: list, now, from_date: str = "", to_date: str = "", filter
 
     # 6 Funnel leakage and lost reasons (cohort leads lost by the To Date)
     lost = [l for l in cohort if l.status == LOST and l.closed and l.closed <= end]
-    leakage = {}
+    leakage, cells = {}, {}
     for l in lost:
         st, rs = l.lost_stage or "Unknown", l.lost_reason or "Not given"
         leakage.setdefault(st, {})
         leakage[st][rs] = leakage[st].get(rs, 0) + 1
+        cells.setdefault((st, rs), []).append(l.id)
+    leakage_cells = [{"stage": st, "reason": rs, "count": len(ids), "ids": ids} for (st, rs), ids in sorted(cells.items())]
 
     # 7 / 8 Speed to lead and SLA
     with_response = [l for l in cohort if l.first_response and l.created and l.first_response <= end]
@@ -317,7 +319,7 @@ def compute(all_leads: list, now, from_date: str = "", to_date: str = "", filter
         "range": {"from": rng["from"], "to": rng["to"], "label": rng["label"], "previous": {"from": prev["from"], "to": prev["to"]}},
         "filters": {"sources": distinct("source"), "industries": distinct("industry"), "services": distinct("service"), "owners": distinct("owner")},
         "status": {"total": len(leads), "updatedToday": sum(1 for l in leads if l.last_activity and ist_day(l.last_activity) == today)},
-        "snapshot": snapshot, "funnel": stages, "conversions": conversions, "leakage": leakage, "lost": {"count": len(lost), "ids": [l.id for l in lost]},
+        "snapshot": snapshot, "funnel": stages, "conversions": conversions, "leakage": leakage, "leakageCells": leakage_cells, "lost": {"count": len(lost), "ids": [l.id for l in lost]},
         "speed": speed, "sla": sla_out, "stalled": {"total": len(stalled), "ids": [b["id"] for b in stalled], "rows": stalled[:200]},
         "pipeline": pipeline, "coverage": coverage, "velocity": velocity, "cycle": cycle, "sources": source_rows, "scoreGrid": grid,
         "owners": owner_rows, "recycled": {"count": len(recycled), "byReason": reasons, "byAge": ages, "ids": [l.id for l in recycled]},

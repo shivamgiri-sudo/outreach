@@ -13,6 +13,7 @@ import SequencePicker from "./sequences/SequencePicker.jsx";
 import { useAlert, useConfirm } from "../Dialog.jsx";
 import LeadFlows from "./flows/LeadFlows.jsx";
 import LeadStage from "./LeadStage.jsx";
+import LeadSales from "./LeadSales.jsx";
 import { EditDetails, InlineForm, LeadOrigin, PrivacyActions, SIGNAL_LABELS, linkedinDrafts, replyMeaning, sequenceStatus } from "./LeadDrawerParts.jsx";
 import LeadAssign from "./LeadAssign.jsx";
 import LinkedInAccountPick from "./LinkedInAccountPick.jsx";
@@ -110,6 +111,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
         {s.pitch && <p style={{ margin: "6px 0 0" }}><b>What to say:</b> {s.pitch}</p>}
       </div>
       <LeadStage lead={lead} onLead={setLead} onError={setError} />
+      <LeadSales lead={lead} onChanged={load} />
       <LeadPlan lead={lead} />
       {/* SLOT: overview panels (LeadOwner, LeadTags, OtherContacts …) — one line each */}
       <LeadConsent lead={lead} />
