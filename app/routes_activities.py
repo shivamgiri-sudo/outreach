@@ -204,8 +204,13 @@ def make_router(store, transactional_sender=None) -> APIRouter:
         return run_reminders(store, now_utc(), transactional_sender or make_transactional_sender(store))
 
     @router.get("/api/team")
-    def get_team():
+    def get_team(request: Request):
         settings = store.read("settings")
+        from . import accounts
+        user = getattr(request.state, "user", None)
+        if accounts.is_client(user):          # a client company's team is its own logins, never Mas Callnet's staff
+            aid = accounts.of_user(user)
+            return {"caller_name": (accounts.find(store, aid) or {}).get("name") or "Sales team", "team": team(store), "notify_email": False}
         return {"caller_name": settings.get("caller_name") or "Sales team", "team": team(store), "notify_email": bool(settings.get("notify_email"))}
 
     @router.put("/api/team")
@@ -224,6 +229,6 @@ def make_router(store, transactional_sender=None) -> APIRouter:
         from . import audit_settings
         with audit_settings.watch(store, request, "Team"):
             store.update("settings", lambda s: {**s, **changes})
-        return get_team()
+        return get_team(request)
 
     return router

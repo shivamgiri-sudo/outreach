@@ -16,6 +16,7 @@ import Connections from "./setup/Connections.jsx";
 import OwnPassword from "./setup/OwnPassword.jsx";
 import Team from "./setup/Team.jsx";
 import Workspaces from "./setup/Workspaces.jsx";
+import Accounts from "./setup/Accounts.jsx";
 import "../setup.css";
 
 const OWNER = ["owner"];
@@ -30,6 +31,7 @@ const GROUPS = [
     ["scoring", "Lead scoring", OWNER, "How each lead's score is worked out, so the best leads come first."],
   ]],
   ["Team & access", [
+    ["accounts", "Accounts", OWNER, "One account per client company: its workspaces, logins, limits and sending identity."],
     ["workspaces", "Workspaces", ADMINS, "One workspace per client keeps their leads, lists and numbers apart."],
     ["members", "Team members", ADMINS, "Who can sign in, what each role may do and which workspaces they see."],
     ["security", "Security", ADMINS, "Two-step login for the team and the history of every sign-in."],
@@ -118,6 +120,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
           {section === "backup" && <><p><GuideButton keys="app:backup" label="How do backups work?" testId="backup-guide" /></p><BackupRestore /></>}
           {section === "audit" && <AuditLog />}
           {section === "health" && <SystemHealth />}
+          {section === "accounts" && <Accounts />}
           {section === "workspaces" && <Workspaces owner={role === "owner"} />}
           {section === "members" && <Team workspaceAdmin={role === "admin"} />}
           {section === "scoring" && <ScoringCard />}

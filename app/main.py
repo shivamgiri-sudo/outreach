@@ -244,6 +244,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                        allow_methods=["*"], allow_headers=["*"], expose_headers=["X-Renewed-Token"])
     store = open_store(data_file)
     app.state.store = store
+    from . import accounts as accounts_mod
+    accounts_mod.migrate(store)               # existing data becomes account "mcn" (settings only; idempotent)
     ensure_cutover(store)                     # signed unsubscribe links start now; older unsigned ones get 60 days
     source_names.backfill(store)              # adds source_id next to source on older leads (idempotent, never rewrites source)
 
@@ -375,10 +377,15 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         erased = set(store.read("suppressed_hashes"))
         blocked = set(store.read("suppressed"))      # do-not-contact list, as the smart import skips it
 
+        amap = accounts_mod.ws_account_map(store)
+        target_account = amap.get(workspaces_mod.for_new_lead(), accounts_mod.MCN)
+        same = lambda l: accounts_mod.account_of_lead(amap, l) == target_account     # dedupe within one account only
+
         def merge_in(leads: list) -> list:
             keys = lambda l: {l["dedupe_key"], *(f"{k}:{l.get(k)}" for k in ("email", "phone", "domain"))}   # merges re-key
-            seen = set().union(*map(keys, leads))
-            mine = set().union(*map(keys, workspaces_mod.filter_rows(leads))) if workspaces_mod.scoped() else seen
+            ours = [l for l in leads if same(l)]
+            seen = set().union(*map(keys, ours))
+            mine = set().union(*map(keys, workspaces_mod.filter_rows(ours))) if workspaces_mod.scoped() else seen
             created = duplicates = rejected = merged = suppressed = elsewhere = 0
             limited_login = workspaces_mod._SCOPE.get()[1] is not None
             for row in rows:
@@ -392,7 +399,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                         duplicates += 1
                     else:
                         elsewhere += 1               # held in another workspace: skipped, nothing about it shown
-                elif (target := _contactless_match(leads, lead)) is not None and workspaces_mod.visible(leads[target]):
+                elif ((target := _contactless_match(leads, lead)) is not None and workspaces_mod.visible(leads[target])
+                      and same(leads[target])):
                     leads[target] = _merge_contact(leads[target], lead)
                     seen |= keys(leads[target]) | {lead["dedupe_key"]}
                     merged += 1
@@ -499,8 +507,13 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         return saved
 
     @app.get("/api/integrations")
-    def list_integrations():
-        return integrations.describe(store.read("integrations"))
+    def list_integrations(request: Request):
+        rows = integrations.describe(store.read("integrations"))
+        user = getattr(request.state, "user", None)
+        if accounts_mod.is_client(user):          # a client sees only the platform connections granted to its account
+            granted = set((accounts_mod.find(store, accounts_mod.of_user(user)) or {}).get("integrations_granted") or [])
+            rows = [r for r in rows if r.get("id") in granted]
+        return rows
 
     @app.put("/api/integrations/{integration_id}")
     def save_integration(integration_id: str, body: IntegrationBody, request: Request):
@@ -532,9 +545,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         return story
 
     @app.post("/api/prompts/generate")
-    def generate_prompt(body: PromptBody):
+    def generate_prompt(body: PromptBody, request: Request):
         spec = body.model_dump()
-        profile = brand_mod.prompt_profile(store)
+        profile = brand_mod.prompt_profile(accounts_mod.view_for(store, getattr(request.state, "user", None)))
         if body.use_ai:
             written = ai_write_prompt(store, build_prompt_body(spec, profile=profile), ai_transport)
             if written:
@@ -574,6 +587,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_lists_router(store, _present))
     app.include_router(make_companies_router(store))
     app.include_router(make_workspaces_router(store))
+    from .routes_accounts import make_router as make_accounts_router
+    app.include_router(make_accounts_router(store))
     app.include_router(make_audit_router(store))
     app.include_router(make_analytics_router(store))
     app.include_router(make_extension_router(store))

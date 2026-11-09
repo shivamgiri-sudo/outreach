@@ -36,7 +36,7 @@ LOCKOUT_SECONDS = 60
 MAX_TRACKED_CALLERS = 10_000
 SCRYPT = {"n": 2 ** 14, "r": 8, "p": 1}
 # settings keys no API may return (secrets and password hashes)
-PRIVATE_SETTINGS = ("server_secret", "users", "extension_tokens")
+PRIVATE_SETTINGS = ("server_secret", "users", "extension_tokens", "account_settings", "accounts")   # + client accounts' keys
 
 
 def _now(now: Optional[float] = None) -> float:
@@ -131,6 +131,7 @@ def can_edit_contacts(user: Optional[dict]) -> bool:
 def public_user(user: dict) -> dict:
     return {**{k: user.get(k) for k in ("email", "name", "role", "created_at", "password_changed_at")},
             "can_edit_contacts": can_edit_contacts(user), "workspaces": user.get("workspaces") or [],
+            **({"account_id": user["account_id"]} if user.get("account_id") not in (None, "", "mcn") else {}),   # client logins
             "super_admin": bool(super_admins()) and normalise_email(user.get("email")) in super_admins()}
 
 
@@ -152,9 +153,14 @@ def subject_principal(store, admin_password: str, sub: str) -> Optional[dict]:
         user = find_user(store, sub[5:])
         if not user or user.get("role") not in ROLES:
             return None
+        from . import accounts
+        account = accounts.of_user(user)
+        if account != accounts.MCN and (user["role"] == "owner" or not accounts.account_active(store, account)):
+            return None                       # a client is never an owner; a suspended / pending account's logins are out
         return {"sub": sub, "email": user["email"], "name": user.get("name") or user["email"], "role": user["role"],
                 "can_edit_contacts": can_edit_contacts(user), "workspaces": user.get("workspaces") or [],
-                "no_workspace": bool(user.get("no_workspace")), "pf": _fingerprint(store, "user:" + str(user.get("password_hash")))}
+                "no_workspace": bool(user.get("no_workspace")), "pf": _fingerprint(store, "user:" + str(user.get("password_hash"))),
+                "account_id": account, "account_ws": accounts.login_account_ws(store, user)}
     return None
 
 

@@ -29,8 +29,12 @@ def make_router(store) -> APIRouter:
         return getattr(request.state, "user", None)
 
     @router.get("/api/linkedin/accounts")
-    def accounts():
-        """Known LinkedIn accounts (for the "Send from" pickers) and the owner defaults."""
+    def accounts(request: Request):
+        """Known LinkedIn accounts (for the "Send from" pickers) and the owner defaults. These are Mas Callnet's own
+        LinkedIn senders: a client account's login gets none (app/accounts.py)."""
+        from . import accounts as client_accounts
+        if client_accounts.is_client(user_of(request)):
+            return {"accounts": [], "owner_defaults": {}}
         return {"accounts": accts.known(store), "owner_defaults": accts.owner_defaults(store.read("settings"))}
 
     @router.put("/api/linkedin/owner-accounts")

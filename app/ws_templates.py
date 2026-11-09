@@ -75,12 +75,18 @@ def require_edit(user: Optional[dict], ws: str) -> None:
         raise HTTPException(403, refusal(user, ws))
 
 
+def _main_shared() -> set:
+    """Main's templates are shared read-only inside Mas Callnet only; another account never sees them."""
+    from . import accounts
+    return {MAIN} if accounts.current() in (None, accounts.MCN) else set()
+
+
 def readable_spaces() -> Optional[set]:
-    """Workspaces whose templates this request lists (main always), or None for every workspace."""
+    """Workspaces whose templates this request lists (main too for Mas Callnet), or None for every workspace."""
     selected, allowed = wsm._SCOPE.get()
     if selected is None and allowed is None:
         return None
-    return {selected, MAIN} if selected else {*allowed, MAIN}
+    return {selected, *_main_shared()} if selected else {*allowed, *_main_shared()}
 
 
 def readable(row: dict) -> bool:
@@ -108,7 +114,7 @@ def target_ws(store, user: Optional[dict], wanted: Optional[str] = None) -> str:
     if wanted and wanted != "all":
         if not known(store, wanted):
             raise HTTPException(400, "Pick a workspace from the list.")
-        if allowed is not None and wanted not in allowed and wanted != MAIN:
+        if allowed is not None and wanted not in allowed and (wanted != MAIN or not _main_shared()):
             raise HTTPException(403, refusal(user, wanted))
         return wanted
     if selected:
@@ -147,10 +153,17 @@ class Overlaid(dict):
     ws: str = MAIN
 
 
+def _client_ws(settings: dict, ws: str) -> bool:
+    """A workspace of another account (not Mas Callnet): it never falls back to main's templates."""
+    from . import accounts
+    return ws != MAIN and accounts.account_of_ws(settings, ws) != accounts.MCN
+
+
 def linkedin_ws(settings: dict, ws: str) -> str:
-    """The workspace whose LinkedIn steps a lead of `ws` follows: its own when it has them, else main."""
+    """The workspace whose LinkedIn steps a lead of `ws` follows: its own when it has them, else main (a client
+    account's workspace: its own, else the built-in steps)."""
     base = getattr(settings, "base", None) or settings
-    return ws if ws != MAIN and own(base, ws).get("linkedin_sequence") else MAIN
+    return ws if ws != MAIN and (own(base, ws).get("linkedin_sequence") or _client_ws(base, ws)) else MAIN
 
 
 def settings_for(settings: dict, ws: str) -> dict:
@@ -162,6 +175,10 @@ def settings_for(settings: dict, ws: str) -> dict:
         return settings
     mine = own(base, ws)
     if not mine.get("linkedin_sequence") and not mine.get("linkedin_connect_variants"):
+        if _client_ws(base, ws):              # built-in steps and notes, never Mas Callnet's
+            out = Overlaid({k: v for k, v in base.items() if k not in ("linkedin_sequence", "linkedin_connect_variants")})
+            out.base, out.ws = base, ws
+            return out
         return base
     out = Overlaid(base)
     out.base, out.ws = base, ws
@@ -181,6 +198,8 @@ def default_sequence(settings: dict, ws: str) -> str:
     """The sequence a lead of `ws` starts when none is picked: its workspace's default, else main's, else built-in."""
     from .sequence_library import DEFAULT_ID
     base = getattr(settings, "base", None) or settings
+    if _client_ws(base, ws):
+        return own(base, ws).get("default_sequence") or DEFAULT_ID
     return own(base, ws).get("default_sequence") or own(base, MAIN).get("default_sequence") or DEFAULT_ID
 
 

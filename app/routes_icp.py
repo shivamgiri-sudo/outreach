@@ -23,8 +23,10 @@ def make_router(store, ai_transport=None) -> APIRouter:
     router = APIRouter()
 
     @router.get("/api/icp")
-    def read():
-        return {**icp.get_icp(store), "preview": icp.preview(store)}
+    def read(request: Request):
+        from .accounts import view_for
+        src = view_for(store, getattr(request.state, "user", None))      # a client: no Mas Callnet rules, its own leads
+        return {**icp.get_icp(src), "preview": icp.preview(src)}
 
     @router.put("/api/icp")
     def save(body: IcpBody, request: Request):

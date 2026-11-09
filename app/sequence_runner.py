@@ -113,6 +113,9 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
 
     icp_rules = get_icp(store)
     _decide_ab_winners(store)
+    from . import account_sending
+    amap, outbox_all, other = account_sending.accounts.ws_account_map(store), store.read("outbox"), {}
+    mcn_vars = (cfg, live, days_key, last_key, mode_status, counts["mode"])
     for lead in sorted(store.read("leads"), key=lambda l: (l.get("sequence") or {}).get("enrolled_at", "")):
         seq = lead.get("sequence")
         if not seq or seq["stopped"] or lead["stage"] in NO_EMAIL_STAGES + WARM_STAGES or not lead.get("email"):
@@ -120,8 +123,22 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
         if seq.get("in_flight"):
             counts["needs_check"] += 1
             continue
-        if len(todays) + counts["sent"] >= cap or counts["sent"] >= cfg["per_run_cap"]:
+        if len(todays) + counts["sent"] >= cap or counts["sent"] >= mcn_vars[0]["per_run_cap"]:
             break
+        acct = account_sending.for_lead(store, lead, mcn_vars[0], mcn_vars[1], amap)     # another client's lead: its own
+        if acct["account"] == "mcn":                                                      # identity, switch and cap
+            cfg, live, days_key, last_key, mode_status, mode_name = mcn_vars
+        else:
+            if acct["hold"]:
+                counts["blocked"] += 1          # no sending identity of its own and no grant: held, with the reason
+                if seq.get("blocked") != acct["hold"]:
+                    _set_sequence(store, lead["id"], blocked=acct["hold"])
+                continue
+            cfg, live = acct["cfg"], acct["live"]
+            (days_key, last_key), mode_status, mode_name = _mode_keys(live), "sent" if live else "dry_run", "live" if live else "practice"
+            done = other.setdefault(acct["account"], account_sending.sent_today(outbox_all, acct["account"], mode_status, today.isoformat()))
+            if done >= cfg["daily_cap"]:
+                continue
         if not _ready(seq, now, last_key):
             continue
         if live and sequences.needs_postal_address(lead) and not cfg.get("sender_address"):
@@ -164,13 +181,19 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
         _tag(message, step, seq)
         day = steps[0]["day"]
         message["origin"] = provenance.for_sequence(store, lead, seq, step, day, live, cfg)
-        key = f"{lead['id']}:{day}:{counts['mode']}"
+        key = f"{lead['id']}:{day}:{mode_name}"
+        account_sending.stamp(message, acct)
         # The Message-ID comes from the key: a retry must be the same request, or Resend refuses it (409).
         message.update({"idempotency_key": key,
                         "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead['id']}@{_message_domain(store)}>"})
         if not _claim(store, lead["id"], day, now, lead["email"], demo):
             continue                                   # stopped, unsubscribed or suppressed a moment ago
         message.update(sender(message))
+        if message["status"] == "held" or (acct["account"] != "mcn" and message["status"] == "provider_error"):
+            _release(store, lead["id"])        # another account's keys or grant: never pauses Mas Callnet's sending
+            counts["blocked" if message["status"] == "held" else "failed"] += 1
+            _set_sequence(store, lead["id"], blocked=message.get("error") or "the account's email provider refused it")
+            continue
         store.update("outbox", lambda rows: [*rows, message])
         if message["status"] == "provider_error":
             counts["failed"] += 1
@@ -184,6 +207,10 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
             store.update_lead(lead["id"], lambda r: _record_failure(r, now))
             continue
         store.update_lead(lead["id"], lambda r: _record_send(r, day, message, demo, now, days_key, last_key))
+        if acct["account"] != "mcn":
+            other[acct["account"]] = other.get(acct["account"], 0) + 1
+            counts["other_accounts_sent"] = counts.get("other_accounts_sent", 0) + 1
+            continue                           # Mas Callnet's daily cap and company spacing are its own
         counts["sent"] += 1
         if domain:
             domains_today.add(domain)
@@ -385,6 +412,11 @@ def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str 
             raise ValueError("An email to this lead is being sent right now.")
         cfg = get_settings(store)
         live = bool(cfg["live_sending"]) and bool(email_ready(store))
+        from . import account_sending
+        acct = account_sending.for_lead(store, lead, cfg, live)         # another client's lead: its own identity
+        if acct["hold"]:
+            raise ValueError(acct["hold"])
+        cfg, live = acct["cfg"], acct["live"]
         if live and (pause := sending_paused(store, now)):
             raise ValueError(f"Sending is paused: {pause['reason']}")
         if live and sequences.needs_postal_address(lead) and not cfg.get("sender_address"):
@@ -411,9 +443,13 @@ def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str 
         message["origin"] = provenance.for_sequence(store, lead, seq, step, day, live, cfg, "send_now", provenance.person(by, by_email))
         message.update({"idempotency_key": key, "by": by, "manual": True,
                         "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead['id']}@{_message_domain(store)}>"})
+        account_sending.stamp(message, acct)
         if not _claim(store, lead["id"], day, now, lead["email"], demo):
             raise ValueError("This lead may not be emailed right now.")
         message.update(sender(message))
+        if message["status"] == "held":
+            _release(store, lead["id"])
+            raise ValueError(message.get("error") or "Sending is held for this account.")
         store.update("outbox", lambda rows: [*rows, message])
         if message["status"] in ("provider_error", "failed"):
             _release(store, lead["id"])
@@ -425,63 +461,5 @@ def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str 
         _RUN_LOCK.release()
 
 
-MAX_MANUAL_SUBJECT, MAX_MANUAL_BODY = 200, 8000
-
-
-def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, base_url: str, sender, by: str = "",
-                by_email: str = "") -> dict:
-    """One email a person wrote (or pasted from a template) for ONE lead, outside the sequence. Not part of the sequence
-    and does not change it. The same safety rules apply: unsubscribed / suppressed / bounced / erased / failed-check
-    addresses are refused, an unsubscribe line is always added, practice mode until 'Send for real' is on."""
-    from .unsubscribe import unsub_url
-    subject, body = " ".join(str(subject or "").split())[:MAX_MANUAL_SUBJECT], str(body or "").strip()[:MAX_MANUAL_BODY]
-    if not subject or not body:
-        raise ValueError("Write a subject and a message.")
-    lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
-    if lead is None:
-        raise LookupError("Lead not found")
-    email = lead.get("email")
-    if not email:
-        raise ValueError("This lead has no email address.")
-    if lead["stage"] in ("unsubscribed", "disqualified") or is_blocked(store, email) or email in set(store.read("suppressed")):
-        raise ValueError("This address may not be emailed (unsubscribed, bounced, erased or on the do-not-contact list).")
-    if (lead.get("email_check") or {}).get("status") == "invalid":
-        raise ValueError("A mailbox check said this address does not exist.")
-    if (bad := email_domain.problem(email)):
-        raise ValueError(f"Not sent: {bad}.")
-    cfg = get_settings(store)
-    live = bool(cfg["live_sending"]) and bool(email_ready(store))
-    if live and (pause := sending_paused(store, now)):
-        raise ValueError(f"Sending is paused: {pause['reason']}")
-    variables = lead_variables(lead, cfg["sender_name"], base_url, {}, secret=server_secret(store), brand=store)
-    subject, _ = render(subject, variables)
-    body, missing = render(body, variables)
-    if missing or re.search(r"\{\{|\}\}", subject + body):
-        raise ValueError("Fill in or remove the {{placeholders}} first: " + ", ".join(sorted(set(missing))) if missing else "Remove the {{ }} left in the text.")
-    from . import ai_marks
-    ai_draft = ai_marks.match(store, lead_id, body, now)         # a person sending (an edit of) an AI draft
-    if "/u/" not in body:
-        body += f"\n\nNot relevant? Unsubscribe: {unsub_url(store, base_url, lead_id)}"
-    footer = sequences.identity_footer(cfg)
-    if footer:
-        body += f"\n{footer}"
-    key = f"{lead_id}:manual:{uuid.uuid4().hex[:8]}"
-    message = {"lead_id": lead_id, "to": email, "subject": subject, "body": body, "step": "One-off email", "variant": "manual",
-               "manual": True, "by": by, "sent_at": now.isoformat(timespec="seconds"), "sent_at_ist_date": now.astimezone(IST).date().isoformat(),
-                "idempotency_key": key, "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead_id}@{_message_domain(store)}>",
-                "origin": provenance.build(store, "one_off", live, lead, provenance.person(by, by_email), cfg=cfg, hours=provenance.HOURS_PERSON)}
-    if ai_draft:
-        ai_marks.mark(message, by, ai_draft.get("source") or "reply draft", ai_draft.get("id", ""))
-    message.update(sender(message))
-    store.update("outbox", lambda rows: [*rows, message])
-    if message["status"] in ("provider_error", "failed"):
-        raise ValueError(f"The email provider did not take it: {message.get('error') or message['status']}")
-    sent = message["status"] == "sent"
-    store.update_lead(lead_id, lambda l: {**l, "last_activity_at": now.isoformat(timespec="seconds"),
-                                          "stage": "contacted" if sent and l["stage"] in EARLY_STAGES else l["stage"],
-                                          "timeline": [*l["timeline"], {"at": now.isoformat(timespec="seconds"), "kind": "email" if sent else "practice",
-                                                                        "text": f"One-off email: {subject} — {message['status'] if sent else 'practice only, not sent'}", "by": by,
-                                                                        **({"ai_drafted": True} if ai_draft else {})}]})
-    if ai_draft:
-        ai_marks.log_sent(store, by, lead_id, "email", by, ai_draft.get("source") or "reply draft")
-    return {"status": message["status"], "to": email, "subject": subject, "mode": "live" if live else "practice"}
+# One-off emails a person writes live in app/manual_send.py (kept here as names other modules import).
+from .manual_send import MAX_MANUAL_BODY, MAX_MANUAL_SUBJECT, send_manual  # noqa: E402,F401

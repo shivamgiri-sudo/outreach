@@ -11,7 +11,7 @@ import json
 import zipfile
 from datetime import datetime, timedelta, timezone
 
-from . import audit_chain, consent_view, workspaces
+from . import accounts, audit_chain, consent_view, workspaces
 
 IST = timezone(timedelta(hours=5, minutes=30))
 MAX_ROWS = 50000
@@ -77,8 +77,9 @@ def build(store, lead_id: str = "", date_from: str = "", date_to: str = "") -> t
         if owner:
             if owner not in visible and not (unscoped and owner not in leads):
                 return False
-        elif not unscoped:
-            return False
+        elif not unscoped and not (row.get("account_id") and row.get("account_id") == accounts.current()
+                                   and not accounts.current_is_client()):
+            return False                   # a row tied to no lead: only unscoped, or an owner's picked account's own rows
         return in_range(row.get(at_key))
 
     company = lambda r: (leads.get(r.get("lead_id")) or {}).get("company") or ""

@@ -55,7 +55,8 @@ def make_router(store, present) -> APIRouter:
         all_leads = store.read("leads")
         hidden = workspaces.hidden_ids(all_leads)            # another workspace's leads, and their tasks, stay out
         leads = {lead["id"]: lead for lead in all_leads if lead["id"] not in hidden}
-        open_tasks = [t for t in store.read("tasks") if t.get("status", "open") == "open" and not t.get("done") and t.get("lead_id") not in hidden]
+        open_tasks = workspaces.filter_tasks([t for t in store.read("tasks") if t.get("status", "open") == "open" and not t.get("done")
+                                              and t.get("lead_id") not in hidden], all_leads)     # a client: never Mas Callnet's team tasks
         call_task_leads = {t.get("lead_id") for t in open_tasks if t.get("kind") == "call"}
         name = lambda lid: (leads.get(lid) or {}).get("company") or (leads.get(lid) or {}).get("domain") or "a lead"
         problems, tasks, calls, nudges, starts = [], [], [], [], []
@@ -69,9 +70,11 @@ def make_router(store, present) -> APIRouter:
                 calls.append({"kind": "call", "lead_id": lead["id"], "company": name(lead["id"]),
                               "title": "Call them", "action": "Open call desk",
                               "detail": "Said yes. Dial through PD only, before 18:55."})
-        for index, task in enumerate(store.read("tasks")):
+        all_tasks = store.read("tasks")
+        shown = {id(t) for t in workspaces.filter_tasks(all_tasks, all_leads)}
+        for index, task in enumerate(all_tasks):
             stage = (leads.get(task.get("lead_id")) or {}).get("stage")
-            if task.get("lead_id") in hidden or task.get("done") or task.get("status", "open") != "open" or (
+            if task.get("lead_id") in hidden or id(task) not in shown or task.get("done") or task.get("status", "open") != "open" or (
                     stage == "unsubscribed" and task.get("kind") not in KEEP_IF_UNSUBSCRIBED) or (
                     stage == "disqualified" and task.get("kind") == "call"):          # they said no after the yes
                 continue

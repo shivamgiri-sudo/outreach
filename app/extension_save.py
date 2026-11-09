@@ -152,7 +152,9 @@ def _create(store, user, rep: str, values: dict, account: str) -> dict:
     lead["field_sources"] = {k: SOURCE for k, v in values.items() if v}
     added = store.add_leads([lead])
     if not added:
-        twin = next((l for l in store.read("leads") if l.get("dedupe_key") == lead["dedupe_key"]), None)
+        from .accounts import same_account_as
+        ours = same_account_as(store, lead)
+        twin = next((l for l in store.read("leads") if l.get("dedupe_key") == lead["dedupe_key"] and ours(l)), None)
         if twin is not None:                           # saved a moment ago (double click / two tabs): fill it instead
             return _fill(store, user, rep, twin, values, account)
         raise SaveRefused(409, "This person cannot be saved (they are on the do-not-contact list).")

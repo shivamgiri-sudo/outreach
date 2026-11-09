@@ -1,4 +1,4 @@
-"""Deny by default for logins limited to some workspaces.
+"""Deny by default for logins limited to some workspaces (every client-account login is one: app/accounts.py).
 
 A limited login (caller or viewer with workspaces ticked) may only call the endpoints listed here, each checked to
 show or change nothing outside its workspaces. Any other endpoint, including every endpoint added later, answers
@@ -24,6 +24,8 @@ LIMITED_OK = {
     ("GET", "/api/sequences/{seq_id}/steps/{index}/preview"), ("POST", "/api/sequences/preview-draft"), ("GET", "/api/snippets"),
     ("GET", "/api/presets"), ("GET", "/api/presets/{preset_id}"), ("GET", "/api/whatsapp/status"), ("GET", "/api/whatsapp/templates"),
     ("GET", "/api/icp"), ("GET", "/api/call-script"), ("POST", "/api/prompts/generate"), ("POST", "/api/activation/event"),
+    ("GET", "/api/accounts"),                     # a client login sees only its own account (the route checks)
+    ("POST", "/api/workspaces"),                  # a non-owner's new workspace is only a request until an owner approves it
     ("GET", "/api/workspaces"), ("GET", "/api/workspaces/overview"), ("PUT", "/api/workspaces/{ws_id}"),       # rename/members: the routes
     ("GET", "/api/workspaces/{ws_id}/members"), ("POST", "/api/workspaces/{ws_id}/members"),            # check owner / own-workspace admin
     ("DELETE", "/api/workspaces/{ws_id}/members/{email}"),
@@ -69,6 +71,11 @@ LIMITED_OK = {
     ("GET", "/api/reports/sla"), ("GET", "/api/reports/daily"), ("GET", "/api/reports/daily.csv"), ("POST", "/api/reports/email"),
     ("POST", "/api/import/preview"), ("POST", "/api/import/excel"), ("POST", "/api/import/commit"), ("GET", "/api/import/history"), ("POST", "/api/import/{import_id}/undo"),
 }
+# Client logins (another company's account, app/accounts.py) are also refused these: copying Mas Callnet's own
+# LinkedIn steps into their workspace.
+CLIENT_DENY = {("POST", "/api/linkedin/sequence/copy")}
+# (offer, call script, ICP, prompt writer and sequence preview answer a client with its own account's values instead:
+# accounts.view_for in those routes.)
 LEAD_PARAMS = ("{lead_id}", "{task_id}")
 # A login that lost its last workspace sees nothing and may change nothing but its own account.
 NO_WORKSPACE_WRITES = {("POST", "/api/logout"), ("POST", "/api/me/password"), ("POST", "/api/me/two-step/start"),
@@ -97,3 +104,5 @@ def guard(request: Request) -> None:
         raise HTTPException(403, "Your login has no workspace yet. Ask the owner to give you one.")
     if path.startswith("/api") and not allowed_route(request.method, path):
         raise HTTPException(403, "This page is not available for logins limited to a workspace. Ask the owner.")
+    if (user.get("account_id") or "mcn") != "mcn" and (request.method, path) in CLIENT_DENY:
+        raise HTTPException(403, "This page belongs to the platform account. Ask the platform admin.")

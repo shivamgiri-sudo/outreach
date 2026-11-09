@@ -63,15 +63,20 @@ def make_router(store) -> APIRouter:
 
     @router.get("/api/audit")
     def audit_trail(action: str = "", by: str = "", q: str = "", date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"),
-                    limit: int = 200, offset: int = 0):
-        """Owner only (routes_auth): who did what and when, newest first."""
-        return audit.trail(store, action[:60], by[:80], q[:80], date_from[:10], date_to[:10], max(1, min(limit, 1000)), max(0, offset))
+                    limit: int = 200, offset: int = 0, account: str = ""):
+        """Owner only (routes_auth): who did what and when, newest first; one account's rows when one is picked."""
+        from . import accounts
+        return audit.trail(store, action[:60], by[:80], q[:80], date_from[:10], date_to[:10], max(1, min(limit, 1000)), max(0, offset),
+                           account[:40] or accounts.current() or "")
 
     @router.get("/api/audit.csv")
-    def audit_csv(action: str = "", by: str = "", q: str = "", date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to")):
+    def audit_csv(action: str = "", by: str = "", q: str = "", date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"),
+                  account: str = ""):
         from .backup import ist_label
         from datetime import datetime
-        rows = audit.trail(store, action[:60], by[:80], q[:80], date_from[:10], date_to[:10], audit.MAX_AUDIT_ROWS)["items"]
+        from . import accounts
+        rows = audit.trail(store, action[:60], by[:80], q[:80], date_from[:10], date_to[:10], audit.MAX_AUDIT_ROWS, 0,
+                           account[:40] or accounts.current() or "")["items"]
         out = io.StringIO()
         writer = csv.writer(out)
         writer.writerow(["at_ist", "at", "by", "by_email", "role", "action", "what", "target", "detail"])

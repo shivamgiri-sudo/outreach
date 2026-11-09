@@ -11,6 +11,10 @@ export const isOwner = () => role === "owner";
 // Owner-only changes (settings, integrations, flows, sequence library...) use isOwner(), as the server's routes_auth.py.
 export const canWrite = () => role === "owner" || role === "caller" || role === "admin";
 export const isWorkspaceAdmin = () => role === "admin";
+// A client company's login (app/accounts.py; never an owner). Set by App from /api/me.
+let client = false;
+export const setClient = (c) => { client = !!c; };
+export const isClient = () => client;
 // The signed-in login's workspaces (set by App from /api/me): a login limited to some workspaces sees their templates
 // plus main's read-only ones; only owners and the workspace's own admins change them (server: app/ws_templates.py).
 let myWorkspaces = [];
@@ -27,13 +31,19 @@ const WS_KEY = "outreach-workspace";
 export const getWorkspace = () => { try { return localStorage.getItem(WS_KEY) || ""; } catch { return ""; } };
 export const setWorkspace = (w) => { try { w ? localStorage.setItem(WS_KEY, w) : localStorage.removeItem(WS_KEY); } catch { /* storage blocked */ } };
 
+// Owners (platform staff) pick a client account (app/accounts.py); "" = not picked (sent only once more than one account
+// exists, so nothing changes while Mas Callnet is the only one). Client logins never need it: the server ignores it.
+const ACCOUNT_KEY = "outreach-account";
+export const getAccount = () => { try { return localStorage.getItem(ACCOUNT_KEY) || ""; } catch { return ""; } };
+export const setAccount = (a) => { try { a ? localStorage.setItem(ACCOUNT_KEY, a) : localStorage.removeItem(ACCOUNT_KEY); } catch { /* storage blocked */ } };
+
 // The server re-issues the token once half its 12 hours have passed; keep the newest one.
 const keepRenewed = (res) => { const t = res.headers.get("X-Renewed-Token"); if (t && getToken()) setToken(t); };
 
 async function request(path, options = {}) {
   const token = getToken();
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(getWorkspace() ? { "X-Workspace": getWorkspace() } : {}) },
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(getWorkspace() ? { "X-Workspace": getWorkspace() } : {}), ...(getAccount() ? { "X-Account": getAccount() } : {}) },
     ...options,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
@@ -189,7 +199,13 @@ export const api = {
   historySummary: (leadId) => request(`/api/leads/${leadId}/history-summary`),
   emailCompose: (leadId, body) => request(`/api/leads/${leadId}/email-compose`, { method: "POST", body }),
   emailNow: (leadId) => request(`/api/leads/${leadId}/email-now`, { method: "POST" }),
-  createWorkspace: (name) => request("/api/workspaces", { method: "POST", body: { name } }),
+  createWorkspace: (name, accountId = "") => request("/api/workspaces", { method: "POST", body: { name, ...(accountId ? { account_id: accountId } : {}) } }),
+  approveWorkspace: (id) => request(`/api/workspaces/${encodeURIComponent(id)}/approve`, { method: "POST" }),
+  rejectWorkspace: (id) => request(`/api/workspaces/${encodeURIComponent(id)}/reject`, { method: "POST" }),
+  accounts: () => request("/api/accounts"),
+  createAccount: (body) => request("/api/accounts", { method: "POST", body }),
+  updateAccount: (id, body) => request(`/api/accounts/${encodeURIComponent(id)}`, { method: "PUT", body }),
+  saveAccountSettings: (id, body) => request(`/api/accounts/${encodeURIComponent(id)}/settings`, { method: "PUT", body }),
   // body: { confirm_name, move_to } or { confirm_name, delete_leads: true } (owners only)
   deleteWorkspace: (id, body = {}) => request(`/api/workspaces/${encodeURIComponent(id)}`, { method: "DELETE", body }),
   workspacesOverview: () => request("/api/workspaces/overview"),

@@ -42,7 +42,14 @@ def caller_name(store) -> str:
 
 
 def team(store) -> list:
-    """People who can own tasks: [{name, email, phone, role}]. The caller is always there."""
+    """People who can own tasks: [{name, email, phone, role}]. The caller is always there. A client account's request
+    gets its own logins instead (app/accounts.py), never Mas Callnet's staff."""
+    from . import accounts
+    if accounts.current_is_client():
+        from .auth import users
+        aid = accounts.current()
+        return [{"name": u.get("name") or u["email"], "email": u["email"], "phone": "", "role": u.get("role", "")}
+                for u in users(store) if accounts.of_user(u) == aid]
     members = list(store.read("settings").get("team") or [])
     caller = caller_name(store)
     if not any(m.get("name") == caller for m in members):

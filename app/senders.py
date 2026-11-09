@@ -59,12 +59,16 @@ def make_email_sender(store, transport=post_json, base_url: str = "", channel_tr
     """Returns send(message) -> {"status": "dry_run" | "sent" | "failed", ...}."""
 
     def send(message: dict) -> dict:
-        if _hub_email_provider(store):
+        from .account_sending import sender_config
+        own, refusal = sender_config(store, message)       # another account's message: its own keys, a grant, or held
+        if refusal:
+            return dict(refusal)
+        if own is None and _hub_email_provider(store):
             from .channels.email_send import send_email
             from .channels.http import request
             return send_email(store, message, channel_transport or request, smtp_factory, base_url)
-        cfg = _email_config(store)
-        if not (store.read("settings").get("live_sending") and cfg):
+        cfg = own or _email_config(store)
+        if own is None and not (store.read("settings").get("live_sending") and cfg):
             return {"status": "dry_run"}
         unsub = unsub_url(store, base_url, message["lead_id"])
         headers = {"List-Unsubscribe": f"<{unsub}>, <mailto:{cfg['from_email']}?subject=unsubscribe>",

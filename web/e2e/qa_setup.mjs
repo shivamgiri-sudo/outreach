@@ -57,7 +57,7 @@ await step("Owner imports a lead and opens Setup: grouped sub-navigation, one he
   await nav(p, "Setup");
   const groups = await p.locator(".setup-nav-title").allTextContents();
   if (groups.join("|") !== "Organisation|Team & access|Integrations|Data|My account") throw new Error(`groups ${groups.join("|")}`);
-  if ((await p.locator(".setup-nav a").count()) !== 12) throw new Error("expected 12 sections");
+  if ((await p.locator(".setup-nav a").count()) !== 13) throw new Error("expected 13 sections");     // + Accounts (owners)
   await p.getByTestId("setup-nav-members").click();
   if (!(await p.evaluate(() => window.location.hash)).startsWith("#setup/members")) throw new Error("no deep link");
   if (await p.getByTestId("setup-summary").count()) throw new Error("connected summary on Team members");
