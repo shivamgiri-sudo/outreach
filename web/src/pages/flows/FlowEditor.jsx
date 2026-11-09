@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, isOwner } from "../../api.js";
+import { api, canEditWorkspace } from "../../api.js";
 import FlowCanvas from "./FlowCanvas.jsx";
 import FlowListView from "./FlowListView.jsx";
 import NodePicker from "./NodePicker.jsx";
@@ -56,7 +56,10 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
     api.leads().then(setLeads).catch(() => setLeads([]));
   }, [flowId]);
 
-  const owner = isOwner();                                   // flows are owner-only changes on the server
+  // Owners change every flow; a workspace admin only its own workspace's flows (main's are read-only for it).
+  const owner = flow ? canEditWorkspace(flow.workspace_id) : false;
+  const ownerRef = useRef(owner);
+  ownerRef.current = owner;
   const dirty = owner && flow && keyOf(graph, meta) !== savedKey;
   const errors = checked.key === graphKey(graph) ? checked.list : [];
   const local = useMemo(() => localProblems(graph.nodes), [graph.nodes]);
@@ -149,7 +152,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       else if (mod && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
-      else if (!isOwner()) return;
+      else if (!ownerRef.current) return;
       else if (mod && e.key.toLowerCase() === "d" && selected?.kind === "node") { e.preventDefault(); duplicate(selected.id); }
       else if ((e.key === "Delete" || e.key === "Backspace") && selected
                && (e.target === document.body || e.target.closest?.(".fb-stage"))) {
@@ -264,7 +267,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
             : <button type="button" className="btn cta" onClick={activate}>Activate</button>}
         </>}
       </div>
-      {!owner && <p className="sub" role="note">View only: only an owner can change, run or turn on flows.</p>}
+      {!owner && <p className="sub" role="note">View only: only an owner{flow.workspace_id && flow.workspace_id !== "main" ? " or an admin of this workspace" : ""} can change, run or turn on this flow.</p>}
       {note.text && <div className={`tip${note.bad ? " error" : ""}`} role={note.bad ? "alert" : "status"}>{note.text}</div>}
       {general.length > 0 && <div className="tip error" role="alert">{general.map((p, i) => <div key={i}>{p.message}</div>)}</div>}
       <div className="fb-main">

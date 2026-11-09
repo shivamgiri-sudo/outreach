@@ -131,7 +131,8 @@ def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence", s
     sequence engine and its caps, warm-up, business hours and practice mode. Raises LookupError or EnrollRefused.
 
     `sequence_id` picks a saved sequence (app/sequence_library.py); the lead keeps its id and version, so later edits
-    to the sequence's days never break a lead that is part-way through. "default" is the built-in 6-email sequence.
+    to the sequence's days never break a lead that is part-way through. "default" means the lead's workspace default
+    sequence (app/ws_templates.py), else main's, else the built-in 6-email sequence.
 
     `by` / `by_email` / `via` record who started it and how (app/provenance.py); an empty `by` means the System.
     """
@@ -139,9 +140,18 @@ def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence", s
     if lead is None:
         raise LookupError("Lead not found")
     from .sequence_library import DEFAULT_ID, get_sequence
+    from . import workspaces, ws_templates
+    lead_ws = workspaces.ws_of(lead)
+    if not sequence_id or sequence_id == DEFAULT_ID:      # "the default" = the lead's workspace default (else main's, else built-in)
+        sequence_id = ws_templates.default_sequence(store.read("settings"), lead_ws)
+        picked = get_sequence(store, sequence_id)
+        if picked is None or picked.get("archived"):      # a default archived later: the built-in one
+            sequence_id = DEFAULT_ID
     chosen = get_sequence(store, sequence_id or DEFAULT_ID)
     if chosen is None or chosen.get("archived"):
         raise EnrollRefused("That sequence does not exist or is archived; pick another one")
+    if not chosen.get("builtin") and ws_templates.tpl_ws(chosen) not in (ws_templates.MAIN, lead_ws):
+        raise EnrollRefused("That sequence belongs to another workspace; pick one of this lead's workspace or of Main")
     if not lead.get("email"):
         raise EnrollRefused("This lead has no valid email")
     if lead["stage"] in NO_EMAIL_STAGES:
@@ -207,7 +217,7 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
     def with_event(lead: dict, kind: str, text: str) -> list:
         return [*lead["timeline"], _event(kind, text)]
 
-    LIMITED_HIDDEN = ("workspaces", "reply_state", "import_mappings", "team", "live_sending_changed")
+    LIMITED_HIDDEN = ("workspaces", "reply_state", "import_mappings", "team", "live_sending_changed", "workspace_templates")
 
     @router.get("/api/settings")
     def read_settings(request: Request):

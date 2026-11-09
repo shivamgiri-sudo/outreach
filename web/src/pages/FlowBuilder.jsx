@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { api, isOwner } from "../api.js";
+import { api, canEditWorkspace, getWorkspace, isOwner, isWorkspaceAdmin } from "../api.js";
+import WorkspaceTag from "./sequences/WorkspaceTag.jsx";
 import { istLabel } from "../time.js";
 import { useConfirm } from "../Dialog.jsx";
 import FlowEditor from "./flows/FlowEditor.jsx";
@@ -23,6 +24,10 @@ function FlowList({ onOpen }) {
   const [templates, setTemplates] = useState([]);
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState("");
+  const [spaces, setSpaces] = useState([]);
+  const [space, setSpace] = useState(getWorkspace() || "main");      // owners: whose new flow it is (admins: their own)
+  const maker = isOwner() || isWorkspaceAdmin();
+  const into = isOwner() ? space : "";
   const confirm = useConfirm();
   // A blank flow is saved the moment it is made, so "Untitled flow" drafts piled up with no way to remove them.
   const remove = async (f) => {
@@ -34,13 +39,14 @@ function FlowList({ onOpen }) {
   useEffect(() => {
     api.flows().then(setFlows).catch((e) => { setError(e.message); setFlows([]); });
     api.flowTemplates().then(setTemplates).catch(() => setTemplates([]));
+    if (isOwner()) api.workspaces().then(setSpaces).catch(() => setSpaces([]));
   }, []);
   const importFile = async (file) => {
     if (!file) return;
     setError("");
     try {
       if (file.size > 500_000) throw new Error("That file is too big to be a flow.");
-      onOpen((await api.importFlow(JSON.parse(await file.text()))).id);
+      onOpen((await api.importFlow({ ...JSON.parse(await file.text()), ...(into ? { workspace: into } : {}) })).id);
     } catch (e) { setError(e instanceof SyntaxError ? "That file is not a flow (it is not valid JSON)." : e.message); }
   };
   const create = async (make) => {
@@ -54,19 +60,22 @@ function FlowList({ onOpen }) {
         LinkedIn tasks, calls and meetings. Every message keeps the app's rules: consent before WhatsApp, practice mode, caps,
         business hours and the do-not-contact list.</p>
       {error && <div className="tip error" role="alert">{error}</div>}
-      {isOwner() && <div className="row" style={{ marginBottom: 16 }}>
+      {maker && <div className="row" style={{ marginBottom: 16, flexWrap: "wrap" }}>
+        {isOwner() && spaces.length > 1 && <label className="row" style={{ gap: 6, margin: 0 }}>Workspace
+          <select aria-label="Workspace of a new flow" value={space} onChange={(e) => setSpace(e.target.value)} style={{ width: "auto" }}>
+            {spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>}
         <button type="button" className="btn" onClick={() => setPicking(!picking)} aria-expanded={picking}>New from template</button>
-        <button type="button" className="btn ghost" onClick={() => create(() => api.createFlow({ name: "Untitled flow" }))}>Blank flow</button>
+        <button type="button" className="btn ghost" onClick={() => create(() => api.createFlow({ name: "Untitled flow", ...(into ? { workspace: into } : {}) }))}>Blank flow</button>
         <label className="btn ghost" style={{ cursor: "pointer" }}>Import a flow
           <input type="file" accept="application/json,.json" hidden onChange={(e) => { importFile(e.target.files?.[0]); e.target.value = ""; }} /></label>
       </div>}
-      {picking && isOwner() && (
+      {picking && maker && (
         <div className="grid g2" style={{ marginBottom: 16 }} data-testid="flow-templates">
           {templates.map((t) => (
             <div key={t.key} className="card">
               <h3 style={{ marginTop: 0 }}>{t.name}</h3>
               <p className="sub" style={{ marginBottom: 12 }}>{t.description}</p>
-              <button type="button" className="btn" onClick={() => create(() => api.flowFromTemplate(t.key))} aria-label={`Use template: ${t.name}`}>
+              <button type="button" className="btn" onClick={() => create(() => api.flowFromTemplate(t.key, into))} aria-label={`Use template: ${t.name}`}>
                 Use this template
               </button>
             </div>
@@ -75,7 +84,7 @@ function FlowList({ onOpen }) {
       )}
       <div className="card table-card">
         {flows === null ? <p className="empty">Loading…</p> : flows.length === 0 ? (
-          <p className="empty">{isOwner() ? "No flows yet. Start from a template: the cold email one is the same as today's sequence." : "No flows yet."}</p>
+          <p className="empty">{maker ? "No flows yet. Start from a template: the cold email one is the same as today's sequence." : "No flows yet."}</p>
         ) : (
           <table className="stack-table">
             <thead><tr><th>Flow</th><th>Status</th><th>Starts when</th><th>Active leads</th><th>Last edited</th><th /></tr></thead>
@@ -84,14 +93,14 @@ function FlowList({ onOpen }) {
                 const [pill, word] = STATUS[f.status] || ["", f.status];
                 return (
                   <tr key={f.id}>
-                    <td data-label="Flow"><b>{f.name}</b><br /><small className="sub-inline">{f.steps} step{f.steps === 1 ? "" : "s"} · v{f.version}</small></td>
+                    <td data-label="Flow"><b>{f.name}</b> <WorkspaceTag row={f} /><br /><small className="sub-inline">{f.steps} step{f.steps === 1 ? "" : "s"} · v{f.version}</small></td>
                     <td data-label="Status"><span className={`pill ${pill}`}>{word}</span></td>
                     <td data-label="Starts when">{TRIGGER_WORDS[f.trigger] || "No trigger yet"}</td>
                     <td data-label="Active leads">{f.stats.active_leads} <small className="sub-inline">of {f.stats.total}</small></td>
                     <td data-label="Last edited">{istLabel(f.updated_at)}</td>
                     <td className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
                       <button type="button" className="btn ghost" onClick={() => onOpen(f.id)} aria-label={`Open ${f.name}`}>Open</button>
-                      {isOwner() && <button type="button" className="btn ghost danger" onClick={() => remove(f)} aria-label={`Delete ${f.name}`}>Delete</button>}</td>
+                      {canEditWorkspace(f.workspace_id) && <button type="button" className="btn ghost danger" onClick={() => remove(f)} aria-label={`Delete ${f.name}`}>Delete</button>}</td>
                   </tr>
                 );
               })}

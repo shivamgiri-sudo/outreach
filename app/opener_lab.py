@@ -148,20 +148,23 @@ def _from_ai(store, text: str) -> bool:
 
 def ai_note(settings: dict, lead: dict) -> str:
     """Who approved the AI-drafted connection note this lead gets ("" when it is not AI-drafted)."""
+    from .ws_templates import for_lead
     variant = (lead.get("linkedin_seq") or {}).get("variant") or "A"
-    return ((settings.get("linkedin_connect_variants") or {}).get("ai") or {}).get(variant, "")
+    return ((for_lead(settings, lead).get("linkedin_connect_variants") or {}).get("ai") or {}).get(variant, "")
 
 
-def current(store) -> dict:
+def current(store, ws: str = "main") -> dict:
+    """Notes A and B of one workspace (its own, else main's; app/ws_templates.py)."""
     from .linkedin_config import variants
-    settings = store.read("settings")
+    from .ws_templates import settings_for
+    settings = settings_for(store.read("settings"), ws)
     saved = settings.get("linkedin_connect_variants") or {}
     notes = variants(settings)                  # saved notes, else step 1 of the (editable) sequence and the built-in B
     return {"notes": {v: {"text": t, **score_note(t)} for v, t in notes.items()},
             "changed_at": saved.get("changed_at"), "changed_by": saved.get("changed_by")}
 
 
-def save(store, a: Optional[str], b: Optional[str], by: str, stamp: str) -> dict:
+def save(store, a: Optional[str], b: Optional[str], by: str, stamp: str, ws: str = "main") -> dict:
     changes = {}
     for key, text in (("A", a), ("B", b)):
         if text is None:
@@ -174,9 +177,17 @@ def save(store, a: Optional[str], b: Optional[str], by: str, stamp: str) -> dict
         raise ValueError("Nothing to save.")
     ai_by = {k: by for k, t in changes.items() if _from_ai(store, t)}
 
+    from . import ws_templates as wst
+
     def apply(s):
-        old = s.get("linkedin_connect_variants") or {}
+        old = wst.settings_for(s, ws).get("linkedin_connect_variants") or {}
+        if ws != wst.MAIN and not wst.own(s, ws).get("linkedin_connect_variants") and not wst.own(s, ws).get("linkedin_sequence"):
+            from .linkedin_config import variants
+            old = {**old, **variants(s)}            # a workspace's first notes: start from what it saw (main's A and B)
         ai = {k: v for k, v in (old.get("ai") or {}).items() if k not in changes}
-        return {**s, "linkedin_connect_variants": {**old, **changes, "ai": {**ai, **ai_by}, "changed_at": stamp, "changed_by": by}}
+        notes = {**old, **changes, "ai": {**ai, **ai_by}, "changed_at": stamp, "changed_by": by}
+        if ws != wst.MAIN:
+            return wst.put_own(s, ws, {"linkedin_connect_variants": notes})
+        return {**s, "linkedin_connect_variants": notes}
     store.update("settings", apply)
-    return current(store)
+    return current(store, ws)

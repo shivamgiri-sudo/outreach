@@ -10,6 +10,10 @@ shape of the sequence (number of steps, kind, after rule, days, needs) while lea
 steps in `history` and bumps `version`, so those leads finish on the steps they started with; wording-only edits keep
 the version and apply to every lead's next message. Leads started before this existed are on version 1 (the built-in).
 
+Per workspace (app/ws_templates.py): a workspace other than main may have its own steps / personas and notes, saved in
+settings "workspace_templates"[ws]; its leads follow them, and main's (or the built-in) ones while it has none. Every
+function below that takes `settings` reads the workspace's view when given ws_templates.settings_for(settings, ws).
+
 Message text placeholders: {first_name}, {hook}, {company}, {case_study_url} (single braces, as before) and every
 email placeholder in double braces ({{my_company}}, {{custom.budget}} ...).
 """
@@ -201,14 +205,27 @@ def _shape(steps: list) -> list:
     return [(s["kind"], s["after"], s["days"], s.get("needs")) for s in steps]
 
 
-def leads_in_flight(store) -> list:
-    return [l for l in store.read("leads") if (l.get("linkedin_seq") or {}).get("status") not in (None, "stopped", "finished")]
-
-
-def save(store, body: dict, by: str) -> dict:
-    """Validate and save steps / personas (either may be left out). Returns the saved config plus new_version."""
+def leads_in_flight(store, ws=None) -> list:
+    """Leads part-way through the LinkedIn sequence: all of them, or (ws given) the ones a save for `ws` affects: a
+    workspace's own leads, or for main every lead whose workspace has no sequence of its own."""
+    rows = [l for l in store.read("leads") if (l.get("linkedin_seq") or {}).get("status") not in (None, "stopped", "finished")]
+    if ws is None:
+        return rows
+    from . import ws_templates as wst
+    from .workspaces import ws_of
+    if ws != wst.MAIN:
+        return [l for l in rows if ws_of(l) == ws]
     settings = store.read("settings")
-    cfg = current(settings)
+    return [l for l in rows if wst.linkedin_ws(settings, ws_of(l)) == wst.MAIN]
+
+
+def save(store, body: dict, by: str, ws: str = "main") -> dict:
+    """Validate and save steps / personas (either may be left out) of one workspace (main by default). Returns the
+    saved config plus new_version. A workspace's first save carries on main's version numbers and history, so its
+    leads already part-way through main's steps keep them."""
+    from . import ws_templates as wst
+    settings = store.read("settings")
+    cfg = current(wst.settings_for(settings, ws))
     new_personas, new_hook = cfg["personas"], cfg["default_hook"]
     if body.get("personas") is not None or body.get("default_hook") is not None:
         new_personas, new_hook = clean_personas(body.get("personas") if body.get("personas") is not None else cfg["personas"],
@@ -222,7 +239,7 @@ def save(store, body: dict, by: str) -> dict:
         if stand_in_length(variant_b, longest) > 300:
             raise ValueError("Connection note B is over 300 characters with a long name.")
     version, history = cfg.get("version", 1), list(cfg.get("history") or [])
-    new_version = _shape(steps) != _shape(cfg["steps"]) and bool(leads_in_flight(store))
+    new_version = _shape(steps) != _shape(cfg["steps"]) and bool(leads_in_flight(store, ws))
     if new_version:
         history = [*history, {"version": version, "steps": cfg["steps"], "replaced_at": _now()}][-20:]
         version += 1
@@ -230,20 +247,45 @@ def save(store, body: dict, by: str) -> dict:
              "updated_at": _now(), "updated_by": by}
 
     def apply(s: dict) -> dict:
-        notes = dict(s.get("linkedin_connect_variants") or {})
+        notes = dict(wst.settings_for(s, ws).get("linkedin_connect_variants") or {})
         if body.get("steps") is not None:
             notes["A"] = " ".join(steps[0]["text"].split())       # the A/B lab's note A is step 1
         if variant_b is not None and str(variant_b).strip():
             notes["B"] = " ".join(str(variant_b).split())
         if notes != (s.get("linkedin_connect_variants") or {}):
             notes.update(changed_at=_now(), changed_by=by)
+        if ws != wst.MAIN:
+            return wst.put_own(s, ws, {SETTINGS_KEY: saved, "linkedin_connect_variants": notes})
         return {**s, SETTINGS_KEY: saved, "linkedin_connect_variants": notes}
     store.update("settings", apply)
-    return {**current(store.read("settings")), "new_version": new_version}
+    return {**current(wst.settings_for(store.read("settings"), ws)), "new_version": new_version}
 
 
-def reset(store) -> dict:
-    """Back to the built-in steps and personas (leads part-way keep their version through history)."""
+def copy_from_main(store, ws: str, by: str) -> dict:
+    """A workspace's own copy of main's steps, personas and notes, word for word (versions and history too)."""
+    from . import ws_templates as wst
+    settings = store.read("settings")
+    cfg = current(settings)
+    saved = {**{k: copy.deepcopy(cfg.get(k)) for k in ("steps", "personas", "default_hook", "version", "history")},
+             "updated_at": _now(), "updated_by": by}
+    notes = copy.deepcopy(settings.get("linkedin_connect_variants") or {})
+    store.update("settings", lambda s: wst.put_own(s, ws, {SETTINGS_KEY: saved, "linkedin_connect_variants": notes}))
+    return current(wst.settings_for(store.read("settings"), ws))
+
+
+def reset(store, ws: str = "main") -> dict:
+    """Back to the built-in steps and personas (leads part-way keep their version through history). For a workspace:
+    back to main's (its own copy is dropped, or replaced by main's steps when its leads would lose their version)."""
+    from . import ws_templates as wst
+    if ws != wst.MAIN:
+        settings = store.read("settings")
+        if not any(wst.own(settings, ws).get(k) for k in (SETTINGS_KEY, "linkedin_connect_variants")):
+            return current(settings)
+        mine, main_cfg = current(wst.settings_for(settings, ws)), current(settings)
+        if leads_in_flight(store, ws) and (_shape(mine["steps"]) != _shape(main_cfg["steps"]) or mine.get("version") != main_cfg.get("version")):
+            return save(store, {k: main_cfg[k] for k in ("steps", "personas", "default_hook")}, "reset", ws)
+        store.update("settings", lambda s: wst.put_own(s, ws, {SETTINGS_KEY: None, "linkedin_connect_variants": None}))
+        return current(store.read("settings"))
     settings = store.read("settings")
     cfg = current(settings)
     if cfg.get("builtin"):

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, canWrite, isOwner } from "../api.js";
+import { api, canWrite, getRole, isLimitedLogin, isOwner } from "../api.js";
 import LinkedInSequenceEditor from "./LinkedInSequenceEditor.jsx";
 import LinkedInCloud from "./LinkedInCloud.jsx";
 import LinkedInStageBoard from "./LinkedInStageBoard.jsx";
@@ -247,21 +247,27 @@ function ConnectionNotes({ onMessage }) {
   useEffect(() => { load(); }, []);
   const rescore = (v, text) => api.scoreLinkedinNote(text).then((s) => setScores((x) => ({ ...x, [v]: s }))).catch(() => {});
   const write = () => { setBusy(true); api.generateLinkedinNotes(context).then(setIdeas).catch((e) => onMessage(e.message)).finally(() => setBusy(false)); };
-  const save = () => api.saveLinkedinVariants(draft).then((r) => { setCur(r); onMessage("Connection notes saved. New leads get the new A or B note."); }).catch((e) => onMessage(e.message));
+  const save = () => api.saveLinkedinVariants({ ...draft, workspace: cur.workspace }).then((r) => { setCur(r); onMessage("Connection notes saved. New leads get the new A or B note."); }).catch((e) => onMessage(e.message));
   if (!cur) return null;
+  // Main's notes: owners (and callers with every workspace, as before); a workspace's: owners and its own admins.
+  const editable = !!cur.can_edit || (cur.workspace === "main" && getRole() === "caller" && !isLimitedLogin());
   return (
     <details className="card" style={{ marginBottom: 12 }}>
-      <summary><b>Connection notes A / B</b> <small className="sub-inline">each new lead gets one of the two; compare accept rates on the Intelligence page</small></summary>
+      <summary><b>Connection notes A / B</b> <small className="sub-inline">each new lead gets one of the two; compare accept rates on the Intelligence page
+        {(isOwner() || cur.workspace !== "main") && <> · <span className="pill">{cur.workspace_name}</span></>}</small></summary>
+      {!editable && <p className="sub">Read-only: only an owner or an admin of this workspace changes these notes.</p>}
       {["A", "B"].map((v) => (
         <div key={v} style={{ marginTop: 10 }}>
           <label htmlFor={`note-${v}`}><b>Note {v}</b></label> <Score s={scores[v]} />
-          <textarea id={`note-${v}`} rows={3} value={draft[v]} maxLength={600} readOnly={!canWrite()} onChange={(e) => setDraft({ ...draft, [v]: e.target.value })} onBlur={(e) => canWrite() && rescore(v, e.target.value)} style={{ width: "100%" }} />
+          <textarea id={`note-${v}`} rows={3} value={draft[v]} maxLength={600} readOnly={!editable} onChange={(e) => setDraft({ ...draft, [v]: e.target.value })} onBlur={(e) => editable && rescore(v, e.target.value)} style={{ width: "100%" }} />
         </div>
       ))}
-      {canWrite() && <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
+      {editable && <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
         <button className="btn" onClick={save}>Save notes</button>
+        {!isLimitedLogin() && <>
         <input aria-label="Who you are writing to" placeholder="Optional: who it is for (e.g. CHROs at IT services firms)" value={context} maxLength={500} onChange={(e) => setContext(e.target.value)} style={{ flex: 1, minWidth: 220 }} />
         <button className="btn ghost" onClick={write} disabled={busy}>{busy ? "Writing…" : "Write ideas with Claude"}</button>
+        </>}
       </div>}
       {cur.changed_at && <small className="sub-inline">Last changed by {cur.changed_by} · {istLabel(cur.changed_at)}. Accept rates before this date belong to the old notes.</small>}
       {ideas && (
@@ -286,7 +292,8 @@ export default function LinkedInQueue() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [helper, setHelper] = useState(null);
-  const load = () => { setError(""); api.linkedinQueue().then(setQ).catch((e) => setError(e.message)); api.linkedinSettings().then(setCfg).catch(() => {}); };
+  const limited = isLimitedLogin();      // a workspace login: its own leads and templates; account, agent and tool settings stay with owners
+  const load = () => { setError(""); api.linkedinQueue().then(setQ).catch((e) => setError(e.message)); if (!limited) api.linkedinSettings().then(setCfg).catch(() => {}); };
   useEffect(() => { load(); }, []);
   const act = async (fn, done) => { try { await fn(); setMessage(done); load(); } catch (e) { setMessage(e.message); } };
 
@@ -300,18 +307,18 @@ export default function LinkedInQueue() {
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
       <LinkedInStageBoard onMessage={setMessage} />
       {isOwner() && <LinkedInCloud onMessage={setMessage} />}
-      <ToolBridge onDone={load} />
+      {!limited && <ToolBridge onDone={load} />}
       {isOwner() && <LinkedInAgent onMessage={setMessage} />}
       <LinkedInSequenceEditor onMessage={setMessage} />
       <ConnectionNotes onMessage={setMessage} />
-      <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />
+      {!limited && <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />}
       {canWrite() && <ChromeAssistant onMessage={setMessage} />}
       {q && !q.case_study_set && <p className="sub">Step 4 (case study) is skipped until you add a real case-study link in the settings above.</p>}
 
       <div className="row dl-head">
         <h3>To send today {q && <span className="pill">{q.due.length}</span>}</h3>
-        <DownloadButton path={exportPath("linkedin_queue")} label="Download today's list" testId="download-linkedin"
-          title="Messages to send, people waiting to accept and suggestions, with the ready-to-paste text" />
+        {!limited && <DownloadButton path={exportPath("linkedin_queue")} label="Download today's list" testId="download-linkedin"
+          title="Messages to send, people waiting to accept and suggestions, with the ready-to-paste text" />}
       </div>
       {q && q.due.length === 0 && <p className="empty">Nothing due. Start some people from the suggestions below.</p>}
       {q && q.due.map((d) => (

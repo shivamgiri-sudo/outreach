@@ -129,10 +129,16 @@ def persona(title: str, settings: Optional[dict] = None) -> tuple:
     return "general", DEFAULT_HOOK
 
 
+def lead_settings(settings: dict, lead: Optional[dict]) -> dict:
+    """Settings as the lead's workspace sees them: its own LinkedIn steps and notes, else main's (app/ws_templates.py)."""
+    from .ws_templates import for_lead
+    return for_lead(settings, lead)
+
+
 def lead_steps(lead: dict, settings: dict) -> list:
-    """The steps this lead follows (its own version of the sequence; see app/linkedin_config.py)."""
+    """The steps this lead follows (its workspace's sequence, at its own version; see app/linkedin_config.py)."""
     from .linkedin_config import steps_for
-    return steps_for(lead.get("linkedin_seq") or {}, settings)
+    return steps_for(lead.get("linkedin_seq") or {}, lead_settings(settings, lead))
 
 
 def current_steps(settings: dict) -> list:
@@ -142,6 +148,7 @@ def current_steps(settings: dict) -> list:
 
 def render(step: dict, lead: dict, settings: dict) -> str:
     from .linkedin_config import fill, variants
+    settings = lead_settings(settings, lead)
     first = clean_first_name(lead.get("contact_name")) or "there"
     _, hook = persona(lead.get("title", ""), settings)
     template = step["text"]
@@ -206,7 +213,7 @@ def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = Fals
         raise ValueError(f"Lead is {lead['stage']}; no LinkedIn outreach.")
     if lead.get("linkedin_seq"):
         raise ValueError("This lead is already on the LinkedIn sequence; it is never restarted.")
-    settings = store.read("settings")
+    settings = lead_settings(store.read("settings"), lead)
     from .linkedin_config import current
     cfg = current(settings)
     state = {"started_at": iso(now), "done": [], "status": "waiting_to_connect", "persona": persona(lead.get("title", ""), settings)[0],
@@ -223,10 +230,10 @@ def mark_sent(store, lead_id: str, step_n: int, now: Optional[datetime] = None, 
 
     `origin` (app/provenance.py) says who: a person marking it sent, or the LinkedIn agent; it goes on the timeline line."""
     now = now or now_utc()
-    settings = store.read("settings")
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None or not lead.get("linkedin_seq"):
         raise LookupError("Lead is not on the LinkedIn sequence")
+    settings = lead_settings(store.read("settings"), lead)
     state = lead["linkedin_seq"]
     if state.get("status") in ("stopped", "finished") or lead.get("stage") in CLOSED:
         raise ValueError("The LinkedIn sequence for this lead has ended.")
@@ -257,10 +264,10 @@ def _origin_fields(origin: Optional[dict]) -> dict:
 def mark_accepted(store, lead_id: str, now: Optional[datetime] = None) -> dict:
     """They accepted the connection: schedule the first message."""
     now = now or now_utc()
-    settings = store.read("settings")
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None or not lead.get("linkedin_seq"):
         raise LookupError("Lead is not on the LinkedIn sequence")
+    settings = lead_settings(store.read("settings"), lead)
     if lead["linkedin_seq"].get("status") in ("stopped", "finished") or lead.get("stage") in CLOSED:
         raise ValueError("The LinkedIn sequence for this lead has ended.")
     state = {**lead["linkedin_seq"], "accepted_at": iso(now), "status": "messaging", "done": sorted(set(lead["linkedin_seq"].get("done", [])) | {1})}
@@ -314,15 +321,20 @@ def _fresh_text(task: dict, lead: dict, step_n: Optional[int], settings: dict) -
 
 
 def queue(store, now: Optional[datetime] = None) -> dict:
-    """Today's LinkedIn work: due steps (with the filled message) and suggested new people to connect with."""
+    """Today's LinkedIn work: due steps (with the filled message) and suggested new people to connect with. Only the
+    leads in the request's workspace scope are listed (the daily limit still counts everyone started today)."""
+    from . import workspaces
     now = now or now_utc()
     settings = store.read("settings")
-    leads = {l["id"]: l for l in store.read("leads")}
+    every = store.read("leads")
+    leads = {l["id"]: l for l in workspaces.filter_rows(every)}
     due = []
     for t in store.read("tasks"):
         if t.get("kind") != "linkedin" or t.get("status", "open") != "open":
             continue
         lead = leads.get(t.get("lead_id")) or {}
+        if not lead and workspaces.scoped():
+            continue                       # a task of a lead outside this workspace
         if lead.get("stage") in CLOSED:
             continue                       # unsubscribed (e.g. by the email link) or disqualified: never contacted
         if t.get("due_at") and datetime.fromisoformat(t["due_at"]) > now + timedelta(hours=12):
@@ -331,7 +343,7 @@ def queue(store, now: Optional[datetime] = None) -> dict:
         due.append({"task_id": t["id"], "lead_id": lead.get("id"), "company": lead.get("company"), "name": lead.get("contact_name"),
                     "title": lead.get("title"), "linkedin_url": lead.get("linkedin_url"), "open_profile": bool((lead.get("linkedin_profile") or {}).get("open_profile")), "step": step_n, "message": _fresh_text(t, lead, step_n, settings),
                     "due_at": t.get("due_at"), "persona": (lead.get("linkedin_seq") or {}).get("persona")})
-    started_today = sum(1 for l in leads.values() if (l.get("linkedin_seq") or {}).get("started_at", "")[:10] == iso(now)[:10])
+    started_today = sum(1 for l in every if (l.get("linkedin_seq") or {}).get("started_at", "")[:10] == iso(now)[:10])
     limit = int(settings.get("linkedin_daily_connections") or DEFAULT_DAILY_CONNECTIONS)
     suggestions = []
     if started_today < limit:
@@ -339,7 +351,7 @@ def queue(store, now: Optional[datetime] = None) -> dict:
                          and l.get("stage") not in ("unsubscribed", "disqualified", "customer", "advocate")),
                         key=lambda l: -(l.get("open_roles") or 0))
         suggestions = [{"lead_id": l["id"], "company": l.get("company"), "name": l.get("contact_name"), "title": l.get("title"),
-                        "persona": persona(l.get("title", ""), settings)[0]} for l in ranked[: limit - started_today]]
+                        "persona": persona(l.get("title", ""), lead_settings(settings, l))[0]} for l in ranked[: limit - started_today]]
     waiting = [{"lead_id": l["id"], "company": l.get("company"), "name": l.get("contact_name"), "linkedin_url": l.get("linkedin_url"),
                 "since": l["linkedin_seq"].get("last_sent_at")}
                for l in leads.values() if (l.get("linkedin_seq") or {}).get("status") == "waiting_for_acceptance"]

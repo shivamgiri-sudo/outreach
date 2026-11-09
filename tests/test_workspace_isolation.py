@@ -33,10 +33,13 @@ def test_new_login_can_be_limited_at_creation_and_unknown_workspace_refused(tmp_
 
 def test_routes_outside_the_reviewed_list_are_refused(tmp_path):
     c, ho, hr, w = setup(tmp_path)
-    for path in ("/api/campaigns", "/api/linkedin/queue", "/api/hygiene/report", "/api/signals", "/api/prospects/stats",
-                 "/api/find-leads", "/api/growth", "/api/flows", "/api/extension/agent"):
+    for path in ("/api/campaigns", "/api/hygiene/report", "/api/signals", "/api/prospects/stats",
+                 "/api/find-leads", "/api/growth", "/api/extension/agent", "/api/linkedin/settings", "/api/flows/{x}/webhook".replace("{x}", "f1")):
         assert c.get(path, headers=hr).status_code == 403, path
     assert c.put("/api/linkedin/settings", json={}, headers=hr).status_code == 403
+    assert c.post("/api/linkedin/results", json={"csv": "a"}, headers=hr).status_code == 403
+    # the LinkedIn queue and the flows list are open to workspace logins, scoped to their workspace (test_workspace_templates.py)
+    assert c.get("/api/linkedin/queue", headers=hr).json()["suggestions"] == []
     assert c.get("/api/campaigns", headers=ho).status_code == 200                 # the owner is not limited
 
 

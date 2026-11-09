@@ -45,6 +45,21 @@ LIMITED_OK = {
     ("POST", "/api/extension/save-profile"), ("GET", "/api/extension/match"), ("GET", "/api/extension/queue"),
     # LinkedIn account per lead and the stage board (both only touch / count leads in the login's workspaces)
     ("GET", "/api/linkedin/accounts"), ("POST", "/api/linkedin/assign"), ("GET", "/api/linkedin/stages"), ("GET", "/api/linkedin/stages.csv"),
+    # templates of the login's workspaces (+ main's, read-only). Writes: owners, and a workspace's own admins only; the
+    # routes check the template's workspace (app/ws_templates.py) and refuse callers.
+    ("POST", "/api/sequences"), ("PUT", "/api/sequences/{seq_id}"), ("POST", "/api/sequences/{seq_id}/duplicate"),
+    ("POST", "/api/sequences/{seq_id}/archive"), ("POST", "/api/sequences/{seq_id}/make-default"), ("GET", "/api/sequences/{seq_id}/stats"),
+    ("POST", "/api/snippets"), ("PUT", "/api/snippets/{snippet_id}"), ("DELETE", "/api/snippets/{snippet_id}"),
+    # the LinkedIn page: queue and suggestions of the login's leads only, its workspace's steps / notes
+    ("GET", "/api/linkedin/queue"), ("GET", "/api/linkedin/steps"), ("GET", "/api/linkedin/sequence"), ("PUT", "/api/linkedin/sequence"),
+    ("POST", "/api/linkedin/sequence/reset"), ("POST", "/api/linkedin/sequence/copy"), ("POST", "/api/linkedin/sequence/preview"),
+    ("GET", "/api/linkedin/variants"), ("PUT", "/api/linkedin/variants"), ("POST", "/api/linkedin/variants/score"),
+    # flows of the login's workspaces (+ main's, read-only); a workspace's flow only takes that workspace's leads
+    ("GET", "/api/flows"), ("GET", "/api/flows/catalog"), ("GET", "/api/flows/templates"), ("POST", "/api/flows"),
+    ("POST", "/api/flows/import"), ("POST", "/api/flows/templates/{key}"), ("GET", "/api/flows/{flow_id}"), ("PUT", "/api/flows/{flow_id}"),
+    ("DELETE", "/api/flows/{flow_id}"), ("GET", "/api/flows/{flow_id}/export"), ("POST", "/api/flows/{flow_id}/validate"),
+    ("POST", "/api/flows/{flow_id}/activate"), ("POST", "/api/flows/{flow_id}/pause"), ("POST", "/api/flows/{flow_id}/enroll"),
+    ("POST", "/api/flows/{flow_id}/simulate"), ("GET", "/api/flows/{flow_id}/runs"),
     # workspace admins: logins of their own workspaces (the routes check every target and workspace)
     ("GET", "/api/users"), ("POST", "/api/users"), ("PUT", "/api/users/{email}"), ("DELETE", "/api/users/{email}"),
     ("GET", "/api/security/logins"),          # login history: the route shows an admin only its own workspaces' logins

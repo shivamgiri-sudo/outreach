@@ -10,6 +10,7 @@ replies), and a cold flow (stop on reply) also stops once the lead is warm, like
 claimed on the run before it acts and recorded after, so a second tick never repeats it, and a crash between the two
 leaves the run marked "check this" instead of acting twice. A lead is never enrolled twice in the same flow, and a
 run has a step limit so no flow can loop forever (loops need a wait step, checked when the flow is saved).
+A workspace's flow only takes and acts on that workspace's leads (app/ws_templates.flow_takes); main's as before.
 """
 import re
 import threading
@@ -20,6 +21,7 @@ from typing import Optional
 from . import flow_actions as act, provenance
 from .flows import FlowError, ensure_collections, graph_for_version, is_trigger, outputs_of, title_of
 from .sequence_runner import WARM_STAGES
+from .ws_templates import flow_takes as takes
 
 MAX_STEPS_PER_RUN = 200
 MAX_STEPS_PER_TICK = 25
@@ -120,6 +122,8 @@ def enroll(store, flow: dict, lead_id: str, now: datetime, why: str = "added by 
         raise LookupError("Lead not found")
     if flow["status"] != "active":
         raise FlowError("Activate the flow first; drafts and paused flows don't take new leads.")
+    if not takes(flow, lead):
+        raise FlowError("This flow belongs to another workspace; it only takes that workspace's leads.")
     blocked = act.blocked_reason(store, lead)
     if blocked:
         raise FlowError(f"Not started: {blocked}.")
@@ -219,7 +223,7 @@ def poll_schedules(store, now: datetime) -> int:
             continue
         store.update("flows", lambda fs, fid=flow["id"]: [{**f, "schedule_last": today} if f["id"] == fid else f for f in fs])
         limit = int(config.get("limit") or 50)
-        for lead in [l for l in leads if (flow["id"], l["id"]) not in taken and _schedule_matches(config, l)][:limit]:
+        for lead in [l for l in leads if (flow["id"], l["id"]) not in taken and takes(flow, l) and _schedule_matches(config, l)][:limit]:
             try:
                 enroll(store, flow, lead["id"], now, "scheduled")
                 started += 1
@@ -246,7 +250,7 @@ def poll_triggers(store, now: datetime) -> int:
         trigger = trigger_of(flow)
         config, since = trigger.get("config") or {}, _parse(flow.get("activated_at")) or now
         for lead in leads:
-            if (flow["id"], lead["id"]) in taken:
+            if (flow["id"], lead["id"]) in taken or not takes(flow, lead):
                 continue
             why = None
             if trigger["type"] == "trigger.lead_added":
@@ -374,6 +378,10 @@ def advance_run(store, flow: dict, run_id: str, now: datetime, ctx: Context, cou
         lead = _lead(store, run["lead_id"])
         if lead is None:
             _finish(store, flow, run, "stopped", "the lead no longer exists (merged or deleted)", now, note=False)
+            counts["stopped"] += 1
+            return
+        if not takes(flow, lead):
+            _finish(store, flow, run, "stopped", "the lead moved to another workspace; this flow is not theirs", now)
             counts["stopped"] += 1
             return
         blocked = act.blocked_reason(store, lead)

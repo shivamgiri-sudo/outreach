@@ -11,6 +11,13 @@ export const isOwner = () => role === "owner";
 // Owner-only changes (settings, integrations, flows, sequence library...) use isOwner(), as the server's routes_auth.py.
 export const canWrite = () => role === "owner" || role === "caller" || role === "admin";
 export const isWorkspaceAdmin = () => role === "admin";
+// The signed-in login's workspaces (set by App from /api/me): a login limited to some workspaces sees their templates
+// plus main's read-only ones; only owners and the workspace's own admins change them (server: app/ws_templates.py).
+let myWorkspaces = [];
+export const setMyWorkspaces = (w) => { myWorkspaces = Array.isArray(w) ? w : []; };
+export const isLimitedLogin = () => role !== "owner" && (myWorkspaces.length > 0 || role === "admin");
+// May this login change templates (sequences, snippets, flows, LinkedIn steps) of workspace `ws` ("main" when missing)?
+export const canEditWorkspace = (ws) => role === "owner" || (role === "admin" && (ws || "main") !== "main" && myWorkspaces.includes(ws));
 let canEdit = true;
 export const canEditContacts = () => canEdit;
 export const setCanEditContacts = (v) => { canEdit = v !== false; };
@@ -187,6 +194,7 @@ export const api = {
   moveToWorkspace: (id, leadIds) => request(`/api/workspaces/${encodeURIComponent(id)}/move`, { method: "POST", body: { lead_ids: leadIds } }),
   linkedinVariants: () => request("/api/linkedin/variants"),
   saveLinkedinVariants: (body) => request("/api/linkedin/variants", { method: "PUT", body }),
+  copyLinkedinSequence: () => request("/api/linkedin/sequence/copy", { method: "POST", body: {} }),
   scoreLinkedinNote: (text) => request("/api/linkedin/variants/score", { method: "POST", body: { text } }),
   generateLinkedinNotes: (context = "") => request("/api/linkedin/variants/generate", { method: "POST", body: { context, n: 4 } }),
   saveLinkedinSettings: (body) => request("/api/linkedin/settings", { method: "PUT", body }),
@@ -285,7 +293,7 @@ export const api = {
   flow: (id) => request(`/api/flows/${id}`),
   flowCatalog: () => request("/api/flows/catalog"),
   flowTemplates: () => request("/api/flows/templates"),
-  flowFromTemplate: (key) => request(`/api/flows/templates/${key}`, { method: "POST" }),
+  flowFromTemplate: (key, workspace = "") => request(`/api/flows/templates/${key}${workspace ? `?workspace=${encodeURIComponent(workspace)}` : ""}`, { method: "POST" }),
   createFlow: (body) => request("/api/flows", { method: "POST", body }),
   saveFlow: (id, body) => request(`/api/flows/${id}`, { method: "PUT", body }),
   deleteFlow: (id) => request(`/api/flows/${id}`, { method: "DELETE" }),
@@ -385,7 +393,8 @@ export const api = {
   sequenceGet: (id) => request(`/api/sequences/${id}`),
   createSequence: (body) => request("/api/sequences", { method: "POST", body }),
   updateSequence: (id, body) => request(`/api/sequences/${id}`, { method: "PUT", body }),
-  duplicateSequence: (id, name = "") => request(`/api/sequences/${id}/duplicate`, { method: "POST", body: { name } }),
+  duplicateSequence: (id, name = "", workspace) => request(`/api/sequences/${id}/duplicate`, { method: "POST", body: { name, ...(workspace ? { workspace } : {}) } }),
+  makeDefaultSequence: (id) => request(`/api/sequences/${id}/make-default`, { method: "POST", body: {} }),
   archiveSequence: (id, archived = true) => request(`/api/sequences/${id}/archive`, { method: "POST", body: { archived } }),
   sequenceStats: (id) => request(`/api/sequences/${id}/stats`),
   sequenceStepPreview: (id, index, variant = "A") => request(`/api/sequences/${id}/steps/${index}/preview?variant=${encodeURIComponent(variant)}`),
