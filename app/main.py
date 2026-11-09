@@ -101,6 +101,7 @@ from .routes_lead_fields import make_router as make_lead_fields_router
 from .routes_lead_ops import make_router as make_lead_ops_router
 from .routes_send_audit import make_router as make_send_audit_router
 from .lead_ops import with_list_extras
+from . import sales_import as sales_import_mod
 from .store import Store
 from .suggest import suggest_next
 from .unsubscribe import ensure_cutover
@@ -401,6 +402,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                 elif lead["dedupe_key"] in seen:
                     if lead["dedupe_key"] in mine or limited_login:     # SECURITY: a limited login is not told it is held elsewhere
                         duplicates += 1
+                        sales_import_mod.reimport(leads, lead["dedupe_key"], row, lambda l: same(l) and workspaces_mod.visible(l), datetime.now(timezone.utc))
                     else:
                         elsewhere += 1               # held in another workspace: skipped, nothing about it shown
                 elif ((target := _contactless_match(leads, lead)) is not None and workspaces_mod.visible(leads[target])
@@ -600,6 +602,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_account_usage_router(store))
     app.include_router(make_audit_router(store))
     app.include_router(make_analytics_router(store))
+    from .routes_funnel import make_router as make_funnel_router
+    app.include_router(make_funnel_router(store))
     app.include_router(make_extension_router(store))
     app.include_router(make_compliance_router(store))
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,

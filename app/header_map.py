@@ -8,6 +8,7 @@ import hashlib
 import re
 from difflib import SequenceMatcher, get_close_matches
 
+from .sales_import import ALIASES as SALES_ALIASES, LABELS as SALES_LABELS
 from .standardise import clean_email, clean_text, parse_phones, host_of
 
 FIELDS = {
@@ -19,6 +20,7 @@ FIELDS = {
     "job_age_days": "Days the job has been live", "posted_on": "Job posted on", "job_link": "Job link",
     "lead_status": "Lead status", "source_detail": "Where it was found", "notes": "Notes",
 }
+FIELDS.update(SALES_LABELS)                  # the sales funnel's columns (app/sales_import.py)
 MULTI_FIELDS = frozenset({"email", "phone", "notes", "job_link"})
 
 _A = {
@@ -82,6 +84,7 @@ _A = {
     "notes": ["notes", "note", "remarks", "remark", "comments", "comment", "call outcome", "feedback", "additional info",
               "other info"],
 }
+_A.update({field: SALES_ALIASES[field] for field in SALES_LABELS})
 # Lower-priority aliases: when two columns give the same single field, the higher confidence wins.
 _SECONDARY = {
     "company name for emails": ("company", 0.9), "company city": ("city", 0.85), "company state": ("state", 0.85),

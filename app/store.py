@@ -27,6 +27,7 @@ class Store:
         self._lock = threading.RLock()
         self._box = box or SecretBox()
         self._data = self._load()
+        self.versions = {}                    # collection -> number of writes since start (a cheap "did it change" stamp)
         if self._box.enabled and self._box.plain_secrets(self._data) and self._path.exists():
             with self._lock:
                 self._save()                  # migrate: encrypt keys that were saved in plain text
@@ -115,12 +116,22 @@ class Store:
                     Path(keep_copy_as).write_text(json.dumps(current, ensure_ascii=False, indent=1), encoding="utf-8")
                 os.chmod(keep_copy_as, 0o600)
             self._data = {**json.loads(json.dumps(EMPTY)), **json.loads(json.dumps(new))}
+            self.versions["*"] = self.versions.get("*", 0) + 1
             self._save()
             return json.loads(json.dumps(self._data))
 
     def read(self, key: str):
         with self._lock:
             return json.loads(json.dumps(self._data[key]))
+
+    def peek(self, key: str):
+        """The live collection WITHOUT a copy: for read-only reports over many rows (the sales funnel). Never change it."""
+        with self._lock:
+            return self._data[key]
+
+    def stamp(self, *keys: str) -> tuple:
+        """Changes if any of these collections was written (or the whole store restored) since the last call."""
+        return tuple(self.versions.get(k, 0) for k in (*keys, "*"))
 
     def _guard(self, key: str, value):
         """Leads of people whose data was erased can never come back (app/privacy.py), whatever path saves them."""
@@ -134,6 +145,7 @@ class Store:
     def write(self, key: str, value) -> None:
         with self._lock:
             self._data[key] = self._guard(key, value)
+            self.versions[key] = self.versions.get(key, 0) + 1
             self._save()
 
     def update(self, key: str, change):
@@ -141,6 +153,7 @@ class Store:
         with self._lock:
             current = json.loads(json.dumps(self._data[key]))
             self._data[key] = self._guard(key, change(current))
+            self.versions[key] = self.versions.get(key, 0) + 1
             self._save()
             return json.loads(json.dumps(self._data[key]))
 

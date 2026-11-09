@@ -177,6 +177,8 @@ ACTIONS = {
     "account.ask": "Details asked from an applicant", "account.suspend": "Account suspended", "account.reactivate": "Account reactivated",
     "account.export": "Account data exported", "account.delete": "Account deleted", "view_as.start": "View as started (read-only)",
     "view_as.request": "Request made while viewing as", "view_as.stop": "View as stopped", "platform.stop_sending": "Stop all sending switched",
+    "sales.stage": "Sales stage changed", "sales.edit": "Sales values changed", "sales.settings": "Sales funnel settings saved",
+    "sales.recalculate": "Sales stage dates back-filled",
     "account.limits": "Account limits changed", "limit.threshold": "Account reached 80% / 100% of a limit", "account.auto_hold": "Account sending held automatically",
     "account.release_hold": "Automatic sending hold released", "abuse.signup_surge": "Sign-up surge", "abuse.volume_spike": "Sending volume spike",
     "abuse.failed_logins": "Failed sign-ins on a client login", "account.whatsapp": "Account WhatsApp provider changed", "account.alerts": "Account alert settings changed",
