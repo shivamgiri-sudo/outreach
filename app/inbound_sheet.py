@@ -9,6 +9,7 @@ import json
 import re
 
 from . import capture_connectors as connectors
+from . import sales_import
 from .channels.netguard import BlockedAddress, guarded_request
 from .inbound_fields import extract
 from .inbound_leads import capture, log
@@ -82,6 +83,7 @@ def sync(store, connector: dict, fetcher=None) -> dict:
     done = []
     for h, row in fresh:
         parsed = extract(row)
+        parsed["sales"] = sales_import.from_row(row)[0]             # Lead Status, MQL Date ... Lead Owner (app/sales_import.py)
         result = capture(store, connector, parsed, detail="Google Sheet", consent_default=bool(connector.get("assume_consent")))
         key = {"new": "new", "merged": "merged", "refused": "refused", "replay": "replay"}.get(result["outcome"])
         if key:

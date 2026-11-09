@@ -12,6 +12,7 @@ from collections import Counter
 from datetime import date
 from typing import Optional
 
+from . import sales_import, sales_model
 from .header_map import detect_format, loose_header, map_columns
 from .hygiene import dedupe_key as basic_dedupe_key, is_role_address, normalise_phone
 from .lead_merge import CLOSED_STAGES, LeadIndex, merge_record
@@ -46,6 +47,7 @@ PROBLEM_TEXT = {
     "suppressed_extra": "{v} is on the do-not-contact list and was left out.",
     "closed_lead": "Matches a lead marked {v}; new details are added but it stays {v}.",
     "source_opt_out": "The source file says this person opted out of email ({v}), so this row is skipped.",
+    "sales_note": "Sales funnel: {v}",
     "do_not_call": "The source file says do not call ({v}), so the phone numbers were left out.",
     "email_flagged": "The source marked the email {v}; check it before emailing.",
     "custom_unreadable": "{v}: the value could not be read for this custom field and was left out.",
@@ -218,7 +220,9 @@ def extract_record(row: dict, columns: list, today: date, custom_fields: Optiona
         "source_detail": get("source_detail"), "lead_status": get("lead_status"), "notes": notes,
     }
     rec["custom"], custom_problems = custom_values(row, columns, custom_fields)
-    return rec, problems + custom_problems
+    parsed, sales_notes = sales_import.from_mapped(row, columns)          # the sales funnel's columns (app/sales_import.py)
+    rec["sales"], rec["sales_owner"] = parsed["sales"], parsed["owner"]
+    return rec, problems + custom_problems + [("sales_note", n) for n in sales_notes]
 
 
 def _set_emails(rec: dict, emails: list) -> None:
@@ -246,7 +250,7 @@ SOURCED_FIELDS = ("company", "contact_name", "title", "email", "phone", "website
                   "company_linkedin_url", "city", "state", "country", "sector", "company_size", "open_roles", "role")
 
 
-def lead_from_record(rec: dict, source: str, import_id: str, at: str, taken: set) -> dict:
+def lead_from_record(rec: dict, source: str, import_id: str, at: str, taken: set, warn=None) -> dict:
     lead_id = uuid.uuid4().hex[:10]
     detail = f" ({rec['source_detail']})" if rec.get("source_detail") else ""
     lead = {
@@ -263,7 +267,14 @@ def lead_from_record(rec: dict, source: str, import_id: str, at: str, taken: set
         **{k: rec[k] for k in OPTIONAL_KEYS if rec.get(k)},
         "field_sources": {f: source for f in SOURCED_FIELDS if rec.get(f)},
         **({"custom": dict(rec["custom"])} if rec.get("custom") else {}),
+        **({"owner": rec["sales_owner"], "owner_at": at} if rec.get("sales_owner") else {}),
     }
+    if rec.get("sales"):                          # Rajesh's sales columns: status, stage dates, values (rules apply)
+        new_sales, warnings, _changed = sales_import.apply_incoming(None, rec["sales"], sales_model.parse_dt(at), sales_model.parse_dt(at), "import")
+        lead["sales"] = new_sales
+        for text in warnings:
+            if warn:
+                warn("sales_note", text)
     if import_id:
         lead["import_id"] = import_id
     from .workspaces import stamp_new
@@ -377,7 +388,7 @@ def _same_person(hit) -> bool:
 def _place(leads, index, rec, n, source, import_id, at, created, touched, out, warn) -> str:
     hit = index.match(rec)
     if hit is None:
-        leads.append(lead_from_record(rec, source, import_id, at, index.keys))
+        leads.append(lead_from_record(rec, source, import_id, at, index.keys, warn))
         i = len(leads) - 1
         index.add(i)
         created[i] = n
@@ -390,6 +401,9 @@ def _place(leads, index, rec, n, source, import_id, at, created, touched, out, w
     if extra:                                  # custom values fill gaps only; a value already on the lead is kept
         merged = {**merged, "custom": {**(merged.get("custom") or {}), **extra}}
         info = {**info, "filled": [*info["filled"], *(f"custom.{k}" for k in extra)], "changed": True}
+    sales_info = _merge_sales(before, merged, rec, at, warn)
+    if sales_info:
+        merged, info = sales_info[0], {**info, "changed": True}
     status = [f"Lead status in {source}: {rec['lead_status']}"] if rec.get("lead_status") else []   # stage is never changed
     notes = [t for t in [*rec["notes"], *status] if t not in {e.get("text") for e in merged["timeline"]}]
     if notes:
@@ -414,6 +428,25 @@ def _place(leads, index, rec, n, source, import_id, at, created, touched, out, w
     out["merges"].append(entry)
     out["merged_ids"].append(before["id"])
     return "merge"
+
+
+def _merge_sales(before: dict, merged: dict, rec: dict, at: str, warn):
+    """Re-import of a lead: update its sales record (existing stage dates are never overwritten) and fill a missing owner."""
+    if not rec.get("sales") and not rec.get("sales_owner"):
+        return None
+    when = sales_model.parse_dt(at)
+    new_sales, warnings, changed = ((merged.get("sales") or None), [], False)
+    if rec.get("sales"):
+        new_sales, warnings, changed = sales_import.apply_incoming(merged.get("sales"), rec["sales"], sales_model.parse_dt(merged.get("created_at")) or when, when, "import")
+    for text in warnings:
+        warn("sales_note", text)
+    out = {**merged}
+    if changed:
+        out["sales"] = new_sales
+    if rec.get("sales_owner") and not out.get("owner"):
+        out.update(owner=rec["sales_owner"], owner_at=at)
+        changed = True
+    return (out,) if changed else None
 
 
 def fingerprint(lead: dict) -> str:

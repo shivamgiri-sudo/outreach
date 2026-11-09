@@ -109,6 +109,14 @@ def build_lead(row: dict, source: str, allow_company_key: bool = False, fallback
     lead["dedupe_key"] = dedupe_key(lead) or landline_key(lead) or (f"company:{lead['company'].lower()}" if allow_company_key and lead["company"] else None) or fallback_key or None
     if not lead["dedupe_key"]:
         return None
+    from . import sales_import, sales_model    # the sales funnel's columns (Lead Status, MQL Date ... Lead Owner), if the row has any
+    parsed, _notes = sales_import.from_row(row)
+    if sales_import.has_data(parsed):
+        if parsed["sales"]:
+            lead["sales"] = sales_import.apply_incoming(None, parsed["sales"], sales_model.parse_dt(lead["created_at"]),
+                                                        sales_model.parse_dt(lead["created_at"]), "import")[0]
+        if parsed["owner"]:
+            lead.update(owner=parsed["owner"], owner_at=lead["created_at"])
     from .workspaces import stamp_new          # late import: workspaces imports this module
     return stamp_new(lead)
 

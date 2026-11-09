@@ -32,6 +32,7 @@ import Campaigns from "./pages/Campaigns.jsx";
 import HiringEngine from "./pages/HiringEngine.jsx";
 import MyDay from "./pages/MyDay.jsx";
 import Analytics from "./pages/Analytics.jsx";
+import SalesFunnel from "./pages/SalesFunnel.jsx";
 import Reports from "./pages/Reports.jsx";
 import Help from "./pages/Help.jsx";
 import ProspectSearch from "./pages/ProspectSearch.jsx";
@@ -57,6 +58,7 @@ const PAGES = [
   ["signals", "Buying signals", Signals, "bell"],
   ["sources", "Data sources", DataSources, "layers"],
   ["analytics", "Analytics", Analytics, "chart"],
+  ["funnel", "Sales funnel", SalesFunnel, "chart"],
   ["reports", "Reports", Reports, "tasks"],
   ["insights", "Insights", Insights, "chart"],
   ["intelligence", "Intelligence", Intelligence, "eye"],
@@ -84,7 +86,7 @@ const GROUPS_ALL = [
   ["Pipeline", ["prospects", "leads", "companies", "lists", "campaigns", "growth"]],
   ["Conversations", ["replies", "calls", "linkedin", "tasks", "meetings", "outbox"]],
   ["Content & automation", ["templates", "flows", "workflows", "stories", "prompts"]],
-  ["Analytics", ["analytics", "reports"]],
+  ["Analytics", ["analytics", "funnel", "reports"]],
   ["Data", ["sources", "signals", "hygiene", "engine"]],
   ["Settings", ["setup", "integrations", "help"]],
 ];
@@ -92,7 +94,7 @@ const BY_ID = Object.fromEntries(PAGES.map((p) => [p[0], p]));
 // Pages whose every API call is owner-only: hidden from callers and viewers, and a short note if they open the link.
 const OWNER_PAGES = new Set(["engine"]);
 // A login limited to some workspaces sees only pages built from its own workspace's leads (the server refuses the rest).
-const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "replies", "calls", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports", "linkedin", "flows"]);
+const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "funnel", "replies", "calls", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports", "linkedin", "flows"]);
 const isLimited = (me) => me.role !== "owner" && ((me.workspaces || []).length > 0 || me.role === "admin");
 const pageAllowed = (me, id) => (me.role === "owner" || !OWNER_PAGES.has(id)) && (!isLimited(me) || LIMITED_PAGES.has(id));
 const GROUPS = GROUPS_ALL.map(([g, ids]) => [g, ids.filter((id) => BY_ID[id])]).filter(([, ids]) => ids.length);

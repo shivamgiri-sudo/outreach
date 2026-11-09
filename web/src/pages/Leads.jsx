@@ -13,6 +13,7 @@ import LeadViews from "./LeadViews.jsx";
 import { istDateLabel, istLabel } from "../time.js";
 import { CustomFilters, customMatches, showValue, useLeadFields } from "./LeadCustomFields.jsx";
 import PhoneTag from "./PhoneTag.jsx";
+import { SALES_STATUSES, salesStageOf } from "../salesStage.js";
 import { LinkedInCell, LinkedInStageFilter, liStageMatches } from "./LeadLinkedInStage.jsx";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
@@ -127,6 +128,7 @@ export default function Leads({ go }) {
   const [tagFilter, setTagFilter] = useState("");
   const [hasFilter, setHasFilter] = useState([]);
   const [liStage, setLiStage] = useState("");
+  const [salesStage, setSalesStage] = useState("");
   const [customFilter, setCustomFilter] = useState({});
   const { fields: customFields } = useLeadFields();
   const tableFields = customFields.filter((f) => f.show_in_table);
@@ -243,8 +245,8 @@ export default function Leads({ go }) {
     .catch((e) => setMessage(e.message));
 
   const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, hasFilter)
-    && customMatches(l, customFilter, customFields) && liStageMatches(l, liStage)).sort(SORTS[sort]),
-    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter, liStage]);
+    && customMatches(l, customFilter, customFields) && liStageMatches(l, liStage) && (!salesStage || salesStageOf(l) === salesStage)).sort(SORTS[sort]),
+    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter, liStage, salesStage]);
   const allTags = useMemo(() => [...new Set(leads.flatMap((l) => l.tags || []).map(String))].sort((a, b) => a.localeCompare(b)), [leads]);
   const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, has: hasFilter, li_stage: liStage, sort };
   const applyView = (f) => {
@@ -264,7 +266,7 @@ export default function Leads({ go }) {
   useEffect(() => { api.workspaces().then(setSpaces).catch(() => {}); }, []);
 
   const filtered = Boolean(query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter || customOn || hasFilter.length || liStage);
-  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); setHasFilter([]); setLiStage(""); };
+  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); setHasFilter([]); setLiStage(""); setSalesStage(""); };
 
   const header = (key, label) => (
     <th aria-sort={sort === key ? (key === "score" ? "descending" : "ascending") : "none"}>
@@ -362,6 +364,10 @@ export default function Leads({ go }) {
             <option value="">All stages</option>
             {Object.keys(STAGE_LABELS).map((k) => <option key={k} value={k}>{stageLabel(k)}</option>)}
           </select>
+          <select aria-label="Filter by sales stage" value={salesStage} onChange={(e) => setSalesStage(e.target.value)} data-testid="sales-stage-filter">
+            <option value="">All sales stages</option>
+            {SALES_STATUSES.map((k) => <option key={k} value={k}>{k}</option>)}
+          </select>
           <select aria-label="Filter by temperature" value={band} onChange={(e) => setBand(e.target.value)}>
             <option value="">Hot, warm and cold</option>
             {Object.entries(BAND_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -405,7 +411,7 @@ export default function Leads({ go }) {
             <thead><tr>
               {canWrite() && <th><label className="pick-hit"><input type="checkbox" aria-label="Select all shown" checked={allPicked}
                 onChange={() => setPicked(allPicked ? [] : shown.map((l) => l.id))} /></label></th>}
-              {header("company", "Company")}<th>Contact</th>{header("stage", "Stage")}{header("score", "Score")}<th>Owner</th><th>Tags</th>{tableFields.map((f) => <th key={f.key}>{f.label}</th>)}<th>Source</th>{header("activity", "Last activity")}{header("due", "Next task due")}<th>LinkedIn</th><th>Next step</th>
+              {header("company", "Company")}<th>Contact</th>{header("stage", "Stage")}<th>Sales stage</th>{header("score", "Score")}<th>Owner</th><th>Tags</th>{tableFields.map((f) => <th key={f.key}>{f.label}</th>)}<th>Source</th>{header("activity", "Last activity")}{header("due", "Next task due")}<th>LinkedIn</th><th>Next step</th>
             </tr></thead>
             <tbody>
               {visible.map((l) => (
@@ -416,6 +422,7 @@ export default function Leads({ go }) {
                   <td data-label="Company"><button className="linkish" onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{l.company || l.domain || l.contact_name}</b></button>{l.is_test && <span className="pill warn" style={{ marginLeft: 6 }}>Test</span>}</td>
                   <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small><PhoneTag lead={l} /></td>
                   <td data-label="Stage">{stageLabel(l.stage)}{l.do_not_contact && <span className="pill warn" style={{ marginLeft: 6 }} title="On the do-not-contact list: never emailed, called or messaged">Do not contact</span>}</td>
+                  <td data-label="Sales stage" data-testid="sales-stage-cell">{salesStageOf(l)}</td>
                   <td data-label="Score"><span className={`pill ${l.band}`}>{l.score} · {l.band}</span></td>
                   <td data-label="Owner">{l.owner || <small className="sub">—</small>}</td>
                   <td data-label="Tags">{(l.tags || []).length ? (l.tags || []).map((t) => <span key={t} className="pill rec" style={{ margin: "0 4px 2px 0" }}>{t}</span>) : <small className="sub">—</small>}</td>

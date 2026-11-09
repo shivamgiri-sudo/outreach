@@ -65,6 +65,7 @@ CALLER_WRITES = {
     ("POST", "/api/extension/leads/{lead_id}/replied"), ("POST", "/api/extension/leads/{lead_id}/profile"),
     ("POST", "/api/extension/leads/{lead_id}/claim"), ("POST", "/api/linkedin-runner/heartbeat"), ("POST", "/api/mcp"),
     # leads: add, import, edit, work
+    ("PUT", "/api/leads/{lead_id}/sales"),          # the sales stage of a lead (the rules are checked in app/sales_service.py)
     ("POST", "/api/leads/import"), ("POST", "/api/leads/import-sheet"), ("POST", "/api/leads/bulk"), ("PATCH", "/api/leads/{lead_id}"),
     ("PATCH", "/api/leads/{lead_id}/custom"), ("POST", "/api/leads/{lead_id}/stage"), ("POST", "/api/leads/{lead_id}/tags"),
     ("POST", "/api/leads/{lead_id}/owner"), ("POST", "/api/leads/{lead_id}/note"), ("POST", "/api/leads/{lead_id}/activity"),
@@ -106,6 +107,8 @@ ADMIN_WRITES = {
     ("PUT", "/api/linkedin/variants"), ("POST", "/api/linkedin/variants/generate"), ("POST", "/api/linkedin/variants/score"),
     # a client account's own WhatsApp provider and alert settings (app/routes_account_usage.py checks it is their own account)
     ("PUT", "/api/account/whatsapp"), ("DELETE", "/api/account/whatsapp"), ("PUT", "/api/account/alerts"),
+    # the sales funnel's SLA, stalled days and monthly targets, and the stage-date back-fill (the routes refuse callers)
+    ("PUT", "/api/funnel/settings"), ("POST", "/api/funnel/recalculate"),
 }
 # LinkedIn agent per client account (app/linkedin_scope.py): an account's admins run their own account's agent, slots and
 # office computer (the routes cut to the admin's account, 404 for another's); callers / viewers only read its status.

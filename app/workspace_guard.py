@@ -79,6 +79,8 @@ LIMITED_OK = {
     # workspace admins: logins of their own workspaces (the routes check every target and workspace)
     ("GET", "/api/users"), ("POST", "/api/users"), ("PUT", "/api/users/{email}"), ("DELETE", "/api/users/{email}"),
     ("GET", "/api/security/logins"),          # login history: the route shows an admin only its own workspaces' logins
+    ("GET", "/api/funnel"), ("GET", "/api/funnel/drill"), ("GET", "/api/funnel/settings"),      # sales funnel: leads in scope only
+    ("PUT", "/api/funnel/settings"), ("POST", "/api/funnel/recalculate"),                      # owners / the workspace's admins (routes_auth)
     ("GET", "/api/reports/sla"), ("GET", "/api/reports/daily"), ("GET", "/api/reports/daily.csv"), ("POST", "/api/reports/email"),
     ("POST", "/api/import/preview"), ("POST", "/api/import/excel"), ("POST", "/api/import/commit"), ("GET", "/api/import/history"), ("POST", "/api/import/{import_id}/undo"),
 }

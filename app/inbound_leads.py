@@ -55,7 +55,8 @@ def normalise(fields: dict) -> dict:
 
 def _hash(connector_id: str, rec: dict, parsed: dict) -> str:
     material = json.dumps([connector_id, rec["email"], rec["phone"], rec["contact_name"].lower(), rec["company"].lower(),
-                           (parsed["attribution"].get("form_id") or parsed["attribution"].get("form_name") or ""), rec["message"]],
+                           (parsed["attribution"].get("form_id") or parsed["attribution"].get("form_name") or ""), rec["message"],
+                           parsed.get("sales") or ""],               # a sheet row whose sales columns changed is not a double click
                           ensure_ascii=False)
     return "h:" + hashlib.sha256(material.encode("utf-8")).hexdigest()[:32]
 
@@ -192,6 +193,7 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
             result.update(kind="new", closed=False, stage="new")
         lead = leads[i] if hit is not None else leads[-1]
         lead["inbound"] = True
+        _sales(lead, parsed.get("sales"), result["kind"] == "new", sid, at)
         lead.setdefault("first_inbound_at", at)
         if not lead.get("attribution"):
             lead["attribution"] = attribution
@@ -246,6 +248,24 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
     return {"outcome": result["kind"], "http": 200, "lead_id": lead_id, "new": result["kind"] == "new",
             "merged": result["kind"] == "merged", "matched_by": result.get("matched_by"), "consent": result["channels"],
             "task_id": (task or {}).get("id"), "flow": flow, "is_test": is_test}
+
+
+def _sales(lead: dict, incoming: dict, is_new: bool, sid: str, at: str) -> None:
+    """Sales funnel: a new inbound lead enters at Inquiry with its Lead Source (Meta Ads ...); a sheet row's sales columns
+    update the record without overwriting stage dates (app/sales_import.py)."""
+    if is_new and not lead.get("sales"):
+        from .sales_view import SALES_SOURCE
+        lead["sales"] = {"source": SALES_SOURCE.get(sid) or label_of(sid), "dates": {"inquiry": at}}
+    if not incoming:
+        return
+    from . import sales_import, sales_model
+    when = sales_model.parse_dt(at)
+    if incoming.get("sales"):
+        new, _warnings, changed = sales_import.apply_incoming(lead.get("sales"), incoming["sales"], sales_model.parse_dt(lead.get("created_at")) or when, when, "sheet")
+        if changed:
+            lead["sales"] = new
+    if incoming.get("owner") and not lead.get("owner"):
+        lead.update(owner=incoming["owner"], owner_at=at)
 
 
 def _speed_to_lead(store, connector: dict, lead_id: str, label: str, detail: str, result: dict, now: datetime) -> dict:
