@@ -50,8 +50,9 @@ def record(store, request, event: str, login: str, result: str, reason: str = ""
         store.update("login_history", lambda rows: [*rows[-(MAX_ROWS - 1):], row])
         if event == "login" and result == "failure":
             _maybe_alert(store, row, now or _now())
-    except Exception:                       # the log must never stop anyone signing in
-        pass
+    except Exception:                       # the log must never stop anyone signing in, but a failure must be visible
+        import logging
+        logging.getLogger("outreach.login_log").exception("login history row not saved")
     return row
 
 
