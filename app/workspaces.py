@@ -24,30 +24,57 @@ def ws_of(row: dict) -> str:
     return (row or {}).get("workspace") or MAIN
 
 
-def all_workspaces(store) -> list:
-    extra = [w for w in store.read("settings").get("workspaces") or [] if isinstance(w, dict) and w.get("id") != MAIN]
-    return [{"id": MAIN, "name": "Main", "created_by": "", "created_at": ""}, *extra]
+def all_workspaces(store, include_requested: bool = False) -> list:
+    """Every workspace (each with its account_id; "main" belongs to Mas Callnet). A workspace a client admin asked for
+    stays out (status "requested") until an owner approves it, unless include_requested."""
+    extra = [{**w, "account_id": w.get("account_id") or "mcn"} for w in store.read("settings").get("workspaces") or []
+             if isinstance(w, dict) and w.get("id") != MAIN and (include_requested or (w.get("status") or "active") == "active")]
+    return [{"id": MAIN, "name": "Main", "created_by": "", "created_at": "", "account_id": "mcn"}, *extra]
 
 
 def allowed_of(user: Optional[dict]) -> Optional[set]:
+    """The workspaces a login may see (None = every one). Cut to the login's account: a client login (account_id other
+    than "mcn") only ever gets workspaces of its own account and never None; `account_ws` is put on the signed-in
+    principal by auth.subject_principal (accounts.login_account_ws)."""
     user = user or {}
+    boundary = user.get("account_ws")
+    client = (user.get("account_id") or "mcn") != "mcn"
+    if client:
+        mine = set(user.get("workspaces") or []) if not user.get("no_workspace") else set()
+        return mine & set(boundary) if boundary is not None else mine
     if user.get("role") != "owner" and user.get("no_workspace"):
         return set()                                # lost its last workspace (deleted, or removed): sees nothing until given one
     if user.get("role") == "admin" and not user.get("workspaces"):
         return set()                                # a workspace admin always has workspaces; without one it sees nothing
     if user.get("role") == "owner" or not user.get("workspaces"):
-        return None
-    return set(user["workspaces"])
+        return None if boundary is None or user.get("role") == "owner" else set(boundary)
+    return set(user["workspaces"]) & set(boundary) if boundary is not None else set(user["workspaces"])
 
 
 async def scope_dependency(request: Request) -> None:
-    """Global dependency (async so the scope reaches the endpoint's thread)."""
+    """Global dependency (async so the scope reaches the endpoint's thread). Owners may pick an account (X-Account):
+    their lists then show only that account's workspaces."""
+    from . import accounts
     user = getattr(request.state, "user", None)
     allowed = allowed_of(user)
+    account, client = None, False
+    if user is not None and accounts.is_client(user):
+        account, client = accounts.of_user(user), True
+    elif user is not None and allowed is None:
+        picked = (request.headers.get("x-account") or "").strip()[:40]
+        store = getattr(request.app.state, "store", None)
+        if picked and picked != "all" and store is not None and accounts.find(store, picked) is not None:
+            account, allowed = picked, accounts.workspaces_of(store, picked)
+    elif user is not None:
+        account = "mcn"
     raw = (request.headers.get("x-workspace") or "").strip()[:40]
     selected = raw if raw and raw != "all" else None
     if allowed is not None and selected and selected not in allowed:
         selected = sorted(allowed)[0] if allowed else None
+    if account is None and selected:
+        store = getattr(request.app.state, "store", None)
+        account = accounts.account_of_ws(store, selected) if store is not None else None
+    accounts.set_current(account, client)
     _SCOPE.set((selected, allowed))
     request.state.workspace_scope = (selected, allowed)
 
@@ -72,6 +99,12 @@ def hidden_ids(leads) -> set:
 
 
 def filter_tasks(tasks, leads) -> list:
+    """Rows tied to a lead (tasks, notifications) this request may see. A client login also never sees a row with no
+    lead (a team-wide task or bell entry of Mas Callnet) unless the row is stamped with its own account."""
+    from . import accounts
+    if accounts.current_is_client():
+        ids = {l["id"] for l in leads if isinstance(l, dict) and l.get("id") and visible(l)}
+        return [t for t in tasks if t.get("lead_id") in ids or (not t.get("lead_id") and accounts.visible_row(t))]
     hidden = hidden_ids(leads)
     return [t for t in tasks if t.get("lead_id") not in hidden] if hidden else list(tasks)
 
@@ -86,17 +119,19 @@ def stamp_new(lead: dict) -> dict:
     return lead if ws == MAIN or not isinstance(lead, dict) else {**lead, "workspace": ws}
 
 
-def create(store, name: str, by: str) -> dict:
+def create(store, name: str, by: str, account_id: str = "mcn", status: str = "active", requested_by: str = "") -> dict:
     name = " ".join(str(name or "").split())[:60]
     if not name:
         raise ValueError("Give the workspace a name.")
-    existing = all_workspaces(store)
-    if any(w["name"].lower() == name.lower() for w in existing):
+    existing = all_workspaces(store, include_requested=True)
+    if any(w["name"].lower() == name.lower() and w["account_id"] == (account_id or "mcn") for w in existing):    # per account
         raise ValueError("A workspace with that name already exists.")
     if len(existing) >= MAX_WORKSPACES:
         raise ValueError(f"At most {MAX_WORKSPACES} workspaces.")
     slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:24] or "ws"
-    row = {"id": f"{slug}-{uuid.uuid4().hex[:4]}", "name": name, "created_by": by, "created_at": now_iso()}
+    row = {"id": f"{slug}-{uuid.uuid4().hex[:4]}", "name": name, "created_by": by, "created_at": now_iso(), "account_id": account_id or "mcn"}
+    if status != "active":
+        row.update(status=status, requested_by=requested_by)
     store.update("settings", lambda s: {**s, "workspaces": [*(s.get("workspaces") or []), row]})
     return row
 
@@ -112,12 +147,18 @@ def delete(store, ws_id: str) -> None:
 
 
 def move(store, lead_ids: list, ws_id: str, by: str) -> int:
+    from . import accounts
     names = {w["id"]: w["name"] for w in all_workspaces(store)}
     if ws_id not in names:
         raise LookupError("No such workspace.")
     wanted, moved = set(lead_ids), 0
     stamp = now_iso()
+    amap = accounts.ws_account_map(store)
+    target = amap.get(ws_id, "mcn")
+    keys = {l.get("dedupe_key") for l in store.read("leads") if accounts.account_of_lead(amap, l) == target}
     for l in store.read("leads"):
+        if accounts.account_of_lead(amap, l) != target and l.get("dedupe_key") in keys:
+            continue                                   # another account's lead would become a duplicate there
         if l["id"] in wanted and ws_of(l) != ws_id and visible(l):
             store.update_lead(l["id"], lambda x: {**x, "workspace": ws_id, "timeline": [
                 *x["timeline"], {"at": stamp, "kind": "edit", "text": f"Moved to workspace {names[ws_id]} (was {names.get(ws_of(x), ws_of(x))})", "by": by}]})

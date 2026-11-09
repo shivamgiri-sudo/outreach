@@ -123,6 +123,12 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
         raise WhatsAppError(f"Not sent: {LANDLINE_REASON}. Call them instead.")
     if is_blocked(store, lead.get("email"), lead.get("phone")):
         raise WhatsAppError("This contact is on the do-not-contact list.")
+    from . import account_sending, accounts
+    account = accounts.account_of_lead_in(store, lead)
+    held = accounts.hold_reason(store, account, "whatsapp")     # another client's lead: only with a grant
+    if held:
+        raise WhatsAppError(held)
+    cfg = get_settings(store) if account == accounts.MCN else account_sending.for_account(store, account, get_settings(store), False)["cfg"]
     if template == "custom":
         if not within_session_window(lead, now):
             raise WhatsAppError("Free text is only allowed within 24 hours of their last WhatsApp message. Use a template.")
@@ -133,8 +139,9 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
         raw = TEMPLATES[template]
     else:
         raise WhatsAppError("Unknown template")
-    variables = lead_variables(lead, sender.strip() or get_settings(store)["sender_name"], base_url,
-                               {"demo_link": f"{base_url}/demo/{lead['demo_token']}"}, secret=server_secret(store), brand=store)
+    variables = lead_variables(lead, sender.strip() or cfg["sender_name"], base_url,
+                               {"demo_link": f"{base_url}/demo/{lead['demo_token']}"}, secret=server_secret(store),
+                               brand=store if account == accounts.MCN else cfg)
     body, missing = render(raw, variables)
     if missing:
         raise WhatsAppError(f"This message needs details the lead doesn't have yet: {', '.join(missing)}")

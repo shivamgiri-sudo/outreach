@@ -101,6 +101,7 @@ CALLER_WRITES = {
 ADMIN_WRITES = {
     # workspace management of their own workspaces (app/routes_workspaces.py checks the workspace is theirs)
     ("PUT", "/api/workspaces/{ws_id}"), ("POST", "/api/workspaces/{ws_id}/members"), ("DELETE", "/api/workspaces/{ws_id}/members/{email}"),
+    ("POST", "/api/workspaces"),          # a workspace admin's new workspace is created as "requested" (an owner approves it)
     ("POST", "/api/snippets"), ("PUT", "/api/snippets/{snippet_id}"), ("DELETE", "/api/snippets/{snippet_id}"),
     ("PUT", "/api/linkedin/variants"), ("POST", "/api/linkedin/variants/generate"), ("POST", "/api/linkedin/variants/score"),
 }
@@ -119,6 +120,7 @@ class UserBody(BaseModel):
     password: str
     workspaces: list = []          # ids; empty = every workspace. Set at creation so a client's login never starts open.
     all_workspaces: bool = False   # the explicit "every workspace" choice (owners only); needed once there is more than one
+    account_id: str = ""           # the client company (app/accounts.py); empty = the adder's own (owners: Mas Callnet)
 
 
 class OwnPasswordBody(BaseModel):
@@ -208,6 +210,11 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
             user = auth.find_user(store, body.email)
             if auth.check_password((user or {}).get("password_hash", ""), body.password) and user:
                 principal = auth.subject_principal(store, admin_password, "user:" + user["email"])
+                from . import accounts
+                if principal is None and accounts.is_client(user):
+                    row = accounts.find(store, accounts.of_user(user)) or {}
+                    login_log.record(store, request, "login", who, "failure", f"account {row.get('status', 'unknown')}")
+                    raise HTTPException(403, "Your company's account is not active yet (or is suspended). Ask the platform admin.")
         elif admin_password and auth.password_matches(admin_password, body.password):
             principal = auth.subject_principal(store, admin_password, auth.ADMIN_SUBJECT)
         if principal is None:
@@ -240,7 +247,10 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
     @router.get("/api/me")
     def me(request: Request):
         user = getattr(request.state, "user", None) or LOCAL_OWNER
+        from . import accounts
+        acct = accounts.find(store, accounts.of_user(user)) or {}
         return {"name": user["name"], "email": user["email"], "role": user["role"], "can_edit_contacts": auth.can_edit_contacts(user), "workspaces": user.get("workspaces") or [],
+                "account_id": accounts.of_user(user), "account_name": acct.get("name") or "", "client": accounts.is_client(user),
                 "no_workspace": bool(user.get("no_workspace")) and user["role"] != "owner", "super_admin": auth.is_super_admin(user),
                 "auth_required": auth.auth_on(store, admin_password)}
 
@@ -286,9 +296,12 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
         return set(who.get("workspaces") or []) if who.get("role") == "admin" else None
 
     def manageable(request: Request, target: dict) -> bool:
+        from . import accounts
         mine = admin_spaces(request)
         if mine is None:
             return True
+        if accounts.of_user(target) != accounts.of_user(actor(request)):
+            return False                       # SECURITY: never another account's logins
         spaces = set(target.get("workspaces") or [])
         return target.get("role") in ADMIN_SEES and bool(spaces) and spaces <= mine
 
@@ -297,11 +310,11 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
         if admin_spaces(request) is not None and target.get("role") not in ADMIN_GIVES:
             raise HTTPException(403, "Only an owner can change or remove a workspace admin login.")
 
-    def clean_spaces(request: Request, role: str, spaces: list) -> list:
-        """Workspaces for a login: they must exist; a workspace admin gives only its own (its own by default); an
-        admin login always has at least one."""
+    def clean_spaces(request: Request, role: str, spaces: list, account_id: str = "mcn") -> list:
+        """Workspaces for a login: they must exist and belong to the login's account; a workspace admin gives only its
+        own (its own by default); an admin login, and every client login, always has at least one."""
         from . import workspaces as ws_mod
-        known = {w["id"] for w in ws_mod.all_workspaces(store)}
+        known = {w["id"] for w in ws_mod.all_workspaces(store) if (w.get("account_id") or "mcn") == account_id}
         spaces = list(dict.fromkeys(str(w)[:40] for w in spaces or []))[:50]
         if any(w not in known for w in spaces):
             raise HTTPException(400, "Pick workspaces from the list.")
@@ -314,7 +327,22 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
                 raise HTTPException(403, "You can give access only to your own workspaces.")
         if role == "admin" and not spaces:
             raise HTTPException(400, "A workspace admin needs at least one workspace.")
+        if account_id != "mcn" and not spaces:
+            raise HTTPException(400, "A client login needs at least one of its company's workspaces.")
         return spaces if role != "owner" else []
+
+    def account_for_new(request: Request, wanted: str) -> str:
+        """The account a new login joins: a workspace admin's own (always); an owner picks any (default Mas Callnet)."""
+        from . import accounts
+        who = actor(request)
+        if admin_spaces(request) is not None:
+            if wanted and wanted != accounts.of_user(who):
+                raise HTTPException(403, "You can add logins to your own company only.")
+            return accounts.of_user(who)
+        wanted = wanted or accounts.MCN
+        if accounts.find(store, wanted) is None:
+            raise HTTPException(400, "Pick an account from the list.")
+        return wanted
 
     def check_password(password: str) -> None:
         problem = auth.password_problem(password)
@@ -332,9 +360,11 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
         for row in history:
             if row.get("event") == "login" and row.get("result") == "success" and row.get("email"):
                 last[row["email"]] = row.get("at")
+        from . import accounts
+        picked = accounts.current() if admin_spaces(request) is None else None     # an owner's account picker
         return [{**auth.public_user(u), "two_step_on": two_step.is_on(u), "last_sign_in": last.get(u["email"]),
                  "no_workspace": bool(u.get("no_workspace")) and u.get("role") != "owner"}
-                for u in auth.users(store) if manageable(request, u)]
+                for u in auth.users(store) if manageable(request, u) and (picked is None or accounts.of_user(u) == picked)]
 
     def actor(request: Request) -> dict:
         return getattr(request.state, "user", None) or LOCAL_OWNER
@@ -368,16 +398,26 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
             raise HTTPException(400, "The first login must be an owner (no admin password is set).")
         if body.all_workspaces and admin_spaces(request) is not None:
             raise HTTPException(403, "Only an owner can give access to every workspace.")
-        spaces = clean_spaces(request, body.role, body.workspaces)
-        from . import workspaces as ws_mod
-        if body.role != "owner" and not spaces and not body.all_workspaces and len(ws_mod.all_workspaces(store)) > 1:
+        account = account_for_new(request, body.account_id.strip()[:40])
+        if account != "mcn" and body.role == "owner":
+            raise HTTPException(400, "A client account's login cannot be an owner. Use admin, caller or viewer.")
+        if account != "mcn" and body.all_workspaces:
+            raise HTTPException(400, "Pick the client's workspaces for this login.")
+        spaces = clean_spaces(request, body.role, body.workspaces, account)
+        from . import accounts, workspaces as ws_mod
+        seats = accounts.limit_of(store, account, "seats")
+        if seats is not None and sum(1 for u in auth.users(store) if accounts.of_user(u) == account) >= seats:
+            raise HTTPException(400, f"This account has used all its {seats} logins. Ask the platform admin for more.")
+        account_spaces = [w for w in ws_mod.all_workspaces(store) if (w.get("account_id") or "mcn") == account]
+        if body.role != "owner" and not spaces and not body.all_workspaces and len(account_spaces) > 1:
             raise HTTPException(400, "Choose the workspaces this login may see, or All workspaces.")
         user = {"email": email, "name": body.name.strip()[:80] or email, "role": body.role,
-                "password_hash": auth.hash_password(body.password), "created_at": auth.now_iso(),
+                "password_hash": auth.hash_password(body.password), "created_at": auth.now_iso(), "account_id": account,
                 **({"workspaces": spaces} if spaces else {})}
         store.update("settings", lambda s: {**s, "users": [*(s.get("users") or []), user]})
         from . import audit
-        audit.record(store, actor(request), "user.add", email, f"role {body.role}")
+        audit.record(store, actor(request), "user.add", email, f"role {body.role}" + (f"; account {account}" if account != "mcn" else ""),
+                     extra={"account_id": account})
         if body.role == "owner":
             super_admin.owner_changed(store, actor(request), "user.add", email, f"role {body.role}")
         return auth.public_user(user)
@@ -392,12 +432,16 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
         changes = {}
         if body.name is not None:
             changes["name"] = body.name.strip()[:80] or user["email"]
+        from . import accounts
         if body.role is not None:
             check_role(body.role)
+            if body.role == "owner" and accounts.is_client(user):
+                raise HTTPException(400, "A client account's login cannot be an owner. Use admin, caller or viewer.")
             changes["role"] = body.role
         role_after = changes.get("role", user.get("role"))
         if body.workspaces is not None or "role" in changes:
-            spaces = clean_spaces(request, role_after, body.workspaces if body.workspaces is not None else user.get("workspaces") or [])
+            spaces = clean_spaces(request, role_after, body.workspaces if body.workspaces is not None else user.get("workspaces") or [],
+                                  accounts.of_user(user))
             if body.workspaces is not None or spaces != (user.get("workspaces") or []):
                 changes["workspaces"] = spaces
         if body.can_edit_contacts is not None:

@@ -123,7 +123,10 @@ def authenticate(store, admin_password: str, raw: str) -> Optional[dict]:
     return {"sub": sub, "email": principal.get("email", ""), "name": principal.get("name", ""), "kind": "extension",
             "token_id": row["id"], "token_label": row.get("label", ""), "role": "viewer" if principal["role"] == "viewer" else "caller", "claims": None,
             # the person's workspace limits travel with the token (owners: none), so a saved lead lands where they work
-            "workspaces": [] if principal["role"] == "owner" else list(principal.get("workspaces") or [])}
+            "workspaces": [] if principal["role"] == "owner" else list(principal.get("workspaces") or []),
+            # and so does the account boundary (app/accounts.py): a client's token never reaches another account
+            "account_id": principal.get("account_id") or "mcn",
+            "account_ws": None if principal["role"] == "owner" else principal.get("account_ws")}
 
 
 # ---------- matching ----------
@@ -156,7 +159,9 @@ def _words(text: str, company: bool = False) -> str:
 
 
 def find_lead(store, profile_url: str = "", name: str = "", company: str = "") -> Optional[dict]:
-    leads = store.read("leads")
+    from .accounts import same_account_as_new
+    ours = same_account_as_new(store)                 # never another client company's lead
+    leads = [l for l in store.read("leads") if ours(l)]
     slug = profile_slug(profile_url)
     if slug:
         hits = [l for l in leads if profile_slug(l.get("linkedin_url", "")) == slug]

@@ -206,6 +206,11 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         from .workspace_guard import limited
         owner = (user or {"role": "owner"}).get("role") == "owner" and not limited(user)
         keys = SHOWN_TO_ALL + (SHOWN_TO_OWNERS if owner else ())
+        from . import accounts
+        if accounts.is_client(user):           # a client company sees its own account's values, never Mas Callnet's
+            from .account_sending import for_account
+            current = for_account(store, accounts.of_user(user), get_settings(store), False)["cfg"]
+            return {k: current[k] for k in SHOWN_TO_ALL if k in current and k not in HIDDEN_SETTINGS}
         current = get_settings(store)
         shown = {k: current[k] for k in keys if k in current and k not in HIDDEN_SETTINGS}
         secret = shown.get("webhook_secret")
@@ -245,9 +250,20 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         return {"on": bool(cfg.get("live_sending")), "email_ready": bool(email_ready(store)), "changed": cfg.get("live_sending_changed"),
                 "blockers": live_blockers(store, BASE_URL), "confirm_phrase": LIVE_CONFIRM}
 
+    def client_state(user: dict) -> dict:
+        """Live sending as a client account sees it: its own switch, keys or grant, and the hold reason."""
+        from . import accounts
+        from .account_sending import for_account
+        cfg = get_settings(store)
+        mode = for_account(store, accounts.of_user(user), cfg, bool(cfg.get("live_sending")) and bool(email_ready(store)))
+        return {"on": mode["live"], "email_ready": not mode["hold"], "changed": None,
+                "blockers": [mode["hold"]] if mode["hold"] else [], "confirm_phrase": LIVE_CONFIRM, "held": mode["hold"]}
+
     @router.get("/api/settings/live-sending")
-    def get_live_sending():
-        return live_state()
+    def get_live_sending(request: Request):
+        from . import accounts
+        user = getattr(request.state, "user", None)
+        return client_state(user) if accounts.is_client(user) else live_state()
 
     @router.post("/api/settings/live-sending")
     def set_live_sending(body: LiveSendingBody, request: Request):
@@ -305,9 +321,16 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         return workspaces.filter_rows(store.read("leads"))
 
     @router.get("/api/sending/status")
-    def sending_status():
+    def sending_status(request: Request = None):
         now = datetime.now(timezone.utc)
         live = bool(get_settings(store).get("live_sending")) and bool(email_ready(store))
+        from . import accounts
+        user = getattr(getattr(request, "state", None), "user", None)
+        if accounts.is_client(user):
+            state = client_state(user)
+            return {"mode": "live" if state["on"] else "practice", "paused": None, "rates": {}, "live_blockers": state["blockers"],
+                    "held": state["held"], "stuck": [l["id"] for l in mine() if (l.get("sequence") or {}).get("in_flight")],
+                    "send_failed": [l["id"] for l in mine() if (l.get("sequence") or {}).get("stopped") == "send_failed"]}
         return {"mode": "live" if live else "practice", "paused": sending_paused(store, now), "rates": _rates(store, now),
                 "live_blockers": live_blockers(store, BASE_URL),
                 "stuck": [l["id"] for l in mine() if (l.get("sequence") or {}).get("in_flight")],

@@ -224,7 +224,8 @@ def email_step(flow: dict, node: dict) -> dict:
 
 def compose_email(store, flow: dict, node: dict, lead: dict, now: datetime, base_url: str):
     """(message, demo fields) exactly as the sequence engine would build it, or None if a placeholder is unfilled."""
-    cfg = get_settings(store)
+    from . import account_sending
+    cfg = account_sending.for_lead(store, lead, get_settings(store), False)["cfg"]       # the lead's account's identity
     return sequence_runner._compose(lead, email_step(flow, node), cfg, get_offer(store), base_url, now, now.astimezone(IST).date())
 
 
@@ -239,7 +240,10 @@ def ai_text(*texts) -> bool:
 
 def text_for(store, lead: dict, text: str, base_url: str, now: datetime) -> tuple:
     lead = ensure_demo(lead, now)
-    variables = lead_variables(lead, get_settings(store)["sender_name"], base_url, {"demo_link": f"{base_url}/demo/{lead['demo_token']}"}, brand=store)
+    from . import account_sending
+    acct = account_sending.for_lead(store, lead, get_settings(store), False)
+    variables = lead_variables(lead, acct["cfg"]["sender_name"], base_url, {"demo_link": f"{base_url}/demo/{lead['demo_token']}"},
+                               brand=store if acct["account"] == "mcn" else acct["cfg"])
     return render(apply_vars(text, CURRENT_VARS.get()), variables)
 
 
@@ -258,6 +262,11 @@ def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
     """One flow email through the cold-email engine's rules. Defers (no claim) while a cap or hour rule says wait."""
     cfg = get_settings(store)
     live = bool(cfg["live_sending"]) and bool(email_ready(store))
+    from . import account_sending
+    acct = account_sending.for_lead(store, lead, cfg, live)        # another client's lead: its own identity and switch
+    if acct["hold"]:
+        return refused(acct["hold"])
+    cfg, live = acct["cfg"], acct["live"]
     if lead["stage"] in NO_EMAIL_STAGES:
         return refused(f"lead is {lead['stage']} and cannot be emailed")
     if not lead.get("email"):
@@ -276,7 +285,7 @@ def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
         return defer(datetime.fromisoformat(attempt["last_failed_at"]) + RETRY_AFTER, "retrying a failed send after an hour")
     mode_status = "sent" if live else "dry_run"
     today = now.astimezone(IST).date()
-    sent_ok = [m for m in store.read("outbox") if m.get("status") == mode_status]
+    sent_ok = [m for m in store.read("outbox") if m.get("status") == mode_status and (m.get("account_id") or "mcn") == acct["account"]]
     first_live = min((date.fromisoformat(m["sent_at_ist_date"]) for m in sent_ok if live), default=None)
     cap = effective_daily_cap(cfg["daily_cap"], live, first_live, today)
     todays = [m for m in sent_ok if m.get("sent_at_ist_date") == today.isoformat()]
@@ -309,10 +318,17 @@ def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
             return {"kind": "recheck", "result": "the lead changed a moment ago"}
         if not claim():
             return idle("another tick took this step")
+        account_sending.stamp(message, acct)
         message.update(ctx.sender(message))
+        if message["status"] == "held":
+            release()
+            return refused(message.get("error") or "sending is held for this account")
         store.update("outbox", lambda rows: [*rows, message])
     finally:
         sequence_runner._RUN_LOCK.release()
+    if message["status"] == "provider_error" and acct["account"] != "mcn":
+        release()                              # another account's own keys: never pause Mas Callnet's sending
+        return defer(now + PROVIDER_RETRY, f"the account's email provider had a problem: {message.get('error', '')}")
     if message["status"] == "provider_error":
         release()
         sequence_runner._pause_sending(store, now, message.get("error", "the email provider is not accepting messages"),

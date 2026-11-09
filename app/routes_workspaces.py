@@ -11,11 +11,15 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import audit, auth, workspace_admin, workspaces as ws
+from . import accounts, audit, auth, workspace_admin, workspaces as ws
 
 
 class WsBody(BaseModel):
     name: str = Field(min_length=1, max_length=60)
+
+
+class NewWsBody(WsBody):
+    account_id: str = Field(default="", max_length=40)      # owners: which account it is for (default: the picked one)
 
 
 class MoveBody(BaseModel):
@@ -48,7 +52,9 @@ def make_router(store) -> APIRouter:
             raise HTTPException(404, "No such workspace.")
         if user.get("role") == "owner":
             return
-        if user.get("role") == "admin" and ws_id in (user.get("workspaces") or []) and not user.get("no_workspace"):
+        allowed = ws.allowed_of(user)
+        if (user.get("role") == "admin" and ws_id in (user.get("workspaces") or []) and not user.get("no_workspace")
+                and (allowed is None or ws_id in allowed)):
             return
         raise HTTPException(403, "Only an owner or this workspace's admin can manage it.")
 
@@ -71,6 +77,8 @@ def make_router(store) -> APIRouter:
     @router.get("/api/workspaces")
     def list_all(request: Request):
         allowed = ws.allowed_of(user_of(request))
+        if allowed is None:
+            allowed = getattr(request.state, "workspace_scope", (None, None))[1]     # an owner's account picker
         n = ws.counts(store)
         return [{**w, "leads": n.get(w["id"], 0)} for w in ws.all_workspaces(store) if allowed is None or w["id"] in allowed]
 
@@ -80,16 +88,57 @@ def make_router(store) -> APIRouter:
         user = user_of(request) or {"role": "owner"}
         if user.get("role") not in ("owner", "admin"):
             raise HTTPException(403, "Only owners and workspace admins can manage workspaces.")
-        return workspace_admin.overview(store, ws.allowed_of(user))
+        return workspace_admin.overview(store, ws.allowed_of(user), include_requested=user.get("role") == "owner")
 
     @router.post("/api/workspaces")
-    def create(body: WsBody, request: Request):
+    def create(body: NewWsBody, request: Request):
+        """Owners create a workspace for any account; a workspace admin only asks for one in its own account (status
+        "requested" until an owner approves it in Setup > Workspaces)."""
+        user = user_of(request) or {"role": "owner"}
+        owner = user.get("role") == "owner"
+        if owner:
+            account = body.account_id.strip() or accounts.current() or accounts.MCN
+            if accounts.find(store, account) is None:
+                raise HTTPException(400, "Pick an account from the list.")
+        else:
+            if not accounts.is_client(user):
+                raise HTTPException(403, "Only an owner can create workspaces.")       # Mas Callnet's admins: as before
+            account = accounts.of_user(user)
+            if body.account_id.strip() and body.account_id.strip() != account:
+                raise HTTPException(403, "You can ask for workspaces of your own company only.")
+        cap = accounts.limit_of(store, account, "workspaces")
+        if cap is not None and len(accounts.workspaces_of(store, account, active_only=False)) >= cap:
+            raise HTTPException(400, f"This account may have at most {cap} workspaces. Ask the platform admin.")
         try:
-            row = ws.create(store, body.name, who(request))
+            row = ws.create(store, body.name, who(request), account, "active" if owner else "requested", user.get("email") or "")
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
-        audit.record(store, user_of(request), "workspace.create", row["name"], f"id {row['id']}")
+        audit.record(store, user, "workspace.create" if owner else "workspace.request", row["name"],
+                     f"id {row['id']}; account {account}" + ("" if owner else "; waiting for an owner's approval"),
+                     extra={"account_id": account})
         return row
+
+    @router.post("/api/workspaces/{ws_id}/approve")
+    def approve(ws_id: str, request: Request):
+        """Owners only (role guard: writes default to owner). The asker gets the new workspace."""
+        row = next((w for w in ws.all_workspaces(store, include_requested=True) if w["id"] == ws_id), None)
+        if row is None or (row.get("status") or "active") != "requested":
+            raise HTTPException(404, "No workspace request with that id.")
+        workspace_admin.approve(store, row)
+        audit.record(store, user_of(request), "workspace.approve", row["name"], f"id {ws_id}; account {row['account_id']}",
+                     extra={"account_id": row["account_id"]})
+        return {**row, "status": "active"}
+
+    @router.post("/api/workspaces/{ws_id}/reject")
+    def reject(ws_id: str, request: Request):
+        row = next((w for w in ws.all_workspaces(store, include_requested=True) if w["id"] == ws_id), None)
+        if row is None or (row.get("status") or "active") != "requested":
+            raise HTTPException(404, "No workspace request with that id.")
+        store.update("settings", lambda s: {**s, "workspaces": [w for w in s.get("workspaces") or []
+                                                                if not (isinstance(w, dict) and w.get("id") == ws_id)]})
+        audit.record(store, user_of(request), "workspace.reject", row["name"], f"id {ws_id}; account {row['account_id']}",
+                     extra={"account_id": row["account_id"]})
+        return {"ok": True}
 
     @router.put("/api/workspaces/{ws_id}")
     def rename(ws_id: str, body: WsBody, request: Request):

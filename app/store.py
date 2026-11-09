@@ -170,11 +170,15 @@ class Store:
         """Append leads whose dedupe key is not already taken, atomically. Returns the leads actually added."""
         added = []
 
+        from .accounts import account_of_lead, ws_account_map
+        amap = ws_account_map(self._data.get("settings") or {})       # dedupe keys are unique within one account
+
         def apply(leads: list) -> list:
-            seen = {lead.get("dedupe_key") for lead in leads}
+            seen = {(account_of_lead(amap, lead), lead.get("dedupe_key")) for lead in leads}
             for lead in new_leads:
-                if lead.get("dedupe_key") not in seen:
-                    seen.add(lead.get("dedupe_key"))
+                key = (account_of_lead(amap, lead), lead.get("dedupe_key"))
+                if key not in seen:
+                    seen.add(key)
                     added.append(lead)
             return [*leads, *added]
         saved = {lead["id"] for lead in self.update("leads", apply)}

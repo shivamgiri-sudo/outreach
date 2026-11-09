@@ -175,8 +175,9 @@ def make_router(store, present) -> APIRouter:
         return {**result, "lead": present(lead_or_404(lead_id))}
 
     @router.get("/api/call-script")
-    def get_script():
-        return rw.call_script(store)
+    def get_script(request: Request):
+        from .accounts import view_for
+        return rw.call_script(view_for(store, _user(request)))      # a client: the generic script with its own brand
 
     @router.put("/api/call-script")
     def put_script(body: ScriptBody, request: Request):

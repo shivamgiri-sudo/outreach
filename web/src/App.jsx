@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, canWrite, getToken, getWorkspace, setCanEditContacts, setMyWorkspaces, setRole, setToken, setWorkspace } from "./api.js";
+import { api, canWrite, getAccount, getToken, getWorkspace, setAccount, setCanEditContacts, setClient, setMyWorkspaces, setRole, setToken, setWorkspace } from "./api.js";
 import Icon from "./icons.jsx";
 import { stageLabel } from "./labels.js";
 import Login from "./pages/Login.jsx";
@@ -259,7 +259,7 @@ function Shell() {
   useEffect(() => {
     if (!auth.signedIn) { setMe(null); return; }
     api.me().then((m) => {
-      setRole(m.role); setCanEditContacts(m.can_edit_contacts); setMyWorkspaces(m.workspaces); setMe(m);
+      setRole(m.role); setCanEditContacts(m.can_edit_contacts); setMyWorkspaces(m.workspaces); setClient(m.client); setMe(m);
       if ((m.role === "caller" || m.role === "admin") && !window.location.hash.replace(/^#\/?/, "")) setPage("myday");     // callers start on My day
     }).catch(() => setMe({ role: "owner" }));
   }, [auth.signedIn]);
@@ -276,6 +276,24 @@ function Shell() {
     if (getWorkspace() && !w.some((x) => x.id === getWorkspace())) { setWorkspace(""); setSpace(""); }
   }).catch(() => {}); }, [auth.signedIn, me, page, space, spacesTick]);
   const pickSpace = (id) => { setWorkspace(id); setSpace(id); };
+  // Owners (platform staff) pick a client account once more than one exists; default Mas Callnet ("mcn").
+  const [accts, setAccts] = useState([]);
+  const [acct, setAcct] = useState(getAccount());
+  useEffect(() => {
+    const bump = () => setSpacesTick((n) => n + 1);
+    window.addEventListener("accounts-changed", bump);
+    return () => window.removeEventListener("accounts-changed", bump);
+  }, []);
+  useEffect(() => {
+    if (!auth.signedIn || !me || me.role !== "owner" || me.client) { setAccts([]); return; }
+    api.accounts().then((r) => {
+      const list = r.accounts || [];
+      setAccts(list);
+      if (list.length > 1 && !list.some((a) => a.id === getAccount())) { setAccount("mcn"); setAcct("mcn"); }
+      if (list.length <= 1 && getAccount()) { setAccount(""); setAcct(""); }
+    }).catch(() => {});
+  }, [auth.signedIn, me, spacesTick]);
+  const pickAcct = (id) => { setAccount(id); setAcct(id); setWorkspace(""); setSpace(""); setSpacesTick((n) => n + 1); };
   const signOut = () => api.logout().catch(() => {}).finally(() => {
     setToken(""); setRole("owner"); setAuth((a) => ({ ...a, signedIn: false }));
   });
@@ -284,6 +302,11 @@ function Shell() {
   if (!auth.signedIn) return <Login onSignedIn={() => setAuth((a) => ({ ...a, required: true, signedIn: true }))} />;
   if (!me) return <p className="empty">Loading…</p>;
   const Current = BY_ID[page][2];
+  const acctPicker = (cls) => accts.length > 1 && (
+    <select className={cls} aria-label="Account" data-testid="account-picker" value={acct} onChange={(e) => pickAcct(e.target.value)}>
+      {accts.map((a) => <option key={a.id} value={a.id}>{a.name}{a.status !== "active" ? ` (${a.status})` : ""}</option>)}
+    </select>
+  );
   const spacePicker = (cls) => spaces.length > 1 && (
     <select className={cls} aria-label="Workspace" value={space} onChange={(e) => pickSpace(e.target.value)}>
       {(!me.workspaces || me.workspaces.length !== 1) && <option value="">All workspaces</option>}
@@ -299,6 +322,7 @@ function Shell() {
           </button>
           <img className="brand-mark" src={brand.header_logo} width="28" height="28" alt={brand.app_name} />
           <span className="topbar-page" aria-hidden="true">{BY_ID[page][1]}</span>
+          {acctPicker("ws-mini")}
           {spacePicker("ws-mini")}
           <button className="icon-btn" aria-label="Quick search" onClick={() => setSearching(true)}><Icon name="search" size={20} /></button>
           <Bell onOpen={() => go("tasks")} />
@@ -313,9 +337,15 @@ function Shell() {
           {phone ? <button className="icon-btn nav-close" aria-label="Close menu" onClick={closeMenu}><Icon name="close" size={22} /></button>
             : <Bell onOpen={() => go("tasks")} />}
         </div>
-        {!phone && spaces.length > 1 && (
+        {!phone && accts.length > 1 && (
+          <label className="ws-pick" style={{ display: "block", margin: "0 12px 6px" }}>
+            <span className="nav-title">Account</span>
+            {acctPicker("")}
+          </label>
+        )}
+        {!phone && (spaces.length > 1 || me.client) && (
           <label className="ws-pick" style={{ display: "block", margin: "0 12px 10px" }}>
-            <span className="nav-title">Workspace</span>
+            <span className="nav-title">{me.client ? <span data-testid="account-name">{me.account_name}</span> : "Workspace"}</span>
             {spacePicker("")}
           </label>
         )}

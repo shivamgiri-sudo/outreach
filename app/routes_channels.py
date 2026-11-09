@@ -74,7 +74,13 @@ def make_router(store, transport=request, smtp_factory=None, imap_factory=None, 
                                store.read("settings"))
 
     @router.get("/api/channels")
-    def list_channels():
+    def list_channels(request: Request):
+        from . import accounts
+        user = getattr(request.state, "user", None)
+        if accounts.is_client(user):          # a client sees only the platform channels granted to its account
+            granted = set((accounts.find(store, accounts.of_user(user)) or {}).get("integrations_granted") or [])
+            return {"channels": [c for c in channels_view() if c.get("integration_id") in granted or c.get("id") in granted],
+                    "public_base_url": "", "placeholders": list(PLACEHOLDERS), "oauth_redirects": {}, "live": {}}
         return {"channels": channels_view(), "public_base_url": base(), "placeholders": list(PLACEHOLDERS),
                 "oauth_redirects": {p: redirect_uri(base(), p) for p in OAUTH_PROVIDERS},
                 "live": {k: bool(store.read("settings").get(k)) for k in ("live_sending", *LIVE_FLAGS)}}

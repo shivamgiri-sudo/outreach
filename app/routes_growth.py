@@ -110,12 +110,13 @@ def make_router(store, build_lead, present) -> APIRouter:
         return {**lead, **changes}
 
     # ---- offer / sequence ----
-    def shown_offer() -> dict:
-        return {k: v for k, v in get_offer(store).items() if k not in ("webhook_secret", *PRIVATE_SETTINGS)}
+    def shown_offer(source=None) -> dict:
+        return {k: v for k, v in get_offer(source or store).items() if k not in ("webhook_secret", "workspaces", *PRIVATE_SETTINGS)}
 
     @router.get("/api/offer")
-    def read_offer():
-        return shown_offer()
+    def read_offer(request: Request):
+        from .accounts import view_for
+        return shown_offer(view_for(store, getattr(request.state, "user", None)))     # a client: its own, never Mas Callnet's
 
     @router.put("/api/offer")
     def write_offer(body: OfferBody, request: Request):
@@ -130,7 +131,7 @@ def make_router(store, build_lead, present) -> APIRouter:
         return DEFAULT_SEQUENCE
 
     @router.get("/api/sequence/{index}/preview")
-    def preview_sequence(index: int):
+    def preview_sequence(index: int, request: Request):
         """The designed (HTML) email for one step, filled for a sample person, exactly as it is sent."""
         from .email_html import render as render_html
         from .sequences import lead_variables, render as fill
@@ -138,11 +139,13 @@ def make_router(store, build_lead, present) -> APIRouter:
             raise HTTPException(404, "No such step")
         base = public_base_url(store, BASE_URL)
         sample = {"id": "sample", "contact_name": "Alex Example", "company": "Example Retail", "role": "Store Manager"}
-        variables = lead_variables(sample, sender_name(store), base, {"offer_line": offer_line(get_offer(store)), "demo_link": f"{base}/demo/sample"}, brand=store)
+        from .accounts import view_for
+        src = view_for(store, getattr(request.state, "user", None))      # a client sees its own brand in the preview
+        variables = lead_variables(sample, sender_name(src), base, {"offer_line": offer_line(get_offer(src)), "demo_link": f"{base}/demo/sample"}, brand=src)
         step = DEFAULT_SEQUENCE[index]
         subject = fill(step["subject"], variables)[0]
         body = fill(step["body"], variables)[0]
-        return {"subject": subject, "text": body, "html": render_html(body, base, brand=store)}
+        return {"subject": subject, "text": body, "html": render_html(body, base, brand=src)}
 
     @router.post("/api/sequence/{index}/send-preview")
     def send_preview(index: int, body: PreviewBody):

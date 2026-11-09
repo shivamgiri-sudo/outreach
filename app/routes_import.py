@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from . import workspaces
+from . import accounts, workspaces
 from . import audit, landline_restore, lead_fields
 from .header_map import FIELDS, detect_format, loose_header, map_columns
 from .hygiene_report import apply_standardise, report, standardise_changes
@@ -134,7 +134,8 @@ def make_router(store) -> APIRouter:
         """Dry run: what would happen, with nothing saved."""
         ctx = prepare(body)
         result = run_import(store.read("leads"), ctx["table"], ctx["columns"], ctx["source"],
-                            _not_again(store, ctx["table"]), ctx["options"], custom_fields=ctx["custom_fields"])
+                            _not_again(store, ctx["table"]), ctx["options"], custom_fields=ctx["custom_fields"],
+                            same_account=accounts.same_account_as_new(store))
         return {**answer(ctx, result), "dry_run": True}
 
     @router.post("/api/import/commit")
@@ -143,10 +144,11 @@ def make_router(store) -> APIRouter:
         import_id = uuid.uuid4().hex[:10]
         suppressed = _not_again(store, ctx["table"])
         holder = {}
+        same = accounts.same_account_as_new(store)
 
         def apply(leads: list) -> list:
             holder["result"] = run_import(leads, ctx["table"], ctx["columns"], ctx["source"], suppressed, ctx["options"],
-                                          import_id=import_id, custom_fields=ctx["custom_fields"])
+                                          import_id=import_id, custom_fields=ctx["custom_fields"], same_account=same)
             created = set(holder["result"]["created_ids"])
             holder["fingerprints"] = {lead["id"]: fingerprint(lead) for lead in leads if lead["id"] in created}
             return leads

@@ -280,15 +280,19 @@ SAMPLE_FIELDS = ("company", "contact_name", "title", "seniority", "department", 
 
 
 def run_import(leads: list, table: list, columns: list, source: str, suppressed: set, options: dict,
-               import_id: str = "", today: Optional[date] = None, at: Optional[str] = None, custom_fields: Optional[list] = None) -> dict:
-    """Dedupe and merge `table` rows into `leads` (changed in place). Returns what happened to every row."""
+               import_id: str = "", today: Optional[date] = None, at: Optional[str] = None, custom_fields: Optional[list] = None,
+               same_account=None) -> dict:
+    """Dedupe and merge `table` rows into `leads` (changed in place). Returns what happened to every row.
+    `same_account(lead)` says whether a lead is in the account the rows go into (app/accounts.py): leads of other
+    accounts are invisible here (another client company may hold the same contact); None = one account."""
     today, at = today or date.today(), at or now_iso()
     from . import workspaces
     scoped = workspaces.scoped()
-    index = LeadIndex(leads, include=workspaces.visible if scoped else None)      # merge only into this workspace's leads
-    elsewhere = LeadIndex(leads, include=lambda l: not workspaces.visible(l)) if scoped else None
-    if scoped:
-        index.keys = {l.get("dedupe_key") for l in leads}       # dedupe keys stay unique across workspaces
+    ours = same_account or (lambda l: True)
+    index = LeadIndex(leads, include=(lambda l: ours(l) and workspaces.visible(l)) if scoped else (ours if same_account else None))
+    elsewhere = LeadIndex(leads, include=lambda l: ours(l) and not workspaces.visible(l)) if scoped else None
+    if scoped or same_account:
+        index.keys = {l.get("dedupe_key") for l in leads if ours(l)}       # dedupe keys stay unique across the account's workspaces
     created, touched = {}, {}
     blocked_aliases = {email_alias_key(e) for e in suppressed}
     out = {k: [] for k in ("created_ids", "merged_ids", "merges", "duplicates", "unchanged", "rejected", "skipped",

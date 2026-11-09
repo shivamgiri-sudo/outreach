@@ -80,7 +80,9 @@ def edit_contact(store, lead_id: str, changes: dict, actor: dict, reason: str = 
     new_key = dedupe_key(probe) or landline_key(probe)      # an office landline alone still identifies the lead
     if not new_key:
         raise EditRefused("A lead needs at least an email, a phone or a website.")
-    twin = next((l for l in leads if l["id"] != lead_id and l.get("dedupe_key") == new_key), None)
+    from .accounts import same_account_as
+    ours = same_account_as(store, current)                   # another client company may hold the same contact
+    twin = next((l for l in leads if l["id"] != lead_id and l.get("dedupe_key") == new_key and ours(l)), None)
     if twin:
         raise EditRefused(f"Another lead already has this ({twin.get('company') or twin.get('contact_name') or twin['id']}). Merge them instead.")
     rows, stamp = [], now_iso()
@@ -168,6 +170,9 @@ ACTIONS = {
     "template.linkedin_sequence": "LinkedIn sequence changed (workspace)", "template.linkedin_notes": "LinkedIn connection notes changed (workspace)",
     "flow.create": "Flow created", "flow.change": "Flow changed", "flow.activate": "Flow turned on", "flow.pause": "Flow paused",
     "flow.enroll": "Leads started on a flow",
+    "account.create": "Account created", "account.change": "Account changed", "account.settings": "Account sending settings saved",
+    "workspace.request": "Workspace asked for (needs approval)", "workspace.approve": "Workspace request approved",
+    "workspace.reject": "Workspace request rejected",
 }
 MAX_DETAIL = 500
 
@@ -182,6 +187,10 @@ def record(store, user, action: str, target: str = "", detail: str = "", extra: 
     for key, value in (extra or {}).items():
         if key not in row and key not in ("seq", "prev_hash", "hash"):
             row[key] = value
+    if not row.get("account_id"):                 # whose account the change belongs to (app/accounts.py)
+        from . import accounts
+        row["account_id"] = (user.get("account_id") if isinstance(user, dict) and accounts.is_client(user) else None) \
+            or accounts.current() or accounts.MCN
     store.update("audit", lambda old: [*old, row][-MAX_AUDIT_ROWS:])
     return row
 
@@ -196,7 +205,7 @@ def record_stage(store, request, lead_id: str, stage: str) -> None:
 
 def as_action(row: dict) -> dict:
     """Any audit row in the {at, by, action, target, detail} shape (contact edits are mapped onto it)."""
-    sealed = {k: row[k] for k in ("seq", "lead_id", "changes", "ai_drafted") if row.get(k) not in (None, "", [])}
+    sealed = {k: row[k] for k in ("seq", "lead_id", "changes", "ai_drafted", "account_id") if row.get(k) not in (None, "", [])}
     if row.get("action"):
         return {**{k: row.get(k, "") for k in ("at", "by", "by_email", "by_role", "action", "target", "detail")}, **sealed}
     return {**sealed, "at": row.get("at", ""), "by": row.get("by", ""), "by_email": row.get("by_email", ""), "by_role": "",
@@ -206,7 +215,8 @@ def as_action(row: dict) -> dict:
                       + (f" (reason: {row['reason']})" if row.get("reason") else "")}
 
 
-def trail(store, action: str = "", by: str = "", q: str = "", date_from: str = "", date_to: str = "", limit: int = 500, offset: int = 0) -> dict:
+def trail(store, action: str = "", by: str = "", q: str = "", date_from: str = "", date_to: str = "", limit: int = 500, offset: int = 0,
+          account: str = "") -> dict:
     """Newest first, filtered. `action` matches exactly or by prefix ("live_sending" matches both switches);
     date_from / date_to are IST days (YYYY-MM-DD, inclusive)."""
     from datetime import datetime, timedelta, timezone
@@ -219,6 +229,8 @@ def trail(store, action: str = "", by: str = "", q: str = "", date_from: str = "
             return datetime.fromisoformat(r["at"]).astimezone(ist).date().isoformat()
         except (TypeError, ValueError):
             return ""
+    if account:                                   # rows from before accounts belong to Mas Callnet
+        rows = [r for r in rows if (r.get("account_id") or "mcn") == account]
     if action:
         rows = [r for r in rows if r["action"] == action or r["action"].startswith(action.rstrip(".") + ".")]
     if by:

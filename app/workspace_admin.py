@@ -24,17 +24,33 @@ def all_access(user: dict) -> bool:
     return ws.allowed_of(user) is None
 
 
-def overview(store, allowed: Optional[set]) -> list:
-    """Each workspace in `allowed` (None = all) with its lead count and member count (logins limited to it)."""
+def overview(store, allowed: Optional[set], include_requested: bool = False) -> list:
+    """Each workspace in `allowed` (None = all) with its lead count, member count (logins limited to it), account and
+    status; owners also get the workspaces client admins asked for (status "requested")."""
+    from . import accounts
     leads = ws.counts(store)
     people = auth.users(store)
+    names = {a["id"]: a["name"] for a in accounts.all_accounts(store)}
     out = []
-    for w in ws.all_workspaces(store):
+    for w in ws.all_workspaces(store, include_requested=include_requested):
         if allowed is not None and w["id"] not in allowed:
             continue
         members = sum(1 for u in people if w["id"] in (u.get("workspaces") or []))
-        out.append({**w, "leads": leads.get(w["id"], 0), "members": members})
+        out.append({**w, "status": w.get("status") or "active", "account_name": names.get(w["account_id"], w["account_id"]),
+                    "leads": leads.get(w["id"], 0), "members": members})
     return out
+
+
+def approve(store, row: dict) -> None:
+    """A requested workspace becomes active; the login that asked for it (same account) gets it."""
+    from . import accounts
+    store.update("settings", lambda s: {**s, "workspaces": [{k: v for k, v in w.items() if k != "status"}
+                                                            if isinstance(w, dict) and w.get("id") == row["id"] else w
+                                                            for w in s.get("workspaces") or []]})
+    asker = auth.find_user(store, row.get("requested_by") or "")
+    if asker and accounts.of_user(asker) == row.get("account_id") and row["id"] not in (asker.get("workspaces") or []):
+        _set_user(store, asker["email"], lambda u: {**{k: v for k, v in u.items() if k != "no_workspace"},
+                                                     "workspaces": [*(u.get("workspaces") or []), row["id"]]})
 
 
 def rename(store, ws_id: str, name: str) -> dict:
@@ -46,7 +62,8 @@ def rename(store, ws_id: str, name: str) -> dict:
         raise LookupError("No such workspace.")
     if ws_id == ws.MAIN:
         raise ValueError("The main workspace keeps its name.")
-    if any(w["name"].lower() == name.lower() and w["id"] != ws_id for w in ws.all_workspaces(store)):
+    if any(w["name"].lower() == name.lower() and w["id"] != ws_id and w["account_id"] == row["account_id"]
+           for w in ws.all_workspaces(store, include_requested=True)):
         raise ValueError("A workspace with that name already exists.")
     store.update("settings", lambda s: {**s, "workspaces": [{**w, "name": name} if isinstance(w, dict) and w.get("id") == ws_id else w
                                                             for w in s.get("workspaces") or []]})
@@ -69,11 +86,13 @@ def _without(user: dict, ws_id: str) -> dict:
 
 def members(store, ws_id: str) -> list:
     """Logins limited to this workspace, plus those that see every workspace (marked access="all")."""
+    from . import accounts
+    owner_acct = accounts.account_of_ws(store, ws_id)
     out = []
     for u in auth.users(store):
         if ws_id in (u.get("workspaces") or []):
             out.append({**auth.public_user(u), "access": "member"})
-        elif all_access(u):
+        elif all_access(u) and (u.get("role") == "owner" or accounts.of_user(u) == owner_acct):
             out.append({**auth.public_user(u), "access": "all"})
     return out
 
@@ -86,6 +105,9 @@ def add_member(store, ws_id: str, email: str) -> dict:
         raise ValueError(f"{target.get('name') or target['email']} already sees every workspace.")
     if ws_id in (target.get("workspaces") or []):
         raise ValueError("Already a member of this workspace.")
+    from . import accounts
+    if accounts.of_user(target) != accounts.account_of_ws(store, ws_id):
+        raise ValueError("That login belongs to another account.")
     updated = {**target, "workspaces": [*(target.get("workspaces") or []), ws_id]}
     updated.pop("no_workspace", None)
     _set_user(store, target["email"], lambda u: updated)
@@ -121,8 +143,8 @@ def delete(store, ws_id: str, confirm_name: str, move_to: str = "", delete_leads
     target = None
     if move_to:
         target = find(store, move_to)
-        if target is None or move_to == ws_id:
-            raise ValueError("Pick another workspace to move the leads into.")
+        if target is None or move_to == ws_id or (target.get("account_id") or "mcn") != (row.get("account_id") or "mcn"):
+            raise ValueError("Pick another workspace of the same account to move the leads into.")
     elif lead_ids and not delete_leads:
         raise ValueError(f"This workspace has {len(lead_ids)} leads: move them to another workspace or delete them.")
 
