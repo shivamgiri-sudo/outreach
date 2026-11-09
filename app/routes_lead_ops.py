@@ -107,6 +107,7 @@ def make_router(store, present) -> APIRouter:
     def delete_view(view_id: str, request: Request):
         if not lead_ops.delete_view(store, getattr(request.state, "user", None), view_id):
             raise HTTPException(404, "View not found")
+        audit.record(store, getattr(request.state, "user", None), "view.delete", view_id)
         return {"ok": True}
 
     @router.get("/api/scoring")
@@ -124,7 +125,9 @@ def make_router(store, present) -> APIRouter:
         except scoring.ConfigError as exc:
             raise HTTPException(400, str(exc)) from exc
         stamp = {**config, "updated_by": actor(request)["name"], "updated_at": lead_ops.now_iso()}
-        store.update("settings", lambda s: {**s, scoring.SETTINGS_KEY: stamp})
+        from . import audit_settings
+        with audit_settings.watch(store, request, "Lead scoring", key=scoring.SETTINGS_KEY):
+            store.update("settings", lambda s: {**s, scoring.SETTINGS_KEY: stamp})
         scoring.reset_cache()
         return {**config, "defaults": scoring.DEFAULT_CONFIG}
 

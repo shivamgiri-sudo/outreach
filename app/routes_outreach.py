@@ -271,14 +271,12 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
             if key in changes and not low <= changes[key] <= high:
                 raise HTTPException(400, f"{key.replace('_', ' ').capitalize()} must be between {low} and {high}.")
         was_live = bool(get_settings(store).get("live_sending"))
-        store.update("settings", lambda current: {**current, **changes})
-        if changes.get("live_sending") and (blockers := live_blockers(store, BASE_URL)):
-            store.update("settings", lambda current: {**current, "live_sending": False})
-            raise HTTPException(400, "Real sending stays off until: " + " ".join(blockers))
-        from . import audit
-        keys = sorted(k for k in changes if k != "live_sending")
-        if keys:                                            # key names only, never the values (a webhook secret may be one)
-            audit.record(store, getattr(request.state, "user", None), "settings.save", "Settings", "Changed: " + ", ".join(keys))
+        from . import audit_settings
+        with audit_settings.watch(store, request, "Settings", action="settings.save", ignore=("live_sending",)):   # secrets masked
+            store.update("settings", lambda current: {**current, **changes})
+            if changes.get("live_sending") and (blockers := live_blockers(store, BASE_URL)):
+                store.update("settings", lambda current: {**current, "live_sending": False})
+                raise HTTPException(400, "Real sending stays off until: " + " ".join(blockers))
         if "live_sending" in changes and bool(changes["live_sending"]) != was_live:
             live_switch(request, bool(changes["live_sending"]), "changed with the settings form")
         return settings()
@@ -326,8 +324,11 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         return present(lead)
 
     @router.post("/api/practice/clear")
-    def practice_clear():
-        return clear_practice(store)
+    def practice_clear(request: Request):
+        result = clear_practice(store)
+        from . import audit
+        audit.record(store, getattr(request.state, "user", None), "practice.clear", "practice messages", str(result)[:300])
+        return result
 
     @router.get("/api/inbox")
     def inbox():
@@ -461,7 +462,7 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         lead = store.update_lead(lead_id, unsubscribe_lead)
         _suppress(store, lead.get("email"))
         if was != "unsubscribed":
-            record_consent(store, lead_id, "withdrawn", "email", "", how.lower())
+            record_consent(store, lead_id, "withdrawn", "email", "", how.lower(), "link")
         return unsub_html("<p>You are unsubscribed and will not hear from us again.</p>")
 
     @router.post("/api/scrape/extract")

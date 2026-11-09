@@ -2,7 +2,7 @@
 import os
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from . import brand, capture_connectors, routes_outreach
@@ -174,14 +174,16 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
         return present(save(updated))
 
     @router.delete("/api/flows/{flow_id}")
-    def delete_flow(flow_id: str):
-        find(flow_id)
+    def delete_flow(flow_id: str, request: Request):
+        flow = find(flow_id)
         stopped = 0
         for run in runs_of(flow_id):
             if run["status"] in ("running", "waiting"):
                 stop_run(store, run["id"], "the flow was deleted")
                 stopped += 1
         store.update("flows", lambda rows: [f for f in rows if f["id"] != flow_id])
+        from . import audit
+        audit.record(store, getattr(request.state, "user", None), "flow.delete", flow.get("name") or flow_id, f"id {flow_id}; {stopped} running lead(s) stopped")
         return {"deleted": flow_id, "runs_stopped": stopped}
 
     @router.post("/api/flows/{flow_id}/validate")

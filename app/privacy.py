@@ -106,11 +106,38 @@ def guard_leads(old: list, new: list, erased: set) -> list:
 
 
 # ---------- consent ledger ----------
-def record_consent(store, lead_id: str, event: str, channel: str = "any", text: str = "", source: str = "") -> dict:
-    """Append one consent event ("given" or "withdrawn"). Rows are never edited afterwards (except erasure)."""
+CONSENT_KINDS = ("reply", "form", "person", "import", "link", "provider", "erasure", "system")
+
+
+def consent_kind(source: str, by: str = "") -> str:
+    """Where a consent event came from: reply text, a form, a person, an import, the unsubscribe link, the provider…"""
+    text = str(source or "").lower()
+    if "erase" in text:
+        return "erasure"
+    if "reply" in text:
+        return "reply"
+    if text.startswith("inbound:") or "form" in text:
+        return "form"
+    if "import" in text:
+        return "import"
+    if "unsubscribe link" in text:
+        return "link"
+    if "complaint" in text or "provider" in text or "bounce" in text:
+        return "provider"
+    if by or "person" in text or "phone call" in text or "call" in text:
+        return "person"
+    return "system"
+
+
+def record_consent(store, lead_id: str, event: str, channel: str = "any", text: str = "", source: str = "",
+                   kind: str = "", by: str = "") -> dict:
+    """Append one consent event ("given", "withdrawn" or "do_not_contact"). Rows are never edited afterwards (except
+    erasure). Each row says when, which channel, the source text and its kind (reply / form / person / import / link /
+    provider / erasure) and, when a person did it, who."""
     at = now_iso()
     row = {"id": uuid.uuid4().hex[:12], "lead_id": lead_id, "event": event, "channel": channel or "any",
-           "text": (text or "")[:500], "source": source or "", "at": at, "withdrawn_at": at if event == "withdrawn" else None}
+           "text": (text or "")[:500], "source": source or "", "at": at, "withdrawn_at": at if event in ("withdrawn", "do_not_contact") else None,
+           "source_kind": kind if kind in CONSENT_KINDS else consent_kind(source, by), "by": (by or "")[:120]}
     store.update("consent_ledger", lambda rows: [*rows, row])
     return row
 

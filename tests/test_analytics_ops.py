@@ -196,12 +196,13 @@ def test_live_sending_blocked_until_ready_and_owner_only(tmp_path):
     assert c2.get("/api/settings/live-sending", headers=caller).status_code == 200
 
 
-def test_settings_save_audits_key_names_never_values(tmp_path):
+def test_settings_save_audits_old_and_new_values_but_never_secrets(tmp_path):
     c = make_client(tmp_path)
     c.put("/api/settings", json={"sender_name": "Priya", "webhook_secret": "super-secret-value-123", "daily_cap": 30})
     row = c.get("/api/audit?action=settings").json()["items"][0]
-    assert row["action"] == "settings.save" and "webhook_secret" in row["detail"] and "sender_name" in row["detail"]
-    assert "super-secret-value-123" not in str(store_of(c).read("audit")) and "Priya" not in row["detail"]
+    assert row["action"] == "settings.save" and "webhook_secret: (empty) -> (hidden, changed)" in row["detail"]
+    assert "sender_name: (empty) -> Priya" in row["detail"]
+    assert "super-secret-value-123" not in str(store_of(c).read("audit"))
 
 
 # ---------------------------------------------------------------- audit trail

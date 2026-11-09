@@ -134,7 +134,11 @@ def make_router(store) -> APIRouter:
     @router.post("/api/sequences/{seq_id}/archive")
     def archive(seq_id: str, request: Request, body: Optional[ArchiveBody] = None):
         try:
-            return shown(lib.set_archived(store, seq_id, body.archived if body else True, _user(request)["name"]))
+            saved = lib.set_archived(store, seq_id, body.archived if body else True, _user(request)["name"])
+            from . import audit
+            audit.record(store, _user(request), "sequence.archive", saved.get("name") or seq_id,
+                         f"id {seq_id}; " + ("archived" if (body.archived if body else True) else "brought back"))
+            return shown(saved)
         except LookupError:
             raise HTTPException(404, "Sequence not found") from None
         except PermissionError as exc:
@@ -210,6 +214,8 @@ def make_router(store) -> APIRouter:
             raise HTTPException(404, "Snippet not found") from None
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from None
+        from . import audit
+        audit.record(store, _user(request), "snippet.delete", snippet_id)
         return {"ok": True}
 
     return router

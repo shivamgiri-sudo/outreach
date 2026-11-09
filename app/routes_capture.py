@@ -1,5 +1,5 @@
 """Owner-only management of lead-capture connectors, plus the source registry every screen reads."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from . import capture_connectors as connectors
 from . import source_names
@@ -54,10 +54,13 @@ def make_router(store, default_base: str = "") -> APIRouter:
             raise HTTPException(400, str(exc)) from exc
 
     @router.delete("/api/capture/connectors/{connector_id}")
-    def delete_connector(connector_id: str):
-        found(connector_id)
+    def delete_connector(connector_id: str, request: Request):
+        row = found(connector_id)
         removed = remove_test_leads(store, connector_id)
         connectors.remove(store, connector_id)
+        from . import audit
+        audit.record(store, getattr(request.state, "user", None), "capture.delete", row.get("name") or connector_id,
+                     f"id {connector_id}; {removed} test lead(s) removed")
         return {"ok": True, "test_leads_removed": removed}
 
     @router.post("/api/capture/connectors/{connector_id}/rotate-token")
@@ -70,8 +73,11 @@ def make_router(store, default_base: str = "") -> APIRouter:
             raise HTTPException(400, str(exc)) from exc
 
     @router.delete("/api/capture/connectors/{connector_id}/test-leads")
-    def delete_test_leads(connector_id: str):
+    def delete_test_leads(connector_id: str, request: Request):
         found(connector_id)
-        return {"removed": remove_test_leads(store, connector_id)}
+        removed = remove_test_leads(store, connector_id)
+        from . import audit
+        audit.record(store, getattr(request.state, "user", None), "capture.test_leads_delete", connector_id, f"{removed} test lead(s) removed")
+        return {"removed": removed}
 
     return router

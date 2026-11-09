@@ -92,7 +92,7 @@ export default function OutboxTable({ refreshKey }) {
                 <td data-label="When">{istLabel(m.sent_at)}</td>
                 <td data-label="To">{m.to}{m.company && <><br /><small>{m.company}</small></>}</td>
                 <td data-label="Step">{m.step}{m.manual ? <><br /><small>one-off{m.by ? ` by ${m.by}` : ""}</small></> : m.by && <><br /><small>sent now by {m.by}</small></>}{m.campaign && <><br /><small>{m.campaign}</small></>}</td>
-                <td data-label="Subject">{m.subject}<br /><small className="sub-inline">{m.preview}</small></td>
+                <td data-label="Subject">{m.subject}{m.ai_drafted && <> <span className="pill" data-testid="ai-drafted-pill" title={`Written by the AI; approved and sent by ${m.ai_approved_by || "a person"}`}>AI-drafted</span></>}<br /><small className="sub-inline">{m.preview}</small></td>
                 <td data-label="Status"><span className={`pill ${STATUS_PILL[m.delivered_at ? "delivered" : m.status] ?? "warn"}`} title={m.error || ""}>
                   {m.delivered_at ? "delivered" : STATUS_LABEL[m.status] || m.status}</span>
                   {m.opens > 0 && <><br /><span className="pill" data-testid="opened-pill" title={`First opened ${istLabel(m.opened_at)}. Mail apps can open emails by themselves, so treat opens as a rough sign.`}>opened{m.opens > 1 ? ` ×${m.opens}` : ""}</span></>}

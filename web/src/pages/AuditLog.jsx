@@ -9,7 +9,30 @@ const PAGE = 50;
 const GROUPS = [["", "Every action"], ["stage", "Stage changes"], ["live_sending", "Send for real"], ["bulk", "Bulk actions"],
   ["lead.erase", "Erasures"], ["user", "Logins and roles"], ["workspace", "Workspaces"], ["linkedin_agent", "LinkedIn agent"],
   ["settings", "Settings saved"], ["contact.edit", "Contact corrections"], ["list.delete", "Lists deleted"], ["campaign.delete", "Campaigns deleted"],
-  ["export", "Downloads (CSV/JSON)"], ["backup", "Backups and restores"]];
+  ["export", "Downloads (CSV/JSON)"], ["backup", "Backups and restores"], ["bulk.delete", "Bulk deletes"], ["import.undo", "Imports undone"],
+  ["ai", "AI-drafted messages"], ["audit.pack", "Audit packs"]];
+
+// "Check change log": every row since tamper evidence started is hash-chained; this walks the chain.
+function ChainCheck() {
+  const [res, setRes] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const run = async () => { setBusy(true); setError(""); try { setRes(await ops.auditVerify()); } catch (e) { setError(e.message); } setBusy(false); };
+  return (
+    <span>
+      <button className="btn ghost" onClick={run} disabled={busy} data-testid="audit-verify">{busy ? "Checking…" : "Check change log"}</button>
+      {error && <span className="dl-error" role="alert">{error}</span>}
+      {res && (
+        <div className={`tip ${res.ok ? "" : "error"}`} role="status" data-testid="audit-verify-result" style={{ marginTop: 8 }}>
+          <b>{res.ok ? "Intact." : "Not intact."}</b> {res.message}
+          {res.trimmed > 0 && <> {res.trimmed} oldest row(s) were trimmed by the size limit (not tampering).</>}
+          {res.note && <><br /><small>{res.note}</small></>}
+          {res.first_broken && <><br /><small>First broken row: {res.first_broken.seq} ({istLabel(res.first_broken.at)}, {res.first_broken.action}) — {res.first_broken.problem}</small></>}
+        </div>
+      )}
+    </span>
+  );
+}
 
 export default function AuditLog() {
   const [f, setF] = useState(EMPTY);
@@ -26,8 +49,13 @@ export default function AuditLog() {
     <div data-testid="audit-log">
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
         <div><h3 style={{ margin: 0 }}>Audit log</h3>
-          <p className="sub" style={{ margin: "4px 0 0" }}>Who did what, and when (IST). Settings saves list the names of what changed, never secret values.</p></div>
-        <DownloadButton path={ops.auditCsvPath(f)} label="Download CSV" filename="audit-log.csv" testId="download-audit" />
+          <p className="sub" style={{ margin: "4px 0 0" }}>Who did what, and when (IST). Settings changes show old → new values; secrets are shown as (hidden). Rows are hash-chained so edits and deletions show up in the check.</p></div>
+        <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+          <ChainCheck />
+          <DownloadButton path={ops.auditCsvPath(f)} label="Download CSV" filename="audit-log.csv" testId="download-audit" />
+          <DownloadButton path={ops.auditPackPath({ from: f.from, to: f.to })} label="Audit pack (zip)" filename="audit-pack.zip" testId="download-audit-pack"
+            disabled={!f.from && !f.to} title={f.from || f.to ? "Messages, change log, consent and logins for these days" : "Pick a From / To day first"} />
+        </span>
       </div>
       <div className="card" style={{ margin: "10px 0", padding: 12 }}>
         <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>

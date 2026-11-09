@@ -126,6 +126,9 @@ class Store:
         """Leads of people whose data was erased can never come back (app/privacy.py), whatever path saves them."""
         if key == "leads" and self._data.get("suppressed_hashes"):
             return guard_leads(self._data["leads"], value, set(self._data["suppressed_hashes"]))
+        if key == "audit":                  # every new change-log row is hash-chained here, under the lock (app/audit_chain.py)
+            from .audit_chain import seal
+            return seal(self._data.get("audit") or [], value)
         return value
 
     def write(self, key: str, value) -> None:

@@ -204,7 +204,7 @@ def make_router(store, transactional_sender=None) -> APIRouter:
         return {"caller_name": settings.get("caller_name") or "Sales team", "team": team(store), "notify_email": bool(settings.get("notify_email"))}
 
     @router.put("/api/team")
-    def put_team(body: TeamBody):
+    def put_team(body: TeamBody, request: Request):
         changes = {}
         if body.caller_name is not None:
             changes["caller_name"] = body.caller_name.strip()[:60] or "Sales team"
@@ -216,7 +216,9 @@ def make_router(store, transactional_sender=None) -> APIRouter:
             changes["team"] = clean
         if body.notify_email is not None:
             changes["notify_email"] = body.notify_email
-        store.update("settings", lambda s: {**s, **changes})
+        from . import audit_settings
+        with audit_settings.watch(store, request, "Team"):
+            store.update("settings", lambda s: {**s, **changes})
         return get_team()
 
     return router

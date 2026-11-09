@@ -148,12 +148,18 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
     message = {"lead_id": lead_id, "to": lead["phone"], "template": template, "body": body,
                "sent_at": now.isoformat(timespec="seconds"), "status": result.get("status", "dry_run"),
                "provider_id": result.get("provider_id"), "error": result.get("error"), "by": sender.strip()}
+    from . import ai_marks
+    ai_draft = ai_marks.match(store, lead_id, raw, now) if template == "custom" else None
+    if ai_draft:                                     # a person sending (an edit of) an AI draft
+        ai_marks.mark(message, sender.strip(), ai_draft.get("source") or "reply draft", ai_draft.get("id", ""))
     store.update("whatsapp_outbox", lambda rows: [*rows, message])
     if message["status"] == "failed":
         raise WhatsAppError(f"The WhatsApp provider refused the message: {message['error'] or 'unknown error'}")
     event = {"at": message["sent_at"], "kind": "whatsapp", "text": f"{template} — {message['status']}" + (f" (sent by {sender.strip()})" if sender.strip() else ""),
-             **({"by": sender.strip()} if sender.strip() else {})}
+             **({"by": sender.strip()} if sender.strip() else {}), **({"ai_drafted": True} if ai_draft else {})}
     demo = {k: lead[k] for k in ("demo_token", "referral_code", "activation") if k in lead}
+    if ai_draft:
+        ai_marks.log_sent(store, sender.strip(), lead_id, "WhatsApp", sender.strip(), ai_draft.get("source") or "reply draft")
 
     def record(latest: dict) -> dict:
         stage = "whatsapp_active" if latest["stage"] in ("interested", "engaged") else latest["stage"]

@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from .ai import draft_reply
@@ -65,11 +65,14 @@ def make_router(store, ai_transport=post_json) -> APIRouter:
         return next(r for r in store.read("workflows") if r["id"] == rule_id)
 
     @router.delete("/api/workflows/{rule_id}")
-    def delete_rule(rule_id: str):
+    def delete_rule(rule_id: str, request: Request):
         rules = store.read("workflows")
         if rule_id not in {r["id"] for r in rules}:
             raise HTTPException(404, "Rule not found")
         store.write("workflows", [r for r in rules if r["id"] != rule_id])
+        from . import audit
+        gone = next(r for r in rules if r["id"] == rule_id)
+        audit.record(store, getattr(request.state, "user", None), "workflow.delete", gone.get("name") or rule_id, f"id {rule_id}")
         return {"deleted": rule_id}
 
     @router.post("/api/workflows/run-time-rules")
@@ -77,10 +80,15 @@ def make_router(store, ai_transport=post_json) -> APIRouter:
         return {"ran": run_time_rules(store, datetime.now(timezone.utc))}
 
     @router.post("/api/leads/{lead_id}/draft-reply")
-    def draft(lead_id: str, body: DraftBody):
+    def draft(lead_id: str, body: DraftBody, request: Request):
         lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
         if lead is None:
             raise HTTPException(404, "Lead not found")
-        return draft_reply(store, lead, body.incoming, public_base_url(store, BASE_URL), ai_transport)
+        result = draft_reply(store, lead, body.incoming, public_base_url(store, BASE_URL), ai_transport)
+        if result.get("source") == "ai" and result.get("draft"):      # remembered, so a send of it is marked AI-drafted
+            from . import ai_marks
+            ai_marks.remember(store, lead_id, result["draft"], getattr(request.state, "user", None), "reply draft")
+            result = {**result, "ai_drafted": True}
+        return result
 
     return router

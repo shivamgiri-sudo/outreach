@@ -122,6 +122,7 @@ export const api = {
   editLead: (id, changes, reason = "") => request(`/api/leads/${id}`, { method: "PATCH", body: { ...changes, reason } }),
   leadChanges: (id) => request(`/api/leads/${id}/changes`),
   changeLog: (limit = 300) => request(`/api/change-log?limit=${limit}`),
+  leadConsent: (id) => request(`/api/leads/${id}/consent`),
   remindStale: () => request("/api/intelligence/remind-stale", { method: "POST" }),
   async downloadChangeLog() {
     const token = getToken();

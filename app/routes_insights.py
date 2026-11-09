@@ -3,7 +3,7 @@ from collections import Counter, defaultdict
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from . import source_stats, workspaces
 
@@ -81,7 +81,7 @@ def make_router(store, present) -> APIRouter:
         return build_insights(store, present, rng)
 
     @router.put("/api/insights/source-spend")
-    def save_source_spend(body: dict):
+    def save_source_spend(body: dict, request: Request):
         """Monthly spend per source id (owner only), to show what a lead and a customer cost."""
         spend = {}
         for key, value in ((body or {}).get("spend") or {}).items():
@@ -93,7 +93,9 @@ def make_router(store, present) -> APIRouter:
                 raise HTTPException(400, f"Spend for {key} is out of range.")
             if amount:
                 spend[str(key)[:60]] = round(amount, 2)
-        store.update("settings", lambda s: {**s, "source_spend": spend})
+        from . import audit_settings
+        with audit_settings.watch(store, request, "Spend per lead source"):
+            store.update("settings", lambda s: {**s, "source_spend": spend})
         return {"source_spend": spend}
 
     return router

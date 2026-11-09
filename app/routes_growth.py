@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -118,9 +118,11 @@ def make_router(store, build_lead, present) -> APIRouter:
         return shown_offer()
 
     @router.put("/api/offer")
-    def write_offer(body: OfferBody):
+    def write_offer(body: OfferBody, request: Request):
+        from . import audit_settings
         changes = {k: v for k, v in body.model_dump().items() if v is not None}
-        store.update("settings", lambda current: {**current, **changes})
+        with audit_settings.watch(store, request, "Offer", action="offer.save"):
+            store.update("settings", lambda current: {**current, **changes})
         return shown_offer()
 
     @router.get("/api/sequence")

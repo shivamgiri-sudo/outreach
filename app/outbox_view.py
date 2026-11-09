@@ -49,6 +49,7 @@ def _summary(key: str, m: dict, lead: Optional[dict], campaigns: dict) -> dict:
             "sent_at": m.get("sent_at"), "delivered_at": m.get("delivered_at"), "error": m.get("error"), "by": m.get("by"),
             "manual": _is_manual(m), "campaign_id": cid, "campaign": campaigns.get(cid, "") if cid else "",
             "preview": " ".join(str(m.get("body") or "").split())[:140],
+            "ai_drafted": bool(m.get("ai_drafted")), "ai_approved_by": m.get("ai_approved_by") or "",
             "opens": int(m.get("opens") or 0), "clicks": int(m.get("clicks") or 0), "opened_at": m.get("opened_at"), "clicked_at": m.get("clicked_at")}
 
 

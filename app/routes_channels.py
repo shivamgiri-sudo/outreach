@@ -6,7 +6,7 @@ Also mounts the webhook + OAuth routes (app/channels/routes_hooks.py) and the me
 from typing import Optional, Union
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from . import integrations
@@ -102,26 +102,32 @@ def make_router(store, transport=request, smtp_factory=None, imap_factory=None, 
         return {"public_base_url": base(), "webhooks": out}
 
     @router.put("/api/channels/live")
-    def set_live(body: LiveBody):
+    def set_live(body: LiveBody, request: Request):
+        from . import audit_settings
         changes = {k: v for k, v in body.model_dump().items() if v is not None}
-        store.update("settings", lambda s: {**s, **changes})
+        with audit_settings.watch(store, request, "Channels sending for real"):
+            store.update("settings", lambda s: {**s, **changes})
         return {k: bool(store.read("settings").get(k)) for k in ("live_sending", *LIVE_FLAGS)}
 
     @router.put("/api/channels/{channel}/{provider}")
-    def save(channel: str, provider: str, body: SaveBody):
+    def save(channel: str, provider: str, body: SaveBody, request: Request):
         hub_provider(channel, provider)
+        from . import audit_settings
         try:
-            config.save_provider(store, channel, provider, body.values, resolver)
-            if body.make_active and get_channel(channel)["kind"] == "exclusive":
-                config.set_active(store, channel, provider)
+            with audit_settings.watch(store, request, f"{channel} provider {provider}", "channel.save", "integrations", all_secret=True):
+                config.save_provider(store, channel, provider, body.values, resolver)
+                if body.make_active and get_channel(channel)["kind"] == "exclusive":
+                    config.set_active(store, channel, provider)
         except ValueError as exc:
             raise HTTPException(400, str(exc))
         return described(channel, provider)
 
     @router.delete("/api/channels/{channel}/{provider}")
-    def remove(channel: str, provider: str):
+    def remove(channel: str, provider: str, request: Request):
         hub_provider(channel, provider)
-        config.delete_provider(store, channel, provider)
+        from . import audit_settings
+        with audit_settings.watch(store, request, f"{channel} provider {provider} removed", "channel.remove", "integrations", all_secret=True):
+            config.delete_provider(store, channel, provider)
         return described(channel, provider)
 
     @router.post("/api/channels/{channel}/active")

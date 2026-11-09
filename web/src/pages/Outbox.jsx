@@ -153,7 +153,7 @@ export default function Outbox({ go }) {
           <table>
             <thead><tr><th>When</th><th>To</th><th>Template</th><th>Message</th><th>Status</th></tr></thead>
             <tbody>{wa.map((m, i) => (
-              <tr key={i}><td>{istLabel(m.sent_at)}</td><td>{m.to}</td><td>{m.template}</td><td>{m.body}</td>
+              <tr key={i}><td>{istLabel(m.sent_at)}</td><td>{m.to}</td><td>{m.template}{m.ai_drafted && <><br /><span className="pill" title={`Written by the AI; approved and sent by ${m.ai_approved_by || "a person"}`}>AI-drafted</span></>}</td><td>{m.body}</td>
                 <td><span className={`pill ${m.status === "sent" ? "ok" : ""}`}>{STATUS_LABEL[m.status] || m.status}</span></td></tr>
             ))}</tbody>
           </table>
