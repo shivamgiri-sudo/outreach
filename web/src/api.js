@@ -227,6 +227,7 @@ export const api = {
   login: (password, email = "") => request("/api/login", { method: "POST", body: { password, email } }),
   forgotPassword: (email) => request("/api/password/forgot", { method: "POST", body: { email } }),
   resetPassword: (token, password) => request("/api/password/reset", { method: "POST", body: { token, password } }),
+  leadPlan: (id) => request(`/api/leads/${id}/plan`),
   addContactPoint: (id, kind, value) => request(`/api/leads/${id}/contact-points`, { method: "POST", body: { kind, value } }),
   removeContactPoint: (id, kind, value) => request(`/api/leads/${id}/contact-points/remove`, { method: "POST", body: { kind, value } }),
   primaryContactPoint: (id, kind, value) => request(`/api/leads/${id}/contact-points/primary`, { method: "POST", body: { kind, value } }),

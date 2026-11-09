@@ -27,6 +27,7 @@ function Settings({ cfg, onSave }) {
         <input value={form.linkedin_owner} placeholder="Name of the representative" onChange={(e) => setForm({ ...form, linkedin_owner: e.target.value })} /></label>
       <label>Case-study link (step 4 is skipped until a real link is set)
         <input value={form.case_study_url} placeholder="https://…" onChange={(e) => setForm({ ...form, case_study_url: e.target.value })} /></label>
+      <label className="check-row"><input type="checkbox" data-testid="li-auto-start" checked={!!form.linkedin_auto_start} onChange={(e) => setForm({ ...form, linkedin_auto_start: e.target.checked })} /> Start the sequence automatically: each working day the agent puts the suggested people (with a LinkedIn link, not contacted yet) on the sequence, up to the daily limit above</label>
       </fieldset>
       {canWrite() && <button className="btn" style={{ marginTop: 8 }} onClick={() => onSave({ ...form, linkedin_daily_connections: Number(form.linkedin_daily_connections) })}>Save</button>}
     </details>
@@ -97,7 +98,7 @@ function BranchHelper({ leadId, onMessage }) {
   );
 }
 
-const KIND_WORDS = { connect: "Connection request sent", message: "Message sent", accepted: "Accepted", replied: "Replied", error: "Problem", paused: "Waiting", started: "Agent started" };
+const KIND_WORDS = { connect: "Connection request sent", message: "Message sent", accepted: "Accepted", replied: "Replied", error: "Problem", paused: "Waiting", started: "Agent started", auto_start: "Started automatically" };
 
 function LinkedInAgent({ onMessage }) {
   const confirm = useConfirm();
@@ -280,7 +281,7 @@ function ConnectionNotes({ onMessage }) {
 
 export default function LinkedInQueue() {
   const [q, setQ] = useState(null);
-  const [cfg, setCfg] = useState({ linkedin_daily_connections: 12, linkedin_owner: "", case_study_url: "" });
+  const [cfg, setCfg] = useState({ linkedin_daily_connections: 12, linkedin_owner: "", case_study_url: "", linkedin_auto_start: false });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [helper, setHelper] = useState(null);

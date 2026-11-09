@@ -194,7 +194,7 @@ def has_profile_link(lead: dict) -> bool:
     return bool(re.match(r"^https?://([a-z]+\.)?linkedin\.com/", lead.get("linkedin_url") or "", re.I))
 
 
-def start(store, lead_id: str, now: Optional[datetime] = None) -> dict:
+def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = False) -> dict:
     """Put a lead on the LinkedIn sequence (needs a LinkedIn profile link; never restarts)."""
     now = now or now_utc()
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
@@ -210,9 +210,10 @@ def start(store, lead_id: str, now: Optional[datetime] = None) -> dict:
     from .linkedin_config import current
     cfg = current(settings)
     state = {"started_at": iso(now), "done": [], "status": "waiting_to_connect", "persona": persona(lead.get("title", ""), settings)[0],
-             "variant": pick_variant(lead_id), "steps_version": cfg.get("version", 1)}
+             "variant": pick_variant(lead_id), "steps_version": cfg.get("version", 1), **({"auto_started": True} if auto else {})}
+    text = "Started LinkedIn sequence automatically (daily auto-start)" if auto else "Started LinkedIn sequence"
     saved = store.update_lead(lead_id, lambda l: None if l.get("linkedin_seq") else {
-        **l, "linkedin_seq": state, "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin", "text": "Started LinkedIn sequence"}]})
+        **l, "linkedin_seq": state, "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin", "text": text, **({"auto": True} if auto else {})}]})
     task = _schedule(store, saved, cfg["steps"][0], now, settings)
     return {"lead": saved, "task": task}
 
@@ -335,3 +336,50 @@ def queue(store, now: Optional[datetime] = None) -> dict:
     return {"due": sorted(due, key=lambda d: d["due_at"] or ""), "suggestions": suggestions, "waiting_for_acceptance": waiting,
             "started_today": started_today, "daily_limit": limit, "case_study_set": bool(settings.get("case_study_url")),
             "owner": _owner(store)}
+
+
+def auto_start(store, max_new: int, now: Optional[datetime] = None) -> list:
+    """Daily auto-start (settings linkedin_auto_start): put the suggested people on the sequence, never more than the
+    daily limit (counting everyone started today, by hand or not) or `max_new` (what the account may still send today)."""
+    now = now or now_utc()
+    if not store.read("settings").get("linkedin_auto_start") or max_new <= 0:
+        return []
+    started = []
+    for s in queue(store, now)["suggestions"][:max_new]:
+        try:
+            start(store, s["lead_id"], now, auto=True)
+            started.append(s)
+        except (LookupError, ValueError):
+            continue
+    return started
+
+
+_HONORIFIC = re.compile(r"^(mr|mrs|ms|miss|dr|prof|shri|smt|er|ca|adv)\.?\s+", re.I)
+
+
+def _name_key(name: str) -> str:
+    words = re.sub(r"[^a-z\s]", " ", _HONORIFIC.sub("", (name or "").strip()).lower()).split()
+    return " ".join([words[0], words[-1]]) if len(words) >= 2 else (words[0] if words else "")
+
+
+def match_inbox(store, account: str, items: list, now: Optional[datetime] = None) -> list:
+    """The agent read the LinkedIn messaging list: a conversation whose last message is from a person on the sequence
+    (owned by this account or by no account yet) is their reply. Matched on first + last name; a name shared by two
+    people on the sequence is left alone (a person checks it). Returns [{lead_id, name, text}] marked replied."""
+    now = now or now_utc()
+    active = [l for l in store.read("leads") if (l.get("linkedin_seq") or {}).get("status") in ("waiting_for_acceptance", "messaging")
+              and (l["linkedin_seq"].get("account") or "") in ("", account) and l.get("stage") not in CLOSED]
+    by_key = {}
+    for l in active:
+        by_key.setdefault(_name_key(l.get("contact_name")), []).append(l)
+    replied = []
+    for item in items:
+        if not item.get("from_them"):
+            continue
+        found = by_key.get(_name_key(item.get("name")), [])
+        if len(found) != 1 or any(r["lead_id"] == found[0]["id"] for r in replied):
+            continue
+        text = str(item.get("text") or "").strip()[:2000]
+        mark_replied(store, found[0]["id"], text, now)
+        replied.append({"lead_id": found[0]["id"], "name": found[0].get("contact_name") or "", "text": text})
+    return replied

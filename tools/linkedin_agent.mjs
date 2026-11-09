@@ -222,6 +222,45 @@ async function doConnect(page, lead, note) {
   return { done: true };
 }
 
+// LinkedIn's chat window lists the conversation as groups (sender name + messages). Their messages are the ones marked
+// "--other" or in a group under their name. Read before every follow-up: a person who already answered is never sent
+// the next step; the reply goes to the portal instead. Returns their message texts (empty when there are none).
+async function readThread(page, lead) {
+  await sleep(800);
+  return page.evaluate(({ first, me }) => {
+    const out = [];
+    let sender = "";
+    for (const ev of document.querySelectorAll(".msg-s-message-list__event")) {
+      const n = ev.querySelector(".msg-s-message-group__name");
+      if (n) sender = n.textContent.trim().toLowerCase();
+      for (const it of ev.querySelectorAll(".msg-s-event-listitem")) {
+        const byName = sender && first && sender.includes(first) && !(me && me !== first && sender.includes(me));
+        const body = it.querySelector(".msg-s-event-listitem__body");
+        if (body && (it.className.includes("msg-s-event-listitem--other") || byName)) out.push(body.textContent.trim());
+      }
+    }
+    return out.filter(Boolean).slice(-5);
+  }, { first: tokens(lead.name)[0] || "", me: tokens(ME.name)[0] || "" }).catch(() => []);
+}
+
+// The messaging list (linkedin.com/messaging/): each conversation's name and last-message preview. A preview that
+// starts "You:" is ours; anything else is theirs. Group conversations (several names) are left out.
+async function readInbox(page) {
+  try {
+    await page.goto(LINKEDIN + "/messaging/", { waitUntil: "domcontentloaded" }); await sleep(SETTLE);
+  } catch (e) {                         // the list did not load: try again next time, never stop the agent over a read
+    log("could not open the messaging list:", String(e.message || e).split("\n")[0]);
+    return [];
+  }
+  await checkTrouble(page);             // a login wall or security check here still stops it, as anywhere else
+  return page.evaluate(() => [...document.querySelectorAll(".msg-conversation-listitem, .msg-conversation-card")].slice(0, 40).map((li) => {
+    const name = (li.querySelector(".msg-conversation-listitem__participant-names, .msg-conversation-card__participant-names")?.textContent || "").trim();
+    const snip = (li.querySelector(".msg-conversation-card__message-snippet, .msg-conversation-listitem__message-snippet")?.textContent || "").trim();
+    const ours = /^you\s*:/i.test(snip);
+    return { name, text: snip.replace(/^[^:]{1,60}:\s*/, ""), from_them: !!name && !ours };
+  }).filter((i) => i.name && !i.name.includes(","))).catch(() => []);
+}
+
 async function doMessage(page, lead, text) {
   const button = await findMessage(page, lead.name);
   if (!button) return { done: false, why: "no Message button for this person (you may not be connected yet)" };
@@ -230,6 +269,8 @@ async function doMessage(page, lead, text) {
   await sleep(SETTLE);
   const box = page.locator('div[role="textbox"][contenteditable="true"]').last();
   if (!(await box.count())) return { done: false, why: "the message box did not open" };
+  const theirs = await readThread(page, lead);
+  if (theirs.length) { await page.keyboard.press("Escape"); return { done: false, replied: theirs.join("\n\n") }; }
   await box.click();
   await page.keyboard.insertText(text);
   await sleep(500);
@@ -269,6 +310,15 @@ async function oneCycle(page, state) {
       log(`accepted: ${w.name}`);
     }
   }                                    // looking at profiles is a read: it does not use up this cycle's action
+  // 2. replies: read the messaging list every 20 minutes (a read, no caps), so a reply between steps is seen the same day.
+  if (ctl.check_replies && !DRY && Date.now() - (state.inboxAt || 0) > 20 * 60 * 1000) {
+    state.inboxAt = Date.now();
+    const items = await readInbox(page);
+    if (items.length) {
+      const got = await api("/api/extension/inbox", "POST", { items }).catch((e) => { log("could not report the inbox:", e.message); return { replied: [] }; });
+      for (const r of got.replied || []) log(`reply from ${r.name} (sequence stopped)`);
+    }
+  }
   portalAllowsNoNote = !!ctl.allow_no_note;
   if (ctl.wait_seconds > 0) return { idle: `waiting ${ctl.wait_seconds}s between actions` };
   for (const item of queue.due) {
@@ -283,6 +333,12 @@ async function oneCycle(page, state) {
     await reportProfile(page, item.lead_id, state, item.name);
     const result = kind === "connect" ? await doConnect(page, item, info.message.text) : await doMessage(page, item, info.message.text);
     if (result.dry) { log(`DRY ${item.name}: ${result.why}`); return { acted: "dry" }; }
+    if (result.replied) {                 // they had already answered: nothing sent, the reply goes to the portal
+      await api(`/api/extension/leads/${item.lead_id}/replied`, "POST", { text: result.replied.slice(0, 2000) }).catch((e) => log("could not report the reply:", e.message));
+      await event("replied", { lead_id: item.lead_id, note: `${item.name} replied on LinkedIn (seen before step ${info.message.step}); sequence stopped` });
+      log(`reply from ${item.name}: not sending step ${info.message.step}`);
+      continue;
+    }
     if (!result.done) {
       log(`could not ${kind} ${item.name}: ${result.why}`);
       if (result.stopNotes) state.noNotes = true;

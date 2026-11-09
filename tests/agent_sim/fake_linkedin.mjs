@@ -4,18 +4,39 @@
 //   first-*    1st-degree, Message button         open-*     2nd-degree + Message (Open Profile)
 //   checkpoint-* redirects to a security check    limit-*    weekly invitation limit after Connect
 //   nonote-*   Connect dialog without "Add a note"
-// GET /__state shows every invite and message; POST /__accept?slug=..&acct=.. makes a pending invite accepted.
+// GET /__state shows every invite and message; POST /__accept?slug=..&acct=.. makes a pending invite accepted;
+// POST /__reply?slug=..&acct=..&text=.. is the person answering (seen in the chat window and on /messaging/).
 import http from "node:http";
 
 // argv: "8797:acct-a,8796:acct-b" — each port is one browser "logged in" as that account (cookies do not survive a
 // headless profile restart on localhost). POST /__as?acct=x on a port switches it (empty = logged out).
 const PORTS = Object.fromEntries(String(process.argv[2] || "8797:acct-a").split(",").map((p) => p.split(":")).map(([port, a]) => [Number(port), a || ""]));
-const state = { invites: [], messages: [], accepted: {} };
+const state = { invites: [], messages: [], accepted: {}, replies: [] };
 const names = { "acct-a": "Asha Account", "acct-b": "Bala Account", "acct-c": "Chitra Account" };
 const cookie = (req) => Object.fromEntries((req.headers.cookie || "").split(/;\s*/).filter(Boolean).map((c) => c.split("=")));
 const page = (body, title = "LinkedIn") => `<!doctype html><html><head><title>${title}</title></head><body>${body}</body></html>`;
 const send = (res, code, html, headers = {}) => { res.writeHead(code, { "Content-Type": "text/html", ...headers }); res.end(html); };
 const pretty = (slug) => slug.replace(/-\d+$/, "").split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+function conversation(acct, slug) {
+  return [...state.messages.filter((x) => x.from === acct && x.to === slug).map((x) => ({ ours: true, text: x.text, at: x.at })),
+          ...state.replies.filter((x) => x.acct === acct && x.slug === slug).map((x) => ({ ours: false, text: x.text, at: x.at }))].sort((a, b) => a.at - b.at);
+}
+function thread(acct, slug, name) {
+  return conversation(acct, slug).map((x) => `<li class="msg-s-message-list__event"><span class="msg-s-message-group__name">${x.ours ? names[acct] || acct : name}</span>
+    <div class="msg-s-event-listitem${x.ours ? "" : " msg-s-event-listitem--other"}"><p class="msg-s-event-listitem__body">${esc(x.text)}</p></div></li>`).join("");
+}
+function inbox(acct) {
+  const slugs = [...new Set([...state.messages.filter((x) => x.from === acct).map((x) => x.to), ...state.replies.filter((x) => x.acct === acct).map((x) => x.slug)])];
+  const items = slugs.map((slug) => { const c = conversation(acct, slug); const last = c[c.length - 1]; const kind = slug.split("-")[0];
+    const name = kind[0].toUpperCase() + kind.slice(1) + " Lead";
+    return `<li class="msg-conversation-listitem"><h3 class="msg-conversation-listitem__participant-names">${name}</h3>
+      <p class="msg-conversation-card__message-snippet">${last.ours ? "You: " : name.split(" ")[0] + ": "}${esc(last.text)}</p></li>`; });
+  items.push(`<li class="msg-conversation-listitem"><h3 class="msg-conversation-listitem__participant-names">Kamal Other, Ravi Group</h3>
+    <p class="msg-conversation-card__message-snippet">Kamal: hello all</p></li>`);
+  return page(`<main><h1>Messaging</h1><ul>${items.join("")}</ul></main>`, "Messaging");
+}
 
 function profile(acct, slug) {
   const kind = slug.split("-")[0];
@@ -56,6 +77,9 @@ const oc = document.getElementById("other-connect");
 if (oc) oc.onclick = async () => { await post("/__invite", { to: "kamal-other", note: "" }); oc.textContent = "Pending"; };
 const m = document.getElementById("msg");
 if (m) m.onclick = () => {
+  const list = document.createElement("ul"); list.className = "msg-s-message-list-content";
+  list.innerHTML = ${JSON.stringify(thread(acct, slug, name))};
+  document.body.append(list);
   const box = document.createElement("div"); box.setAttribute("role", "textbox"); box.contentEditable = "true"; box.style.minHeight = "40px"; box.style.border = "1px solid #999";
   const s = document.createElement("button"); s.textContent = "Send";
   s.onclick = async () => { await post("/__message", { to: ${JSON.stringify(slug)}, text: box.innerText }); box.innerText = ""; };
@@ -72,7 +96,8 @@ const handler = (PORT) => async (req, res) => {
   for await (const chunk of req) body += chunk;
   const json = () => { try { return JSON.parse(body || "{}"); } catch { return {}; } };
   if (url.pathname === "/__state") { res.writeHead(200, { "Content-Type": "application/json" }); return res.end(JSON.stringify(state)); }
-  if (url.pathname === "/__reset") { Object.assign(state, { invites: [], messages: [], accepted: {} }); return send(res, 200, "ok"); }
+  if (url.pathname === "/__reset") { Object.assign(state, { invites: [], messages: [], accepted: {}, replies: [] }); return send(res, 200, "ok"); }
+  if (url.pathname === "/__reply") { state.replies.push({ acct: url.searchParams.get("acct"), slug: url.searchParams.get("slug"), text: url.searchParams.get("text") || "", at: Date.now() }); return send(res, 200, "ok"); }
   if (url.pathname === "/__accept") { state.accepted[`${url.searchParams.get("acct")}|${url.searchParams.get("slug")}`] = true; return send(res, 200, "ok"); }
   if (url.pathname === "/__invite") { state.invites.push({ from: acct, ...json(), at: Date.now() }); return send(res, 200, "ok"); }
   if (url.pathname === "/__message") { state.messages.push({ from: acct, ...json(), at: Date.now() }); return send(res, 200, "ok"); }
@@ -83,6 +108,7 @@ const handler = (PORT) => async (req, res) => {
   if (url.pathname === "/login") return send(res, 200, page("<main><h1>Sign in</h1></main>"));
   if (!acct) return send(res, 302, "", { Location: "/login" });
   if (url.pathname.startsWith("/checkpoint")) return send(res, 200, page("<main><h1>Let's do a quick security check</h1></main>"));
+  if (url.pathname === "/messaging/" || url.pathname === "/messaging") return send(res, 200, inbox(acct));
   if (url.pathname === "/feed/") return send(res, 200, page(`<main><h1>Feed</h1><p>Welcome ${names[acct] || acct}</p></main>`));
   if (url.pathname === "/in/me/" || url.pathname === "/in/me") return send(res, 302, "", { Location: `/in/${acct}/` });
   const m = url.pathname.match(/^\/in\/([^/]+)\/?$/);

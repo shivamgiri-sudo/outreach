@@ -38,11 +38,11 @@ def _mine(rows: list, account: str) -> list:
     return [r for r in rows if (r.get("account") or "") == account]
 MAX_LOG = 400
 DEFAULTS = {"enabled": False, "weekly_connections": 80, "daily_messages": 25, "start_hour": 9, "end_hour": 18,
-            "weekdays_only": True, "gap_minutes": 6, "check_replies": False,
+            "weekdays_only": True, "gap_minutes": 6, "check_replies": True,
             "connect_without_note": False}     # free accounts run out of connection notes each month
 LIMITS = {"weekly_connections": (1, 100), "daily_messages": (0, 100), "start_hour": (0, 23), "end_hour": (1, 24), "gap_minutes": (3, 60)}
 ACTION_KINDS = ("connect", "message")
-KINDS = ("connect", "message", "accepted", "replied", "error", "paused", "started")
+KINDS = ("connect", "message", "accepted", "replied", "error", "paused", "started", "auto_start")
 
 
 def config(store) -> dict:
@@ -120,6 +120,13 @@ def control(store, now: Optional[datetime] = None, account: str = "") -> dict:
             "may_connect": active and left_connect > 0 and wait == 0, "may_message": active and left_message > 0 and wait == 0,
             "connections_left_today": left_connect, "messages_left_today": left_message, "check_replies": cfg["check_replies"], "allow_no_note": cfg["connect_without_note"],
             "gap_minutes": cfg["gap_minutes"], "counts": c, "account": account}
+
+
+def note(store, kind: str, text: str, account: str = "", lead_id: str = "", now: Optional[datetime] = None) -> None:
+    """A line in "What it did lately" written by the portal itself (e.g. the daily auto-start), without touching the
+    agent's last-seen state."""
+    row = {"at": iso(now or now_utc()), "kind": kind, "lead_id": lead_id[:40], "note": text[:300], **({"account": norm_account(account)} if account else {})}
+    store.update("settings", lambda s: {**s, SETTINGS_LOG: [*(s.get(SETTINGS_LOG) or [])[-(MAX_LOG - 1):], row]})
 
 
 def record(store, event: dict, now: Optional[datetime] = None, notify_sender=None) -> dict:

@@ -139,6 +139,7 @@ class Handler(BaseHTTPRequestHandler):
             body = "<html><head><title>Test Sender | LinkedIn</title></head><body><main><h1>Test Sender</h1></main></body></html>"
             self.send_response(200); self.send_header("Content-Type", "text/html"); self.end_headers(); self.wfile.write(body.encode()); return
         body = PAGES.get(path) or {"/feed/": "<html><body><main>Your feed</main></body></html>",
+                                   "/messaging/": "<html><body><main><h1>Messaging</h1><ul></ul></main></body></html>",
                                    "/in/blocked": "<html><body><main>Let's do a quick security check to continue</main></body></html>"}.get(path)
         if body is None:
             self.send_response(404); self.end_headers(); return

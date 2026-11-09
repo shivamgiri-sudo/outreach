@@ -8,6 +8,7 @@ import LeadActivity from "./LeadActivity.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
 import OtherContacts from "./OtherContacts.jsx";
 import { ContactPoints, LeadPeople } from "./LeadContacts.jsx";
+import LeadPlan from "./LeadPlan.jsx";
 import SequencePicker from "./sequences/SequencePicker.jsx";
 import { useAlert, useConfirm } from "../Dialog.jsx";
 import LeadFlows from "./flows/LeadFlows.jsx";
@@ -107,6 +108,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
         {s.pitch && <p style={{ margin: "6px 0 0" }}><b>What to say:</b> {s.pitch}</p>}
       </div>
       <LeadStage lead={lead} onLead={setLead} onError={setError} />
+      <LeadPlan lead={lead} />
       {/* SLOT: overview panels (LeadOwner, LeadTags, OtherContacts …) — one line each */}
       <LeadAssign lead={lead} onChanged={setLead} />
       <LeadPeople lead={lead} onLead={setLead} />

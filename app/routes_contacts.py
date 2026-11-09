@@ -24,6 +24,15 @@ class PersonBody(BaseModel):
 def make_router(store, present) -> APIRouter:
     router = APIRouter()
 
+    @router.get("/api/leads/{lead_id}/plan")
+    def plan(lead_id: str):
+        """The lead's communication plan: email and LinkedIn steps done / next / why stopped, follow-ups, automatic actions."""
+        from . import lead_plan
+        lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+        if lead is None:
+            raise HTTPException(404, "Lead not found")
+        return lead_plan.build(store, lead)
+
     def who(request: Request) -> dict:
         user = getattr(request.state, "user", None)
         if user and not auth.can_edit_contacts(user):

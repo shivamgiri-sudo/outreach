@@ -14,7 +14,7 @@ from typing import Optional
 SENDER = None
 DEDUPE_MINUTES = 10
 TITLES = {"reply": "New reply", "interested": "Lead said yes", "meeting": "Meeting booked", "call_interested": "Interested on a call",
-          "sla": "Response time missed", "open": "Email opened", "click": "Link clicked"}
+          "sla": "Response time missed", "open": "Email opened", "click": "Link clicked", "li_accepted": "Accepted on LinkedIn"}
 
 
 def _address(store, name: str) -> str:

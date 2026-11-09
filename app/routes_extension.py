@@ -22,6 +22,16 @@ class ReplyBody(BaseModel):
     text: str = Field(default="", max_length=2000)
 
 
+class InboxItem(BaseModel):
+    name: str = Field(default="", max_length=200)
+    text: str = Field(default="", max_length=2000)
+    from_them: bool = False
+
+
+class InboxBody(BaseModel):
+    items: list[InboxItem] = Field(default=[], max_length=60)
+
+
 class SaveProfileBody(BaseModel):
     profile_url: str = Field(max_length=2000)
     name: str = Field(max_length=extension_save.NAME_MAX)
@@ -82,7 +92,23 @@ def make_router(store) -> APIRouter:
 
     @router.get("/api/extension/queue")
     def queue(request: Request):
-        return ext.queue(store, account_of(request))
+        account = account_of(request)
+        ctl = agent_mod.control(store, account=account)
+        if ctl["active_now"]:                       # daily auto-start: only while the agent is really working
+            started = li.auto_start(store, ctl["connections_left_today"])
+            if started:
+                names = ", ".join(s.get("name") or s.get("company") or "?" for s in started[:8]) + (" …" if len(started) > 8 else "")
+                agent_mod.note(store, "auto_start", f"Started the LinkedIn sequence for {len(started)} people: {names}", account)
+        return ext.queue(store, account)
+
+    @router.post("/api/extension/inbox")
+    def inbox(body: InboxBody, request: Request):
+        """What the agent read in the LinkedIn messaging list: replies from people on the sequence stop it and reach Replies."""
+        account = account_of(request)
+        found = li.match_inbox(store, account, [i.model_dump() for i in body.items])
+        for r in found:
+            agent_mod.note(store, "replied", f"{r['name']} replied on LinkedIn: {r['text'][:120]}", account, r["lead_id"])
+        return {"replied": found}
 
     @router.post("/api/extension/leads/{lead_id}/claim")
     def claim(lead_id: str, request: Request):
@@ -130,7 +156,11 @@ def make_router(store) -> APIRouter:
             raise HTTPException(409, f"Another LinkedIn account ({ext.owner_of(lead)}) sent this request.")
         if (lead.get("linkedin_seq") or {}).get("status") != "waiting_for_acceptance":
             refuse(ext.describe(store, lead), "This person is not waiting to accept a connection request.")
-        li.mark_accepted(store, lead_id)
+        result = li.mark_accepted(store, lead_id)
+        task = result.get("next_task")
+        when = (f"The first message is scheduled for {task['due_at'][:10]}." if task else "No message step is left.")
+        from . import alerts
+        alerts.safe(store, "li_accepted", lead_id, f"{lead.get('contact_name') or 'They'} accepted your LinkedIn connection request. {when}")
         if account and not ext.owner_of(lead):
             store.update_lead(lead_id, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "account": account}})
         return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id), account)}

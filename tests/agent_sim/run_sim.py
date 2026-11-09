@@ -246,6 +246,54 @@ check("S12 no invitation or message ever went to someone else on the page (peopl
       not any(i["to"] == "kamal-other" for i in fake_state()["invites"]) and not any(m["to"] == "kamal-other" for m in fake_state()["messages"]),
       str([i for i in fake_state()["invites"] if i["to"] == "kamal-other"]))
 
+# ---------------------------------------------------------------- S13: they answered in the chat: the next step is not sent
+login_profile(PROFILE_A, "acct-a")
+store.update("settings", lambda s: {**s, "linkedin_daily_connections": 40})
+agent.save_config(store, {"check_replies": False})               # only the read before sending is tested here
+http("POST", f"/__reply?acct={own}&slug=connect-1&text=" + "Sounds+interesting%2C+call+me+Monday", base=FAKE)
+store.update("tasks", lambda rows: [{**t, "due_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(timespec="seconds")}
+                                    if t.get("lead_id") == first and t.get("kind") == "linkedin" and t.get("status", "open") == "open" else t for t in rows])
+store.update_lead(first, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "last_sent_at": "2026-01-01T00:00:00+00:00"}})
+before = len(fake_state()["messages"])
+run_agent(prof[own], "--once"); skip_gap()
+lead_1 = next(l for l in store.read("leads") if l["id"] == first)
+check("S13 a person who answered in the chat is not sent the next step", len(fake_state()["messages"]) == before, str(fake_state()["messages"][before:]))
+check("S13 the sequence stops as replied", seq(first).get("stopped") == "replied", str(seq(first)))
+check("S13 their words reach the lead (Replies)", any(e.get("kind") == "reply" and "call me Monday" in (e.get("text") or "") for e in lead_1["timeline"]),
+      str(lead_1["timeline"][-3:]))
+check("S13 the owner gets a 'New reply' or 'Lead said yes' alert", any(n["kind"] in ("alert:reply", "alert:interested") and n.get("lead_id") == first
+                                                                      for n in store.read("notifications")))
+
+# ---------------------------------------------------------------- S14: acceptance raises an alert with the first message date
+fl = add_lead("first-1", "FirstCo")
+store.update_lead(fl, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "account": "acct-a"}})
+agent.save_config(store, {"check_replies": True})
+run_agent(PROFILE_A, "--once"); skip_gap()
+check("S14 an already-connected person is marked accepted", seq(fl).get("status") == "messaging", str(seq(fl)))
+check("S14 'Accepted on LinkedIn' alert with the first-message date",
+      any(n["kind"] == "alert:li_accepted" and n.get("lead_id") == fl and "first message is scheduled" in n["text"] for n in store.read("notifications")))
+
+# ---------------------------------------------------------------- S15: a reply between steps is seen from the messaging list
+http("POST", "/__reply?acct=acct-a&slug=first-1&text=" + "Please+send+details+on+email", base=FAKE)
+run_agent(PROFILE_A, "--once"); skip_gap()
+lead_f = next(l for l in store.read("leads") if l["id"] == fl)
+check("S15 the messaging list shows their reply and the sequence stops", seq(fl).get("stopped") == "replied", str(seq(fl)))
+check("S15 the reply text is on the lead", any(e.get("kind") == "reply" and "send details" in (e.get("text") or "") for e in lead_f["timeline"]))
+check("S15 'What it did lately' says who replied", any(r["kind"] == "replied" and "replied on LinkedIn" in r["note"] for r in agent.log_rows(store)))
+
+# ---------------------------------------------------------------- S16: daily auto-start
+csv = "company,contact_name,title,email,website\nAutoCo,Connect Lead,CHRO,auto@autoco.test,https://autoco.test\n"
+http("POST", "/api/leads/import", {"csv": csv, "source": "sim"}, owner)
+auto = next(l for l in store.read("leads") if l["company"] == "AutoCo")["id"]
+store.update_lead(auto, lambda l: {**l, "linkedin_url": "https://www.linkedin.com/in/connect-77"})
+run_agent(PROFILE_A, "--once"); skip_gap()
+check("S16 auto-start off: nobody is started", not seq(auto))
+http("PUT", "/api/linkedin/settings", {"linkedin_auto_start": True}, owner)
+code, out16 = run_agent(PROFILE_A, "--once"); skip_gap()
+check("S16 auto-start on: the suggested person is put on the sequence", seq(auto).get("auto_started") is True, str(seq(auto)))
+check("S16 and the agent sends their connection request", any(i["to"] == "connect-77" for i in fake_state()["invites"]), out16[-600:])
+check("S16 'What it did lately' records the automatic start", any(r["kind"] == "auto_start" for r in agent.log_rows(store)))
+
 # ---------------------------------------------------------------- done
 fake.terminate()
 server.should_exit = True
