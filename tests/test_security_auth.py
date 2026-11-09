@@ -171,7 +171,8 @@ def test_without_admin_password_the_first_login_must_be_an_owner_and_one_owner_s
     assert local.post("/api/users", json={"email": "o@example.com", "role": "owner", "password": "long-password-1"}).status_code == 200
     assert local.get("/api/auth/status").json() == {"auth_required": True}       # a login now exists, so sign-in is on
     assert local.get("/api/leads").status_code == 401
-    token = login(local, "long-password-1", "o@example.com")
+    from tests.two_step_helpers import sign_in
+    token = sign_in(local, "o@example.com", "long-password-1")          # owners must set up two-step login first
     assert local.delete("/api/users/o@example.com", headers=bearer(token)).status_code == 400
     assert local.put("/api/users/o@example.com", json={"role": "viewer"}, headers=bearer(token)).status_code == 400
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api.js";
 
 // "Forgot password?" (send me a reset link) and the page the emailed link opens (#reset?token=...).
@@ -9,12 +9,13 @@ export function resetTokenFromHash() {
 
 export function ForgotForm({ onBack, initialEmail = "" }) {
   const [email, setEmail] = useState(initialEmail);
+  const [recovery, setRecovery] = useState(false);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const send = async (e) => {
     e.preventDefault();
     setBusy(true);
-    try { setMsg((await api.forgotPassword(email.trim())).message); } catch (err) { setMsg(err.message); }
+    try { setMsg((await api.forgotPassword(email.trim(), recovery)).message); } catch (err) { setMsg(err.message); }
     setBusy(false);
   };
   return (
@@ -26,6 +27,8 @@ export function ForgotForm({ onBack, initialEmail = "" }) {
         <label htmlFor="fe">Work email</label>
         <div className="login-input"><input id="fe" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" /></div>
       </div>
+      <label className="check-row" style={{ margin: "4px 0 8px" }}><input type="checkbox" checked={recovery} onChange={(e) => setRecovery(e.target.checked)} data-testid="super-recovery" />
+        {" "}I am a super admin (the link also needs my authenticator code or a recovery code)</label>
       {msg && <p className="login-note" role="status">{msg}</p>}
       <button className="login-submit" type="submit" disabled={busy || !email.trim()}>{busy ? "Sending…" : "Email me a reset link"}</button>
       <button type="button" className="link" onClick={onBack} style={{ marginTop: 10 }}>Back to sign in</button>
@@ -36,14 +39,17 @@ export function ForgotForm({ onBack, initialEmail = "" }) {
 export function ResetForm({ token, onDone }) {
   const [pw, setPw] = useState("");
   const [again, setAgain] = useState("");
+  const [code, setCode] = useState("");
+  const [info, setInfo] = useState(null);
   const [msg, setMsg] = useState("");
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
+  useEffect(() => { api.resetInfo(token).then(setInfo).catch(() => {}); }, [token]);
   const save = async (e) => {
     e.preventDefault();
     if (pw !== again) { setMsg("The two passwords are not the same."); return; }
     setBusy(true); setMsg("");
-    try { await api.resetPassword(token, pw); setDone(true); } catch (err) { setMsg(err.message); }
+    try { await api.resetPassword(token, pw, code.trim()); setDone(true); } catch (err) { setMsg(err.message); }
     setBusy(false);
   };
   const back = () => { window.history.replaceState(null, "", window.location.pathname); onDone(); };
@@ -63,8 +69,13 @@ export function ResetForm({ token, onDone }) {
         <div className="login-input"><input id="np" type="password" autoComplete="new-password" required minLength={10} value={pw} onChange={(e) => setPw(e.target.value)} /></div></div>
       <div className="login-field"><label htmlFor="np2">New password again</label>
         <div className="login-input"><input id="np2" type="password" autoComplete="new-password" required minLength={10} value={again} onChange={(e) => setAgain(e.target.value)} /></div></div>
+      {info?.needs_code && <div className="login-field"><label htmlFor="rc">Authenticator code or recovery code</label>
+        <div className="login-input"><input id="rc" autoComplete="one-time-code" required value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" /></div>
+        <p className="login-help">{info.super_admin ? "Type the code from your authenticator app, or one of your super admin recovery codes (that also resets your two-step login)."
+          : "Your login uses two-step login: type the code from your authenticator app, or a recovery code."}</p></div>}
+      {info && !info.valid && <p className="login-error" role="alert">This reset link has expired or was already used. Ask for a new one.</p>}
       {msg && <p className="login-error" role="alert">{msg}</p>}
-      <button className="login-submit" type="submit" disabled={busy || pw.length < 10}>{busy ? "Saving…" : "Set new password"}</button>
+      <button className="login-submit" type="submit" disabled={busy || pw.length < 10 || (info?.needs_code && !code.trim())}>{busy ? "Saving…" : "Set new password"}</button>
       <button type="button" className="link" onClick={back} style={{ marginTop: 10 }}>Back to sign in</button>
     </form>
   );
