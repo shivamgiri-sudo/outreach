@@ -59,6 +59,10 @@ def make_email_sender(store, transport=post_json, base_url: str = "", channel_tr
     """Returns send(message) -> {"status": "dry_run" | "sent" | "failed", ...}."""
 
     def send(message: dict) -> dict:
+        from .platform_controls import stop_reason
+        stopped = stop_reason(store)                       # the super admins' "Stop all sending" switch: every account
+        if stopped:
+            return {"status": "held", "error": stopped}
         from .account_sending import sender_config
         own, refusal = sender_config(store, message)       # another account's message: its own keys, a grant, or held
         if refusal:

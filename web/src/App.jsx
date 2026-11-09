@@ -38,6 +38,8 @@ import { DialogProvider } from "./Dialog.jsx";
 import { useModalFocus } from "./DrawerShell.jsx";
 import { loadBrand, loadPublicBrand, useBrand } from "./brand.js";
 import Onboarding from "./pages/Onboarding.jsx";
+import { PendingApproval, PlatformBanners, usePlatformStatus } from "./pages/PendingApproval.jsx";
+import { platform } from "./platformApi.js";
 
 // [id, label, component, icon]
 const PAGES = [
@@ -216,7 +218,7 @@ function Shell() {
   const [wizard, setWizard] = useState(false);
   useEffect(() => { loadPublicBrand(); }, []);
   useEffect(() => {
-    if (!auth.signedIn || !me) return;
+    if (!auth.signedIn || !me || me.pending) return;
     loadBrand();
     // The first-run wizard: owners only, until they finish or skip it (an install that already has leads is past it).
     if (me.role === "owner") api.onboarding().then((o) => o.show && setWizard(true)).catch(() => {});
@@ -255,10 +257,11 @@ function Shell() {
 
   const refreshPending = () => api.readiness()
     .then((r) => setPending(r.items.filter((i) => i.required && i.status !== "done").length)).catch(() => {});
-  useEffect(() => { if (auth.signedIn) refreshPending(); }, [page, auth.signedIn]);
+  useEffect(() => { if (auth.signedIn && me && !me.pending) refreshPending(); }, [page, auth.signedIn, me]);
   useEffect(() => {
     if (!auth.signedIn) { setMe(null); return; }
-    api.me().then((m) => {
+    Promise.all([api.me(), platform.status().catch(() => null)]).then(([m, st]) => {
+      m = { ...m, pending: st?.account_status === "pending" };
       setRole(m.role); setCanEditContacts(m.can_edit_contacts); setMyWorkspaces(m.workspaces); setClient(m.client); setMe(m);
       if ((m.role === "caller" || m.role === "admin") && !window.location.hash.replace(/^#\/?/, "")) setPage("myday");     // callers start on My day
     }).catch(() => setMe({ role: "owner" }));
@@ -271,7 +274,8 @@ function Shell() {
     window.addEventListener("workspaces-changed", bump);
     return () => window.removeEventListener("workspaces-changed", bump);
   }, []);
-  useEffect(() => { if (auth.signedIn && me) api.workspaces().then((w) => {
+  const platformStatus = usePlatformStatus(auth.signedIn && !!me && !me.pending);
+  useEffect(() => { if (auth.signedIn && me && !me.pending) api.workspaces().then((w) => {
     setSpaces(w);
     if (getWorkspace() && !w.some((x) => x.id === getWorkspace())) { setWorkspace(""); setSpace(""); }
   }).catch(() => {}); }, [auth.signedIn, me, page, space, spacesTick]);
@@ -301,6 +305,7 @@ function Shell() {
   if (!auth.checked) return <p className="empty">Loading…</p>;
   if (!auth.signedIn) return <Login onSignedIn={() => setAuth((a) => ({ ...a, required: true, signedIn: true }))} />;
   if (!me) return <p className="empty">Loading…</p>;
+  if (me.pending) return <PendingApproval me={me} onSignOut={signOut} />;
   const Current = BY_ID[page][2];
   const acctPicker = (cls) => accts.length > 1 && (
     <select className={cls} aria-label="Account" data-testid="account-picker" value={acct} onChange={(e) => pickAcct(e.target.value)}>
@@ -377,6 +382,7 @@ function Shell() {
         )}
       </nav>
       <main>
+        <PlatformBanners status={platformStatus} />
         {me.role === "viewer" && <p className="tip" role="note" data-testid="viewer-note" style={{ marginBottom: 12 }}>You have a view-only login: you can look at everything, but changes are refused. Ask an owner if you need to change something.</p>}
         {!pageAllowed(me, page)
           ? <><h2>{BY_ID[page][1]}</h2><p className="empty" role="status">{isLimited(me) ? "This page is not available for logins limited to a workspace." : "Only an owner can open this page."}</p></>

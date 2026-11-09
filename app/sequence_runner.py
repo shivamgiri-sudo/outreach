@@ -96,6 +96,9 @@ def _mode_keys(live: bool) -> tuple:
 
 def _run(store, now: datetime, base_url: str, sender) -> dict:
     server_secret(store)                      # unsubscribe links are signed with it; make sure it exists
+    from .platform_controls import stop_reason
+    if (stopped := stop_reason(store)):
+        return {"sent": 0, "skipped": stopped}
     cfg = get_settings(store)
     live = bool(cfg["live_sending"]) and bool(email_ready(store))
     if live and (pause := sending_paused(store, now)):

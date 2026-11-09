@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { api, setToken } from "../api.js";
 import { ForgotForm, ResetForm, resetTokenFromHash } from "./PasswordReset.jsx";
 import LoginTwoStep from "./LoginTwoStep.jsx";
+import { MagicForm, MagicVerify, OidcButtons, OidcReturn, SignupForm, VerifyPage, isOidcReturn, magicTokenFromHash, verifyTokenFromHash } from "./Signup.jsx";
 import Icon from "../icons.jsx";
 import "../login.css";
 import { useBrand } from "../brand.js";
@@ -46,7 +47,9 @@ export default function Login({ onSignedIn }) {
   const [show, setShow] = useState(false);
   const [caps, setCaps] = useState(false);
   const pw = useRef(null);
-  const [mode, setMode] = useState(() => (resetTokenFromHash() ? "reset" : "login"));
+  const [mode, setMode] = useState(() => (resetTokenFromHash() ? "reset" : verifyTokenFromHash() ? "verify" : magicTokenFromHash() ? "magic-verify"
+    : isOidcReturn() ? "oidc" : /^#\/?signup/.test(window.location.hash) ? "signup" : "login"));
+  const twoStep = (res) => { setStep(res); setMode("two-step"); };
   const [step, setStep] = useState(null);           // {two_step: "code" | "setup", ticket, name} after a right password
   const brand = useBrand().public;
   const generic = !brand.is_default;
@@ -96,6 +99,11 @@ export default function Login({ onSignedIn }) {
       <main className="login-main">
         {mode === "forgot" && <ForgotForm initialEmail={email} onBack={() => setMode("login")} />}
         {mode === "reset" && <ResetForm token={resetTokenFromHash()} onDone={() => setMode("login")} />}
+        {mode === "signup" && <SignupForm onBack={() => setMode("login")} />}
+        {mode === "verify" && <VerifyPage token={verifyTokenFromHash()} onSignedIn={onSignedIn} onTwoStep={twoStep} onBack={() => setMode("login")} />}
+        {mode === "magic" && <MagicForm initialEmail={email} onBack={() => setMode("login")} />}
+        {mode === "magic-verify" && <MagicVerify token={magicTokenFromHash()} onSignedIn={onSignedIn} onTwoStep={twoStep} onBack={() => setMode("login")} />}
+        {mode === "oidc" && <OidcReturn onSignedIn={onSignedIn} onTwoStep={twoStep} onBack={() => setMode("login")} />}
         {mode === "two-step" && step && <LoginTwoStep step={step} onSignedIn={onSignedIn} onBack={() => { setStep(null); setMode("login"); }} />}
         {mode === "login" && <form className="login-card" onSubmit={submit} aria-labelledby="login-heading" noValidate>
           <p className="login-eyebrow">Welcome back</p>
@@ -133,7 +141,12 @@ export default function Login({ onSignedIn }) {
           <button className="login-submit" type="submit" disabled={busy} aria-busy={busy || undefined}>
             {busy ? <><span className="login-spinner" aria-hidden="true" />Signing in…</> : <>Sign in<Icon name="arrowRight" size={18} /></>}
           </button>
-          <button type="button" className="link" onClick={() => setMode("forgot")} data-testid="forgot-link" style={{ marginTop: 8 }}>Forgot password?</button>
+          <OidcButtons intent="login" />
+          <div className="row" style={{ gap: 14, flexWrap: "wrap", marginTop: 8 }}>
+            <button type="button" className="link" onClick={() => setMode("forgot")} data-testid="forgot-link">Forgot password?</button>
+            <button type="button" className="link" onClick={() => setMode("magic")} data-testid="magic-link">Email me a sign-in link</button>
+            <button type="button" className="link" onClick={() => setMode("signup")} data-testid="signup-link">Create an account</button>
+          </div>
           <p className="login-fine"><Icon name="lock" size={14} />Sessions stay on this browser tab only.</p>
         </form>}
       </main>

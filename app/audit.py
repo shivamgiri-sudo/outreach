@@ -173,6 +173,10 @@ ACTIONS = {
     "account.create": "Account created", "account.change": "Account changed", "account.settings": "Account sending settings saved",
     "workspace.request": "Workspace asked for (needs approval)", "workspace.approve": "Workspace request approved",
     "workspace.reject": "Workspace request rejected",
+    "signup.verified": "Self sign-up confirmed (account pending)", "account.approve": "Account approved", "account.reject": "Account request rejected",
+    "account.ask": "Details asked from an applicant", "account.suspend": "Account suspended", "account.reactivate": "Account reactivated",
+    "account.export": "Account data exported", "account.delete": "Account deleted", "view_as.start": "View as started (read-only)",
+    "view_as.request": "Request made while viewing as", "view_as.stop": "View as stopped", "platform.stop_sending": "Stop all sending switched",
 }
 MAX_DETAIL = 500
 

@@ -114,8 +114,8 @@ def authenticate(store, admin_password: str, raw: str) -> Optional[dict]:
         principal = {"sub": sub, "email": "", "name": "This computer", "role": "owner"}
     else:
         principal = auth.subject_principal(store, admin_password, sub)
-        if principal is None:
-            return None
+        if principal is None or principal.get("account_pending"):
+            return None                       # a pending (not yet approved) account has no paired tools
     last = row.get("last_used_at")
     if not last or (now - datetime.fromisoformat(last)).total_seconds() > TOUCH_SECONDS:
         store.update("settings", lambda s: {**s, SETTINGS_KEY: [{**t, "last_used_at": iso(now)} if t.get("id") == row["id"] else t

@@ -333,7 +333,7 @@ def settings_for(source, account_id: Optional[str]) -> dict:
     brand = {"company_name": row["name"], **{k: v for k, v in (mine.get("brand") or {}).items() if v}}
     if mine.get("sender_name"):
         brand["sender_name"] = mine["sender_name"]
-    shared = {k: settings[k] for k in ("server_secret", "workspaces", "workspace_templates", "public_base_url", "lead_fields")
+    shared = {k: settings[k] for k in ("server_secret", "workspaces", "workspace_templates", "public_base_url", "lead_fields", "platform_stop")
               if k in settings}
     out = {**shared, "live_sending": False, **{k: v for k, v in mine.items() if k not in ("sending", "brand")},
            "brand": brand, "account_id": account_id}
@@ -343,7 +343,12 @@ def settings_for(source, account_id: Optional[str]) -> dict:
 
 
 def hold_reason(source, account_id: Optional[str], channel: str = "email") -> Optional[str]:
-    """Why nothing may be sent for this account on `channel`, or None. Mas Callnet is never held here."""
+    """Why nothing may be sent for this account on `channel`, or None. Mas Callnet is held here only by the super
+    admins' "Stop all sending" switch (app/platform_controls.py), which holds every account."""
+    from .platform_controls import stop_reason
+    stopped = stop_reason(source) if hasattr(source, "read") else None
+    if stopped:
+        return stopped
     if not account_id or account_id == MCN:
         return None
     row = find(source, account_id)
