@@ -140,6 +140,10 @@ Optional environment variables:
   run daily (once a day), checks the reply mailbox (IMAP) every 5 minutes, and sends reminders and the 09:30 IST summary.
 - `OUTREACH_DATA_FILE`: where data is stored. Default `data/store.json` (git-ignored). Saves are atomic, and saved keys are in plain text.
 - `OUTREACH_ADMIN_PASSWORD`: turns on the login screen (this login is an owner). **Without it (and without team logins) the API only answers on this computer.**
+  Signing in with it is off unless `OUTREACH_ADMIN_LOGIN=1`, and then only on the server itself (an SSH tunnel to 127.0.0.1, no proxy
+  headers), never through the public proxy; each use alerts the super admins. Local e2e rigs set `OUTREACH_ADMIN_LOGIN=1` (static_proxy.mjs adds no X-Forwarded-For).
+- `OUTREACH_SUPER_ADMIN`: comma-separated super admin emails (only they add or remove owners). Owners and super admins must use
+  two-step login; super admins reset a forgotten password with the emailed link plus an authenticator code or a sealed recovery code (app/super_admin.py).
 - `OUTREACH_SECRET_KEY`: encrypts saved API keys, passwords and tokens in the data file. Use a long random value, e.g. `python -c "import secrets; print(secrets.token_urlsafe(32))"`, and keep it safe: without it the saved keys can't be read. Plain keys are converted on the next start.
 - `OUTREACH_ENABLE_DOCS=1`: turns on `/docs` and `/openapi.json` (off by default).
 - `OUTREACH_ALLOW_PRIVATE_HOSTS`: comma-separated `host:port` the server may fetch even though it is private, e.g. `localhost:3002` for a self-hosted Firecrawl.
@@ -172,7 +176,7 @@ Browser walk-through (start the API with `OUTREACH_DATA_FILE` pointing at a thro
 
     cd web && npm run e2e                      # 113 steps; HEADED=1 shows the browser; E2E_UI / E2E_API change the addresses
     node e2e/tour.mjs                          # every page at desktop, tablet and phone width
-    # with the API started using OUTREACH_ADMIN_PASSWORD=e2e-password:
+    # with the API started using OUTREACH_ADMIN_PASSWORD=e2e-password OUTREACH_ADMIN_LOGIN=1:
     node e2e/auth.mjs                          # 9 login steps
 
 ## Not verified against live services

@@ -13,7 +13,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import audit, auth, login_log, two_step
+from . import audit, auth, login_log, super_admin, two_step
 from .hygiene import normalise_email
 from .web_security import client_ip
 
@@ -47,7 +47,7 @@ def after_password(store, user: dict) -> Optional[dict]:
     """What /api/login answers instead of a token when the login needs a second step, else None."""
     if two_step.is_on(user):
         return {"two_step": "code", "ticket": two_step.make_ticket(store, user, "code")}
-    if two_step.required(store):
+    if two_step.required(store) or super_admin.two_step_mandatory(user):       # owners and super admins always
         return {"two_step": "setup", "ticket": two_step.make_ticket(store, user, "setup")}
     return None
 
@@ -119,7 +119,7 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         except ValueError as exc:
             wrong(user, request, caller, "setup", str(exc))
         audit.record(store, {"name": user.get("name") or user["email"], "email": user["email"], "role": user.get("role")},
-                     "user.two_step_on", user["email"], "set up while signing in (required by the owner)")
+                     "user.two_step_on", user["email"], "set up while signing in (required)")
         return {**signed_in(user, request, "setup", caller), "recovery_codes": codes}
 
     # ---------- the signed-in person's own two-step login ----------
@@ -155,6 +155,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         row = own_row(request)
         if two_step.required(store):
             raise HTTPException(400, "The owner requires two-step login for everyone, so it cannot be turned off.")
+        if super_admin.two_step_mandatory(row):
+            raise HTTPException(400, "Owners and super admins must keep two-step login on.")
         if not auth.check_password(row.get("password_hash", ""), body.password) or not two_step.check(store, row, body.code):
             limiter.record_failure(caller)
             raise HTTPException(400, "Your password or code is not right.")
@@ -196,8 +198,16 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
             raise HTTPException(404, "No login with that email.")
         if target.get("role") == "owner" and not auth.is_super_admin(me(request)):
             raise HTTPException(403, "Only the super admin can reset an owner's two-step login.")
+        if super_admin.is_super_email(target["email"]):
+            if not auth.is_super_admin(me(request)):
+                raise HTTPException(403, "Only another super admin can reset a super admin's two-step login.")
+            if normalise_email(me(request).get("email")) == target["email"]:
+                raise HTTPException(403, "You cannot reset your own two-step login here. Use your super admin recovery codes "
+                                         "with a password reset link, or ask another super admin.")
         two_step.turn_off(store, target["email"])
         audit.record(store, me(request), "user.two_step_reset", target["email"], "two-step login reset by an owner")
+        if super_admin.two_step_mandatory(target):
+            super_admin.owner_two_step_reset(store, me(request), target["email"], "from Setup > Security")
         return {"ok": True}
 
     # ---------- login history ----------

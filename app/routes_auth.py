@@ -109,7 +109,9 @@ def role_guard(request: Request) -> None:
         raise HTTPException(403, f"Your role ({user.get('role')}) cannot {what}. Ask the owner.")
 
 
-def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRouter:
+def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_login: str = "any") -> APIRouter:
+    """admin_login: when the server admin password sign-in works (app/super_admin.py: off | local | any)."""
+    from . import super_admin
     router = APIRouter()
 
     def owner_left(remaining: list) -> bool:
@@ -135,6 +137,9 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
             login_log.record(store, request, "login", who, "failure", "email or password too long")
             raise HTTPException(400, "That is too long.")
         principal, user = None, None
+        if not body.email.strip() and admin_password and not super_admin.admin_login_allowed(request, admin_login):
+            login_log.record(store, request, "login", who, "failure", f"admin password sign-in not allowed here ({admin_login})")
+            raise HTTPException(403, super_admin.admin_login_refusal(admin_login))
         if body.email.strip():
             user = auth.find_user(store, body.email)
             if auth.check_password((user or {}).get("password_hash", ""), body.password) and user:
@@ -155,6 +160,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
             return {**second, "name": principal["name"]}
         limiter.reset(caller)
         login_log.record(store, request, "login", who, "success")
+        if principal["sub"] == auth.ADMIN_SUBJECT:
+            super_admin.admin_login_used(store, request)
         return {"token": auth.issue_token(store, principal), "role": principal["role"], "name": principal["name"]}
 
     @router.post("/api/logout")
@@ -301,6 +308,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         store.update("settings", lambda s: {**s, "users": [*(s.get("users") or []), user]})
         from . import audit
         audit.record(store, actor(request), "user.add", email, f"role {body.role}")
+        if body.role == "owner":
+            super_admin.owner_changed(store, actor(request), "user.add", email, f"role {body.role}")
         return auth.public_user(user)
 
     @router.put("/api/users/{email}")
@@ -339,6 +348,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
                 f"may edit contacts: {'yes' if changes['can_edit_contacts'] else 'no'}" if "can_edit_contacts" in changes else "",
                 "name changed" if "name" in changes and changes["name"] != user.get("name") else ""]
         audit.record(store, actor(request), "user.change", user["email"], "; ".join(w for w in what if w) or "no change")
+        if "owner" in (user.get("role"), updated.get("role")) and (what[0] or what[1]):
+            super_admin.owner_changed(store, actor(request), "user.change", user["email"], "; ".join(w for w in what[:2] if w))
         return auth.public_user(updated)
 
     @router.delete("/api/users/{email}")
@@ -354,6 +365,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
                                                            if not (isinstance(u, dict) and u.get("email") == user["email"])]})
         from . import audit
         audit.record(store, actor(request), "user.remove", user["email"], f"was {user.get('role')}")
+        if user.get("role") == "owner":
+            super_admin.owner_changed(store, actor(request), "user.remove", user["email"], "was owner")
         return {"ok": True}
 
     return router

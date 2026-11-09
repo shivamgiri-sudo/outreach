@@ -215,8 +215,12 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                email_transport=post_json, ai_transport=post_json, apollo_transport=post_json,
                channel_transport=None, smtp_factory=None, imap_factory=None, resolver=None,
                inbound_processor=None, delivery_processor=None, campaign_transports=None,
-               capture_graph_transport=None, capture_sheet_fetcher=None, signal_fetch=None) -> FastAPI:
+               capture_graph_transport=None, capture_sheet_fetcher=None, signal_fetch=None, admin_login: Optional[str] = None) -> FastAPI:
     password = admin_password if admin_password is not None else os.environ.get("OUTREACH_ADMIN_PASSWORD", "")
+    # Server admin password sign-in (app/super_admin.py): off unless OUTREACH_ADMIN_LOGIN=1, then on the server only.
+    # A password handed in by code (tests, the agent simulator) keeps working anywhere unless admin_login says otherwise.
+    from . import super_admin
+    admin_login = admin_login or ("any" if admin_password is not None else super_admin.admin_login_mode(os.environ.get("OUTREACH_ADMIN_LOGIN", "")))
     limiter = auth.LoginLimiter()
     docs = os.environ.get("OUTREACH_ENABLE_DOCS") == "1"
     def lead_scope_guard(request: Request) -> None:
@@ -291,7 +295,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             request.state.user = LOCAL_OWNER
             return await call_next(request)
         user = auth.authenticate(store, password, token)
-        if user is None:
+        if user is None or (user["sub"] == auth.ADMIN_SUBJECT and not super_admin.admin_login_allowed(request, admin_login)):
             return JSONResponse({"detail": "Login required"}, status_code=401)
         request.state.user = user
         response = await call_next(request)
@@ -303,8 +307,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     # Outer layers (added last, run first): rate limits, then security headers on every response, even a 429 or 401.
     app.middleware("http")(rate_limit_middleware(make_limiters()))
     app.middleware("http")(security_headers_middleware(docs))
-    app.include_router(make_auth_router(store, password, limiter))
+    app.include_router(make_auth_router(store, password, limiter, admin_login))
     app.include_router(make_security_router(store, password, limiter))
+    app.include_router(super_admin.make_router(store, admin_login, password, limiter))
 
     email_sender = make_email_sender(store, email_transport, BASE_URL, channel_transport, smtp_factory)
     transactional_sender = make_transactional_sender(store, email_transport, channel_transport, smtp_factory)

@@ -95,6 +95,10 @@ Then go to step 4.
        # optional: OUTREACH_COMMIT=<git commit>   (written into backups so you know which version made them)
 
    Without `OUTREACH_ADMIN_PASSWORD` the app refuses every visitor that is not on the server itself.
+   Signing in with the admin password is off unless `OUTREACH_ADMIN_LOGIN=1`, and then works only through an SSH tunnel
+   (`ssh -L 8000:127.0.0.1:8000 server`, then call the API at http://127.0.0.1:8000 with curl: `POST /api/login {"password": ...}`,
+   then `POST /api/users` with the token), never through the public address. Use it to create the first owner login
+   (named in `OUTREACH_SUPER_ADMIN=you@company.in`), then switch it off again.
 5. Copy `deploy/outreach.service` to `/etc/systemd/system/`, then `sudo systemctl daemon-reload && sudo systemctl enable --now outreach`.
    Keep **one worker**: the data file and the background timer must live in one process.
 6. Make the Caddy config from the template: replace `__HOST__` in `deploy/Caddyfile.template` with your web address,

@@ -42,7 +42,8 @@ def test_saved_view_keeps_the_linkedin_stage(tmp_path):
 def test_own_password_change_is_in_the_login_history(tmp_path):
     c, store, _ = make(tmp_path)
     assert c.post("/api/users", json={"email": "rep@acme.com", "name": "Rep", "role": "owner", "password": "Rep-pass-123456"}).status_code in (200, 201)
-    tok = c.post("/api/login", json={"email": "rep@acme.com", "password": "Rep-pass-123456"}).json()["token"]
+    from tests.two_step_helpers import sign_in
+    tok = sign_in(c, "rep@acme.com", "Rep-pass-123456")          # owners must set up two-step login first
     h = {"Authorization": f"Bearer {tok}"}
     assert c.post("/api/me/password", json={"current": "wrong-one-xx", "new": "New-pass-654321"}, headers=h).status_code == 400
     assert c.post("/api/me/password", json={"current": "Rep-pass-123456", "new": "New-pass-654321"}, headers=h).status_code == 200

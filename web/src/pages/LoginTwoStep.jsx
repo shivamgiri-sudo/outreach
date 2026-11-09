@@ -55,7 +55,7 @@ export default function LoginTwoStep({ step, onSignedIn, onBack }) {
     <form className="login-card" onSubmit={submit} aria-labelledby="two-step-heading" noValidate data-testid="login-two-step">
       <p className="login-eyebrow">{step.name ? `Hello, ${step.name}` : "One more step"}</p>
       <h2 id="two-step-heading">{setupMode ? "Set up two-step login" : "Enter your code"}</h2>
-      <p className="login-help">{setupMode ? "The owner requires a code from your phone after the password. Set it up once, now."
+      <p className="login-help">{setupMode ? "Your login needs a code from your phone after the password (required for owners and super admins, or set by the owner). Set it up once, now."
         : "Open your authenticator app and type the 6-digit code. Lost your phone? Type one of your recovery codes."}</p>
       {setupMode && (secret ? <SecretPanel secret={secret.secret} uri={secret.uri} /> : !error && <p className="login-help">Making your key…</p>)}
       <div className="login-field">

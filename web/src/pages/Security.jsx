@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, isOwner } from "../api.js";
 import { istLabel } from "../time.js";
 import { useConfirm } from "../Dialog.jsx";
+import SuperAdminSecurity from "./SuperAdminSecurity.jsx";
 
 // Setup > Security. Owners: the "require two-step login" switch, who has it on (with a reset), and every login's
 // history. Workspace admins: the history of their own workspaces' logins only (the server filters it too).
@@ -115,6 +116,7 @@ function LoginHistory() {
 export default function Security() {
   return (
     <div data-testid="security-tab">
+      {isOwner() && <SuperAdminSecurity />}
       {isOwner() && <TwoStepPolicy />}
       <LoginHistory />
     </div>
