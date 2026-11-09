@@ -30,6 +30,9 @@ RATE_LIMITS = (
     ("/api/linkedin-runner/pair", True, 10),        # office runner pairing codes: wrong guesses are also capped per address and code
     ("/api/linkedin-runner/install", False, 20),
     ("/api/linkedin-runner/bundle", False, 20),
+    ("/api/signup", False, 20),                     # self sign-up (app/signup.py also limits per address and email domain)
+    ("/api/oidc/", False, 30),                      # Google / Microsoft sign-in
+    ("/api/magic-link", False, 10),                 # emailed sign-in links
 )
 TOO_MANY = "Too many requests. Wait a minute and try again."
 PAGE_CSP = ("default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "

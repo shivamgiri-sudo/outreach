@@ -238,7 +238,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         if lead is not None and workspaces_mod.ws_of(lead) not in allowed:
             raise HTTPException(404, "Not found")
 
-    app = FastAPI(title="Outreach OS", dependencies=[Depends(role_guard), Depends(workspace_guard.guard), Depends(workspaces_mod.scope_dependency), Depends(lead_scope_guard)], docs_url="/docs" if docs else None,
+    from . import account_guard, routes_signup
+    app = FastAPI(title="Outreach OS", dependencies=[Depends(account_guard.guard), Depends(role_guard), Depends(workspace_guard.guard), Depends(workspaces_mod.scope_dependency), Depends(lead_scope_guard)], docs_url="/docs" if docs else None,
                   redoc_url="/redoc" if docs else None, openapi_url="/openapi.json" if docs else None)
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
                        allow_methods=["*"], allow_headers=["*"], expose_headers=["X-Renewed-Token"])
@@ -256,6 +257,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                      or (path in PUBLIC_GET_PATHS and request.method in ("GET", "HEAD"))
                      # Office runner: pairing with a one-time code, installers and bundle (each checks its code / token itself).
                      or path in RUNNER_PUBLIC_PATHS
+                     or routes_signup.is_public(request.method, path)         # sign-up, Google / Microsoft, magic links
                      # Forgot password (always the same answer) and the signed report download link (the token is the key).
                      or (path in PASSWORD_PUBLIC_PATHS and request.method == "POST")
                      or (path.startswith(REPORT_FILE_PREFIX) and request.method in ("GET", "HEAD"))
@@ -580,6 +582,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     base_url_of = lambda: _public_base_url(store, BASE_URL)
     app.include_router(make_reports_router(store, base_url_of, transactional_sender))
     app.include_router(make_password_router(store, base_url_of, transactional_sender))
+    from . import routes_console
+    app.include_router(routes_signup.make_router(store, password, base_url_of, transactional_sender))
+    app.include_router(routes_console.make_router(store, password, base_url_of, transactional_sender))
     app.include_router(make_contacts_router(store, _present))
     app.include_router(make_tracking_router(store, base_url_of))
     app.include_router(make_linkedin_router(store))

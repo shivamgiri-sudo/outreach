@@ -17,6 +17,8 @@ import OwnPassword from "./setup/OwnPassword.jsx";
 import Team from "./setup/Team.jsx";
 import Workspaces from "./setup/Workspaces.jsx";
 import Accounts from "./setup/Accounts.jsx";
+import AccountActivity from "./setup/AccountActivity.jsx";
+import { isClient } from "../api.js";
 import "../setup.css";
 
 const OWNER = ["owner"];
@@ -36,6 +38,7 @@ const GROUPS = [
     ["members", "Team members", ADMINS, "Who can sign in, what each role may do and which workspaces they see."],
     ["security", "Security", ADMINS, "Two-step login for the team and the history of every sign-in."],
     ["audit", "Audit", OWNER, "Who changed what and when, with a tamper check."],
+    ["activity", "Account activity", ["client-admin"], "Everything changed in your company's account, including the platform team's actions."],
   ]],
   ["Integrations", [
     ["connections", "Connections", OWNER, "Email sending, reply capture, data providers and other services. Keys are stored on your server and shown masked."],
@@ -60,7 +63,8 @@ function fromHash() {
 }
 
 export default function Setup({ onSetupChanged, go, tab: initialTab, role = "owner", onOpenWizard }) {
-  const groups = GROUPS.map(([g, list]) => [g, list.filter(([, , roles]) => roles.includes(role))]).filter(([, list]) => list.length);
+  const roleKey = (roles) => roles.includes(role) || (role === "admin" && isClient() && roles.includes("client-admin"));
+  const groups = GROUPS.map(([g, list]) => [g, list.filter(([, , roles]) => roleKey(roles))]).filter(([, list]) => list.length);
   const all = groups.flatMap(([g, list]) => list.map((s) => [...s, g]));
   const fallback = role === "owner" ? "checklist" : role === "admin" ? "members" : "account";
   const pick = (id) => (all.some((s) => s[0] === id) ? id : fallback);
@@ -121,6 +125,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
           {section === "audit" && <AuditLog />}
           {section === "health" && <SystemHealth />}
           {section === "accounts" && <Accounts />}
+          {section === "activity" && <AccountActivity />}
           {section === "workspaces" && <Workspaces owner={role === "owner"} />}
           {section === "members" && <Team workspaceAdmin={role === "admin"} />}
           {section === "scoring" && <ScoringCard />}

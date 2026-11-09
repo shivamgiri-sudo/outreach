@@ -17,7 +17,8 @@ def for_lead(store, lead: Optional[dict], global_cfg: dict, global_live: bool, a
     amap = amap if amap is not None else accounts.ws_account_map(store)
     aid = accounts.account_of_lead(amap, lead or {})
     if aid == accounts.MCN:
-        return {"account": aid, "cfg": global_cfg, "live": global_live, "hold": None, "own": False}
+        from .platform_controls import stop_reason
+        return {"account": aid, "cfg": global_cfg, "live": global_live, "hold": stop_reason(store), "own": False}
     return for_account(store, aid, global_cfg, global_live)
 
 

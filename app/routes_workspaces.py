@@ -116,6 +116,13 @@ def make_router(store) -> APIRouter:
         audit.record(store, user, "workspace.create" if owner else "workspace.request", row["name"],
                      f"id {row['id']}; account {account}" + ("" if owner else "; waiting for an owner's approval"),
                      extra={"account_id": account})
+        if not owner:                          # super admins: bell + email for every workspace request
+            from . import super_admin
+            from .growth_core import public_base_url
+            acct = accounts.find(store, account) or {"name": account}
+            super_admin.alert(store, f"Workspace request: {row['name']} ({acct['name']})",
+                              f"{user.get('email') or 'A client admin'} asked for the workspace {row['name']} in {acct['name']}. "
+                              f"Approve or reject it: {public_base_url(store, '')}/#setup/accounts (sign in as a super admin).")
         return row
 
     @router.post("/api/workspaces/{ws_id}/approve")

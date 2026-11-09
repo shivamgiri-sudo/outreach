@@ -338,6 +338,9 @@ def tick(store, now: Optional[datetime] = None, ctx: Optional[Context] = None) -
     now = now or datetime.now(timezone.utc)
     ctx = ctx or Context()
     ensure_collections(store)
+    from .platform_controls import stop_reason
+    if (stopped := stop_reason(store)):
+        return {"skipped": stopped}           # the super admins stopped all sending: flows wait where they are
     if not _TICK_LOCK.acquire(blocking=False):
         return {"skipped": "another flow tick is running"}
     try:

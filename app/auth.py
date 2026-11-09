@@ -36,7 +36,8 @@ LOCKOUT_SECONDS = 60
 MAX_TRACKED_CALLERS = 10_000
 SCRYPT = {"n": 2 ** 14, "r": 8, "p": 1}
 # settings keys no API may return (secrets and password hashes)
-PRIVATE_SETTINGS = ("server_secret", "users", "extension_tokens", "account_settings", "accounts")   # + client accounts' keys
+PRIVATE_SETTINGS = ("server_secret", "users", "extension_tokens", "account_settings", "accounts",   # + client accounts' keys
+                    "signup_requests", "oidc_pending", "magic_links", "password_resets")          # sign-up / sign-in links (hashes)
 
 
 def _now(now: Optional[float] = None) -> float:
@@ -156,11 +157,16 @@ def subject_principal(store, admin_password: str, sub: str) -> Optional[dict]:
         from . import accounts
         account = accounts.of_user(user)
         if account != accounts.MCN and (user["role"] == "owner" or not accounts.account_active(store, account)):
-            return None                       # a client is never an owner; a suspended / pending account's logins are out
+            if user["role"] == "owner" or (accounts.find(store, account) or {}).get("status") != "pending":
+                return None                   # a client is never an owner; a suspended account's logins are out
+            pending = True                    # a pending (self sign-up) account signs in to its "waiting" page only
+        else:
+            pending = False
         return {"sub": sub, "email": user["email"], "name": user.get("name") or user["email"], "role": user["role"],
                 "can_edit_contacts": can_edit_contacts(user), "workspaces": user.get("workspaces") or [],
                 "no_workspace": bool(user.get("no_workspace")), "pf": _fingerprint(store, "user:" + str(user.get("password_hash"))),
-                "account_id": account, "account_ws": accounts.login_account_ws(store, user)}
+                "account_id": account, "account_ws": accounts.login_account_ws(store, user),
+                **({"account_pending": True} if pending else {})}
     return None
 
 
@@ -169,10 +175,13 @@ def _sign(store, body: str) -> str:
     return _b64(hmac.new(server_secret(store).encode(), f"{TOKEN_PREFIX}.{body}".encode(), hashlib.sha256).digest())
 
 
-def issue_token(store, principal: dict, now: Optional[float] = None, sid: Optional[str] = None) -> str:
+def issue_token(store, principal: dict, now: Optional[float] = None, sid: Optional[str] = None,
+                seconds: int = TOKEN_SECONDS, extra: Optional[dict] = None) -> str:
+    """`extra` claims (e.g. "va": a super admin's read-only view-as session, app/view_as.py) ride along, signed."""
     issued = int(_now(now))
-    claims = {"sub": principal["sub"], "sid": sid or secrets.token_hex(8), "jti": secrets.token_hex(8),
-              "iat": issued, "exp": issued + TOKEN_SECONDS, "pf": principal["pf"]}
+    claims = {**(extra or {}), "sub": principal["sub"], "sid": sid or secrets.token_hex(8), "jti": secrets.token_hex(8),
+              "iat": issued, "exp": issued + min(int(seconds), TOKEN_SECONDS), "pf": principal["pf"],
+              "ims": int(_now(now) * 1000)}         # issue time in ms: an account suspension voids sessions issued before it
     body = _b64(json.dumps(claims, separators=(",", ":"), sort_keys=True).encode())
     return f"{TOKEN_PREFIX}.{body}.{_sign(store, body)}"
 
@@ -209,12 +218,31 @@ def authenticate(store, admin_password: str, token: str, now: Optional[float] = 
     principal = subject_principal(store, admin_password, claims["sub"])
     if not principal or not hmac.compare_digest(principal["pf"], claims["pf"]):
         return None
+    if _revoked_for_account(store, principal, claims):
+        return None
+    if claims.get("va"):                       # a super admin's read-only "view as" session (app/view_as.py)
+        from . import view_as
+        seen = view_as.principal_for(store, admin_password, principal, claims)
+        return {**seen, "claims": claims} if seen else None
     return {**principal, "claims": claims}
+
+
+def _revoked_for_account(store, principal: dict, claims: dict) -> bool:
+    """Suspending an account signs out every session of its logins made before (accounts row tokens_revoked_ms)."""
+    aid = principal.get("account_id")
+    if not aid or aid == "mcn":
+        return False
+    from . import accounts
+    cut = (accounts.find(store, aid) or {}).get("tokens_revoked_ms")
+    issued = claims.get("ims") if isinstance(claims.get("ims"), int) else int(claims.get("iat", 0)) * 1000 + 999
+    return isinstance(cut, int) and issued <= cut
 
 
 def renewal(store, principal: dict, now: Optional[float] = None) -> Optional[str]:
     """A fresh token for the same session once more than half of the current one's life has passed."""
     claims = principal.get("claims") or {}
+    if claims.get("va"):
+        return None                           # a view-as session is never renewed: it ends when its 30 minutes are up
     life = claims.get("exp", 0) - claims.get("iat", 0)
     if not claims or _now(now) - claims["iat"] < life * RENEW_AFTER:
         return None

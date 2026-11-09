@@ -43,7 +43,7 @@ DROPPED_COLLECTIONS = ("sessions",)
 # settings that hold login credentials: password hashes, runner token hashes, the pending runner pairing code
 LOGIN_HASH_FIELDS = {"users": ("password_hash", "two_step_secret", "two_step_pending", "two_step_recovery"),
                      "linkedin_runners": ("hash",)}
-DROPPED_SETTINGS = ("linkedin_runner_pairing", "password_resets")
+DROPPED_SETTINGS = ("linkedin_runner_pairing", "password_resets", "signup_requests", "oidc_pending", "magic_links")
 NO_SECRETS_NOTE = ("Connection keys, login password hashes, pairing tokens, OAuth tokens, webhook secrets and the server "
                    "secret were left out of this backup. After a restore, enter the connections again on the Integrations "
                    "page (and the activity-event secret under Setup). Team logins that already exist keep their current "
@@ -51,7 +51,8 @@ NO_SECRETS_NOTE = ("Connection keys, login password hashes, pairing tokens, OAut
 WITH_SECRETS_NOTE = ("This backup contains connection keys, login password hashes, tokens and the server secret in plain text. "
                      "Keep it as safe as a password: never email it or put it in a shared folder.")
 # settings an upload never replaces: this server's logins (password hashes, two-step), secret and pairing tokens
-KEPT_FROM_SERVER = ("users", "server_secret", "require_two_step", "extension_tokens", "password_resets")
+KEPT_FROM_SERVER = ("users", "server_secret", "require_two_step", "extension_tokens", "password_resets", "signup_requests",
+                    "oidc_pending", "magic_links")
 UNSIGNED_NOTE = ("This backup says it includes secrets, but it is not signed by this server (an older backup, one made on "
                  "another server, or a changed file), so it is restored WITHOUT its connection keys and secrets.")
 KEPT_NOTE = ("Team logins (passwords and two-step login), the server secret and pairing tokens always stay as they are on "
