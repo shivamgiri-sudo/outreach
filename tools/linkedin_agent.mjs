@@ -194,7 +194,25 @@ async function findConnect(page, name) {
 }
 
 let portalAllowsNoNote = false;                   // the portal switch "send without a note" (control.allow_no_note)
-async function doConnect(page, lead, note) {
+let notesBlockedUntil = 0;                       // LinkedIn showed it will not take a note (monthly limit): go bare for a day
+const INVITE_BUTTONS = /add a note|send without a note|^send( invitation| now)?$/i;
+const tap = async (loc, ms = 8000) => { try { await loc.click({ timeout: ms }); return true; } catch { return false; } };
+
+async function closeDialogs(page) {
+  for (let i = 0; i < 3 && (await page.getByRole("dialog").count()); i++) { await page.keyboard.press("Escape"); await sleep(400); }
+}
+
+// The invitation box LinkedIn opens after Connect: the dialog that holds "Add a note" / "Send without a note" / "Send".
+async function inviteDialog(page) {
+  const d = page.getByRole("dialog").filter({ has: page.getByRole("button", { name: INVITE_BUTTONS }) }).first();
+  await d.waitFor({ timeout: 8000 }).catch(() => {});
+  return (await d.count()) ? d : null;
+}
+
+// Connect with the note first. When LinkedIn will not take a note (free accounts: a few a month) it either disables
+// "Add a note" or answers it with a Premium offer and no text box; then, only if "send without a note" is allowed,
+// the request is sent bare. Every wait is bounded, so one person can never hold the agent.
+async function doConnect(page, lead, note, retried = false) {
   if (!tokens(lead.name).length) return { done: false, why: "the lead has no name, so the right Connect button cannot be told apart" };
   if (await isPending(page, lead.name)) return { done: true, already: "pending" };
   if ((await degreeOf(page)) === "1st") return { done: true, already: "connected" };
@@ -204,21 +222,65 @@ async function doConnect(page, lead, note) {
   if (!(await clickOne(connect))) return { done: false, why: "the Connect button for this person was covered by something on the page; nothing was sent" };
   await sleep(800);
   await checkTrouble(page);            // the weekly invitation limit appears right after Connect: stop, do not read it as "no note"
-  const dialog = page.getByRole("dialog").first();
+  const dialog = await inviteDialog(page);
+  if (!dialog) { await closeDialogs(page); return { done: false, why: "the invitation box did not open; nothing was sent" }; }
+  const allowBare = ALLOW_NO_NOTE || portalAllowsNoNote;
   const addNote = dialog.getByRole("button", { name: /add a note/i }).first();
-  if (await addNote.count() && await addNote.isEnabled()) {
-    if (note.length > 300) return { done: false, why: "the note is longer than 300 characters" };
-    await addNote.click(); await sleep(500);
-    await dialog.locator("textarea").first().fill(note);
-  } else if (!(ALLOW_NO_NOTE || portalAllowsNoNote)) {
-    await page.keyboard.press("Escape");
-    return { done: false, why: "LinkedIn will not let this account add a note (monthly limit). Tick \"send without a note\" under Limits to send it anyway", stopNotes: true };
+  const notesOk = Date.now() > notesBlockedUntil && (await addNote.count()) && (await addNote.isEnabled().catch(() => false));
+  if (notesOk) {
+    if (note.length > 300) { await closeDialogs(page); return { done: false, why: "the note is longer than 300 characters" }; }
+    await tap(addNote, 5000); await sleep(600);
+    const box = page.getByRole("dialog").locator("textarea").first();
+    const opened = await box.waitFor({ timeout: 5000 }).then(() => true, () => false);
+    if (!opened) {                     // a Premium offer instead of a text box: the monthly note limit
+      notesBlockedUntil = Date.now() + 24 * 3600 * 1000;
+      await closeDialogs(page);
+      if (!allowBare) return { done: false, why: "LinkedIn will not let this account add a note (monthly limit). Tick \"send without a note\" under Limits to send it anyway", stopNotes: true };
+      if (retried) return { done: false, why: "LinkedIn would not take a note and the request could not be sent without one" };
+      await page.reload({ waitUntil: "domcontentloaded" }); await sleep(SETTLE);
+      log("LinkedIn will not take a note this month: sending without one");
+      return doConnect(page, lead, note, true);
+    }
+    await box.fill(note, { timeout: 5000 }).catch(() => {});
+    await sleep(300);
+    const send = page.getByRole("dialog").getByRole("button", { name: /^send( invitation| now)?$/i }).first();
+    if (!(await tap(send))) { await closeDialogs(page); return { done: false, why: "the Send button in the invitation box could not be pressed; nothing was sent" }; }
+  } else {
+    if (!allowBare) {
+      await closeDialogs(page);
+      return { done: false, why: "LinkedIn will not let this account add a note (monthly limit). Tick \"send without a note\" under Limits to send it anyway", stopNotes: true };
+    }
+    const bare = dialog.getByRole("button", { name: /send without a note/i }).first();
+    const send = (await bare.count()) ? bare : dialog.getByRole("button", { name: /^send( invitation| now)?$/i }).first();
+    if (!(await tap(send))) { await closeDialogs(page); return { done: false, why: "the Send button in the invitation box could not be pressed; nothing was sent" }; }
   }
-  await sleep(300);
-  await dialog.getByRole("button", { name: /^send( invitation| now)?$|^send without a note$/i }).first().click();
   await sleep(SETTLE);
   await checkTrouble(page);
-  if (await page.getByRole("dialog").count()) return { done: false, why: "the invitation box stayed open, so the request may not have been sent" };
+  if (await page.getByRole("dialog").filter({ has: page.getByRole("button", { name: INVITE_BUTTONS }) }).count()) {
+    await closeDialogs(page);
+    return { done: false, why: "the invitation box stayed open, so the request may not have been sent" };
+  }
+  return { done: true, bare: !notesOk || retried };
+}
+
+async function doMessage(page, lead, text) {
+  const button = await findMessage(page, lead.name);
+  if (!button) return { done: false, why: "no Message button for this person (you may not be connected yet)" };
+  if (DRY) return { done: false, dry: true, why: `would open Message and send ${text.length} characters` };
+  if (!(await clickOne([button]))) return { done: false, why: "the Message button was covered by something on the page; nothing was sent" };
+  await sleep(SETTLE);
+  const box = page.locator('div[role="textbox"][contenteditable="true"]').last();
+  if (!(await box.count())) return { done: false, why: "the message box did not open" };
+  const theirs = await readThread(page, lead);
+  if (theirs.length) { await page.keyboard.press("Escape"); return { done: false, replied: theirs.join("\n\n") }; }
+  await box.click({ timeout: 5000 });
+  await page.keyboard.insertText(text);
+  await sleep(500);
+  if (!(await tap(page.getByRole("button", { name: /^send$/i }).last()))) return { done: false, why: "the Send button could not be pressed; nothing was sent" };
+  await sleep(SETTLE);
+  await checkTrouble(page);
+  const stillTyped = ((await box.innerText().catch(() => "")) || "").trim().length > 0;
+  if (stillTyped) return { done: false, why: "the message is still in the box, so it may not have been sent" };
   return { done: true };
 }
 
@@ -259,27 +321,6 @@ async function readInbox(page) {
     const ours = /^you\s*:/i.test(snip);
     return { name, text: snip.replace(/^[^:]{1,60}:\s*/, ""), from_them: !!name && !ours };
   }).filter((i) => i.name && !i.name.includes(","))).catch(() => []);
-}
-
-async function doMessage(page, lead, text) {
-  const button = await findMessage(page, lead.name);
-  if (!button) return { done: false, why: "no Message button for this person (you may not be connected yet)" };
-  if (DRY) return { done: false, dry: true, why: `would open Message and send ${text.length} characters` };
-  if (!(await clickOne([button]))) return { done: false, why: "the Message button was covered by something on the page; nothing was sent" };
-  await sleep(SETTLE);
-  const box = page.locator('div[role="textbox"][contenteditable="true"]').last();
-  if (!(await box.count())) return { done: false, why: "the message box did not open" };
-  const theirs = await readThread(page, lead);
-  if (theirs.length) { await page.keyboard.press("Escape"); return { done: false, replied: theirs.join("\n\n") }; }
-  await box.click();
-  await page.keyboard.insertText(text);
-  await sleep(500);
-  await page.getByRole("button", { name: /^send$/i }).last().click();
-  await sleep(SETTLE);
-  await checkTrouble(page);
-  const stillTyped = ((await box.innerText().catch(() => "")) || "").trim().length > 0;
-  if (stillTyped) return { done: false, why: "the message is still in the box, so it may not have been sent" };
-  return { done: true };
 }
 
 // Open Profile: not a 1st-degree connection, yet LinkedIn shows a Message button (Premium members who allow free messages).
@@ -331,7 +372,16 @@ async function oneCycle(page, state) {
     await page.goto(toLocal(item.profile_url), { waitUntil: "domcontentloaded" }); await sleep(SETTLE);
     await checkTrouble(page);
     await reportProfile(page, item.lead_id, state, item.name);
-    const result = kind === "connect" ? await doConnect(page, item, info.message.text) : await doMessage(page, item, info.message.text);
+    if ((state.failed[item.lead_id] || 0) >= 2) continue;          // failed twice today: leave them, never loop on one person
+    let result;
+    try {
+      result = kind === "connect" ? await doConnect(page, item, info.message.text) : await doMessage(page, item, info.message.text);
+    } catch (e) {
+      if (e instanceof Fatal) throw e;                               // checkpoint / login / weekly limit: stop as before
+      result = { done: false, why: `the page did not behave as expected (${String(e.message || e).split("\n")[0].slice(0, 120)}); nothing more was clicked` };
+      await closeDialogs(page).catch(() => {});
+    }
+    if (!result.done && !result.dry && !result.replied) state.failed[item.lead_id] = (state.failed[item.lead_id] || 0) + 1;
     if (result.dry) { log(`DRY ${item.name}: ${result.why}`); return { acted: "dry" }; }
     if (result.replied) {                 // they had already answered: nothing sent, the reply goes to the portal
       await api(`/api/extension/leads/${item.lead_id}/replied`, "POST", { text: result.replied.slice(0, 2000) }).catch((e) => log("could not report the reply:", e.message));
@@ -347,7 +397,7 @@ async function oneCycle(page, state) {
     }
     await api(`/api/extension/leads/${item.lead_id}/sent`, "POST", { step: info.message.step });
     if (result.already === "connected") await api(`/api/extension/leads/${item.lead_id}/accepted`, "POST").catch(() => {});
-    await event(kind, { lead_id: item.lead_id, note: `${kind === "connect" ? "connection request" : "message"} to ${item.name}${result.already ? ` (${result.already})` : ""}` });
+    await event(kind, { lead_id: item.lead_id, note: `${kind === "connect" ? `connection request${result.bare ? " (without a note: LinkedIn's note limit)" : ""}` : "message"} to ${item.name}${result.already ? ` (${result.already})` : ""}` });
     log(`${kind === "connect" ? "connection request" : "message"} sent: ${item.name}`);
     return { acted: kind };
   }
@@ -403,7 +453,7 @@ async function main() {
     process.channel.unref();
   }
   const page = context.pages()[0] || await context.newPage();
-  const state = { checked: {}, noNotes: false, profiled: {} };
+  const state = { checked: {}, noNotes: false, profiled: {}, failed: {} };
   let exitCode = 0;
   try {
     await event("started", { state: "running", note: DRY ? "started in dry-run mode" : CLOUD ? "cloud agent started" : "agent started" });

@@ -4,6 +4,7 @@
 //   first-*    1st-degree, Message button         open-*     2nd-degree + Message (Open Profile)
 //   checkpoint-* redirects to a security check    limit-*    weekly invitation limit after Connect
 //   nonote-*   Connect dialog without "Add a note"
+//   upsell-*   "Add a note" + "Send without a note"; Add a note opens a Premium offer with no text box (note limit)
 // GET /__state shows every invite and message; POST /__accept?slug=..&acct=.. makes a pending invite accepted;
 // POST /__reply?slug=..&acct=..&text=.. is the person answering (seen in the chat window and on /messaging/).
 import http from "node:http";
@@ -66,10 +67,13 @@ const c = document.getElementById("connect");
 if (c) c.onclick = () => {
   const d = document.createElement("div"); d.setAttribute("role", "dialog");
   ${kind === "limit" ? `d.innerHTML = "<p>You've reached the weekly invitation limit</p>"; document.body.appendChild(d); return;` : ""}
-  d.innerHTML = ${kind === "nonote" ? `"<button>Send without a note</button>"` : `"<button>Add a note</button><button>Send</button>"`};
+  d.innerHTML = ${kind === "nonote" ? `"<button>Send without a note</button>"` : kind === "upsell" ? `"<button>Add a note</button><button>Send without a note</button>"` : `"<button>Add a note</button><button>Send</button>"`};
   document.body.appendChild(d);
   const add = [...d.querySelectorAll("button")].find((b) => b.textContent === "Add a note");
-  if (add) add.onclick = () => { const t = document.createElement("textarea"); d.insertBefore(t, d.lastChild); };
+  if (add) add.onclick = ${kind === "upsell" ? `() => { const u = document.createElement("div"); u.setAttribute("role", "dialog");
+    u.innerHTML = "<h2>Personalize your invitation with Premium</h2><button>Try Premium for free</button>"; document.body.appendChild(u);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll("[role=dialog]").forEach((x) => x.remove()); }); }`
+    : `() => { const t = document.createElement("textarea"); d.insertBefore(t, d.lastChild); }`};
   [...d.querySelectorAll("button")].filter((b) => /^Send/.test(b.textContent)).forEach((b) => b.onclick = async () => {
     const t = d.querySelector("textarea"); await post("/__invite", { to: ${JSON.stringify(slug)}, note: t ? t.value : "" }); d.remove(); location.reload(); });
 };

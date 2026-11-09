@@ -294,6 +294,19 @@ check("S16 auto-start on: the suggested person is put on the sequence", seq(auto
 check("S16 and the agent sends their connection request", any(i["to"] == "connect-77" for i in fake_state()["invites"]), out16[-600:])
 check("S16 'What it did lately' records the automatic start", any(r["kind"] == "auto_start" for r in agent.log_rows(store)))
 
+# ---------------------------------------------------------------- S17: note limit shown as a Premium offer: no hang, sent bare
+up = add_lead("upsell-1", "UpsellCo")
+store.update_lead(up, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "account": "acct-a"}})
+agent.save_config(store, {"connect_without_note": False})
+t0 = time.time(); code, out17 = run_agent(PROFILE_A, "--once"); skip_gap()
+check("S17 switch off: nothing sent, it says why, and it does not hang", not any(i["to"] == "upsell-1" for i in fake_state()["invites"])
+      and time.time() - t0 < 40 and any("will not let this account add a note" in r["note"] for r in agent.log_rows(store)), out17[-400:])
+agent.save_config(store, {"connect_without_note": True})
+code, out17 = run_agent(PROFILE_A, "--once"); skip_gap()
+inv = [i for i in fake_state()["invites"] if i["to"] == "upsell-1"]
+check("S17 switch on: the Premium offer is closed and the request goes without a note", len(inv) == 1 and inv[0]["note"] == "", out17[-500:])
+check("S17 the log says it went without a note", any("without a note" in r["note"] and r.get("lead_id") == up for r in agent.log_rows(store)))
+
 # ---------------------------------------------------------------- done
 fake.terminate()
 server.should_exit = True
