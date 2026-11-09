@@ -153,7 +153,8 @@ def subject_principal(store, admin_password: str, sub: str) -> Optional[dict]:
         if not user or user.get("role") not in ROLES:
             return None
         return {"sub": sub, "email": user["email"], "name": user.get("name") or user["email"], "role": user["role"],
-                "can_edit_contacts": can_edit_contacts(user), "workspaces": user.get("workspaces") or [], "pf": _fingerprint(store, "user:" + str(user.get("password_hash")))}
+                "can_edit_contacts": can_edit_contacts(user), "workspaces": user.get("workspaces") or [],
+                "no_workspace": bool(user.get("no_workspace")), "pf": _fingerprint(store, "user:" + str(user.get("password_hash")))}
     return None
 
 

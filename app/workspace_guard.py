@@ -24,7 +24,10 @@ LIMITED_OK = {
     ("GET", "/api/sequences/{seq_id}/steps/{index}/preview"), ("POST", "/api/sequences/preview-draft"), ("GET", "/api/snippets"),
     ("GET", "/api/presets"), ("GET", "/api/presets/{preset_id}"), ("GET", "/api/whatsapp/status"), ("GET", "/api/whatsapp/templates"),
     ("GET", "/api/icp"), ("GET", "/api/call-script"), ("POST", "/api/prompts/generate"), ("POST", "/api/activation/event"),
-    ("GET", "/api/workspaces"), ("GET", "/api/lead-views"), ("POST", "/api/lead-views"), ("DELETE", "/api/lead-views/{view_id}"),
+    ("GET", "/api/workspaces"), ("GET", "/api/workspaces/overview"), ("PUT", "/api/workspaces/{ws_id}"),       # rename/members: the routes
+    ("GET", "/api/workspaces/{ws_id}/members"), ("POST", "/api/workspaces/{ws_id}/members"),            # check owner / own-workspace admin
+    ("DELETE", "/api/workspaces/{ws_id}/members/{email}"),
+    ("GET", "/api/lead-views"), ("POST", "/api/lead-views"), ("DELETE", "/api/lead-views/{view_id}"),
     # leads and pages built only from leads in scope
     ("GET", "/api/dashboard"), ("GET", "/api/leads"), ("POST", "/api/leads/import"), ("POST", "/api/leads/bulk"),
     ("GET", "/api/lead-owners"), ("GET", "/api/lead-tags"), ("GET", "/api/companies"), ("GET", "/api/companies/{key:path}"),
@@ -52,6 +55,9 @@ LIMITED_OK = {
     ("POST", "/api/import/preview"), ("POST", "/api/import/excel"), ("POST", "/api/import/commit"), ("GET", "/api/import/history"), ("POST", "/api/import/{import_id}/undo"),
 }
 LEAD_PARAMS = ("{lead_id}", "{task_id}")
+# A login that lost its last workspace sees nothing and may change nothing but its own account.
+NO_WORKSPACE_WRITES = {("POST", "/api/logout"), ("POST", "/api/me/password"), ("POST", "/api/me/two-step/start"),
+                       ("POST", "/api/me/two-step/confirm"), ("POST", "/api/me/two-step/off"), ("POST", "/api/me/two-step/recovery")}
 NOT_FOR_LEAD_PARAMS = ()
 
 
@@ -72,5 +78,7 @@ def guard(request: Request) -> None:
         return
     route = request.scope.get("route")
     path = getattr(route, "path", request.url.path)
+    if allowed_of(user) == set() and request.method not in ("GET", "HEAD", "OPTIONS") and (request.method, path) not in NO_WORKSPACE_WRITES:
+        raise HTTPException(403, "Your login has no workspace yet. Ask the owner to give you one.")
     if path.startswith("/api") and not allowed_route(request.method, path):
         raise HTTPException(403, "This page is not available for logins limited to a workspace. Ask the owner.")

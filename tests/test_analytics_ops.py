@@ -220,9 +220,10 @@ def test_audit_rows_for_each_action_type(tmp_path):
     ws = c.post("/api/workspaces", json={"name": "Client X"}, headers=owner).json()
     c.post(f"/api/workspaces/{ws['id']}/move", json={"lead_ids": [beta["id"]]}, headers=owner)
     c.post(f"/api/workspaces/main/move", json={"lead_ids": [beta["id"]]}, headers=owner)
-    c.delete(f"/api/workspaces/{ws['id']}", headers=owner)
+    c.request("DELETE", f"/api/workspaces/{ws['id']}", json={"confirm_name": "Client X"}, headers=owner)
     c.put("/api/users/meena@example.com", json={"role": "viewer"}, headers=owner)
-    c.post("/api/users", json={"email": "ravi@example.com", "name": "Ravi", "role": "caller", "password": "long-password-2"}, headers=owner)
+    c.post("/api/users", json={"email": "ravi@example.com", "name": "Ravi", "role": "caller", "password": "long-password-2",
+                                   "all_workspaces": True}, headers=owner)
     c.delete("/api/users/ravi@example.com", headers=owner)
     c.put("/api/linkedin-agent", json={"enabled": True}, headers=owner)
     c.put("/api/linkedin-agent", json={"enabled": False, "daily_messages": 10}, headers=owner)

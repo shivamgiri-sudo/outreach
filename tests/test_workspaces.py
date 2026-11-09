@@ -39,7 +39,7 @@ def test_move_is_logged_and_delete_needs_an_empty_workspace(tmp_path):
     assert any("Moved to workspace Client Two" in e["text"] for e in c.get(f"/api/leads/{acme}").json()["timeline"])
     assert c.delete(f"/api/workspaces/{w['id']}").status_code == 400
     c.post("/api/workspaces/main/move", json={"lead_ids": [acme]})
-    assert c.delete(f"/api/workspaces/{w['id']}").status_code == 200
+    assert c.request("DELETE", f"/api/workspaces/{w['id']}", json={"confirm_name": "Client Two"}).status_code == 200
 
 
 def test_a_caller_limited_to_one_workspace_sees_only_it(tmp_path):
@@ -49,7 +49,8 @@ def test_a_caller_limited_to_one_workspace_sees_only_it(tmp_path):
     c.post("/api/leads/import", json={"csv": CSV, "source": "apollo"}, headers=h(owner))
     w = c.post("/api/workspaces", json={"name": "Client Three"}, headers=h(owner)).json()
     c.post("/api/leads/import", json={"csv": CSV2, "source": "apollo"}, headers=h(owner, w["id"]))
-    c.post("/api/users", json={"email": "sam@example.com", "name": "Sam", "role": "caller", "password": "long-password-1"}, headers=h(owner))
+    c.post("/api/users", json={"email": "sam@example.com", "name": "Sam", "role": "caller", "password": "long-password-1",
+                                   "all_workspaces": True}, headers=h(owner))
     assert c.put("/api/users/sam@example.com", json={"workspaces": [w["id"]]}, headers=h(owner)).json()["workspaces"] == [w["id"]]
     sam = c.post("/api/login", json={"email": "sam@example.com", "password": "long-password-1"}).json()["token"]
     for ws in ("", "main", "all"):

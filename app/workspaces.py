@@ -31,6 +31,8 @@ def all_workspaces(store) -> list:
 
 def allowed_of(user: Optional[dict]) -> Optional[set]:
     user = user or {}
+    if user.get("role") != "owner" and user.get("no_workspace"):
+        return set()                                # lost its last workspace (deleted, or removed): sees nothing until given one
     if user.get("role") == "admin" and not user.get("workspaces"):
         return set()                                # a workspace admin always has workspaces; without one it sees nothing
     if user.get("role") == "owner" or not user.get("workspaces"):
@@ -45,7 +47,7 @@ async def scope_dependency(request: Request) -> None:
     raw = (request.headers.get("x-workspace") or "").strip()[:40]
     selected = raw if raw and raw != "all" else None
     if allowed is not None and selected and selected not in allowed:
-        selected = sorted(allowed)[0]
+        selected = sorted(allowed)[0] if allowed else None
     _SCOPE.set((selected, allowed))
     request.state.workspace_scope = (selected, allowed)
 

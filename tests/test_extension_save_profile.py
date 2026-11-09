@@ -25,7 +25,8 @@ def audit_rows(c):
 
 
 def caller(c, owner, email="rep@x.com", name="Rita Rep", workspaces=None):
-    c.post("/api/users", json={"email": email, "name": name, "role": "caller", "password": "long-password-1"}, headers=bearer(owner))
+    c.post("/api/users", json={"email": email, "name": name, "role": "caller", "password": "long-password-1",
+                                "all_workspaces": True}, headers=bearer(owner))
     if workspaces is not None:
         c.put(f"/api/users/{email}", json={"workspaces": workspaces}, headers=bearer(owner))
     tok = c.post("/api/login", json={"email": email, "password": "long-password-1"}).json()["token"]

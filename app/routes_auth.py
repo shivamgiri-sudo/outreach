@@ -55,6 +55,7 @@ class UserBody(BaseModel):
     role: str = "caller"
     password: str
     workspaces: list = []          # ids; empty = every workspace. Set at creation so a client's login never starts open.
+    all_workspaces: bool = False   # the explicit "every workspace" choice (owners only); needed once there is more than one
 
 
 class OwnPasswordBody(BaseModel):
@@ -164,7 +165,7 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
     def me(request: Request):
         user = getattr(request.state, "user", None) or LOCAL_OWNER
         return {"name": user["name"], "email": user["email"], "role": user["role"], "can_edit_contacts": auth.can_edit_contacts(user), "workspaces": user.get("workspaces") or [],
-                "super_admin": auth.is_super_admin(user),
+                "no_workspace": bool(user.get("no_workspace")) and user["role"] != "owner", "super_admin": auth.is_super_admin(user),
                 "auth_required": auth.auth_on(store, admin_password)}
 
     @router.post("/api/me/password")
@@ -240,7 +241,18 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
 
     @router.get("/api/users")
     def list_users(request: Request):
-        return [auth.public_user(u) for u in auth.users(store) if manageable(request, u)]
+        from . import two_step
+        last = {}
+        try:
+            history = store.read("login_history")
+        except KeyError:
+            history = []
+        for row in history:
+            if row.get("event") == "login" and row.get("result") == "success" and row.get("email"):
+                last[row["email"]] = row.get("at")
+        return [{**auth.public_user(u), "two_step_on": two_step.is_on(u), "last_sign_in": last.get(u["email"]),
+                 "no_workspace": bool(u.get("no_workspace")) and u.get("role") != "owner"}
+                for u in auth.users(store) if manageable(request, u)]
 
     def actor(request: Request) -> dict:
         return getattr(request.state, "user", None) or LOCAL_OWNER
@@ -272,7 +284,12 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
             guard_owner_change(request, {"email": email, "role": body.role})
         if not owner_left([*auth.users(store), {"role": body.role}]):
             raise HTTPException(400, "The first login must be an owner (no admin password is set).")
+        if body.all_workspaces and admin_spaces(request) is not None:
+            raise HTTPException(403, "Only an owner can give access to every workspace.")
         spaces = clean_spaces(request, body.role, body.workspaces)
+        from . import workspaces as ws_mod
+        if body.role != "owner" and not spaces and not body.all_workspaces and len(ws_mod.all_workspaces(store)) > 1:
+            raise HTTPException(400, "Choose the workspaces this login may see, or All workspaces.")
         user = {"email": email, "name": body.name.strip()[:80] or email, "role": body.role,
                 "password_hash": auth.hash_password(body.password), "created_at": auth.now_iso(),
                 **({"workspaces": spaces} if spaces else {})}
@@ -304,6 +321,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
             check_password(body.password)
             changes.update(password_hash=auth.hash_password(body.password), password_changed_at=auth.now_iso())
         updated = {**user, **changes}
+        if "workspaces" in changes or changes.get("role") == "owner":
+            updated.pop("no_workspace", None)     # an explicit new choice of workspaces ends "no workspace"
         if not owner_left([updated if u["email"] == user["email"] else u for u in auth.users(store)]):
             raise HTTPException(400, "Keep at least one owner login (no admin password is set).")
         store.update("settings", lambda s: {**s, "users": [updated if isinstance(u, dict) and u.get("email") == user["email"] else u
