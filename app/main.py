@@ -31,6 +31,7 @@ from fastapi.responses import JSONResponse
 from . import auth
 from . import workspace_guard
 from .routes_auth import LOCAL_OWNER, make_router as make_auth_router, role_guard
+from .routes_security import make_router as make_security_router
 from .web_security import make_limiters, rate_limit_middleware, security_headers_middleware
 from .autorun import start_background
 from .http_util import post_json
@@ -101,7 +102,7 @@ from .suggest import suggest_next
 from .unsubscribe import ensure_cutover
 
 BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
-PUBLIC_API_PATHS = ("/api/login", "/api/auth/status")
+PUBLIC_API_PATHS = ("/api/login", "/api/auth/status", "/api/login/code", "/api/login/setup/start", "/api/login/setup/confirm")
 # Read-only without a login: the sign-in page shows the brand, and recipients' mail apps load the logo.
 PUBLIC_GET_PATHS = ("/api/brand/public", "/api/brand/logo")
 def open_store(data_file):
@@ -299,6 +300,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.middleware("http")(rate_limit_middleware(make_limiters()))
     app.middleware("http")(security_headers_middleware(docs))
     app.include_router(make_auth_router(store, password, limiter))
+    app.include_router(make_security_router(store, password, limiter))
 
     email_sender = make_email_sender(store, email_transport, BASE_URL, channel_transport, smtp_factory)
     transactional_sender = make_transactional_sender(store, email_transport, channel_transport, smtp_factory)

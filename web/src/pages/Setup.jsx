@@ -5,6 +5,8 @@ import BackupRestore from "./BackupRestore.jsx";
 import { useConfirm, usePrompt } from "../Dialog.jsx";
 import ScoringCard from "./ScoringCard.jsx";
 import AuditLog from "./AuditLog.jsx";
+import Security from "./Security.jsx";
+import TwoStepCard from "./TwoStep.jsx";
 import SystemHealth from "./SystemHealth.jsx";
 import { FieldHint, GuideButton, useTouched } from "../GuidePanel.jsx";
 import { fieldHelp, useGuides } from "../guides.js";
@@ -322,10 +324,12 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
         {(role === "owner" || role === "admin") && <button role="tab" aria-selected={tab === "team"} className={tab === "team" ? "on" : ""} onClick={() => setTab("team")}>Team &amp; workspaces</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "backup"} className={tab === "backup" ? "on" : ""} onClick={() => setTab("backup")}>Backup &amp; restore</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "audit"} className={tab === "audit" ? "on" : ""} onClick={() => setTab("audit")}>Audit</button>}
+        {(role === "owner" || role === "admin") && <button role="tab" aria-selected={tab === "security"} className={tab === "security" ? "on" : ""} onClick={() => setTab("security")}>Security</button>}
         {role === "owner" && <button role="tab" aria-selected={tab === "health"} className={tab === "health" ? "on" : ""} onClick={() => setTab("health")}>System health</button>}
         <button role="tab" aria-selected={tab === "account"} className={tab === "account" ? "on" : ""} onClick={() => setTab("account")}>My password</button>
       </div>
-      {tab === "account" && <OwnPassword />}
+      {tab === "account" && <><OwnPassword /><TwoStepCard /></>}
+      {tab === "security" && (role === "owner" || role === "admin") && <Security />}
       {tab === "checklist" && <GoLive embedded go={(page) => (page === "setup" ? setTab("connections") : go?.(page))} />}
       {tab === "brand" && role === "owner" && <BrandSettings onOpenWizard={onOpenWizard} />}
       {tab === "backup" && role === "owner" && <><p><GuideButton keys="app:backup" label="How do backups work?" testId="backup-guide" /></p><BackupRestore /></>}

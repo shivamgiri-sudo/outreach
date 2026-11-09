@@ -175,10 +175,13 @@ def make_router(store, transactional_sender=None) -> APIRouter:
         return task
 
     @router.get("/api/notifications")
-    def notifications(unread: bool = False, owner: Optional[str] = None):
+    def notifications(request: Request, unread: bool = False, owner: Optional[str] = None):
         from . import workspaces
+        user = getattr(request.state, "user", None) or {"role": "owner"}
+        security_ok = user.get("role") == "owner"         # failed sign-in alerts are for owners only
         rows = [n for n in workspaces.filter_tasks(store.read("notifications"), store.read("leads"))
-                if (not unread or not n.get("read")) and (not owner or n.get("to") in (owner, None))]
+                if (not unread or not n.get("read")) and (not owner or n.get("to") in (owner, None))
+                and (security_ok or not str(n.get("kind") or "").startswith("security:"))]
         return list(reversed(rows))[:200]
 
     @router.post("/api/notifications/read")

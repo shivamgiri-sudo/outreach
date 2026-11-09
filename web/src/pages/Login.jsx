@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { api, setToken } from "../api.js";
 import { ForgotForm, ResetForm, resetTokenFromHash } from "./PasswordReset.jsx";
+import LoginTwoStep from "./LoginTwoStep.jsx";
 import Icon from "../icons.jsx";
 import "../login.css";
 import { useBrand } from "../brand.js";
@@ -46,6 +47,7 @@ export default function Login({ onSignedIn }) {
   const [caps, setCaps] = useState(false);
   const pw = useRef(null);
   const [mode, setMode] = useState(() => (resetTokenFromHash() ? "reset" : "login"));
+  const [step, setStep] = useState(null);           // {two_step: "code" | "setup", ticket, name} after a right password
   const brand = useBrand().public;
   const generic = !brand.is_default;
   const [first, ...rest] = String(brand.app_name || "").split(" ");
@@ -57,8 +59,12 @@ export default function Login({ onSignedIn }) {
     setError("");
     setBusy(true);
     try {
-      const { token } = await api.login(password, email.trim());
-      setToken(token);
+      const res = await api.login(password, email.trim());
+      if (res.two_step) {
+        setStep(res); setMode("two-step"); setBusy(false); setPassword("");
+        return;
+      }
+      setToken(res.token);
       onSignedIn();
     } catch (err) {
       setError(err.message === "Failed to fetch" ? "The app server is not answering. Check your connection and try again." : err.message);
@@ -90,6 +96,7 @@ export default function Login({ onSignedIn }) {
       <main className="login-main">
         {mode === "forgot" && <ForgotForm initialEmail={email} onBack={() => setMode("login")} />}
         {mode === "reset" && <ResetForm token={resetTokenFromHash()} onDone={() => setMode("login")} />}
+        {mode === "two-step" && step && <LoginTwoStep step={step} onSignedIn={onSignedIn} onBack={() => { setStep(null); setMode("login"); }} />}
         {mode === "login" && <form className="login-card" onSubmit={submit} aria-labelledby="login-heading" noValidate>
           <p className="login-eyebrow">Welcome back</p>
           <h2 id="login-heading">Sign in to {brand.app_name}</h2>

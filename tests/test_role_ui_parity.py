@@ -12,7 +12,8 @@ ADMIN = "admin-pass-123"
 WEB = Path(__file__).resolve().parent.parent / "web" / "src"
 API_FILES = ("api.js", "opsApi.js", "prospectsApi.js")
 OPEN_WRITES = {("POST", "/api/login"), ("POST", "/api/linkedin-runner/pair"),   # no user yet: sign in, swap a one-time runner code
-               ("POST", "/api/password/forgot"), ("POST", "/api/password/reset")}   # forgot password: no login by design
+               ("POST", "/api/password/forgot"), ("POST", "/api/password/reset"),   # forgot password: no login by design
+               ("POST", "/api/login/code"), ("POST", "/api/login/setup/start"), ("POST", "/api/login/setup/confirm")}   # two-step sign-in: the ticket is the key
 CALL = re.compile(r"""(?:request|apiRequest|upload)\(\s*([`"'])(/api[^`"']*)\1(.{0,200})""")
 
 

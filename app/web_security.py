@@ -21,6 +21,7 @@ MAX_TRACKED = 10_000
 # (path, exact match?, requests per minute)
 RATE_LIMITS = (
     ("/api/login", True, 5),
+    ("/api/login/", False, 10),                     # the two-step code and setup during sign-in
     ("/u/", False, 30),
     ("/demo/", False, 60),
     ("/api/webhooks/", False, 120),

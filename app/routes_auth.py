@@ -17,6 +17,8 @@ from .web_security import client_ip
 
 LOCAL_OWNER = {"sub": "local", "email": "", "name": "This computer", "role": "owner", "claims": None}
 ANYONE = {("POST", "/api/logout"), ("POST", "/api/me/password"),
+          ("POST", "/api/me/two-step/start"), ("POST", "/api/me/two-step/confirm"), ("POST", "/api/me/two-step/off"),
+          ("POST", "/api/me/two-step/recovery"),       # each person's own two-step login
           ("POST", "/api/linkedin/sequence/preview")}     # a preview changes nothing, so viewers may see it
 OWNER_ROUTES = {
     ("PUT", "/api/settings"), ("POST", "/api/settings/live-sending"), ("PUT", "/api/offer"), ("PUT", "/api/team"), ("POST", "/api/workspaces"), ("DELETE", "/api/workspaces/{ws_id}"), ("POST", "/api/sequence/{index}/send-preview"),
@@ -34,6 +36,7 @@ OWNER_ROUTES = {
     ("GET", "/api/prospects/suppressions"), ("POST", "/api/prospects/unsuppress"),
     ("DELETE", "/api/prospects/people/{person_id}"), ("PATCH", "/api/prospects/people/{person_id}"), ("POST", "/api/prospects/sync-crm"),
     ("PUT", "/api/prospects/settings"), ("POST", "/api/prospects/enrich"), ("GET", "/api/prospects/spend"), ("PUT", "/api/prospects/spend"),
+    ("GET", "/api/security/settings"), ("PUT", "/api/security/settings"), ("POST", "/api/security/two-step/{email}/reset"),
     ("PUT", "/api/insights/source-spend"), ("GET", "/api/inbound/log"), ("POST", "/api/inbound/{connector_id}/test"), ("POST", "/api/inbound/{connector_id}/sync"),
 }
 OWNER_PREFIXES = ("/api/users", "/api/compliance", "/api/backup", "/api/export/", "/api/capture", "/api/hiring-engine", "/api/linkedin-agent", "/api/linkedin-cloud", "/api/audit", "/api/system")    # any method (exports: no CSV for callers)
@@ -115,12 +118,17 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
     def login(body: LoginBody, request: Request):
         if not auth.auth_on(store, admin_password):
             return {"token": ""}
+        from . import login_log
+        from .routes_security import after_password
+        who = body.email.strip()[:320] or login_log.ADMIN_LOGIN
         caller = client_ip(request)
         if limiter.locked(caller):
+            login_log.record(store, request, "login", who, "failure", "blocked: too many wrong attempts from this address")
             raise HTTPException(429, "Too many wrong passwords. Wait a minute and try again.")
         if len(body.password) > auth.MAX_PASSWORD_CHARS or len(body.email) > 320:
+            login_log.record(store, request, "login", who, "failure", "email or password too long")
             raise HTTPException(400, "That is too long.")
-        principal = None
+        principal, user = None, None
         if body.email.strip():
             user = auth.find_user(store, body.email)
             if auth.check_password((user or {}).get("password_hash", ""), body.password) and user:
@@ -129,8 +137,18 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
             principal = auth.subject_principal(store, admin_password, auth.ADMIN_SUBJECT)
         if principal is None:
             limiter.record_failure(caller)
+            reason = ("no login with this email" if body.email.strip() and not user else
+                      "wrong password" if body.email.strip() or admin_password else "no admin password is set")
+            login_log.record(store, request, "login", who, "failure", reason)
             raise HTTPException(401, "Wrong email or password" if body.email.strip() else "Wrong password")
+        second = after_password(store, user) if user else None
+        if second:                          # the limiter is reset only once the code is right too
+            login_log.record(store, request, "login", who, "pending",
+                             "password right; waiting for the two-step code" if second["two_step"] == "code"
+                             else "password right; two-step setup required")
+            return {**second, "name": principal["name"]}
         limiter.reset(caller)
+        login_log.record(store, request, "login", who, "success")
         return {"token": auth.issue_token(store, principal), "role": principal["role"], "name": principal["name"]}
 
     @router.post("/api/logout")
@@ -138,6 +156,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter) -> APIRo
         user = getattr(request.state, "user", None) or {}
         if user.get("claims"):
             auth.revoke(store, user["claims"])
+            from . import login_log
+            login_log.record(store, request, "logout", user.get("email") or login_log.ADMIN_LOGIN, "success")
         return {"ok": True}
 
     @router.get("/api/me")
