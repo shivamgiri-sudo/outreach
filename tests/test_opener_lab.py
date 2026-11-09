@@ -32,6 +32,6 @@ def test_saved_notes_are_used_for_new_connection_requests(tmp_path):
     settings = store_of(c).read("settings")
     text = li.render(li.STEPS[0], {"contact_name": "Asha Rao", "linkedin_seq": {"variant": "A"}}, settings)
     assert text == "Hi Asha, saved note A about hiring teams, happy to connect."
-    assert li.render(li.STEPS[0], {"contact_name": "Asha Rao", "linkedin_seq": {"variant": "B"}}, settings).startswith("Hi Asha, I work with")
+    assert li.render(li.STEPS[0], {"contact_name": "Asha Rao", "linkedin_seq": {"variant": "B"}}, settings) == li.render(li.STEPS[0], {"contact_name": "Asha Rao"}, {})  # no saved B: the approved note
     assert c.post("/api/linkedin/variants/generate", json={}).json()["source"] == "built_in"
     assert c.post("/api/linkedin/variants/score", json={"text": "Hi {first_name}"}).json()["ok"] is True

@@ -32,7 +32,7 @@ def test_personalisation_and_note_limit():
     note = li.render(li.STEPS[0], lead, {})
     assert note.startswith("Hi Ravi,") and len(note) <= li.NOTE_LIMIT
     msg2 = li.render(li.STEPS[1], lead, {})
-    assert "recruiters spending more time processing applications" in msg2      # the TA-head hook
+    assert "How often do business plans get held back" in msg2          # the fixed Apollo wording, same for every title
 
 
 def test_start_needs_a_profile_link_and_never_restarts(tmp_path):
@@ -52,9 +52,9 @@ def test_messages_wait_for_acceptance_then_follow_the_rhythm(tmp_path):
     li.start(store, lid, T0)
     li.mark_sent(store, lid, 1, T0)
     assert [t for t in li_tasks(c, lid) if t["status"] == "open"] == []          # nothing until they accept
-    acc = li.mark_accepted(store, lid, T0 + timedelta(days=1))
+    acc = li.mark_accepted(store, lid, T0 + timedelta(days=1))                   # Apollo: first message the day they accept
     assert acc["next_task"]["title"] == "LinkedIn step 2: send message"
-    assert acc["next_task"]["due_at"] == (T0 + timedelta(days=3)).isoformat(timespec="seconds").replace("+00:00", "+00:00")
+    assert acc["next_task"]["due_at"] == (T0 + timedelta(days=1)).isoformat(timespec="seconds").replace("+00:00", "+00:00")
     nxt = li.mark_sent(store, lid, 2, T0 + timedelta(days=3))["next_task"]
     assert nxt["title"].startswith("LinkedIn step 3") and nxt["due_at"].startswith((T0 + timedelta(days=7)).date().isoformat())
     nxt = li.mark_sent(store, lid, 3, T0 + timedelta(days=7))["next_task"]
