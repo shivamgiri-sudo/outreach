@@ -246,6 +246,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     store = open_store(data_file)
     app.state.store = store
     from . import accounts as accounts_mod
+    from . import account_limits as account_limits_mod
     accounts_mod.migrate(store)               # existing data becomes account "mcn" (settings only; idempotent)
     ensure_cutover(store)                     # signed unsubscribe links start now; older unsigned ones get 60 days
     source_names.backfill(store)              # adds source_id next to source on older leads (idempotent, never rewrites source)
@@ -375,6 +376,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             rows = quick_rows(body.csv, lead_fields_mod.list_fields(store)) if body.csv.strip() else []
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
+        account_limits_mod.check_current(store, "imports_per_day", len(rows))        # the account's daily imports limit
         stats = {}
         erased = set(store.read("suppressed_hashes"))
         blocked = set(store.read("suppressed"))      # do-not-contact list, as the smart import skips it
@@ -594,6 +596,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_workspaces_router(store))
     from .routes_accounts import make_router as make_accounts_router
     app.include_router(make_accounts_router(store))
+    from .routes_account_usage import make_router as make_account_usage_router
+    app.include_router(make_account_usage_router(store))
     app.include_router(make_audit_router(store))
     app.include_router(make_analytics_router(store))
     app.include_router(make_extension_router(store))

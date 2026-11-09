@@ -91,10 +91,10 @@ def test_limits_grants_and_workspace_requests(tmp_path, monkeypatch):
     req = c.post("/api/workspaces", json={"name": "Delta Two"}, headers=hb).json()
     assert req["status"] == "requested"
     assert c.post(f"/api/workspaces/{req['id']}/approve", headers=hs).status_code == 200
-    assert c.post("/api/workspaces", json={"name": "Delta Three"}, headers=hb).status_code == 400     # limit 2
+    assert c.post("/api/workspaces", json={"name": "Delta Three"}, headers=hb).status_code == 403     # limit 2
     added = c.post("/api/users", json={"email": "two@deltafreight.example", "role": "caller", "password": "long-password-1",
                                        "workspaces": [req["id"]], "account_id": bid}, headers=hs)
-    assert added.status_code == 400 and "all its 1 logins" in added.json()["detail"]                # seats
+    assert added.status_code == 403 and "logins limit of 1" in added.json()["detail"]               # seats
 
 
 def test_export_is_a_zip_of_the_account_without_secrets(tmp_path, monkeypatch):

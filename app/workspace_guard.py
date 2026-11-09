@@ -17,6 +17,8 @@ LIMITED_OK = {
     ("GET", "/api/me/two-step"), ("POST", "/api/me/two-step/start"), ("POST", "/api/me/two-step/confirm"), ("POST", "/api/me/two-step/off"),
     ("POST", "/api/me/two-step/recovery"), ("GET", "/api/platform/status"), ("GET", "/api/signup/pending"),   # banners, waiting page
     ("GET", "/api/account/audit"),                # a client admin's own account's change log (the route checks)
+    ("GET", "/api/account/usage"), ("GET", "/api/account/whatsapp"), ("PUT", "/api/account/whatsapp"),      # an account's admins: usage card,
+    ("DELETE", "/api/account/whatsapp"), ("PUT", "/api/account/alerts"),                                     # own WhatsApp, alert settings
     # app shell: labels, brand, help, read-only content and config the pages need (no lead data)
     ("GET", "/api/brand/public"), ("GET", "/api/brand"), ("GET", "/api/brand/logo"), ("GET", "/api/labels"), ("GET", "/api/guides"),
     ("GET", "/api/settings"), ("GET", "/api/settings/live-sending"), ("GET", "/api/sending/status"), ("GET", "/api/integrations"),

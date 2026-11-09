@@ -36,9 +36,12 @@ def build_digest(store, now: datetime, since: Optional[datetime] = None) -> dict
     caller = caller_name(store)
     since = since or now - DEFAULT_LOOKBACK
     today = now.astimezone(IST).date()
-    leads = {l["id"]: l for l in store.read("leads")}
+    from . import accounts
+    amap = accounts.ws_account_map(store)            # the caller's summary is Mas Callnet's: never a client account's leads or tasks
+    leads = {l["id"]: l for l in store.read("leads") if accounts.account_of_lead(amap, l) == accounts.MCN}
+    other = {l["id"] for l in store.read("leads")} - set(leads)
     mine = [t for t in (_normalise_task(t) for t in store.read("tasks"))
-            if t["status"] == "open" and t.get("owner") in (caller, None) and t.get("due_at")]
+            if t["status"] == "open" and t.get("owner") in (caller, None) and t.get("due_at") and t.get("lead_id") not in other]
     due_day = lambda t: datetime.fromisoformat(t["due_at"]).astimezone(IST).date()
     calls_today = sorted((t for t in mine if t.get("kind") == "call" and due_day(t) == today), key=lambda t: t["due_at"])
     overdue = sorted((t for t in mine if due_day(t) < today), key=lambda t: t["due_at"])

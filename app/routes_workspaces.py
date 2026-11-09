@@ -106,9 +106,8 @@ def make_router(store) -> APIRouter:
             account = accounts.of_user(user)
             if body.account_id.strip() and body.account_id.strip() != account:
                 raise HTTPException(403, "You can ask for workspaces of your own company only.")
-        cap = accounts.limit_of(store, account, "workspaces")
-        if cap is not None and len(accounts.workspaces_of(store, account, active_only=False)) >= cap:
-            raise HTTPException(400, f"This account may have at most {cap} workspaces. Ask the platform admin.")
+        from . import account_limits
+        account_limits.check_count(store, account, "workspaces")    # 403: "Your account reached its workspaces limit of N; ..."
         try:
             row = ws.create(store, body.name, who(request), account, "active" if owner else "requested", user.get("email") or "")
         except ValueError as exc:
@@ -131,6 +130,10 @@ def make_router(store) -> APIRouter:
         row = next((w for w in ws.all_workspaces(store, include_requested=True) if w["id"] == ws_id), None)
         if row is None or (row.get("status") or "active") != "requested":
             raise HTTPException(404, "No workspace request with that id.")
+        from . import account_limits
+        lim = account_limits.limit_for(store, row["account_id"], "workspaces")
+        if lim is not None and len(accounts.workspaces_of(store, row["account_id"])) >= lim:    # active ones only: the limit may have been lowered
+            raise account_limits.LimitReached(account_limits.message("workspaces", lim), "workspaces", lim, status=403)
         workspace_admin.approve(store, row)
         audit.record(store, user_of(request), "workspace.approve", row["name"], f"id {ws_id}; account {row['account_id']}",
                      extra={"account_id": row["account_id"]})

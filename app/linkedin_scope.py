@@ -144,7 +144,7 @@ def alert_paused(store, account_id: str, slug: str, note: str) -> int:
             row = notify(store, admin.get("name") or admin["email"], title, text, kind="linkedin")
             store.update("notifications", lambda rows, rid=row["id"]: [{**r, "account_id": account_id} if r.get("id") == rid else r
                                                                        for r in rows])
-            _email(store, admin.get("email"), title, text)
+            _email(store, admin.get("email"), title, text, account_id)
             sent += 1
         sent += super_admin.alert(store, title, text)
     except Exception:                                          # an alert must never break the agent's report
@@ -153,10 +153,10 @@ def alert_paused(store, account_id: str, slug: str, note: str) -> int:
     return sent
 
 
-def _email(store, address: str, title: str, text: str) -> None:
-    from . import alerts
+def _email(store, address: str, title: str, text: str, account_id: str = "") -> None:
+    from . import account_alerts, alerts
     from .reminders import _log_transactional
-    if not (alerts.SENDER and address and store.read("settings").get("alerts_email", True) is not False):
+    if not (alerts.SENDER and address and account_alerts.email_on(store, account_id or accounts.MCN)):
         return
     subject = f"[Outreach] {title}"
     try:

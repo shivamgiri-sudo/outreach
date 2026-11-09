@@ -104,6 +104,8 @@ ADMIN_WRITES = {
     ("POST", "/api/workspaces"),          # a workspace admin's new workspace is created as "requested" (an owner approves it)
     ("POST", "/api/snippets"), ("PUT", "/api/snippets/{snippet_id}"), ("DELETE", "/api/snippets/{snippet_id}"),
     ("PUT", "/api/linkedin/variants"), ("POST", "/api/linkedin/variants/generate"), ("POST", "/api/linkedin/variants/score"),
+    # a client account's own WhatsApp provider and alert settings (app/routes_account_usage.py checks it is their own account)
+    ("PUT", "/api/account/whatsapp"), ("DELETE", "/api/account/whatsapp"), ("PUT", "/api/account/alerts"),
 }
 # LinkedIn agent per client account (app/linkedin_scope.py): an account's admins run their own account's agent, slots and
 # office computer (the routes cut to the admin's account, 404 for another's); callers / viewers only read its status.
@@ -416,9 +418,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
             raise HTTPException(400, "Pick the client's workspaces for this login.")
         spaces = clean_spaces(request, body.role, body.workspaces, account)
         from . import accounts, workspaces as ws_mod
-        seats = accounts.limit_of(store, account, "seats")
-        if seats is not None and sum(1 for u in auth.users(store) if accounts.of_user(u) == account) >= seats:
-            raise HTTPException(400, f"This account has used all its {seats} logins. Ask the platform admin for more.")
+        from . import account_limits
+        account_limits.check_count(store, account, "seats")          # 403: "Your account reached its logins limit of N; ..."
         account_spaces = [w for w in ws_mod.all_workspaces(store) if (w.get("account_id") or "mcn") == account]
         if body.role != "owner" and not spaces and not body.all_workspaces and len(account_spaces) > 1:
             raise HTTPException(400, "Choose the workspaces this login may see, or All workspaces.")

@@ -1,8 +1,9 @@
 """Alerts: tell the right person the moment something good (or urgent) happens on a lead.
 
-- A real reply (not an auto-reply or bounce): the lead's owner, else the team caller.
+- A real reply (not an auto-reply or bounce): the lead's owner, else the team caller (a client account: its first admin).
 - A lead said yes (interested), a meeting was booked, a call was logged as interested / meeting booked: the owner
-  (else the caller) and everyone in settings.alert_managers.
+  (else the caller) and everyone in the managers list (settings.alert_managers; a client account has its own list in
+  its account settings). Alerts stay inside the lead's account: see app/account_alerts.py.
 - A response-time (SLA) breach: see sla.py.
 Each alert is an in-app notification (the bell) plus an email when settings.alerts_email is not switched off and the
 person's address is known (a login or a team member). The same alert for the same lead is not repeated within
@@ -17,21 +18,21 @@ TITLES = {"reply": "New reply", "interested": "Lead said yes", "meeting": "Meeti
           "sla": "Response time missed", "open": "Email opened", "click": "Link clicked", "li_accepted": "Accepted on LinkedIn"}
 
 
-def _address(store, name: str) -> str:
-    from . import auth
-    from .activities import team
-    for u in auth.users(store):
-        if name in ((u.get("name") or ""), u.get("email") or ""):
-            return u.get("email") or ""
-    member = next((m for m in team(store) if m.get("name") == name), {})
-    return member.get("email") or ""
+def _address(store, name: str, account_id: str = "mcn") -> str:
+    from . import account_alerts
+    return account_alerts.address_of(store, name, account_id or "mcn")
 
 
 def recipients(store, lead: dict, managers: bool) -> list:
-    from .activities import caller_name
-    names = [lead.get("owner") or caller_name(store)]
+    """Who hears about a lead: its owner (else the account's default person), and the account's own managers list.
+    A client account's alerts never reach Mas Callnet's staff, and Mas Callnet's never reach a client."""
+    from . import account_alerts, accounts
+    aid = accounts.account_of_lead_in(store, lead)
+    names = [lead.get("owner") or account_alerts.default_person(store, aid)]
     if managers:
-        names += [n for n in store.read("settings").get("alert_managers") or [] if isinstance(n, str)]
+        names += account_alerts.managers(store, aid)
+    if aid != accounts.MCN:
+        names = [n for n in names if account_alerts.is_member(store, n, aid)]
     return list(dict.fromkeys(n for n in names if n))
 
 
@@ -48,21 +49,23 @@ def _recent(store, kind: str, lead_id: str, to: str) -> bool:
 
 def send(store, kind: str, lead_id: str, text: str, managers: bool = False, base_url: str = "") -> list:
     """Raise one alert. Returns the names alerted (empty when nothing was sent)."""
+    from . import account_alerts, accounts
     from .reminders import _log_transactional, notify
     lead = next((l for l in store.read("leads") if l.get("id") == lead_id), None)
     if lead is None:
         return []
+    aid = accounts.account_of_lead_in(store, lead)
+    stamp = aid if aid != accounts.MCN else ""
     company = lead.get("company") or lead.get("contact_name") or "a lead"
     title = f"{TITLES.get(kind, 'Alert')}: {company}"
-    settings = store.read("settings")
     done = []
     for name in recipients(store, lead, managers):
         if _recent(store, kind, lead_id, name):
             continue
-        notify(store, name, title, text, lead_id=lead_id, kind=f"alert:{kind}")
-        email = _address(store, name)
-        if SENDER and email and settings.get("alerts_email", True) is not False:
-            link = (settings.get("public_base_url") or base_url or "").rstrip("/")
+        notify(store, name, title, text, lead_id=lead_id, kind=f"alert:{kind}", account_id=stamp)
+        email = _address(store, name, aid)
+        if SENDER and email and account_alerts.email_on(store, aid):
+            link = account_alerts.base_url(store, aid, base_url)
             body = f"{text}\n\n{('Open the lead: ' + link + '/#leads') if link else ''}".strip()
             try:
                 result = SENDER({"to": email, "subject": f"[Outreach] {title}", "body": body, "kind": "internal"})
@@ -78,28 +81,32 @@ DIGEST_LINES = 15
 
 def digest(store, kind: str, items: list, managers: bool = False, base_url: str = "") -> int:
     """One alert per person for many leads at once (items: [(lead_id, text)]), so a batch of breaches is one bell
-    entry and one email per person, not one per lead. Returns the number of people alerted."""
+    entry and one email per person, not one per lead. Each account's people only get that account's leads.
+    Returns the number of people alerted."""
+    from . import account_alerts, accounts
     from .reminders import _log_transactional, notify
     by_id = {l.get("id"): l for l in store.read("leads")}
+    amap = accounts.ws_account_map(store)
     per_person = {}
     for lead_id, text in items:
         lead = by_id.get(lead_id)
         if lead is None:
             continue
+        aid = accounts.account_of_lead(amap, lead)
         for name in recipients(store, lead, managers):
-            per_person.setdefault(name, []).append((lead, text))
-    settings = store.read("settings")
-    link = (settings.get("public_base_url") or base_url or "").rstrip("/")
-    for name, rows in per_person.items():
+            per_person.setdefault((aid, name), []).append((lead, text))
+    for (aid, name), rows in per_person.items():
+        stamp = aid if aid != accounts.MCN else ""
+        link = account_alerts.base_url(store, aid, base_url)
         company = lambda l: l.get("company") or l.get("contact_name") or "a lead"
         title = f"{TITLES.get(kind, 'Alert')}: {company(rows[0][0])}" if len(rows) == 1 else f"{TITLES.get(kind, 'Alert')}: {len(rows)} leads"
         lines = [f"- {company(l)}: {t}" for l, t in rows[:DIGEST_LINES]]
         if len(rows) > DIGEST_LINES:
             lines.append(f"... and {len(rows) - DIGEST_LINES} more.")
         text = rows[0][1] if len(rows) == 1 else "\n".join(lines)
-        notify(store, name, title, text, lead_id=rows[0][0].get("id") if len(rows) == 1 else None, kind=f"alert:{kind}")
-        email = _address(store, name)
-        if SENDER and email and settings.get("alerts_email", True) is not False:
+        notify(store, name, title, text, lead_id=rows[0][0].get("id") if len(rows) == 1 else None, kind=f"alert:{kind}", account_id=stamp)
+        email = _address(store, name, aid)
+        if SENDER and email and account_alerts.email_on(store, aid):
             body = f"{text}\n\n{('See them all: ' + link + '/#reports') if link else ''}".strip()
             try:
                 result = SENDER({"to": email, "subject": f"[Outreach] {title}", "body": body, "kind": "internal"})

@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
+from . import account_limits as account_limits_mod
 from .apollo import match_person
 from .http_util import post_json
 from .enrich import find_public_contacts, needs, pick_best_email
@@ -39,6 +40,7 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
         if body.tab == "decision_makers":
             return attach_people(decision_makers(rows))
         incoming = demo_leads(rows) if body.tab == "demo" else sheet_leads(rows)
+        account_limits_mod.check_current(store, "imports_per_day", len(incoming))        # the account's daily imports limit
         stats = {"created": 0, "duplicates": 0, "merged": 0}
         erased = set(store.read("suppressed_hashes"))
         blocked = set(store.read("suppressed"))
@@ -143,10 +145,16 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
                 if not lead.get("email") and lead.get("contact_name") and (lead.get("domain") or lead.get("company"))
                 and not lead.get("apollo_checked_at") and lead["stage"] not in ("unsubscribed", "disqualified")][: body.limit]
         calls = matched = errors = 0
-        patches = {}
+        patches, stopped = {}, None
+        from . import account_limits
         for i in todo:
             lead = leads[i]
             first, _, last = lead["contact_name"].strip().partition(" ")
+            try:
+                account_limits.check_current(store, "enrich_credits", 1)       # the client account's lookup credits
+            except account_limits.LimitReached as exc:
+                stopped = exc
+                break
             try:
                 calls += 1
                 person = match_person(key, first, last, lead.get("domain"), lead.get("company"), apollo_transport)
@@ -174,7 +182,10 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
                 matched += 1
             patches[lead["id"]] = {"set": changes, "events": events}
         store.patch_leads(patches)
-        return {"checked": len(todo), "matched": matched, "errors": errors, "credits_used_estimate": calls}
+        if stopped is not None and not calls:
+            raise stopped
+        return {"checked": len(todo), "matched": matched, "errors": errors, "credits_used_estimate": calls,
+                **({"stopped": stopped.message} if stopped is not None else {})}
 
     @router.get("/api/enrich/apollo-export", response_class=PlainTextResponse)
     def apollo_export():

@@ -23,7 +23,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from . import audit, lists, prospect_db as P, prospect_ingest as ingest, prospect_search as S, prospect_waterfall as W
+from . import account_limits, audit, lists, prospect_db as P, prospect_ingest as ingest, prospect_search as S, prospect_waterfall as W
 from . import prospect_fields as F
 from . import prospect_unsuppress as U
 from .hygiene import csv_safe
@@ -230,6 +230,7 @@ def make_router(store, transports=None) -> APIRouter:
         if not ids:
             raise HTTPException(400, "Pick people first.")
         by = audit.actor_of(getattr(request.state, "user", None))["name"]
+        account_limits.check_current(store, "imports_per_day", len(ids))              # the account's daily imports limit
         out = add_to_leads(store, ids, by)
         lead_ids = [r["lead_id"] for r in out["added"] + out["existing"]]
         if lead_ids and (body.list_id or body.list_name.strip()):
@@ -310,6 +311,7 @@ def make_router(store, transports=None) -> APIRouter:
 
     @router.post("/api/prospects/import")
     def import_csv(body: ImportBody, request: Request):
+        account_limits.check_current(store, "imports_per_day", max(0, len([l for l in body.csv.splitlines() if l.strip()]) - 1))
         try:
             out = ingest.import_csv(store, body.csv, F.source_key(body.source or "csv"))
         except ValueError as exc:

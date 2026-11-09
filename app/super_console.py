@@ -15,7 +15,7 @@ import time
 import zipfile
 from datetime import datetime, timedelta, timezone
 
-from . import accounts, auth
+from . import account_limits, accounts, auth
 from .audit_pack import to_csv
 
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -90,6 +90,7 @@ def overview(store, status: str = "", now: datetime = None) -> list:
                                     "requested_by": w.get("requested_by", "")} for w in mine] + ([{"id": "main", "name": "Main", "status": "active"}] if aid == accounts.MCN else []),
                     "leads": leads_n.get(aid, 0), "sends_today": sent_today.get(aid, 0), "sends_7d": sent_week.get(aid, 0),
                     "bounce_rate": rate, "last_activity": last.get(aid), "flags": flags,
+                    "usage": account_limits.summary(store, aid) if aid != accounts.MCN else [], "auto_hold": row.get("auto_hold"),
                     "logins": [{"email": u["email"], "name": u.get("name") or u["email"], "role": u.get("role")}
                                for u in users if user_acct[u["email"]] == aid][:200]})
     if status:
@@ -113,9 +114,13 @@ def approve(store, account_id: str) -> dict:
         raise LookupError("No such account.")
     if row["status"] != "pending":
         raise ValueError("Only a pending account can be approved (use Reactivate for a suspended one).")
+    from . import account_limits
     accounts.update(store, account_id, {"status": "active"})
+    cap = account_limits.limit_for(store, account_id, "workspaces")
     for w in store.read("settings").get("workspaces") or []:
         if isinstance(w, dict) and w.get("account_id") == account_id and w.get("status") == "requested":
+            if cap is not None and len(accounts.workspaces_of(store, account_id)) >= cap:
+                break                          # the workspaces limit set before approval: the rest stay "requested"
             workspace_admin.approve(store, {**w})
     return accounts.find(store, account_id)
 

@@ -18,6 +18,7 @@ import Team from "./setup/Team.jsx";
 import Workspaces from "./setup/Workspaces.jsx";
 import Accounts from "./setup/Accounts.jsx";
 import AccountActivity from "./setup/AccountActivity.jsx";
+import AccountUsage from "./setup/AccountUsage.jsx";
 import { isClient } from "../api.js";
 import "../setup.css";
 
@@ -39,6 +40,7 @@ const GROUPS = [
     ["security", "Security", ADMINS, "Two-step login for the team and the history of every sign-in."],
     ["audit", "Audit", OWNER, "Who changed what and when, with a tamper check."],
     ["activity", "Account activity", ["client-admin"], "Everything changed in your company's account, including the platform team's actions."],
+    ["usage", "Usage & limits", ["client-admin"], "What your account has used against its limits, your own WhatsApp provider and who hears about your leads."],
   ]],
   ["Integrations", [
     ["connections", "Connections", OWNER, "Email sending, reply capture, data providers and other services. Keys are stored on your server and shown masked."],
@@ -126,6 +128,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
           {section === "health" && <SystemHealth />}
           {section === "accounts" && <Accounts />}
           {section === "activity" && <AccountActivity />}
+          {section === "usage" && <AccountUsage />}
           {section === "workspaces" && <Workspaces owner={role === "owner"} />}
           {section === "members" && <Team workspaceAdmin={role === "admin"} />}
           {section === "scoring" && <ScoringCard />}

@@ -43,6 +43,9 @@ def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, bas
     acct = account_sending.for_lead(store, lead, cfg, live)
     if acct["hold"]:
         raise ValueError(acct["hold"])
+    from . import account_limits
+    if (full := account_limits.room(store, acct["account"], "daily_sends")):
+        raise ValueError(full)
     cfg, live = acct["cfg"], acct["live"]
     if live and (pause := sending_paused(store, now)):
         raise ValueError(f"Sending is paused: {pause['reason']}")
@@ -73,6 +76,7 @@ def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, bas
     store.update("outbox", lambda rows: [*rows, message])
     if message["status"] in ("provider_error", "failed"):
         raise ValueError(f"The email provider did not take it: {message.get('error') or message['status']}")
+    account_limits.record(store, acct["account"], "daily_sends")
     sent = message["status"] == "sent"
     store.update_lead(lead_id, lambda l: {**l, "last_activity_at": now.isoformat(timespec="seconds"),
                                           "stage": "contacted" if sent and l["stage"] in EARLY_STAGES else l["stage"],

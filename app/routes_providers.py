@@ -37,6 +37,8 @@ def make_router(store, fetcher, transport=guarded_post_json, get_transport=data_
 
     @router.post("/api/providers/compare")
     def compare(body: CompareBody):
+        from . import account_limits
+        account_limits.check_current(store, "enrich_credits", max(1, body.sample_size * max(1, len(body.providers))))
         try:
             return data_sources.compare(store, body.providers, body.sample_size, transports)
         except ValueError as exc:

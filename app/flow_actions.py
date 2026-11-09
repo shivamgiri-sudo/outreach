@@ -291,6 +291,9 @@ def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
     todays = [m for m in sent_ok if m.get("sent_at_ist_date") == today.isoformat()]
     if len(todays) >= cap:
         return defer(_next_morning(now), f"today's email limit ({cap}) is reached")
+    from . import account_limits
+    if (full := account_limits.room(store, acct["account"], "daily_sends")):
+        return defer(_next_morning(now), full)
     if ctx.emails_sent >= cfg["per_run_cap"]:
         return idle("a few sends per run; the next tick continues")
     domain = business_domain(lead["email"])
@@ -324,6 +327,8 @@ def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
             release()
             return refused(message.get("error") or "sending is held for this account")
         store.update("outbox", lambda rows: [*rows, message])
+        if message["status"] in ("sent", "dry_run"):
+            account_limits.record(store, acct["account"], "daily_sends")
     finally:
         sequence_runner._RUN_LOCK.release()
     if message["status"] == "provider_error" and acct["account"] != "mcn":
@@ -410,7 +415,8 @@ def do_linkedin(store, flow, node, lead, now, ctx) -> dict:
     text, missing = text_for(store, lead, c.get("message", ""), ctx.base_url, now)
     if missing:
         return refused(f"LinkedIn task not created: details missing ({', '.join(missing)})")
-    owner = store.read("settings").get("linkedin_owner") or caller_name(store)
+    from . import linkedin_seq as _li
+    owner = _li._owner(store, lead)
     add_task(store, lead["id"], "linkedin", text, due_at=now, owner=owner, title="LinkedIn: send this message by hand", source="flow")
     return ok(f"LinkedIn task for {owner} (sent by hand)")
 
@@ -560,6 +566,8 @@ def do_ai(store, flow, node, lead, now, ctx) -> dict:
     cfg = ai._llm_config(store)
     if not cfg:
         return refused("Ask Claude is not connected (Integrations → AI)")
+    from . import accounts
+    cfg = {**cfg, "_account": (lambda a: None if a == accounts.MCN else a)(accounts.account_of_lead_in(store, lead))}   # the lead's account pays
     mode = c.get("mode")
     instruction, _missing = text_for(store, lead, str(c.get("prompt") or ""), ctx.base_url, now)
     facts = {k: lead.get(k) for k in ("company", "title", "contact_name", "city", "country", "sector", "stage", "source", "role")}
@@ -573,7 +581,7 @@ def do_ai(store, flow, node, lead, now, ctx) -> dict:
     try:
         answer = ai._call_llm(cfg, system, user, AI_MAX_TOKENS[mode], getattr(ctx, "ai_transport", None) or post_json)
     except ai._AI_ERRORS as exc:
-        return refused(f"Ask Claude failed: {str(exc)[:100]}")
+        return refused(f"Ask Claude failed: {str(exc)[:160]}")
     answer = re.sub(r"^```[a-z]*\n|\n```$", "", answer.strip())
     if mode == "classify":
         word = re.sub(r"[^a-z0-9 _-]", "", answer.lower().strip().splitlines()[0] if answer else "")

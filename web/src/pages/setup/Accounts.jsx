@@ -9,7 +9,7 @@ import { platform } from "../../platformApi.js";
 import { Status, istDate } from "./common.jsx";
 import { EditAccount, NewAccount, changed } from "./AccountDialogs.jsx";
 import AccountDetail, { AskDialog } from "./console/AccountDetail.jsx";
-import { PendingQueue, StatusFilter, StopAllSwitch, flagText } from "./console/ConsoleParts.jsx";
+import { AlertsStrip, PendingQueue, StatusFilter, StopAllSwitch, flagText } from "./console/ConsoleParts.jsx";
 
 export default function Accounts() {
   const [data, setData] = useState(null);
@@ -43,6 +43,7 @@ export default function Accounts() {
       </div>
       <Status message={message} />
       {cons && <StopAllSwitch stop={cons.stop_all_sending} onChanged={load} />}
+      {cons && <AlertsStrip alerts={cons.alerts} />}
       {cons && <PendingQueue rows={cons.accounts} onAction={action} onDetails={(a) => setDialog({ kind: "detail", row: a })} />}
       {cons && <div className="row" style={{ justifyContent: "flex-end", marginBottom: 8 }}><StatusFilter value={filter} onChange={setFilter} /></div>}
       {!data ? <p className="hint">Loading…</p> : (

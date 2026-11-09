@@ -82,6 +82,9 @@ class Meter:
         self.spent = month_spend(store, self.month)
         self.freshness = P.settings(store)["freshness_days"]
         self.rows, self.blocked = [], False
+        from . import account_limits
+        self.account = account_limits.current_account()      # a client account's paid lookups count against its enrich_credits
+        self.limit_message = ""
 
     def cost(self, spec_id: str) -> float:
         if spec_id in self.cfg:
@@ -97,15 +100,24 @@ class Meter:
 
     def can_spend(self, spec_id: str) -> bool:
         c = self.cost(spec_id)
+        if c > 0 and self.account:
+            from . import account_limits
+            self.limit_message = account_limits.room(self.store, self.account, "enrich_credits")
+            if self.limit_message:
+                self.blocked = True
+                return False
         ok = c == 0 or self.cap is None or self.spent + c <= self.cap + 1e-9
         self.blocked = self.blocked or not ok
         return ok
 
     def message(self) -> str:
-        return budget_message(self.cap or 0)
+        return self.limit_message or budget_message(self.cap or 0)
 
     def record(self, provider: str, field: str, hit: bool, target: str = "", cached: bool = False) -> None:
         cost = self.cost(provider) if hit and not cached else 0.0
+        if self.account and not cached and self.cost(provider) > 0:
+            from . import account_limits
+            account_limits.record(self.store, self.account, "enrich_credits", 1)         # one credit per paid call, hit or not
         self.spent += cost
         self.rows.append({"at": self.now.isoformat(timespec="seconds"), "month": self.month, "provider": provider, "field": field,
                           "target": str(target or "")[:200], "hit": 1 if hit else 0, "cached": 1 if cached else 0, "cost": cost})

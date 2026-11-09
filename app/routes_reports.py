@@ -89,7 +89,11 @@ def make_router(store, base_url_of, sender) -> APIRouter:
         rng = period(body.date_from, body.to_date, body.days)
         scope = getattr(request.state, "workspace_scope", (None, None))
         who = audit.actor_of(user)["name"]
-        mail = report_mail.compose(store, rng, body.who, body.kind, scope, who, base_url_of())
+        from . import account_alerts, accounts
+        client = accounts.current() if accounts.current_is_client() else None
+        base = account_alerts.base_url(store, client, base_url_of()) if client else base_url_of()   # a client's links use its own address
+        mail = report_mail.compose(store, rng, body.who, body.kind, scope, who, base,
+                                   brand=(accounts.find(store, client) or {}).get("name", "") if client else "")
         results = {a: sender({"to": a, "subject": mail["subject"], "body": mail["body"], "html": mail["html"],
                               "attachments": mail["attachments"], "kind": "report"}).get("status") for a in to}
         from .provenance import internal, person_of

@@ -201,7 +201,7 @@ def test_client_admin_workspace_request_needs_owner_approval(tmp_path):
     assert c.post(f"/api/workspaces/{other['id']}/reject", headers=ho).status_code == 200
     assert other["id"] not in {w["id"] for w in c.get("/api/workspaces/overview", headers=ho).json()}
     c.put(f"/api/accounts/{b['id']}", json={"limits": {"workspaces": 2}}, headers=ho)
-    assert c.post("/api/workspaces", json={"name": "Bravo Four"}, headers=hb).status_code == 400
+    assert c.post("/api/workspaces", json={"name": "Bravo Four"}, headers=hb).status_code == 403
 
 
 def test_audit_rows_carry_account_and_suspension_signs_out(tmp_path):

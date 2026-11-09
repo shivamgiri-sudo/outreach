@@ -15,6 +15,7 @@ Reminder emails go to `transactional_outbox`, never the cold-email outbox, so th
 import uuid
 from datetime import datetime, timedelta
 
+from . import account_alerts, accounts
 from .brand import get_brand
 from .activities import add_task, caller_name, iso, team, update_task
 from .growth_core import public_base_url
@@ -37,10 +38,12 @@ def ist_text(stamp: str) -> str:
     return when.strftime("%a %d %b, %I:%M %p IST").replace(" 0", " ")
 
 
-def notify(store, to, title: str, text: str, lead_id=None, task_id=None, kind: str = "reminder", sender=None) -> dict:
-    """An in-app notification, plus an email to the person when email reminders are on and we know their address."""
+def notify(store, to, title: str, text: str, lead_id=None, task_id=None, kind: str = "reminder", sender=None,
+           account_id: str = "") -> dict:
+    """An in-app notification, plus an email to the person when email reminders are on and we know their address.
+    `account_id` stamps the row with a client account, so that account's own logins see it (app/accounts.py)."""
     row = {"id": uuid.uuid4().hex[:10], "at": iso(datetime.now(IST)), "to": to, "title": title, "text": text,
-           "lead_id": lead_id, "task_id": task_id, "kind": kind, "read": False}
+           "lead_id": lead_id, "task_id": task_id, "kind": kind, "read": False, **({"account_id": account_id} if account_id else {})}
     store.update("notifications", lambda rows: [*rows[-999:], row])
     settings = store.read("settings")
     member = next((m for m in team(store) if m.get("name") == to), {})
@@ -64,6 +67,7 @@ def _log_transactional(store, to, subject, body, kind, lead_id, result, extra: d
 def _task_reminders(store, now: datetime, sender) -> int:
     sent = 0
     leads = {l["id"]: l for l in store.read("leads")}
+    amap = accounts.ws_account_map(store)
     for task in store.read("tasks"):
         if task.get("status", "open") != "open" or task.get("done") or not task.get("due_at") or not task.get("id"):
             continue
@@ -73,7 +77,8 @@ def _task_reminders(store, now: datetime, sender) -> int:
         due = datetime.fromisoformat(task["due_at"])
         done = set(task.get("reminded") or [])
         company = (leads.get(task.get("lead_id")) or {}).get("company") or ""
-        owner = task.get("owner") or caller_name(store)
+        aid = accounts.account_of_lead(amap, leads[task["lead_id"]]) if task.get("lead_id") in leads else accounts.MCN
+        owner = task.get("owner") or account_alerts.default_person(store, aid)       # a client's task never falls to Mas Callnet's caller
         label = None
         if "due" not in done and now >= due - TASK_LEAD:
             label, title = "due", f"Due {ist_text(task['due_at'])}: {task.get('title', 'Task')}" + (f" — {company}" if company else "")
@@ -81,7 +86,9 @@ def _task_reminders(store, now: datetime, sender) -> int:
             label, title = "overdue", f"Overdue: {task.get('title', 'Task')}" + (f" — {company}" if company else "")
         if not label:
             continue
-        notify(store, owner, title, task.get("text", ""), task.get("lead_id"), task["id"], kind=f"task_{label}", sender=sender)
+        if owner:
+            notify(store, owner, title, task.get("text", ""), task.get("lead_id"), task["id"], kind=f"task_{label}", sender=sender,
+                   account_id=aid if aid != accounts.MCN else "")
         store.update("tasks", lambda rows, tid=task["id"], label=label: [
             {**t, "reminded": sorted(set(t.get("reminded") or []) | {label}, key=str)} if t.get("id") == tid else t for t in rows])
         sent += 1
@@ -99,17 +106,21 @@ def _when_phrase(start: str, which: str, now: datetime = None) -> str:
 
 def _meeting_email(store, lead: dict, meeting: dict, which: str, base_url: str = "", now: datetime = None) -> dict:
     when = ist_text(meeting["start"])
+    aid = accounts.account_of_lead_in(store, lead)
+    base_url = account_alerts.base_url(store, aid, base_url) if aid != accounts.MCN else base_url
+    mine = accounts.settings_for(store, aid)                 # a client lead's reminder carries that account's name and footer
+    brand_src = store if aid == accounts.MCN else accounts.AccountView(store, aid)
     company = lead.get("company") or "your team"
     to = meeting.get("attendee_email") or lead.get("email")
     person = next((o for o in lead.get("other_contacts") or [] if isinstance(o, dict) and o.get("email") == to), lead)
     lines = [f"Hi {(person.get('contact_name') or '').split(' ')[0] or 'there'},", "",
-             f"A reminder of our call {_when_phrase(meeting['start'], which, now)}: {meeting.get('title') or get_brand(store)['product_name'] + ' demo — ' + company}",
+             f"A reminder of our call {_when_phrase(meeting['start'], which, now)}: {meeting.get('title') or get_brand(brand_src)['product_name'] + ' demo — ' + company}",
              f"When: {when}"]
     if meeting.get("join_url"):
         lines.append(f"Join: {meeting['join_url']}")
     lines += ["", "If the time no longer works, just reply and we'll find another slot.", "",
-              f"— {store.read('settings').get('sender_name') or caller_name(store)}"]
-    footer = identity_footer(store.read("settings"))
+              f"— {mine.get('sender_name') or account_alerts.default_person(store, aid)}"]
+    footer = identity_footer(mine)
     if footer:
         lines.append(footer)
     lines.append(f"Unsubscribe: {unsub_url(store, base_url, lead['id'])}")
@@ -138,8 +149,12 @@ def _meeting_reminders(store, now: datetime, sender, base_url: str) -> int:
                 due.append(owner_label)
             for label in due:
                 if label == owner_label:
-                    notify(store, meeting.get("owner") or caller_name(store), f"Meeting at {ist_text(meeting['start'])} — {lead.get('company', '')}",
-                           meeting.get("join_url", ""), lead["id"], kind="meeting_soon", sender=sender)
+                    aid = accounts.account_of_lead_in(store, lead)
+                    who = meeting.get("owner") or account_alerts.default_person(store, aid)
+                    if who:
+                        notify(store, who, f"Meeting at {ist_text(meeting['start'])} — {lead.get('company', '')}",
+                               meeting.get("join_url", ""), lead["id"], kind="meeting_soon", sender=sender,
+                               account_id=aid if aid != accounts.MCN else "")
                 elif (to := meeting.get("attendee_email") or lead.get("email")) and not is_blocked(store, to) \
                         and lead["stage"] not in CLOSED_FOR_REMINDERS:
                     message = _meeting_email(store, lead, meeting, label, base_url, now)

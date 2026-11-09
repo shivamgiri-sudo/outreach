@@ -364,8 +364,13 @@ def enrich(store, campaign: dict, transports: dict, report: dict) -> None:
         taken = {l.get("dedupe_key") for l in everyone}
         suppressed = set(store.read("suppressed"))
         patches, failures, last_failure = {}, 0, ""
+        from . import account_limits
+        client = account_limits.current_account()              # a client account's paid lookups count against its lookup credits
         for lead in todo:
             domain = valid_domain(lead.get("domain")) or ""
+            if client and (full := account_limits.room(store, client, "enrich_credits")):
+                add_error(report, pid, full)
+                break
             try:
                 if pid == "apollo" and lead.get("apollo_person_id"):
                     found = _apollo_by_id(lead, status["config"], transports["post"])
@@ -379,6 +384,7 @@ def enrich(store, campaign: dict, transports: dict, report: dict) -> None:
                 patches[lead["id"]] = {"set": {marker: now_iso()}, "events": []}
                 continue
             report["credits_used_estimate"] += found.get("credits_used", 0)
+            account_limits.record(store, client, "enrich_credits", max(1, int(found.get("credits_used") or 1)))
             emails = found.get("emails") or []
             if pid == "apollo" and domain:         # an Apollo match at another company is not kept
                 emails = [e for e in emails if business_domain(e["value"]) in (None, domain)]

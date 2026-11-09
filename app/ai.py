@@ -4,6 +4,7 @@ import os
 import re
 from typing import Optional
 
+from . import account_limits
 from .brand import get_offer_profile, prompt_profile, sender_name
 from .growth_core import get_offer, offer_line
 from .http_util import post_json
@@ -75,7 +76,11 @@ def _llm_config(store) -> dict:
     saved = store.read("integrations").get("llm", {})
     values = saved.get("values", {})
     ready = saved.get("mode") == "api" and values.get("provider", "").lower() == "anthropic" and values.get("api_key")
-    return values if ready else {}
+    if not ready:
+        return {}
+    # Which client account this call is charged to (its ai_credits limit, app/account_limits.py); none for Mas Callnet.
+    from . import account_limits
+    return {**values, "_store": getattr(store, "_store", store), "_account": account_limits.current_account()}
 
 
 def _untrusted(text) -> str:
@@ -84,6 +89,8 @@ def _untrusted(text) -> str:
 
 
 def _call_llm(cfg: dict, system: str, user: str, max_tokens: int, transport) -> str:
+    from . import account_limits
+    account_limits.charge_ai(cfg)             # one AI credit of the account; LimitReached (a ValueError) when used up
     body = {"model": MODEL, "max_tokens": max_tokens, "system": system, "messages": [{"role": "user", "content": user}]}
     headers = {"x-api-key": cfg["api_key"], "anthropic-version": "2023-06-01"}
     reply = transport(ANTHROPIC_URL, headers, body)
@@ -113,11 +120,14 @@ def ai_write_prompt(store, draft: str, transport=post_json) -> Optional[str]:
     return out if 80 <= len(out) <= 6000 else None
 
 
-def ai_classify(store, text: str, transport=post_json) -> Optional[str]:
-    """One reply label from the AI writer, or None when it is not connected or gives anything unexpected."""
+def ai_classify(store, text: str, transport=post_json, account: Optional[str] = None) -> Optional[str]:
+    """One reply label from the AI writer, or None when it is not connected, the account's AI credits are used up, or it
+    gives anything unexpected. `account` is the client account the lead belongs to (the credit is charged to it)."""
     cfg = _llm_config(store)
     if not cfg or not (text or "").strip():
         return None
+    if account:
+        cfg = {**cfg, "_account": account}
     user = f"<lead_message>\n{_untrusted(text)}\n</lead_message>\nReturn the JSON label."
     try:
         raw = _call_llm(cfg, CLASSIFY_SYSTEM, user, CLASSIFY_MAX_TOKENS, transport)
@@ -186,6 +196,8 @@ def draft_reply(store, lead: dict, incoming: str, base_url: str, transport=post_
     system, user = _reply_messages(store, lead, incoming, demo_link)
     try:
         text = _call_llm(cfg, system, user, MAX_TOKENS, transport)
+    except account_limits.LimitReached as exc:
+        return {**result, "note": f"{exc.message} This is a template."}
     except _AI_ERRORS:
         return {**result, "note": "The AI writer was unavailable, so this is a template."}
     if not text:

@@ -100,7 +100,9 @@ def apply_reply(store, lead_id: str, text: str, channel: str = "email", ai_trans
     if erasure and label not in ("unsubscribe", "bounce", "auto_reply"):
         label = "unsubscribe"                      # "delete my data" also withdraws consent (DPDP)
     if label == "other" and ai_transport is not None:
-        ai_label = ai_classify(store, clean, ai_transport)
+        from . import accounts
+        owner = accounts.account_of_lead_in(store, next((l for l in store.read("leads") if l.get("id") == lead_id), None))
+        ai_label = ai_classify(store, clean, ai_transport, account=None if owner == accounts.MCN else owner)
         if ai_label and ai_label != "interested":
             label = ai_label                       # an AI "yes" is never treated as consent; a person checks it
     outcome = {}
@@ -238,8 +240,11 @@ def process_inbound_message(store, msg: dict, ai_transport=None) -> dict:
 
 def _rates(store, now: datetime) -> dict:
     since = (now - RATE_WINDOW).isoformat(timespec="seconds")
-    sent = sum(1 for m in store.read("outbox") if m.get("status") == "sent" and m.get("sent_at", "") >= since)
-    events = [e for e in store.read("delivery_events") if e.get("at", "") >= since]
+    from . import abuse_alerts
+    mine = abuse_alerts.mcn_only(store)             # a client account's own sends and bounces never pause Mas Callnet (it is held on its own)
+    sent = sum(1 for m in store.read("outbox") if m.get("status") == "sent" and m.get("sent_at", "") >= since
+               and (m.get("account_id") or "mcn") == "mcn")
+    events = [e for e in store.read("delivery_events") if e.get("at", "") >= since and (mine is None or mine(e.get("email")))]
     bounces = sum(1 for e in events if e["type"] == "bounce")
     complaints = sum(1 for e in events if e["type"] == "complaint")
     return {"sent": sent, "bounces": bounces, "complaints": complaints,

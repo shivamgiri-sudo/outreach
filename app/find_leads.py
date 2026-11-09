@@ -224,7 +224,9 @@ class Runner:
             with self._guard:
                 self._live[run["id"]] = run
             _save(self.store, run)
-            threading.Thread(target=self._thread, args=(run["id"], params, now or datetime.now(timezone.utc)), daemon=True).start()
+            from . import accounts
+            scope = (accounts.current(), accounts.current_is_client())     # the run's thread works for the same client account
+            threading.Thread(target=self._thread, args=(run["id"], params, now or datetime.now(timezone.utc), scope), daemon=True).start()
         except BaseException:
             self._slot.release()
             raise
@@ -240,7 +242,10 @@ class Runner:
         self._thread(run["id"], params, now or datetime.now(timezone.utc))
         return self.get(run["id"])
 
-    def _thread(self, run_id: str, params: dict, now: datetime) -> None:
+    def _thread(self, run_id: str, params: dict, now: datetime, scope: tuple = (None, False)) -> None:
+        from . import accounts
+        if scope[1]:
+            accounts.set_current(*scope)
         try:
             self._set(run_id, status="running", phase="Working")
             report = self._execute(run_id, params, now)

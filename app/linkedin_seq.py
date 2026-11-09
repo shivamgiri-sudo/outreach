@@ -184,7 +184,13 @@ def _next_step(state: dict, settings: dict) -> Optional[dict]:
     return None
 
 
-def _owner(store) -> str:
+def _owner(store, lead: Optional[dict] = None, account_id: str = "") -> str:
+    """Who does the LinkedIn work: Mas Callnet's LinkedIn owner (else its caller); for a client account's lead, that
+    account's first admin (never Mas Callnet's rep)."""
+    from . import account_alerts, accounts
+    aid = account_id or (accounts.account_of_lead_in(store, lead) if lead else accounts.MCN)
+    if aid != accounts.MCN:
+        return account_alerts.default_person(store, aid)
     return store.read("settings").get("linkedin_owner") or caller_name(store)
 
 
@@ -192,7 +198,7 @@ def _schedule(store, lead: dict, step: dict, due: datetime, settings: dict) -> d
     """A task for the LinkedIn owner holding the ready-to-paste message for this step."""
     text = render(step, lead, settings)
     title = f"LinkedIn step {step['n']}: {'send connection request' if step['kind'] == 'connect' else 'send message'}"
-    return add_task(store, lead["id"], "linkedin", text, due_at=due, owner=_owner(store), priority="normal", title=title,
+    return add_task(store, lead["id"], "linkedin", text, due_at=due, owner=_owner(store, lead), priority="normal", title=title,
                     source="linkedin_sequence")
 
 
@@ -292,7 +298,7 @@ def mark_replied(store, lead_id: str, text: str = "", now: Optional[datetime] = 
     result = apply_reply(store, lead_id, text or "(replied on LinkedIn)", "linkedin", None, source="linkedin") if text else None
     if not text:
         add_task(store, lead_id, "follow_up", "They replied on LinkedIn: answer personally.", due_at=now + timedelta(hours=2),
-                 owner=_owner(store), priority="high", title="Answer a LinkedIn reply", source="linkedin_sequence")
+                 owner=_owner(store, lead), priority="high", title="Answer a LinkedIn reply", source="linkedin_sequence")
     return {"label": (result or {}).get("label"), "lead": next(l for l in store.read("leads") if l["id"] == lead_id)}
 
 
@@ -343,8 +349,16 @@ def queue(store, now: Optional[datetime] = None) -> dict:
         due.append({"task_id": t["id"], "lead_id": lead.get("id"), "company": lead.get("company"), "name": lead.get("contact_name"),
                     "title": lead.get("title"), "linkedin_url": lead.get("linkedin_url"), "open_profile": bool((lead.get("linkedin_profile") or {}).get("open_profile")), "step": step_n, "message": _fresh_text(t, lead, step_n, settings),
                     "due_at": t.get("due_at"), "persona": (lead.get("linkedin_seq") or {}).get("persona")})
-    started_today = sum(1 for l in every if (l.get("linkedin_seq") or {}).get("started_at", "")[:10] == iso(now)[:10])
-    limit = int(settings.get("linkedin_daily_connections") or DEFAULT_DAILY_CONNECTIONS)
+    from . import accounts
+    account = accounts.current() or accounts.MCN         # "Suggested people (n of N)" count this account's own starts and daily number
+    amap = accounts.ws_account_map(store)
+    started_today = sum(1 for l in every if (l.get("linkedin_seq") or {}).get("started_at", "")[:10] == iso(now)[:10]
+                        and accounts.account_of_lead(amap, l) == account)
+    if account == accounts.MCN:
+        limit = int(settings.get("linkedin_daily_connections") or DEFAULT_DAILY_CONNECTIONS)
+    else:
+        from . import linkedin_agent
+        limit = int(linkedin_agent.config(store, account)["daily_connections"])          # clamped to the account's ceiling
     suggestions = []
     if started_today < limit:
         ranked = sorted((l for l in leads.values() if not l.get("linkedin_seq") and has_profile_link(l)
@@ -357,7 +371,7 @@ def queue(store, now: Optional[datetime] = None) -> dict:
                for l in leads.values() if (l.get("linkedin_seq") or {}).get("status") == "waiting_for_acceptance"]
     return {"due": sorted(due, key=lambda d: d["due_at"] or ""), "suggestions": suggestions, "waiting_for_acceptance": waiting,
             "started_today": started_today, "daily_limit": limit, "case_study_set": bool(settings.get("case_study_url")),
-            "owner": _owner(store)}
+            "owner": _owner(store, account_id=account)}
 
 
 def auto_start(store, max_new: int, now: Optional[datetime] = None) -> list:

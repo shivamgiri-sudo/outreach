@@ -52,6 +52,8 @@ def record(store, request, event: str, login: str, result: str, reason: str = ""
             _maybe_alert(store, row, now or _now())
             from .super_admin import maybe_alert_failures
             maybe_alert_failures(store, row, now or _now())        # super admins: alerted sooner (3 in 15 minutes)
+            from .abuse_alerts import check_failed_login
+            check_failed_login(store, row, now or _now())          # a client account's login under attack: super admins hear
     except Exception:                       # the log must never stop anyone signing in, but a failure must be visible
         import logging
         logging.getLogger("outreach.login_log").exception("login history row not saved")

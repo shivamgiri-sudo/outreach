@@ -116,7 +116,7 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
 
     icp_rules = get_icp(store)
     _decide_ab_winners(store)
-    from . import account_sending
+    from . import account_limits, account_sending
     amap, outbox_all, other = account_sending.accounts.ws_account_map(store), store.read("outbox"), {}
     mcn_vars = (cfg, live, days_key, last_key, mode_status, counts["mode"])
     for lead in sorted(store.read("leads"), key=lambda l: (l.get("sequence") or {}).get("enrolled_at", "")):
@@ -137,6 +137,8 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
                 if seq.get("blocked") != acct["hold"]:
                     _set_sequence(store, lead["id"], blocked=acct["hold"])
                 continue
+            if account_limits.room(store, acct["account"], "daily_sends"):
+                continue                        # the account's daily sends limit is used up (message on its Usage card)
             cfg, live = acct["cfg"], acct["live"]
             (days_key, last_key), mode_status, mode_name = _mode_keys(live), "sent" if live else "dry_run", "live" if live else "practice"
             done = other.setdefault(acct["account"], account_sending.sent_today(outbox_all, acct["account"], mode_status, today.isoformat()))
@@ -211,6 +213,7 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
             continue
         store.update_lead(lead["id"], lambda r: _record_send(r, day, message, demo, now, days_key, last_key))
         if acct["account"] != "mcn":
+            account_limits.record(store, acct["account"], "daily_sends")
             other[acct["account"]] = other.get(acct["account"], 0) + 1
             counts["other_accounts_sent"] = counts.get("other_accounts_sent", 0) + 1
             continue                           # Mas Callnet's daily cap and company spacing are its own
@@ -419,6 +422,9 @@ def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str 
         acct = account_sending.for_lead(store, lead, cfg, live)         # another client's lead: its own identity
         if acct["hold"]:
             raise ValueError(acct["hold"])
+        from . import account_limits
+        if (full := account_limits.room(store, acct["account"], "daily_sends")):
+            raise ValueError(full)
         cfg, live = acct["cfg"], acct["live"]
         if live and (pause := sending_paused(store, now)):
             raise ValueError(f"Sending is paused: {pause['reason']}")
@@ -457,6 +463,7 @@ def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str 
         if message["status"] in ("provider_error", "failed"):
             _release(store, lead["id"])
             raise ValueError(f"The email provider did not take it: {message.get('error') or message['status']}")
+        account_limits.record(store, acct["account"], "daily_sends")
         store.update_lead(lead["id"], lambda r: (lambda saved: {**saved, "timeline": [*saved["timeline"][:-1], {**saved["timeline"][-1], "by": by}]})(
             _record_send(r, day, message, demo, now, days_key, last_key)))
         return {"status": message["status"], "step": message["step"], "to": message["to"], "mode": "live" if live else "practice"}

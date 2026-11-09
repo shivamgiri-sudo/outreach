@@ -525,6 +525,8 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
             site = f"{parts.scheme}://{parts.netloc}" if parts.netloc else url    # the company site, not its contact page
             built = [build_lead({"company": body.company, "email": email, "website": site}, f"web_scraper:{url}")
                      for email in usable]
+            from . import account_limits
+            account_limits.check_current(store, "imports_per_day", len([lead for lead in built if lead]))
             added = len(store.add_leads([lead for lead in built if lead]))
         return {**found, "added": added, "not_for_outreach": len(found["emails"]) - len(usable)}
 

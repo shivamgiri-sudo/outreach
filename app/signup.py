@@ -248,6 +248,12 @@ def create_pending(store, company: str, name: str, email: str, phone: str, conse
                       f"{name} <{email}> signed up for {row['name']} ({'free email address' if flags else 'company address'}"
                       f"{', phone ' + phone if phone else ''}). It waits for approval: {base}/#setup/accounts "
                       "(sign in as a super admin to approve, reject or ask for details).")
+    try:
+        from . import abuse_alerts
+        abuse_alerts.check_signups(store)           # a surge of sign-ups alerts the super admins
+    except Exception:
+        import logging
+        logging.getLogger("outreach.signup").exception("sign-up surge check failed")
     return {"account": accounts.find(store, row["id"]), "user": auth.find_user(store, email)}
 
 

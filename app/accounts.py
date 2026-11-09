@@ -30,12 +30,13 @@ LIMIT_KEYS = ("seats", "workspaces", "daily_sends", "imports_per_day", "enrich_c
               "linkedin_daily_connections_max", "linkedin_weekly_connections_max", "linkedin_daily_messages_max")
 MAX_ACCOUNTS = 500
 # Per-account values kept in settings["account_settings"][id] (the "mcn" account keeps the old global keys).
-IDENTITY_KEYS = ("sender_name", "sender_company", "sender_address", "sender_website", "sender_contact_email")
+IDENTITY_KEYS = ("sender_name", "sender_company", "sender_address", "sender_website", "sender_contact_email", "public_base_url")
 CAP_KEYS = ("daily_cap", "per_run_cap")
 SENDING_KEYS = ("provider", "api_key", "from_email", "from_name", "reply_to", "domain")
 BRAND_KEYS = ("company_name", "product_name", "website")
 HOLD_EMAIL = ("Sending is held for this account: connect your sending domain or ask the platform admin to grant one.")
-HOLD_WHATSAPP = "WhatsApp is held for this account: ask the platform admin to grant WhatsApp."
+HOLD_WHATSAPP = ("WhatsApp is held for this account: connect your own WhatsApp provider in Setup, or ask the platform admin "
+                 "to grant WhatsApp.")
 EMAIL_GRANTS = ("sending_domain", "email_send")
 # The request's account: (account id or None = every account, client login?) set by workspaces.scope_dependency.
 _CURRENT = contextvars.ContextVar("account_scope", default=(None, False))
@@ -282,8 +283,20 @@ def clean_account_settings(raw: dict) -> dict:
             if not 1 <= value <= (500 if key == "daily_cap" else 50):
                 raise ValueError(f"{key.replace('_', ' ').capitalize()} is out of range.")
             out[key] = value
+    if out.get("public_base_url"):
+        url = out["public_base_url"].rstrip("/")
+        if not re.match(r"^https?://[^\s/]+(/[^\s]*)?$", url):
+            raise ValueError("The public address must be a full http:// or https:// address.")
+        out["public_base_url"] = url
     if "live_sending" in raw and raw["live_sending"] is not None:
         out["live_sending"] = bool(raw["live_sending"])
+    if "alerts_email" in raw and raw["alerts_email"] is not None:
+        out["alerts_email"] = bool(raw["alerts_email"])
+    if isinstance(raw.get("alert_managers"), list):
+        names = list(dict.fromkeys(" ".join(str(n).split())[:120] for n in raw["alert_managers"] if isinstance(n, str) and n.strip()))
+        if len(names) > 20:
+            raise ValueError("At most 20 people get the manager alerts.")
+        out["alert_managers"] = names
     if isinstance(raw.get("brand"), dict):
         out["brand"] = {k: " ".join(str(raw["brand"].get(k) or "").split())[:120] for k in BRAND_KEYS if raw["brand"].get(k) is not None}
     if isinstance(raw.get("sending"), dict):
@@ -314,6 +327,9 @@ def masked_settings(source, account_id: str) -> dict:
     if out.get("sending"):
         key = out["sending"].get("api_key") or ""
         out["sending"] = {**out["sending"], "api_key": ("••••" + key[-4:]) if key else ""}
+    if out.get("whatsapp"):                       # the account's own WhatsApp provider: never its keys (app/account_whatsapp.py)
+        from .account_whatsapp import shown
+        out["whatsapp"] = {k: v for k, v in shown(source, account_id).items() if k in ("configured", "provider", "values", "live")}
     return out
 
 
@@ -356,12 +372,15 @@ def hold_reason(source, account_id: Optional[str], channel: str = "email") -> Op
     row = find(source, account_id)
     if row is None or row.get("status") != "active":
         return f"Sending is held: this account is {(row or {}).get('status', 'unknown')}."
+    if row.get("auto_hold"):                      # bounce / complaint rate too high (app/abuse_alerts.py): until a super admin releases it
+        return f"Sending is held: {row['auto_hold'].get('reason') or 'the platform admin has to look at this account first'}"
     if channel == "email":
         if sending_config(source, account_id) or any(granted(source, account_id, k) for k in EMAIL_GRANTS):
             return None
         return HOLD_EMAIL
     if channel == "whatsapp":
-        return None if granted(source, account_id, "whatsapp") else HOLD_WHATSAPP
+        from .account_whatsapp import has_own
+        return None if (granted(source, account_id, "whatsapp") or has_own(source, account_id)) else HOLD_WHATSAPP
     return None if granted(source, account_id, channel) else f"{channel} is not granted to this account."
 
 

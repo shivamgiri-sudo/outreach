@@ -5,6 +5,7 @@ import { useState } from "react";
 import { platform, startViewAs } from "../../../platformApi.js";
 import { Modal, istDate } from "../common.jsx";
 import { flagText } from "./ConsoleParts.jsx";
+import UsageTable from "../UsageTable.jsx";
 
 export function AskDialog({ row, kind, onClose, onDone }) {
   const [text, setText] = useState("");
@@ -59,6 +60,11 @@ export default function AccountDetail({ row, onClose, onDone, onManage, onText }
       </dl>
       <p className="hint">Limits: {Object.entries(row.limits || {}).map(([k, v]) => `${k.replace(/_/g, " ")} ${v}`).join(", ") || "none (unlimited)"} ·
         Integrations granted: {(row.integrations_granted || []).join(", ") || "none"}</p>
+      {!mcn && row.auto_hold && <div className="setup-form" data-testid="detail-auto-hold" style={{ borderLeft: "4px solid #b91c1c", paddingLeft: 10 }}>
+        <b>Sending held automatically</b> <span className="hint">{istDate(row.auto_hold.at)}</span>
+        <p className="hint">{row.auto_hold.reason}</p>
+        <button className="btn small" disabled={busy} onClick={() => run(() => platform.releaseHold(row.id), `Sending hold lifted for “${row.name}”.`)} data-testid="detail-release-hold">Release the hold</button></div>}
+      {!mcn && <div className="setup-form" data-testid="detail-usage"><h3>Usage against limits</h3><UsageTable rows={row.usage} /></div>}
       {!mcn && <div className="row" style={{ gap: 8, flexWrap: "wrap", margin: "10px 0" }}>
         {row.status === "pending" && <button className="btn" disabled={busy} onClick={() => run(() => platform.approve(row.id), `“${row.name}” approved.`)}>Approve</button>}
         {row.status === "active" && <button className="btn danger" disabled={busy} onClick={() => onText("suspend", row)} data-testid="detail-suspend">Suspend</button>}

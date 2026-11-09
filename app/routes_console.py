@@ -77,7 +77,9 @@ def make_router(store, admin_password: str, base_url_of, sender) -> APIRouter:
     def list_accounts(request: Request, status: str = ""):
         super_only(request)
         from . import integrations          # the same grantable list as Setup > Accounts
+        from . import abuse_alerts
         return {"accounts": super_console.overview(store, status[:20]), "stop_all_sending": platform_controls.public_stop(store),
+                "alerts": abuse_alerts.feed(store),
                 "grantable": [{"id": i["id"], "title": i["title"]} for i in integrations.CATALOGUE + integrations.SOURCE_CATALOGUE],
                 "limit_keys": list(accounts.LIMIT_KEYS), "statuses": list(accounts.STATUSES)}
 

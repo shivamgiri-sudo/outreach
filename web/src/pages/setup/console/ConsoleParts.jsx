@@ -65,3 +65,19 @@ export function StatusFilter({ value, onChange }) {
     </label>
   );
 }
+
+// The abuse and limit alerts (server: app/abuse_alerts.py): sign-up surges, accounts at a limit, bounce / complaint holds,
+// failed sign-ins on client logins and sending spikes. Newest first; the same list reaches the super admins' bell and email.
+export function AlertsStrip({ alerts }) {
+  if (!alerts?.length) return null;
+  return (
+    <section className="card" data-testid="console-alerts" style={{ marginBottom: 14, borderLeft: "4px solid #b45309" }}>
+      <h3>Alerts ({alerts.length})</h3>
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
+        {alerts.slice(0, 8).map((a) => (
+          <li key={a.id} data-testid={`console-alert-${a.kind}`}><b>{a.label}</b>: {a.title}{" "}
+            <span className="hint">{istDate(a.at)}{a.account ? ` · ${a.account}` : ""}</span></li>))}
+      </ul>
+    </section>
+  );
+}

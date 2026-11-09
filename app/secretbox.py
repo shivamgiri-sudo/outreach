@@ -102,7 +102,8 @@ class SecretBox:
         if isinstance(data.get("integrations"), dict):
             out["integrations"] = self._walk(data["integrations"], fn)
         if isinstance(data.get("settings"), dict):
-            out["settings"] = {k: (fn(v) if k in SECRET_SETTINGS else v) for k, v in data["settings"].items()}
+            out["settings"] = {k: (fn(v) if k in SECRET_SETTINGS else self._walk(v, fn) if k == "account_settings" and isinstance(v, dict) else v)
+                               for k, v in data["settings"].items()}      # a client account's own keys (sending, WhatsApp) too
         return out
 
     def seal(self, data: dict) -> dict:

@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from . import accounts, workspaces
+from . import account_limits, accounts, workspaces
 from . import audit, landline_restore, lead_fields
 from .header_map import FIELDS, detect_format, loose_header, map_columns
 from .hygiene_report import apply_standardise, report, standardise_changes
@@ -141,6 +141,7 @@ def make_router(store) -> APIRouter:
     @router.post("/api/import/commit")
     def commit(body: ImportBody):
         ctx = prepare(body)
+        account_limits.check_current(store, "imports_per_day", len(ctx["table"]))       # the account's daily imports limit
         import_id = uuid.uuid4().hex[:10]
         suppressed = _not_again(store, ctx["table"])
         holder = {}

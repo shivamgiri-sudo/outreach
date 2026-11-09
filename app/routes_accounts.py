@@ -43,6 +43,9 @@ class AccountSettingsBody(BaseModel):
     daily_cap: Optional[int] = None
     per_run_cap: Optional[int] = None
     live_sending: Optional[bool] = None
+    public_base_url: Optional[str] = Field(default=None, max_length=300)
+    alerts_email: Optional[bool] = None
+    alert_managers: Optional[list] = None
     brand: Optional[dict] = None
     sending: Optional[dict] = None
 
@@ -110,6 +113,9 @@ def make_router(store) -> APIRouter:
                 if old.get(k) != new.get(k)]
         if what:
             audit.record(store, user, "account.change", new["name"], f"id {account_id}; " + "; ".join(what),
+                         extra={"account_id": account_id})
+        if old.get("limits") != new.get("limits"):
+            audit.record(store, user, "account.limits", new["name"], f"id {account_id}; limits {old.get('limits') or {}} -> {new.get('limits') or {}}",
                          extra={"account_id": account_id})
         return full(new)
 

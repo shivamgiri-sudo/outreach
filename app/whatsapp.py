@@ -151,8 +151,13 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
     # "WhatsApp for real" is on). Approved templates receive their variables in this order:
     # {{1}} first name, {{2}} sender, {{3}} company, {{4}} demo link.
     params = template_params(template, variables, get_settings(store).get("whatsapp_template_params"))
-    result = send_whatsapp(store, lead["phone"], None if template == "custom" else template,
-                           "en", params, text=body if template == "custom" else None, transport=transport or request)
+    from . import account_limits, account_whatsapp
+    try:
+        account_limits.check(store, account, "daily_sends", 1)      # emails and WhatsApp share the account's daily sends
+    except account_limits.LimitReached as exc:
+        raise WhatsAppError(exc.message) from None
+    result = account_whatsapp.deliver(store, account, lead["phone"], None if template == "custom" else template,
+                                      "en", params, body if template == "custom" else None, transport or request)
     message = {"lead_id": lead_id, "to": lead["phone"], "template": template, "body": body,
                "sent_at": now.isoformat(timespec="seconds"), "status": result.get("status", "dry_run"),
                 "provider_id": result.get("provider_id"), "error": result.get("error"), "by": sender.strip(),

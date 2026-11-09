@@ -108,7 +108,7 @@ def candidates(store, context: str = "", n: int = 4, transport=post_json) -> dic
     """Up to n scored candidate notes, best first. Claude writes them when connected; otherwise the built-in set."""
     n = max(2, min(int(n or 4), 6))
     cfg = ai._llm_config(store)
-    notes, source = [], "built_in"
+    notes, source, limit_note = [], "built_in", ""
     if cfg:
         user = f"Write {n} notes." + (f"\n<context>\n{ai._untrusted(context)[:500]}\n</context>" if context.strip() else "")
         try:
@@ -116,6 +116,8 @@ def candidates(store, context: str = "", n: int = 4, transport=post_json) -> dic
             found = re.search(r"\{.*\}", raw, re.S)
             notes = [str(x).strip() for x in (json.loads(found.group(0)).get("notes") or [])] if found else []
             source = "claude" if notes else source
+        except ai.account_limits.LimitReached as exc:
+            notes, limit_note = [], exc.message
         except (*ai._AI_ERRORS, json.JSONDecodeError):
             notes = []
     if not notes:
@@ -125,7 +127,7 @@ def candidates(store, context: str = "", n: int = 4, transport=post_json) -> dic
     if source == "claude":                       # remembered so a note saved from (an edit of) one is marked AI-drafted
         keep = [_norm(r["text"]) for r in out]
         store.update("settings", lambda s: {**s, AI_KEY: [*(s.get(AI_KEY) or []), *keep][-AI_KEEP:]})
-    return {"source": source, "candidates": out}
+    return {"source": source, "candidates": out, **({"note": limit_note + " The built-in notes are shown."} if limit_note else {})}
 
 
 AI_KEY, AI_KEEP = "linkedin_ai_note_candidates", 40

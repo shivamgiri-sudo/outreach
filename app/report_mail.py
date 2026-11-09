@@ -126,8 +126,9 @@ def render_text(report: dict, title: str, period_text: str, link: str) -> str:
     return "\n".join(lines)
 
 
-def compose(store, rng: dict, who: str, kind: str, scope: tuple, by: str, base_url: str) -> dict:
-    """{subject, body, html, attachments, link} for one report email."""
+def compose(store, rng: dict, who: str, kind: str, scope: tuple, by: str, base_url: str, brand: str = "") -> dict:
+    """{subject, body, html, attachments, link} for one report email. `brand` is a client account's name (its report
+    never carries Mas Callnet's)."""
     report = daily_report.build(store, rng, who, kind)
     token = make_link(store, rng, who, kind, scope, by)
     link = f"{base_url.rstrip('/')}/api/reports/file/{token}"
@@ -139,7 +140,7 @@ def compose(store, rng: dict, who: str, kind: str, scope: tuple, by: str, base_u
     if kind:
         log = [r for r in log if r["kind"] == kind]
     return {"subject": f"{title}: {period_text}", "body": render_text(report, title, period_text, link),
-            "html": render_html(report, title, period_text, link),
+            "html": render_html(report, title, period_text, link, brand or "MCN Outreach"),
             "attachments": [{"filename": f"activity-log-{rng['from']}-to-{rng['to']}.csv",
                              "content": daily_report.csv_text(log).encode("utf-8"), "content_type": "text/csv; charset=utf-8"}],
             "link": link, "range": public_range(rng), "totals": report["totals"]}

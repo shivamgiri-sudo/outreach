@@ -43,6 +43,11 @@ def flow_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
 def reminder_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
     now = now or datetime.now(timezone.utc)
     sender = sender or make_transactional_sender(store)
+    try:
+        from . import abuse_alerts
+        abuse_alerts.scan(store, now)               # per-account bounce / complaint rates (auto-hold) and sending spikes
+    except Exception as exc:                        # a check must never stop the reminders
+        print(f"abuse scan failed: {exc}")
     return {**run_reminders(store, now, sender, BASE_URL), "digest": bool(run_digest(store, now, sender))}
 
 

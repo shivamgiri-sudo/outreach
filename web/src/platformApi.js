@@ -39,6 +39,12 @@ export const platform = {
   rejectWorkspace: (id) => post(`/api/workspaces/${encodeURIComponent(id)}/reject`),
   stopSending: (on, reason = "") => request("/api/console/stop-sending", { method: "PUT", body: { on, reason } }),
   accountAudit: () => request("/api/account/audit"),
+  usage: (accountId = "") => request(`/api/account/usage${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ""}`),
+  whatsapp: () => request("/api/account/whatsapp"),
+  saveWhatsapp: (body) => request("/api/account/whatsapp", { method: "PUT", body }),
+  removeWhatsapp: () => request("/api/account/whatsapp", { method: "DELETE" }),
+  saveAlerts: (body) => request("/api/account/alerts", { method: "PUT", body }),
+  releaseHold: (id) => post(`/api/console/accounts/${encodeURIComponent(id)}/release-hold`),
   async exportAccount(id, name) {
     const { blob, filename } = await apiDownload(`/api/console/accounts/${encodeURIComponent(id)}/export`, { withName: true });
     const url = URL.createObjectURL(blob);

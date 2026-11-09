@@ -145,6 +145,13 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
     detail = (detail or attribution.get("form_name") or attribution.get("campaign_name") or "")[:200]
     at = _iso(now)
     result = {}
+    if connector.get("account_id") and not is_test:                  # a client account's connector counts as imports
+        from . import account_limits
+        try:
+            account_limits.check(store, connector["account_id"], "imports_per_day", 1)
+        except account_limits.LimitReached as exc:
+            log(store, connector, "error", error=exc.message, platform_ids=ids, is_test=is_test)
+            return {"outcome": "error", "http": 429, "error": exc.message}
 
     def apply(leads: list) -> list:
         index = LeadIndex(leads)
