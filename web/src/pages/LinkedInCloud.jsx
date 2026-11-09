@@ -61,7 +61,7 @@ function CodeForm({ slot, onDone, onMessage }) {
   );
 }
 
-function Slot({ s, onDone, onMessage }) {
+function Slot({ s, onDone, onMessage, overview }) {
   const confirm = useConfirm();
   const [login, setLogin] = useState(false);
   const [tone, words] = statusOf(s);
@@ -71,7 +71,7 @@ function Slot({ s, onDone, onMessage }) {
   return (
     <div className="card" style={{ marginBottom: 10 }} data-testid="cloud-slot">
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-        <b>{s.label}</b>
+        <b>{s.label}{overview && s.account_name ? <span className="sub"> · {s.account_name}</span> : null}</b>
         <span className={`pill ${tone}`} data-testid="cloud-state">{words}</span>
       </div>
       {s.note && <p className="sub" style={{ marginBottom: 4 }}>{s.note}</p>}
@@ -115,6 +115,8 @@ export default function LinkedInCloud({ onMessage }) {
   };
   const full = st.slots.length >= st.max;
   const office = st.where !== "server";
+  const owner = st.is_owner !== false;
+  const overview = st.account_id === null;          // an owner's "all accounts" view: read the list, change it per account
   const where = async (value) => {
     if (value === st.where) return;
     const ok = await confirm(value === "server"
@@ -132,21 +134,22 @@ export default function LinkedInCloud({ onMessage }) {
       </div>
       <p className="sub">Add a LinkedIn account, log it in here once, and the agent sends the connection requests and follow-up messages, one at a time, inside the working
         hours and caps set in the agent box below. You do everything from this page.</p>
-      <div className="row" style={{ flexWrap: "wrap", alignItems: "center", gap: 8, margin: "4px 0 10px" }}>
+      {owner && <div className="row" style={{ flexWrap: "wrap", alignItems: "center", gap: 8, margin: "4px 0 10px" }}>
         <span className="sub" style={{ margin: 0 }}>Where the LinkedIn browser runs:</span>
         <div className="tab-chips" role="radiogroup" aria-label="Where the LinkedIn browser runs" style={{ margin: 0 }} data-testid="cloud-where">
           <button type="button" role="radio" aria-checked={office} className={`tab-chip${office ? " on" : ""}`} onClick={() => where("office")}>Office computer (recommended)</button>
           <button type="button" role="radio" aria-checked={!office} className={`tab-chip${!office ? " on" : ""}`} onClick={() => where("server")}>Portal server</button>
         </div>
-      </div>
-      {office ? <OfficeRunner st={st} onDone={setSt} onMessage={onMessage} />
+      </div>}
+      {overview ? <p className="sub" data-testid="cloud-overview">Every account's LinkedIn accounts. Pick one account above to add accounts or connect its office computer.</p>
+        : office ? <OfficeRunner st={st} onDone={setSt} onMessage={onMessage} />
         : <p className="tip" role="note">LinkedIn blocks logins from our cloud server (it shows "Sorry, you have been blocked"), so the server can only be used if that changes.
           Switch to Office computer to run it on an ordinary office connection.</p>}
       {office && st.slots.length > 0 && !st.runner?.online && <p className="tip" role="note" data-testid="cloud-waiting-runner">The LinkedIn accounts below start as soon as the office computer is online.</p>}
       <p className="tip" role="note">LinkedIn does not allow automation and can restrict accounts that use it; the agent stops by itself at any security check.
         Use an account you can afford to lose.</p>
-      {st.slots.map((s) => <Slot key={s.id} s={s} onDone={setSt} onMessage={onMessage} />)}
-      {full ? <p className="sub">{st.max === 0 ? "LinkedIn accounts are switched off here." : `${office ? "The office computer" : "This server"} runs ${st.max} LinkedIn account${st.max === 1 ? "" : "s"} at most (each needs its own browser).`}</p> : (
+      {st.slots.map((s) => <Slot key={s.id} s={s} onDone={setSt} onMessage={onMessage} overview={overview} />)}
+      {overview ? null : full ? <p className="sub">{st.max === 0 ? "LinkedIn accounts are switched off here." : `${office ? "The office computer" : "This server"} runs ${st.max} LinkedIn account${st.max === 1 ? "" : "s"} at most (each needs its own browser).`}</p> : (
         <form className="row" onSubmit={add} style={{ flexWrap: "wrap" }}>
           <input aria-label="Name for the LinkedIn account" placeholder="Name, e.g. Sales LinkedIn" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} />
           <button className="btn" type="submit" data-testid="cloud-add">Add LinkedIn account</button>

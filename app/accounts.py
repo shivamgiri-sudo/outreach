@@ -25,7 +25,9 @@ from .lead_model import now_iso
 MCN = "mcn"
 MCN_NAME = "Mas Callnet"
 STATUSES = ("active", "pending", "suspended")
-LIMIT_KEYS = ("seats", "workspaces", "daily_sends", "imports_per_day", "enrich_credits", "ai_credits")
+LIMIT_KEYS = ("seats", "workspaces", "daily_sends", "imports_per_day", "enrich_credits", "ai_credits",
+              # LinkedIn agent ceilings (app/linkedin_scope.py): an account's admin can set its caps up to these
+              "linkedin_daily_connections_max", "linkedin_weekly_connections_max", "linkedin_daily_messages_max")
 MAX_ACCOUNTS = 500
 # Per-account values kept in settings["account_settings"][id] (the "mcn" account keeps the old global keys).
 IDENTITY_KEYS = ("sender_name", "sender_company", "sender_address", "sender_website", "sender_contact_email")

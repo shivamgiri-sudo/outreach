@@ -1,7 +1,8 @@
 """Office runner routes.
 
-Owner (portal, /api/linkedin-cloud/... so owner-only via routes_auth OWNER_PREFIXES): where LinkedIn runs, make a pairing
-code (with the one-line install commands), cancel it, rename or disconnect the office computer.
+Portal (/api/linkedin-cloud/...): where LinkedIn runs (owners only); make a pairing code (with the one-line install
+commands), cancel it, rename or disconnect the office computer: owners for any client account, an account's admins for
+their own (routes_auth LINKEDIN_ACCOUNT_ROUTES; each client account pairs its own office computer).
 
 Office computer (/api/linkedin-runner/...):
   POST pair               public, the one-time code -> runner token (rate limited; HTTPS unless local)
@@ -16,7 +17,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
-from . import linkedin_cloud as cloud, linkedin_runner as runner, linkedin_runner_install as installer
+from . import linkedin_cloud as cloud, linkedin_runner as runner, linkedin_runner_install as installer, linkedin_scope as scope
 from .web_security import client_ip, is_https
 
 PUBLIC_PATHS = ("/api/linkedin-runner/pair", "/api/linkedin-runner/install.ps1", "/api/linkedin-runner/install.sh",
@@ -71,16 +72,41 @@ def make_router(store, cloud_router) -> APIRouter:
         from .routes_auth import LOCAL_OWNER
         return getattr(request.state, "user", None) or LOCAL_OWNER
 
-    def audit(request: Request, action: str, target: str, detail: str = "", who=None) -> None:
+    def audit(request: Request, action: str, target: str, detail: str = "", who=None, account: str = "mcn") -> None:
         from . import audit as audit_mod
-        audit_mod.record(store, who or actor(request), action, target, detail)
+        audit_mod.record(store, who or actor(request), action, target, detail, {"account_id": account})
 
-    def view() -> dict:
-        return cloud.describe(store, base, jobs)
+    def manager(request: Request) -> dict:
+        user = actor(request)
+        if not scope.may_manage(user):
+            raise HTTPException(403, "Only an owner or an admin of this account can do this.")
+        return user
 
-    # ----- owner -----
+    def account_for(request: Request) -> str:
+        return scope.target(store, actor(request), request.query_params.get("account", ""))
+
+    def view(request: Request = None) -> dict:
+        acct = scope.target(store, actor(request), request.query_params.get("account", ""), True) if request is not None else "mcn"
+        out = cloud.describe(store, base, jobs, acct)
+        for row in out["slots"]:
+            row["account_name"] = scope.name_of(store, row["account_id"])
+        return {**out, "account_id": acct, "is_owner": actor(request).get("role") == "owner" if request is not None else True}
+
+    def runner_of(request: Request, runner_id: str) -> dict:
+        row = next((r for r in runner.runners(store) if r.get("id") == runner_id), None)
+        try:
+            if row is None:
+                raise LookupError
+            scope.ensure_mine(manager(request), runner.account_of(row))
+        except LookupError:
+            raise HTTPException(404, "No such office computer.") from None
+        return row
+
+    # ----- portal -----
     @router.put("/api/linkedin-cloud/where")
     def set_where(body: WhereBody, request: Request):
+        if actor(request).get("role") != "owner":
+            raise HTTPException(403, "Only an owner can choose where LinkedIn runs.")
         before = runner.where(store)
         try:
             runner.set_where(store, body.where)
@@ -89,51 +115,60 @@ def make_router(store, cloud_router) -> APIRouter:
         cloud.write_slots_file(store, base, {})
         if before != body.where:
             audit(request, "linkedin_cloud.where", body.where, f"LinkedIn agents now run on the {'office computer' if body.where == 'office' else 'server'}")
-        return view()
+        return view(request)
 
     @router.post("/api/linkedin-cloud/runner/pair")
     def make_code(body: PairCodeBody, request: Request):
+        manager(request)
+        acct = account_for(request)
         portal = installer.portal_base(store, request)
         try:
             installer.commands(portal, "A" * runner.CODE_LEN)               # refuse before making a code when the address is unusable
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
         try:
-            code, expires = runner.new_code(store, actor(request), body.replace)
+            code, expires = runner.new_code(store, actor(request), body.replace, acct)
         except runner.Conflict as exc:
             raise HTTPException(409, str(exc)) from None
-        current = runner.active(store)
+        current = runner.active(store, acct)
         audit(request, "linkedin_runner.code", "office computer",
-              "pairing code made (15 minutes, single use)" + ("; pairing replaces the connected office computer" if current else ""))
-        return {**view(), "code": code, "code_display": runner.show_code(code), "expires_at": expires, "portal": portal, "commands": installer.commands(portal, code),
+              f"pairing code made for {scope.name_of(store, acct)} (15 minutes, single use)"
+              + ("; pairing replaces the connected office computer" if current else ""), account=acct)
+        return {**view(request), "code": code, "code_display": runner.show_code(code), "expires_at": expires, "portal": portal, "commands": installer.commands(portal, code),
                 "uninstall": installer.UNINSTALL, "insecure": not portal.startswith("https://")}
 
     @router.delete("/api/linkedin-cloud/runner/pair")
     def cancel_code(request: Request):
-        runner.cancel_code(store)
-        return view()
+        manager(request)
+        acct = account_for(request)
+        runner.cancel_code(store, acct)
+        audit(request, "linkedin_runner.code_cancel", "office computer", f"pairing code cancelled ({scope.name_of(store, acct)})", account=acct)
+        return view(request)
 
     @router.put("/api/linkedin-cloud/runner/{runner_id}")
     def rename(runner_id: str, body: RenameBody, request: Request):
+        acct = runner.account_of(runner_of(request, runner_id))
         try:
             row = runner.rename(store, runner_id, body.label)
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
         except LookupError as exc:
             raise HTTPException(404, str(exc)) from None
-        audit(request, "linkedin_runner.rename", row["label"], f"office computer {runner_id}")
-        return view()
+        audit(request, "linkedin_runner.rename", row["label"], f"office computer {runner_id}", account=acct)
+        return view(request)
 
     @router.delete("/api/linkedin-cloud/runner/{runner_id}")
     def revoke(runner_id: str, request: Request):
+        acct = runner.account_of(runner_of(request, runner_id))
         try:
             row = runner.revoke(store, runner_id)
         except LookupError as exc:
             raise HTTPException(404, str(exc)) from None
-        cloud.rotate_tokens(store, base)
+        cloud.rotate_tokens(store, base, acct)
         audit(request, "linkedin_runner.revoke", row.get("label") or "office computer",
-              f"office computer {runner_id} ({row.get('hostname') or 'unknown host'}) disconnected; its token and the account tokens were revoked")
-        return view()
+              f"office computer {runner_id} ({row.get('hostname') or 'unknown host'}) disconnected; its token and the account tokens were revoked",
+              account=acct)
+        return view(request)
 
     # ----- the office computer -----
     @router.post("/api/linkedin-runner/pair")
@@ -144,13 +179,14 @@ def make_router(store, cloud_router) -> APIRouter:
             token, row, replaced = runner.pair(store, body.code, body.model_dump(), client_ip(request))
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
+        acct = row.get("account_id") or "mcn"
         if replaced:
-            cloud.rotate_tokens(store, base)                 # agents still running on the old computer stop at once
+            cloud.rotate_tokens(store, base, acct)           # agents still running on the old computer stop at once
         who = {"name": f"office computer {row['hostname'] or row['id']}", "email": "", "role": "runner"}
-        audit(request, "linkedin_runner.pair", row["label"], f"office computer {row['id']} connected ({row['os'] or 'unknown OS'})", who)
+        audit(request, "linkedin_runner.pair", row["label"], f"office computer {row['id']} connected ({row['os'] or 'unknown OS'})", who, acct)
         for old in replaced:
             audit(request, "linkedin_runner.replace", old.get("label") or "office computer",
-                  f"office computer {old['id']} replaced by {row['id']}; its token was revoked", who)
+                  f"office computer {old['id']} replaced by {row['id']}; its token was revoked", who, acct)
         return {"token": token, "runner_id": row["id"]}
 
     def me(request: Request) -> dict:
@@ -161,10 +197,10 @@ def make_router(store, cloud_router) -> APIRouter:
 
     @router.get("/api/linkedin-runner/slots")
     def runner_slots(request: Request):
-        me(request)
+        user = me(request)
         if not secure_enough(request):
             raise HTTPException(403, "The account tokens are only sent over HTTPS (use the https:// address of the portal).")
-        return {"where": runner.where(store), "max": cloud.max_slots(store), "slots": cloud.runner_slots(store, base),
+        return {"where": runner.where(store), "max": cloud.max_slots(store), "slots": cloud.runner_slots(store, base, user.get("runner_account") or "mcn"),
                 "poll_seconds": 15, "heartbeat_seconds": 30}
 
     @router.post("/api/linkedin-runner/heartbeat")

@@ -60,6 +60,14 @@ async def scope_dependency(request: Request) -> None:
     account, client = None, False
     if user is not None and accounts.is_client(user):
         account, client = accounts.of_user(user), True
+    elif user is not None and allowed is None and user.get("kind") == "extension":
+        # A Mas Callnet pairing / LinkedIn agent token (even an owner's) works only on Mas Callnet's leads once client
+        # accounts exist: an agent never sees or claims another account's lead (app/linkedin_scope.py).
+        store = getattr(request.app.state, "store", None)
+        account = "mcn"
+        if store is not None:
+            allowed = accounts.login_account_ws(store, {"account_id": "mcn", "role": "caller"})
+            allowed = set(allowed) if allowed is not None else None
     elif user is not None and allowed is None:
         picked = (request.headers.get("x-account") or "").strip()[:40]
         store = getattr(request.app.state, "store", None)

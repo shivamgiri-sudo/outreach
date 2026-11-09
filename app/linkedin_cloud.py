@@ -13,6 +13,8 @@ Secrets:
   - the LinkedIn password and the verification code live ONLY in this process's memory (CloudJobs), for at most
     10 minutes, and are deleted the first time the agent reads them. They are never written to the store, slots.json,
     the audit log or any log line, and never sent back to a browser.
+  - each slot works for one client account (account_id, missing = "mcn"; app/linkedin_scope.py): its token is made for
+    that account (the agent only sees and claims that account's leads) and only that account's office computer runs it.
   - slots.json holds the raw pairing tokens (the agent's credential for the few /api/extension/ routes). It is written
     atomically with mode 0600 inside a 0700 folder owned by the service user.
 """
@@ -121,8 +123,14 @@ class CloudJobs:
 
 
 # ---------- slots ----------
-def slots(store) -> list:
-    return [s for s in (store.read("settings").get(SETTINGS_KEY) or {}).get("slots") or [] if isinstance(s, dict) and s.get("id")]
+def account_of(row: Optional[dict]) -> str:
+    return (row or {}).get("account_id") or "mcn"
+
+
+def slots(store, account: Optional[str] = None) -> list:
+    """Every slot (with `account`: only that client account's)."""
+    return [s for s in (store.read("settings").get(SETTINGS_KEY) or {}).get("slots") or [] if isinstance(s, dict) and s.get("id")
+            and (account is None or account_of(s) == account)]
 
 
 def slot(store, slot_id: str) -> Optional[dict]:
@@ -245,23 +253,23 @@ def sync(store, base: Path, owner: Optional[dict] = None) -> None:
         who = owner or {"sub": s.get("created_sub") or "local", "name": s.get("created_by") or "owner"}
         if s.get("token_id"):
             ext.revoke_token(store, s["token_id"], {"role": "owner"})
-        raw, row = ext.create_token(store, who, TOKEN_LABEL + s["id"], days=TOKEN_DAYS)
+        raw, row = ext.create_token(store, who, TOKEN_LABEL + s["id"], days=TOKEN_DAYS, account_id=account_of(s))
         fresh[s["id"]] = raw
         _save_slots(store, lambda rows, sid=s["id"], tid=row["id"]: [{**r, "token_id": tid} if r["id"] == sid else r for r in rows])
     if fresh or slots(store) or (base / "slots.json").exists():
         write_slots_file(store, base, fresh)
 
 
-def rotate_tokens(store, base: Path) -> None:
-    """New tokens for every slot (the old ones stop working at once): used when an office computer is replaced or
-    disconnected, so agents still running there cannot keep using LinkedIn accounts."""
-    for s in slots(store):
+def rotate_tokens(store, base: Path, account: Optional[str] = None) -> None:
+    """New tokens for every slot (with `account`: that client account's; the old ones stop working at once): used when an
+    office computer is replaced or disconnected, so agents still running there cannot keep using LinkedIn accounts."""
+    for s in slots(store, account):
         if s.get("token_id"):
             ext.revoke_token(store, s["token_id"], {"role": "owner"})
     sync(store, base)
 
 
-def runner_slots(store, base: Path) -> list:
+def runner_slots(store, base: Path, account: Optional[str] = None) -> list:
     """What the office runner runs: every slot with its run/wipe/restart counters; the slot token only for slots that are
     switched on in office mode (in server mode none, so the office computer stops its agents without deleting sessions)."""
     def tokens_on_file():
@@ -276,24 +284,25 @@ def runner_slots(store, base: Path) -> list:
         sync(store, base)                                   # a lost slots.json: new tokens, written again
         on_file = tokens_on_file()
     out = []
-    for s in slots(store):
+    for s in slots(store, account):                         # an office computer runs only its own client account's slots
         enabled = office and bool(s.get("enabled")) and bool(on_file.get(s["id"]))
         out.append({"slot_id": s["id"], "label": s.get("label", ""), "enabled": enabled, "token": on_file.get(s["id"]) if enabled else "",
                     "run_seq": int(s.get("run_seq") or 0), "wipe_seq": int(s.get("wipe_seq") or 0), "restart_seq": int(s.get("restart_seq") or 0)})
     return out
 
 
-def add_slot(store, base: Path, user: dict, label: str) -> dict:
+def add_slot(store, base: Path, user: dict, label: str, account: str = "mcn") -> dict:
     label = " ".join(str(label or "").split())[:60] or "LinkedIn account"
     limit = max_slots(store)
-    if len(slots(store)) >= limit:
+    office = runner_mod.where(store) == "office"            # office: each client account has its own office computer
+    if len(slots(store, account if office else None)) >= limit:
         if runner_mod.where(store) == "office":
             raise ValueError(f"The office computer runs at most {limit} LinkedIn account(s). Remove one first (the limit is OUTREACH_OFFICE_LI_MAX).")
         raise ValueError(f"This server runs at most {limit} cloud LinkedIn account(s). Remove one first "
                          "(the limit is OUTREACH_CLOUD_LI_MAX; each account needs its own browser, about 400 MB of memory).")
     sid = secrets.token_hex(5)
-    raw, row = ext.create_token(store, user, TOKEN_LABEL + sid, days=TOKEN_DAYS)
-    new = {"id": sid, "label": label, "enabled": True, "created_by": user.get("name") or user.get("email") or "owner",
+    raw, row = ext.create_token(store, user, TOKEN_LABEL + sid, days=TOKEN_DAYS, account_id=account)
+    new = {"id": sid, "label": label, "enabled": True, "account_id": account, "created_by": user.get("name") or user.get("email") or "owner",
            "created_sub": user.get("sub", ""), "created_at": iso(now_utc()), "token_id": row["id"], "run_seq": 0, "wipe_seq": 0}
     _save_slots(store, lambda rows: [*rows, new])
     set_state(store, sid, "starting", "waiting for the office computer to start the browser" if runner_mod.where(store) == "office"
@@ -385,15 +394,17 @@ def login_lost(st: dict, jobs: CloudJobs, pending: dict, now: datetime) -> bool:
     return at < jobs.started_at or (now - at).total_seconds() > LOGIN_STUCK_SECONDS
 
 
-def describe(store, base: Path, jobs: CloudJobs) -> dict:
+def describe(store, base: Path, jobs: CloudJobs, account: Optional[str] = "mcn") -> dict:
+    """The cloud box of one client account (None = every account's slots, Mas Callnet's office computer)."""
     now = now_utc()
     states, held = _states(store), agent.paused(store)
     sup = supervisor_status(base)
     office = runner_mod.where(store) == "office"
-    run = runner_mod.describe(store)
-    office_agents = {a.get("slot_id"): a.get("state") for a in ((run["runner"] or {}).get("agents") or [])} if run["runner"] and run["runner"]["online"] else {}
+    run = runner_mod.describe(store, account or "mcn")
+    office_agents = {a.get("slot_id"): a.get("state") for r in runner_mod.runners(store)        # every online office computer
+                     if r.get("status") == "active" and runner_mod.online(r) for a in (r.get("agents") or [])}
     out = []
-    for s in slots(store):
+    for s in slots(store, account):
         st = states.get(s["id"]) or {}
         seen = st.get("seen_at")
         online = bool(seen) and (now - datetime.fromisoformat(seen)).total_seconds() < ONLINE_SECONDS
@@ -411,5 +422,6 @@ def describe(store, base: Path, jobs: CloudJobs) -> dict:
         out.append({"id": s["id"], "label": s.get("label", ""), "enabled": bool(s.get("enabled")), "created_by": s.get("created_by", ""),
                     "created_at": s.get("created_at"), "state": state, "note": note, "account": account,
                     "name": st.get("name", ""), "last_seen": seen, "online": online, "paused": held.get(account) if account else None,
-                    "pending": jobs.pending(s["id"]), "runner": office_agents.get(s["id"]) if office else (sup["agents"] or {}).get(s["id"])})
+                    "pending": jobs.pending(s["id"]), "runner": office_agents.get(s["id"]) if office else (sup["agents"] or {}).get(s["id"]),
+                    "account_id": account_of(s)})
     return {"max": max_slots(store), "slots": out, "supervisor": {"running": sup["running"], "at": sup["at"]}, **run}

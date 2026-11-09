@@ -72,8 +72,8 @@ def login_profile(profile, acct):
     http("POST", f"/__as?acct={acct}", base=BASE[profile])
 
 
-def run_agent(profile, *extra, timeout=45):
-    cmd = ["node", str(ROOT / "tools/linkedin_agent.mjs"), "--portal", PORTAL, "--token", TOKEN, "--linkedin-base", BASE[profile],
+def run_agent(profile, *extra, timeout=45, token=None):
+    cmd = ["node", str(ROOT / "tools/linkedin_agent.mjs"), "--portal", PORTAL, "--token", token or TOKEN, "--linkedin-base", BASE[profile],
            "--profile", str(profile), "--headless", "--settle", "300", "--poll", "1", *extra]
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
@@ -121,10 +121,10 @@ def seq(lead_id):
     return next(l for l in store.read("leads") if l["id"] == lead_id).get("linkedin_seq") or {}
 
 
-def run_until_idle(profile, max_runs=8):
+def run_until_idle(profile, max_runs=8, token=None):
     out = ""
     for _ in range(max_runs):
-        code, text = run_agent(profile, "--once")
+        code, text = run_agent(profile, "--once", token=token)
         out += text
         skip_gap()
         if "nothing due" in text or code != 0:
@@ -327,6 +327,30 @@ run_until_idle(PROFILE_B)
 inv18 = [i for i in fake_state()["invites"] if i["to"] == "connect-18"]
 check("S18 account B sends the request and keeps the person", len(inv18) == 1 and inv18[0]["from"] == "acct-b"
       and seq(asg).get("account") == "acct-b", str(inv18) + str(seq(asg)))
+
+# ---------------------------------------------------------------- S19: an agent of client account Bravo never touches Mas Callnet's lead
+bravo = http("POST", "/api/accounts", {"name": "Bravo Sim"}, owner)[1]
+bws = http("POST", "/api/workspaces", {"name": "Bravo Sim WS", "account_id": bravo["id"]}, owner)[1]
+http("POST", "/api/users", {"email": "admin@bravo-sim.test", "name": "Bravo Admin", "role": "admin", "password": "long-password-1",
+                            "workspaces": [bws["id"]], "account_id": bravo["id"]}, owner)
+bravo_login = http("POST", "/api/login", {"email": "admin@bravo-sim.test", "password": "long-password-1"})[1]["token"]
+BTOKEN = http("POST", "/api/extension/pair", {"label": "bravo sim"}, bravo_login)[1]["token"]
+http("PUT", "/api/linkedin-agent", {"enabled": True, "start_hour": 0, "end_hour": 24, "weekdays_only": False, "gap_minutes": 3, "daily_connections": 40},
+     bravo_login)
+mcn19 = add_lead("connect-19", "McnNineteen")
+b19 = add_lead("connect-91", "BravoNinetyOne")
+store.update_lead(b19, lambda l: {**l, "workspace": bws["id"]})
+code19, q19 = http("GET", "/api/extension/queue", token=BTOKEN)
+claim19 = http("POST", f"/api/extension/leads/{mcn19}/claim", token=BTOKEN)[0]
+PROFILE_Z = WORK / "prof-z"
+login_profile(PROFILE_Z, "acct-z")
+run_until_idle(PROFILE_Z, token=BTOKEN)
+from_z = [i["to"] for i in fake_state()["invites"] if i["from"] == "acct-z"] + \
+         [i["to"] for i in http("GET", "/__state", base=BASE[PROFILE_Z])[1]["invites"] if i["from"] == "acct-z"]
+check("S19 Bravo's agent token never sees or claims Mas Callnet's lead", code19 == 200 and claim19 == 404
+      and [d["lead_id"] for d in q19["due"]] == [b19] and "connect-19" not in from_z, f"{code19} {claim19} {q19} {from_z}")
+check("S19 Bravo's agent invites its own lead, and its LinkedIn account is Bravo's", "connect-91" in from_z
+      and agent.owner_of_slug(store, "acct-z") == bravo["id"] and seq(mcn19).get("account") in (None, ""), str(from_z))
 
 # ---------------------------------------------------------------- done
 fake.terminate()

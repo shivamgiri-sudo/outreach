@@ -65,17 +65,20 @@ def may_take(lead: dict, account: str, settings: Optional[dict] = None) -> bool:
     return assigned(lead, settings) in ("", account)
 
 
-def known(store) -> list:
-    """LinkedIn accounts the portal has seen (an agent reported them): [{account, name}]."""
+def known(store, owner: Optional[str] = None) -> list:
+    """LinkedIn accounts the portal has seen (an agent reported them): [{account, name, account_id}]; with `owner` only
+    those working for that client account (app/linkedin_scope.py)."""
+    from .linkedin_scope import account_of_row
     seen = store.read("settings").get(agent.SETTINGS_ACCOUNTS) or {}
-    return [{"account": a, "name": (v or {}).get("name", "")} for a, v in sorted(seen.items()) if a]
+    rows = [{"account": a, "name": (v or {}).get("name", ""), "account_id": account_of_row(v)} for a, v in sorted(seen.items()) if a]
+    return [r for r in rows if owner is None or r["account_id"] == owner]
 
 
-def _clean_account(store, raw) -> str:
+def _clean_account(store, raw, owner: Optional[str] = None) -> str:
     account = agent.norm_account(raw)
     if raw and not account:
         raise AssignRefused("That is not a LinkedIn account.")
-    if account and account not in {k["account"] for k in known(store)}:
+    if account and account not in {k["account"] for k in known(store, owner)}:
         raise AssignRefused(f"No LinkedIn account {account}. Accounts appear here once their agent has run.")
     return account
 
@@ -87,17 +90,24 @@ def _actor_name(user) -> str:
 def set_account(store, lead_ids: list, raw_account: str, user) -> dict:
     """Pick the LinkedIn account for leads ('' = no pick: owner default, else any account). Answers per lead like the
     bulk actions: {asked, ok, failed, results: [{id, ok, reason}], reasons}."""
-    account = _clean_account(store, raw_account)
+    from . import accounts as client_accounts
+    from .linkedin_scope import slug_account
+    account = _clean_account(store, raw_account, client_accounts.current() if client_accounts.current_is_client() else None)
     ids = list(dict.fromkeys(str(i) for i in lead_ids or [] if i))
     if not ids:
         raise AssignRefused("Pick at least one lead.")
     if len(ids) > MAX_LEADS:
         raise AssignRefused(f"At most {MAX_LEADS} leads at a time.")
     settings = store.read("settings")
-    visible = {l["id"] for l in store.read("leads") if workspaces.visible(l)}
+    amap = client_accounts.ws_account_map(store)
+    visible = {l["id"]: l for l in store.read("leads") if workspaces.visible(l)}
     reasons = {i: "not found" for i in ids if i not in visible}
+    slug_owner = slug_account(settings, account) if account else None
+    for i in ids:                                  # a LinkedIn account only ever takes people of its own client account
+        if i in visible and slug_owner is not None and client_accounts.account_of_lead(amap, visible[i]) != slug_owner:
+            reasons[i] = "that LinkedIn account works for another client account"
     who, stamp = _actor_name(user), iso(now_utc())
-    for lead_id in (i for i in ids if i in visible):
+    for lead_id in (i for i in ids if i in visible and i not in reasons):
         seen = {}
 
         def apply(lead: dict):
@@ -149,7 +159,7 @@ def save_owner_defaults(store, mapping: dict, user) -> dict:
         name = names.get(" ".join(str(raw_owner or "").split()).lower())
         if not name:
             raise AssignRefused(f"{raw_owner} is not in the team list.")
-        acct = _clean_account(store, raw_acct)
+        acct = _clean_account(store, raw_acct, "mcn")          # owner defaults: Mas Callnet's team and LinkedIn accounts
         if acct:
             clean[name] = acct
     before = owner_defaults(store.read("settings"))
@@ -161,17 +171,18 @@ def save_owner_defaults(store, mapping: dict, user) -> dict:
     return clean
 
 
-def auto_start_for(store, account: str, max_new: int, now: Optional[datetime] = None) -> list:
+def auto_start_for(store, account: str, max_new: int, now: Optional[datetime] = None, owner: str = "mcn") -> list:
     """Daily auto-start for one polling account: start leads assigned to it (first) or unassigned, never more than
     the daily limit for this account (counting its people started today) or `max_new` (what it may still send today).
     A lead started for an account is taken by it, so the next account to poll starts other people."""
     now = now or now_utc()
     settings = store.read("settings")
-    if not settings.get("linkedin_auto_start") or max_new <= 0:
+    cfg = agent.config(store, agent.owner_of_slug(store, account, owner))       # the client account's own switch and limit
+    if not cfg["auto_start"] or max_new <= 0:
         return []
     today = iso(now)[:10]
-    leads = store.read("leads")
-    limit = int(settings.get("linkedin_daily_connections") or li.DEFAULT_DAILY_CONNECTIONS)
+    leads = workspaces.filter_rows(store.read("leads"))                         # the agent token's own client account
+    limit = int(cfg["daily_connections"])
     started_today = sum(1 for l in leads if (l.get("linkedin_seq") or {}).get("started_at", "")[:10] == today
                         and (not account or assigned(l, settings) == account))
     room = min(max_new, limit - started_today)

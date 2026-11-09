@@ -82,7 +82,18 @@ def make_router(store) -> APIRouter:
 
     # ----- the extension's own routes -----
     def account_of(request: Request) -> str:
-        return agent_mod.norm_account(request.headers.get("x-linkedin-account", ""))
+        """The LinkedIn account the agent is logged in to; one connected to another client account is refused."""
+        from . import linkedin_scope
+        slug = agent_mod.norm_account(request.headers.get("x-linkedin-account", ""))
+        try:
+            linkedin_scope.check_slug(store, slug, linkedin_scope.token_account(getattr(request.state, "user", None)))
+        except linkedin_scope.NotYours as exc:
+            raise HTTPException(403, str(exc)) from None
+        return slug
+
+    def owner_of(request: Request) -> str:
+        from . import linkedin_scope
+        return linkedin_scope.token_account(getattr(request.state, "user", None))
 
     @router.get("/api/extension/match")
     def match(request: Request, profile_url: str = Query("", max_length=2000), name: str = Query("", max_length=200), company: str = Query("", max_length=200)):
@@ -92,13 +103,13 @@ def make_router(store) -> APIRouter:
 
     @router.get("/api/extension/queue")
     def queue(request: Request):
-        account = account_of(request)
-        ctl = agent_mod.control(store, account=account)
+        account, owner = account_of(request), owner_of(request)
+        ctl = agent_mod.control(store, account=account, owner=owner)
         if ctl["active_now"]:                       # daily auto-start: only while the agent is really working
-            started = accts.auto_start_for(store, account, ctl["connections_left_today"])   # only this account's or unassigned people
+            started = accts.auto_start_for(store, account, ctl["connections_left_today"], owner=owner)   # this account's or unassigned people
             if started:
                 names = ", ".join(s.get("name") or s.get("company") or "?" for s in started[:8]) + (" …" if len(started) > 8 else "")
-                agent_mod.note(store, "auto_start", f"Started the LinkedIn sequence for {len(started)} people: {names}", account)
+                agent_mod.note(store, "auto_start", f"Started the LinkedIn sequence for {len(started)} people: {names}", account, owner=owner)
         return ext.queue(store, account)
 
     @router.post("/api/extension/inbox")
@@ -107,7 +118,7 @@ def make_router(store) -> APIRouter:
         account = account_of(request)
         found = li.match_inbox(store, account, [i.model_dump() for i in body.items])
         for r in found:
-            agent_mod.note(store, "replied", f"{r['name']} replied on LinkedIn: {r['text'][:120]}", account, r["lead_id"])
+            agent_mod.note(store, "replied", f"{r['name']} replied on LinkedIn: {r['text'][:120]}", account, r["lead_id"], owner=owner_of(request))
         return {"replied": found}
 
     @router.post("/api/extension/leads/{lead_id}/claim")

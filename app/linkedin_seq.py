@@ -388,9 +388,11 @@ def match_inbox(store, account: str, items: list, now: Optional[datetime] = None
     """The agent read the LinkedIn messaging list: a conversation whose last message is from a person on the sequence
     (owned by this account or by no account yet) is their reply. Matched on first + last name; a name shared by two
     people on the sequence is left alone (a person checks it). Returns [{lead_id, name, text}] marked replied."""
+    from . import workspaces
     now = now or now_utc()
     active = [l for l in store.read("leads") if (l.get("linkedin_seq") or {}).get("status") in ("waiting_for_acceptance", "messaging")
-              and (l["linkedin_seq"].get("account") or "") in ("", account) and l.get("stage") not in CLOSED]
+              and (l["linkedin_seq"].get("account") or "") in ("", account) and l.get("stage") not in CLOSED
+              and workspaces.visible(l)]                     # the agent's own client account only (its token's scope)
     by_key = {}
     for l in active:
         by_key.setdefault(_name_key(l.get("contact_name")), []).append(l)

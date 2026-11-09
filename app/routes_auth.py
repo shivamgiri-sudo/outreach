@@ -105,6 +105,15 @@ ADMIN_WRITES = {
     ("POST", "/api/snippets"), ("PUT", "/api/snippets/{snippet_id}"), ("DELETE", "/api/snippets/{snippet_id}"),
     ("PUT", "/api/linkedin/variants"), ("POST", "/api/linkedin/variants/generate"), ("POST", "/api/linkedin/variants/score"),
 }
+# LinkedIn agent per client account (app/linkedin_scope.py): an account's admins run their own account's agent, slots and
+# office computer (the routes cut to the admin's account, 404 for another's); callers / viewers only read its status.
+LINKEDIN_OWNER_ONLY = {("PUT", "/api/linkedin-cloud/where"), ("PUT", "/api/linkedin-agent/kill")}
+
+
+def linkedin_account_ok(role: str, method: str, path: str) -> bool:
+    if (method, path) in LINKEDIN_OWNER_ONLY or not path.startswith(("/api/linkedin-agent", "/api/linkedin-cloud")):
+        return False
+    return role == "admin" or (role in ("caller", "viewer") and (method, path) == ("GET", "/api/linkedin-agent"))
 # ---------- end SECURITY block ----------
 
 
@@ -170,6 +179,8 @@ def role_guard(request: Request) -> None:
         return                                # workspace admins manage their own workspaces' logins (checked in the routes)
     if user.get("role") == "admin" and (request.method, path) in (ADMIN_TEMPLATE_ROUTES | ADMIN_WRITES):
         return                                # SECURITY: workspace admins edit their own workspace's templates (checked in the routes)
+    if user.get("kind") not in ("extension", "runner") and linkedin_account_ok(user.get("role", ""), request.method, path):
+        return                                # SECURITY: an account's own LinkedIn agent (the routes check the account)
     if not allowed(user.get("role", ""), needed):
         what = "make changes" if user.get("role") == "viewer" else "do this"
         raise HTTPException(403, f"Your role ({user.get('role')}) cannot {what}. Ask the owner.")

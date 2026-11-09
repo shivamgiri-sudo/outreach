@@ -7,7 +7,8 @@ import Icon from "../../icons.jsx";
 import { Modal, Status } from "./common.jsx";
 
 const LIMIT_LABEL = { seats: "Logins", workspaces: "Workspaces", daily_sends: "Emails a day", imports_per_day: "Imports a day",
-  enrich_credits: "Lookup credits", ai_credits: "AI credits" };
+  enrich_credits: "Lookup credits", ai_credits: "AI credits", linkedin_daily_connections_max: "LinkedIn requests a day (max)",
+  linkedin_weekly_connections_max: "LinkedIn requests a week (max)", linkedin_daily_messages_max: "LinkedIn messages a day (max)" };
 const changed = () => window.dispatchEvent(new Event("accounts-changed"));
 
 function Field({ id, label, children, hint }) {

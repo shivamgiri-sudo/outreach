@@ -62,8 +62,9 @@ def tokens(store) -> list:
     return [t for t in store.read("settings").get(SETTINGS_KEY) or [] if isinstance(t, dict) and t.get("hash")]
 
 
-def create_token(store, user: dict, label: str = "", days: int = TOKEN_DAYS) -> tuple:
-    """(raw token, public row). The raw value exists only in this return value."""
+def create_token(store, user: dict, label: str = "", days: int = TOKEN_DAYS, account_id: str = "") -> tuple:
+    """(raw token, public row). The raw value exists only in this return value. The token works for `account_id` (a
+    cloud slot's client account; default the person's own): its agent only sees and claims that account's leads."""
     sub = user.get("sub", "")
     mine = [t for t in tokens(store) if t.get("sub") == sub]
     if len(mine) >= MAX_TOKENS_PER_USER:
@@ -72,7 +73,8 @@ def create_token(store, user: dict, label: str = "", days: int = TOKEN_DAYS) -> 
     now = _now()
     row = {"id": secrets.token_hex(6), "hash": _hash(raw), "label": (label or "").strip()[:60] or "Chrome", "sub": sub,
            "owner": user.get("name") or user.get("email") or sub, "created_at": iso(now),
-           "expires_at": iso(now + timedelta(days=days)), "last_used_at": None, "hint": raw[-4:]}
+           "expires_at": iso(now + timedelta(days=days)), "last_used_at": None, "hint": raw[-4:],
+           "account_id": account_id or user.get("account_id") or "mcn"}
     store.update("settings", lambda s: {**s, SETTINGS_KEY: [*(s.get(SETTINGS_KEY) or []), row]})
     return raw, public_token(row)
 
@@ -120,13 +122,21 @@ def authenticate(store, admin_password: str, raw: str) -> Optional[dict]:
     if not last or (now - datetime.fromisoformat(last)).total_seconds() > TOUCH_SECONDS:
         store.update("settings", lambda s: {**s, SETTINGS_KEY: [{**t, "last_used_at": iso(now)} if t.get("id") == row["id"] else t
                                                                  for t in s.get(SETTINGS_KEY) or []]})
-    return {"sub": sub, "email": principal.get("email", ""), "name": principal.get("name", ""), "kind": "extension",
-            "token_id": row["id"], "token_label": row.get("label", ""), "role": "viewer" if principal["role"] == "viewer" else "caller", "claims": None,
-            # the person's workspace limits travel with the token (owners: none), so a saved lead lands where they work
-            "workspaces": [] if principal["role"] == "owner" else list(principal.get("workspaces") or []),
-            # and so does the account boundary (app/accounts.py): a client's token never reaches another account
-            "account_id": principal.get("account_id") or "mcn",
-            "account_ws": None if principal["role"] == "owner" else principal.get("account_ws")}
+    out = {"sub": sub, "email": principal.get("email", ""), "name": principal.get("name", ""), "kind": "extension",
+           "token_id": row["id"], "token_label": row.get("label", ""), "role": "viewer" if principal["role"] == "viewer" else "caller", "claims": None,
+           # the person's workspace limits travel with the token (owners: none), so a saved lead lands where they work
+           "workspaces": [] if principal["role"] == "owner" else list(principal.get("workspaces") or []),
+           # and so does the account boundary (app/accounts.py): a client's token never reaches another account
+           "account_id": principal.get("account_id") or "mcn",
+           "account_ws": None if principal["role"] == "owner" else principal.get("account_ws")}
+    made_for = row.get("account_id") or out["account_id"]
+    if made_for != out["account_id"]:            # an owner's cloud slot for a client account: that account's workspaces only
+        if principal["role"] != "owner":
+            return None
+        from .accounts import workspaces_of
+        mine = sorted(workspaces_of(store, made_for))
+        out.update(account_id=made_for, workspaces=mine, account_ws=mine)
+    return out
 
 
 # ---------- matching ----------

@@ -121,7 +121,8 @@ def board(store, account: str = "", owner: str = "") -> dict:
     for key in (*ORDER_HEAD, *ORDER_TAIL):
         stages.setdefault(key, {"key": key, "label": label(key), "total": 0, "by_account": {}, "next_due": None})
     ordered = sorted(stages.values(), key=lambda s: _sort_key(s["key"]))
-    names = sorted({r["account"] for r in found if r["account"]} | {k["account"] for k in accts.known(store)})
+    from . import accounts
+    names = sorted({r["account"] for r in found if r["account"]} | {k["account"] for k in accts.known(store, accounts.current())})
     return {"stages": ordered, "accounts": names, "total": len(found),
             "owners": sorted({r["owner"] for r in found if r["owner"]})}
 

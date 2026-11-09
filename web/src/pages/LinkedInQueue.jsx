@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { api, canWrite, getRole, isLimitedLogin, isOwner, isWorkspaceAdmin } from "../api.js";
 import LinkedInSequenceEditor from "./LinkedInSequenceEditor.jsx";
 import LinkedInCloud from "./LinkedInCloud.jsx";
+import LinkedInAgent from "./LinkedInAgentBox.jsx";
 import LinkedInStageBoard from "./LinkedInStageBoard.jsx";
 import { copyText } from "../clipboard.js";
 import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
-import { useConfirm } from "../Dialog.jsx";
 import { GuideButton } from "../GuidePanel.jsx";
 
 const PERSONA = { ceo_founder: "CEO / Founder", chro: "CHRO / HR Director", ta_head: "Head of TA", recruitment_head: "Recruitment Head",
@@ -96,96 +96,6 @@ function BranchHelper({ leadId, onMessage }) {
         {text && <button className="btn ghost" onClick={() => copyText(text).then(() => onMessage("Copied."))}>Copy</button>}</div>
       {text && <p className="trail-text">{text}</p>}
     </div>
-  );
-}
-
-const KIND_WORDS = { connect: "Connection request sent", message: "Message sent", accepted: "Accepted", replied: "Replied", error: "Problem", paused: "Waiting", started: "Agent started", auto_start: "Started automatically" };
-
-function LinkedInAgent({ onMessage }) {
-  const confirm = useConfirm();
-  const [st, setSt] = useState(null);
-  const [form, setForm] = useState(null);
-  const load = () => api.linkedinAgent().then((s) => { setSt(s); setForm((f) => f || s.config); }).catch((e) => onMessage(e.message));
-  useEffect(() => { load(); const t = setInterval(load, 20000); return () => clearInterval(t); }, []);
-  if (!st || !form) return null;
-  const c = st.control;
-  const save = async (changes, done) => {
-    try { const s = await api.saveLinkedinAgent(changes); setSt(s); setForm(s.config); onMessage(done); } catch (e) { onMessage(e.message); }
-  };
-  const num = (key) => (e) => setForm({ ...form, [key]: e.target.value === "" ? "" : Number(e.target.value) });
-  const command = `node tools/linkedin_agent.mjs --portal ${window.location.origin} --token PASTE_THE_TOKEN`;
-  const pill = !st.config.enabled ? ["", "Switched off"] : st.online ? ["ok", `Running · ${st.state || "online"}`] : ["warn", "On, but the agent program is not running"];
-  return (
-    <section className="card" style={{ marginBottom: 14 }} data-testid="linkedin-agent">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <b>LinkedIn agent</b>
-        <span className="row">
-          <span className={`pill ${pill[0]}`}>{pill[1]}</span>
-          {st.config.enabled
-            ? <button className="btn ghost" onClick={() => save({ enabled: false }, "Paused. The agent will do nothing until you switch it on.")}>Pause</button>
-            : <button className="btn" onClick={() => save({ enabled: true }, "Switched on. Start the agent program on your computer if it is not running.")}>Switch on</button>}
-        </span>
-      </div>
-      <p className="sub">Sends the connection requests and follow-up messages from this page for you, either from the <b>cloud agent</b> above (nothing to install) or
-        from <b>your own computer</b> in a Chrome window you log in to yourself (see "Advanced" below; then your password never reaches this portal). The switch, limits and hours here apply to both. It sends one action at a time, with a fixed gap, inside working hours and your daily and weekly
-        caps, and it stops by itself if LinkedIn shows a security check, a login wall or the weekly invitation limit.</p>
-      <p className="tip">LinkedIn does not allow automation and can restrict accounts that use it, even at low volume. Keep the numbers low and use an account you
-        can live without if the worst happens.</p>
-      <p className="sub">Today: {c.counts.connect_today} connection requests, {c.counts.message_today} messages · this week: {c.counts.connect_week} requests ·
-        left today: {c.connections_left_today} requests, {c.messages_left_today} messages{c.why_not ? ` · ${c.why_not}` : ""}.</p>
-      {(st.accounts || []).length > 0 && (
-        <div className="table-wrap" style={{ marginBottom: 8 }}>
-          <table><thead><tr><th>LinkedIn account</th><th>Status</th><th>Today</th><th>This week</th><th>People</th><th></th></tr></thead>
-            <tbody>{st.accounts.map((a) => (
-              <tr key={a.account}>
-                <td><b>{a.name || a.account}</b><br /><small>{a.account}</small></td>
-                <td>{a.paused ? <span className="pill warn" title={a.paused.note}>Paused: {a.paused.note}</span> : a.online ? <span className="pill ok">Running</span> : <span className="pill">Not running</span>}
-                  {a.last_seen && <><br /><small>seen {istLabel(a.last_seen)}</small></>}</td>
-                <td>{a.counts.connect_today} requests · {a.counts.message_today} messages</td>
-                <td>{a.counts.connect_week} requests</td>
-                <td>{a.leads}</td>
-                <td>{a.paused && <button className="btn ghost" onClick={() => save({ resume_account: a.account }, `${a.name || a.account} resumed.`)}>Resume</button>}
-                  {st.accounts.length > 1 && <select aria-label={`${a.account} is the same LinkedIn account as`} value="" onChange={async (e) => { const into = e.target.value;
-                    if (into && await confirm(`${a.account} is the same LinkedIn account as ${into} (its profile link changed)? Its people and counts move over.`))
-                      save({ merge_from: a.account, merge_into: into }, `Merged ${a.account} into ${into}.`); }}>
-                    <option value="">Same account as…</option>{st.accounts.filter((x) => x.account !== a.account).map((x) => <option key={x.account} value={x.account}>{x.name || x.account}</option>)}</select>}</td>
-              </tr>))}</tbody></table>
-          <small className="sub-inline">Each account has its own daily and weekly caps and its own pause. A person belongs to the account that contacted them first; only that account sends them messages.</small>
-        </div>
-      )}
-      <p><GuideButton keys="app:linkedin_agent" label="How do I set up the agent? (step-by-step guide)" testId="agent-guide" /></p>
-      <details className="section" data-testid="local-agent-advanced"><summary>Advanced: run on your own computer</summary>
-        <ol className="steps">
-          <li>Create a pairing token in the Chrome assistant box below and copy it.</li>
-          <li>On the computer where you are logged in to LinkedIn, open a terminal in the project folder and run, one time:<br /><code>cd web && npm ci && npx playwright install chromium && cd ..</code></li>
-          <li>Start the agent (keep it running while you want it to work):<br /><code>{command}</code></li>
-          <li>A Chrome window opens. Log in to LinkedIn in that window yourself (including any code LinkedIn sends). The agent waits, then starts.</li>
-          <li>Try it first without clicking anything: add <code>--dry</code> to the command. It says what it would do.</li>
-          <li>More LinkedIn accounts: run one agent per account, each with its own window profile, for example <code>--profile ~/.mcn-li-rahul</code>. The same token can be used; the portal tells the accounts apart by who is logged in.</li>
-        </ol>
-        <button className="btn ghost" onClick={() => copyText(command).then(() => onMessage("Command copied."))}>Copy the command</button>
-      </details>
-      <details className="section"><summary>Limits</summary>
-        <div className="split-2">
-          <label>Connection requests per day<input type="number" disabled value="" placeholder="set in LinkedIn settings below" /></label>
-          <label>Per week (LinkedIn allows about 100)<input type="number" min="1" max="100" value={form.weekly_connections} onChange={num("weekly_connections")} /></label>
-          <label>Messages per day<input type="number" min="0" max="100" value={form.daily_messages} onChange={num("daily_messages")} /></label>
-          <label>Minutes between two actions<input type="number" min="3" max="60" value={form.gap_minutes} onChange={num("gap_minutes")} /></label>
-          <label>Start hour (India time)<input type="number" min="0" max="23" value={form.start_hour} onChange={num("start_hour")} /></label>
-          <label>End hour (India time)<input type="number" min="1" max="24" value={form.end_hour} onChange={num("end_hour")} /></label>
-        </div>
-        <label className="check-row"><input type="checkbox" checked={form.weekdays_only} onChange={(e) => setForm({ ...form, weekdays_only: e.target.checked })} /> Monday to Friday only</label>
-        <label className="check-row"><input type="checkbox" checked={!!form.connect_without_note} onChange={(e) => setForm({ ...form, connect_without_note: e.target.checked })} /> When LinkedIn will not allow a note (free accounts get only a few a month), send the connection request without one</label>
-        <button className="btn" style={{ marginTop: 8 }} onClick={() => save({ ...form, enabled: undefined }, "Limits saved.")}>Save limits</button>
-      </details>
-      {st.log.length > 0 && (
-        <details className="section" open><summary>What it did lately</summary>
-          <ul className="task-list">{st.log.slice(0, 12).map((r, i) => (
-            <li key={i}><div><b>{KIND_WORDS[r.kind] || r.kind}</b>{r.note ? ` — ${r.note}` : ""}</div><div className="sub">{istLabel(r.at)}</div></li>))}
-          </ul>
-        </details>
-      )}
-    </section>
   );
 }
 
@@ -292,6 +202,7 @@ export default function LinkedInQueue() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [helper, setHelper] = useState(null);
+  const [acctTick, setAcctTick] = useState(0);         // the owner changed the LinkedIn account filter: the cloud box reloads
   const limited = isLimitedLogin();      // a workspace login: its own leads and templates; account, agent and tool settings stay with owners
   const load = () => { setError(""); api.linkedinQueue().then(setQ).catch((e) => setError(e.message)); if (!limited) api.linkedinSettings().then(setCfg).catch(() => {}); };
   useEffect(() => { load(); }, []);
@@ -306,9 +217,9 @@ export default function LinkedInQueue() {
       {error && <ErrorState message="The LinkedIn queue could not load." detail={error} onRetry={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
       <LinkedInStageBoard onMessage={setMessage} />
-      {isOwner() && <LinkedInCloud onMessage={setMessage} />}
+      {(isOwner() || isWorkspaceAdmin()) && <LinkedInCloud key={`cloud-${acctTick}`} onMessage={setMessage} />}
       {!limited && <ToolBridge onDone={load} />}
-      {isOwner() && <LinkedInAgent onMessage={setMessage} />}
+      <LinkedInAgent onMessage={setMessage} onAccount={() => setAcctTick((n) => n + 1)} />
       <LinkedInSequenceEditor onMessage={setMessage} />
       <ConnectionNotes onMessage={setMessage} />
       {!limited && <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />}

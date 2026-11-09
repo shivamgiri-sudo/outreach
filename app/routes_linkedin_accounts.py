@@ -30,12 +30,13 @@ def make_router(store) -> APIRouter:
 
     @router.get("/api/linkedin/accounts")
     def accounts(request: Request):
-        """Known LinkedIn accounts (for the "Send from" pickers) and the owner defaults. These are Mas Callnet's own
-        LinkedIn senders: a client account's login gets none (app/accounts.py)."""
+        """Known LinkedIn accounts (for the "Send from" pickers) and the owner defaults. Each client account sees only the
+        LinkedIn accounts working for it (app/linkedin_scope.py); the owner defaults are Mas Callnet's own."""
         from . import accounts as client_accounts
-        if client_accounts.is_client(user_of(request)):
-            return {"accounts": [], "owner_defaults": {}}
-        return {"accounts": accts.known(store), "owner_defaults": accts.owner_defaults(store.read("settings"))}
+        user = user_of(request)
+        if client_accounts.is_client(user):
+            return {"accounts": accts.known(store, client_accounts.of_user(user)), "owner_defaults": {}}
+        return {"accounts": accts.known(store, client_accounts.current()), "owner_defaults": accts.owner_defaults(store.read("settings"))}
 
     @router.put("/api/linkedin/owner-accounts")
     def owner_accounts(body: OwnerDefaultsBody, request: Request):

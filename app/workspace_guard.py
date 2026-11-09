@@ -50,6 +50,14 @@ LIMITED_OK = {
     ("POST", "/api/extension/save-profile"), ("GET", "/api/extension/match"), ("GET", "/api/extension/queue"),
     # LinkedIn account per lead and the stage board (both only touch / count leads in the login's workspaces)
     ("GET", "/api/linkedin/accounts"), ("POST", "/api/linkedin/assign"), ("GET", "/api/linkedin/stages"), ("GET", "/api/linkedin/stages.csv"),
+    # the account's own LinkedIn agent, cloud slots and office computer (owners and the account's admins change them; the
+    # routes cut every view and change to the login's account: app/linkedin_scope.py)
+    ("GET", "/api/linkedin-agent"), ("PUT", "/api/linkedin-agent"), ("GET", "/api/linkedin-cloud"), ("POST", "/api/linkedin-cloud/slots"),
+    ("PUT", "/api/linkedin-cloud/slots/{slot_id}"), ("DELETE", "/api/linkedin-cloud/slots/{slot_id}"),
+    ("POST", "/api/linkedin-cloud/slots/{slot_id}/login"), ("POST", "/api/linkedin-cloud/slots/{slot_id}/code"),
+    ("POST", "/api/linkedin-cloud/slots/{slot_id}/logout"), ("POST", "/api/linkedin-cloud/slots/{slot_id}/restart"),
+    ("POST", "/api/linkedin-cloud/runner/pair"), ("DELETE", "/api/linkedin-cloud/runner/pair"),
+    ("PUT", "/api/linkedin-cloud/runner/{runner_id}"), ("DELETE", "/api/linkedin-cloud/runner/{runner_id}"),
     # templates of the login's workspaces (+ main's, read-only). Writes: owners, and a workspace's own admins only; the
     # routes check the template's workspace (app/ws_templates.py) and refuse callers.
     ("POST", "/api/sequences"), ("PUT", "/api/sequences/{seq_id}"), ("POST", "/api/sequences/{seq_id}/duplicate"),
@@ -71,6 +79,10 @@ LIMITED_OK = {
     ("GET", "/api/reports/sla"), ("GET", "/api/reports/daily"), ("GET", "/api/reports/daily.csv"), ("POST", "/api/reports/email"),
     ("POST", "/api/import/preview"), ("POST", "/api/import/excel"), ("POST", "/api/import/commit"), ("GET", "/api/import/history"), ("POST", "/api/import/{import_id}/undo"),
 }
+# The LinkedIn agent program's calls, for a pairing / slot token of a client account only (never a web login): its own
+# account's leads only (the token's workspaces; app/linkedin_scope.py).
+AGENT_TOKEN_OK = {("GET", "/api/extension/agent"), ("POST", "/api/extension/agent/event"), ("POST", "/api/extension/inbox"),
+                  ("GET", "/api/extension/cloud/login-job"), ("GET", "/api/extension/cloud/code"), ("POST", "/api/extension/cloud/state")}
 # Client logins (another company's account, app/accounts.py) are also refused these: copying Mas Callnet's own
 # LinkedIn steps into their workspace.
 CLIENT_DENY = {("POST", "/api/linkedin/sequence/copy")}
@@ -102,7 +114,8 @@ def guard(request: Request) -> None:
     path = getattr(route, "path", request.url.path)
     if allowed_of(user) == set() and request.method not in ("GET", "HEAD", "OPTIONS") and (request.method, path) not in NO_WORKSPACE_WRITES:
         raise HTTPException(403, "Your login has no workspace yet. Ask the owner to give you one.")
-    if path.startswith("/api") and not allowed_route(request.method, path):
+    agent_call = user.get("kind") == "extension" and (request.method, path) in AGENT_TOKEN_OK
+    if path.startswith("/api") and not allowed_route(request.method, path) and not agent_call:
         raise HTTPException(403, "This page is not available for logins limited to a workspace. Ask the owner.")
     if (user.get("account_id") or "mcn") != "mcn" and (request.method, path) in CLIENT_DENY:
         raise HTTPException(403, "This page belongs to the platform account. Ask the platform admin.")

@@ -19,6 +19,12 @@ guesses are counted per address: an address with MAX_FAILED wrong guesses is ref
 itself stays valid, so a stranger cannot cancel the owner's code (and the pairing route is rate limited per address). The office computer swaps it for a long-lived runner token
 ("mcnr_..."), which may call only RUNNER_PATHS. Only one runner is active at a time: pairing a new one revokes the old
 and rotates the slot tokens, so the old computer's agents stop at once (two machines never drive one LinkedIn account).
+
+Per client account (app/linkedin_scope.py): each account pairs its own office computer. A runner row carries account_id
+(missing = "mcn"), the "only one active" rule and the token rotation hold per account, and a runner gets only its own
+account's slots. Mas Callnet's pending code stays in settings["linkedin_runner_pairing"]; another account's is in
+settings["linkedin_runner_pairing_by_account"][account_id]. A code is matched against every pending code (HMAC), so the
+office computer never says which account it is for.
 """
 import hashlib
 import hmac
@@ -30,7 +36,8 @@ from typing import Optional
 from .activities import iso, now_utc
 
 TOKEN_PREFIX = "mcnr_"
-SETTINGS_KEY, PAIR_KEY = "linkedin_runners", "linkedin_runner_pairing"
+SETTINGS_KEY, PAIR_KEY, PAIR_BY = "linkedin_runners", "linkedin_runner_pairing", "linkedin_runner_pairing_by_account"
+MCN = "mcn"
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"      # no 0/O, 1/I: read aloud or typed from a screen
 CODE_LEN = 12
 CODE_TTL = 15 * 60
@@ -97,8 +104,12 @@ def runners(store) -> list:
     return [r for r in store.read("settings").get(SETTINGS_KEY) or [] if isinstance(r, dict) and r.get("id")]
 
 
-def active(store) -> Optional[dict]:
-    return next((r for r in runners(store) if r.get("status") == "active"), None)
+def account_of(row: Optional[dict]) -> str:
+    return (row or {}).get("account_id") or MCN
+
+
+def active(store, account: str = MCN) -> Optional[dict]:
+    return next((r for r in runners(store) if r.get("status") == "active" and account_of(r) == (account or MCN)), None)
 
 
 def online(row: Optional[dict], now: Optional[datetime] = None) -> bool:
@@ -115,39 +126,63 @@ def public(row: dict) -> dict:
     out = {k: row.get(k) for k in ("id", "label", "created_by", "created_at", "last_seen", "hostname", "os", "version", "status",
                                    "revoked_at")}
     out["online"] = row.get("status") == "active" and online(row)
+    out["account_id"] = account_of(row)
     out["agents"] = row.get("agents") or []
     return out
 
 
-def pending(store) -> Optional[dict]:
-    p = store.read("settings").get(PAIR_KEY)
+def _fresh(p) -> bool:
     if not isinstance(p, dict) or not p.get("hash"):
-        return None
+        return False
     try:
-        if datetime.fromisoformat(p["expires_at"]) <= now_utc():
-            return None
+        return datetime.fromisoformat(p["expires_at"]) > now_utc()
     except (KeyError, TypeError, ValueError):
-        return None
-    return p
+        return False
 
 
-def new_code(store, user: dict, replace: bool = False) -> tuple:
+def _rows(s: dict) -> dict:
+    """{account id: pending row} of every unexpired pairing code."""
+    out = {MCN: s.get(PAIR_KEY)} if _fresh(s.get(PAIR_KEY)) else {}
+    for acct, p in (s.get(PAIR_BY) or {}).items():
+        if acct != MCN and _fresh(p):
+            out[acct] = p
+    return out
+
+
+def _put(s: dict, account: str, row: Optional[dict]) -> dict:
+    """The settings with `account`'s pending code replaced (None = removed)."""
+    if account == MCN:
+        rest = {k: v for k, v in s.items() if k != PAIR_KEY}
+        return {**rest, PAIR_KEY: row} if row else rest
+    by = {k: v for k, v in (s.get(PAIR_BY) or {}).items() if k != account and _fresh(v)}
+    if row:
+        by[account] = row
+    return {**s, PAIR_BY: by}
+
+
+def pending(store, account: str = MCN) -> Optional[dict]:
+    return _rows(store.read("settings")).get(account or MCN)
+
+
+def new_code(store, user: dict, replace: bool = False, account: str = MCN) -> tuple:
     """(code, expires_at). The code exists only in this return value; the store keeps its hash. A new code replaces any
-    earlier unused one. Raises Conflict when an office computer is connected and `replace` was not confirmed."""
-    current = active(store)
+    earlier unused one of the same client account. Raises Conflict when that account's office computer is connected and
+    `replace` was not confirmed."""
+    account = account or MCN
+    current = active(store, account)
     if current and not replace:
         raise Conflict(f"An office computer ({current.get('label') or current.get('hostname') or 'connected'}) is already connected. "
                        "Connecting another one disconnects it.")
     code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LEN))
     expires = iso(now_utc() + timedelta(seconds=CODE_TTL))
     row = {"hash": _code_hash(store, code), "expires_at": expires, "created_by": user.get("name") or user.get("email") or "owner",
-           "created_sub": user.get("sub", ""), "replace": bool(current), "failures": 0}
-    store.update("settings", lambda s: {**s, PAIR_KEY: row})
+           "created_sub": user.get("sub", ""), "replace": bool(current), "failures": 0, "account_id": account}
+    store.update("settings", lambda s: _put(s, account, row))
     return code, expires
 
 
-def cancel_code(store) -> None:
-    store.update("settings", lambda s: {k: v for k, v in s.items() if k != PAIR_KEY})
+def cancel_code(store, account: str = MCN) -> None:
+    store.update("settings", lambda s: _put(s, account or MCN, None))
 
 
 def _ip_key(ip: str) -> str:
@@ -163,13 +198,13 @@ def _matches(store, p: dict, code: str) -> bool:
 
 
 def code_valid(store, code, ip: str = "") -> bool:
-    """True when `code` is the pending, unexpired code (not used up) and this address has not used up its guesses. A
-    wrong guess counts against the address (never cancels the code)."""
+    """True when `code` is a pending, unexpired code (not used up) and this address has not used up its guesses. A
+    wrong guess counts against the address (never cancels a code)."""
     code = norm_code(code)
-    p = pending(store)
-    if not p or ip_blocked(p, ip):
+    rows = _rows(store.read("settings"))
+    if not rows or all(ip_blocked(p, ip) for p in rows.values()):
         return False
-    if _matches(store, p, code):
+    if any(_matches(store, p, code) and not ip_blocked(p, ip) for p in rows.values()):
         return True
     if code:
         _count_failure(store, ip)
@@ -179,21 +214,24 @@ def code_valid(store, code, ip: str = "") -> bool:
 def _count_failure(store, ip: str = "") -> None:
     key = _ip_key(ip)
 
-    def apply(s):
-        p = s.get(PAIR_KEY)
-        if not isinstance(p, dict):
-            return s
+    def bump(p: dict) -> dict:
         by_ip = dict(p.get("failed_by_ip") or {})
         by_ip[key] = int(by_ip.get(key, 0)) + 1
         if len(by_ip) > MAX_TRACKED_IPS:                               # bounded: the oldest addresses are forgotten first
             by_ip = dict(list(by_ip.items())[-MAX_TRACKED_IPS:])
-        return {**s, PAIR_KEY: {**p, "failures": int(p.get("failures") or 0) + 1, "failed_by_ip": by_ip}}
+        return {**p, "failures": int(p.get("failures") or 0) + 1, "failed_by_ip": by_ip}
+
+    def apply(s):
+        for acct, p in _rows(s).items():
+            s = _put(s, acct, bump(p))
+        return s
     store.update("settings", apply)
 
 
 def pair(store, code, info: dict, ip: str = "") -> tuple:
     """Swap the one-time code for a runner token: (raw token, new runner row, [revoked rows]). ValueError on a bad code.
-    Single use: the code is consumed in the same atomic update that adds the runner and revokes any other."""
+    Single use: the code is consumed in the same atomic update that adds the runner and revokes the other one of the
+    same client account."""
     code = norm_code(code)
     digest = _code_hash(store, code)
     raw = TOKEN_PREFIX + secrets.token_urlsafe(32)
@@ -204,25 +242,25 @@ def pair(store, code, info: dict, ip: str = "") -> tuple:
     outcome = {}
 
     def apply(s):
-        p = s.get(PAIR_KEY)
-        try:
-            fresh = isinstance(p, dict) and p.get("hash") and datetime.fromisoformat(p["expires_at"]) > now_utc()
-        except (KeyError, TypeError, ValueError):
-            fresh = False
-        if not fresh or ip_blocked(p, ip) or len(code) != CODE_LEN or not hmac.compare_digest(str(p["hash"]), digest):
+        hit = next(((acct, p) for acct, p in _rows(s).items() if len(code) == CODE_LEN and not ip_blocked(p, ip)
+                    and hmac.compare_digest(str(p["hash"]), digest)), None)
+        if hit is None:
             return s
+        account, p = hit
         outcome["ok"] = True
         row["created_by"] = p.get("created_by") or "owner"
+        row["account_id"] = account
         kept, revoked = [], []
         for r in s.get(SETTINGS_KEY) or []:
-            if isinstance(r, dict) and r.get("status") == "active":
+            if isinstance(r, dict) and r.get("status") == "active" and account_of(r) == account:
                 r = {k: v for k, v in r.items() if k != "hash"}
                 r.update(status="revoked", revoked_at=now, revoked_why="replaced by a new office computer")
                 revoked.append(r)
             kept.append(r)
         outcome["revoked"] = revoked
+        others = [r for r in kept if isinstance(r, dict) and r.get("status") == "active"]
         old = [r for r in kept if isinstance(r, dict) and r.get("status") != "active"][-KEEP_REVOKED:]
-        return {**{k: v for k, v in s.items() if k != PAIR_KEY}, SETTINGS_KEY: [*old, row]}
+        return {**_put(s, account, None), SETTINGS_KEY: [*old, *others, row]}
     store.update("settings", apply)
     if not outcome.get("ok"):
         if code:
@@ -239,7 +277,8 @@ def authenticate(store, raw: str) -> Optional[dict]:
     if row is None:
         return None
     return {"sub": f"runner:{row['id']}", "email": "", "name": row.get("label") or "Office computer", "kind": "runner",
-            "runner_id": row["id"], "role": "caller", "claims": None}
+            "runner_id": row["id"], "role": "caller", "claims": None,
+            "runner_account": account_of(row)}    # not account_id: the runner never reads leads, only its account's slots
 
 
 def heartbeat(store, runner_id: str, info: dict) -> dict:
@@ -306,9 +345,9 @@ def revoke(store, runner_id: str) -> dict:
     return public(out["row"])
 
 
-def describe(store) -> dict:
-    act = active(store)
-    p = pending(store)
+def describe(store, account: str = MCN) -> dict:
+    act = active(store, account)
+    p = pending(store, account)
     return {"where": where(store), "runner": public(act) if act else None,
             "pairing": {"expires_at": p["expires_at"], "replace": bool(p.get("replace"))} if p else None,
             "online_seconds": ONLINE_SECONDS}

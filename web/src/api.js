@@ -37,6 +37,13 @@ const ACCOUNT_KEY = "outreach-account";
 export const getAccount = () => { try { return localStorage.getItem(ACCOUNT_KEY) || ""; } catch { return ""; } };
 export const setAccount = (a) => { try { a ? localStorage.setItem(ACCOUNT_KEY, a) : localStorage.removeItem(ACCOUNT_KEY); } catch { /* storage blocked */ } };
 
+// The owner's account filter on the LinkedIn page (app/linkedin_scope.py): "" = the account picked in the header,
+// "all" = every account (read-only overview). Admins never need it: the server cuts them to their own account.
+let liAccount = "";
+export const setLinkedinAccount = (a) => { liAccount = a || ""; };
+export const getLinkedinAccount = () => liAccount;
+const liq = (path) => (liAccount ? `${path}${path.includes("?") ? "&" : "?"}account=${encodeURIComponent(liAccount)}` : path);
+
 // The server re-issues the token once half its 12 hours have passed; keep the newest one.
 const keepRenewed = (res) => { const t = res.headers.get("X-Renewed-Token"); if (t && getToken()) setToken(t); };
 
@@ -226,21 +233,22 @@ export const api = {
   linkedinReplied: (id, text) => request(`/api/leads/${id}/linkedin/replied`, { method: "POST", body: { text } }),
   linkedinStop: (id) => request(`/api/leads/${id}/linkedin/stop`, { method: "POST" }),
   linkedinBranch: (id, body) => request(`/api/leads/${id}/linkedin/branch`, { method: "POST", body }),
-  linkedinAgent: () => request("/api/linkedin-agent"),
-  saveLinkedinAgent: (body) => request("/api/linkedin-agent", { method: "PUT", body }),
-  linkedinCloud: () => request("/api/linkedin-cloud"),
-  addLinkedinCloud: (label) => request("/api/linkedin-cloud/slots", { method: "POST", body: { label } }),
-  changeLinkedinCloud: (id, body) => request(`/api/linkedin-cloud/slots/${id}`, { method: "PUT", body }),
-  removeLinkedinCloud: (id) => request(`/api/linkedin-cloud/slots/${id}`, { method: "DELETE" }),
-  loginLinkedinCloud: (id, email, password) => request(`/api/linkedin-cloud/slots/${id}/login`, { method: "POST", body: { email, password } }),
-  codeLinkedinCloud: (id, code) => request(`/api/linkedin-cloud/slots/${id}/code`, { method: "POST", body: { code } }),
-  logoutLinkedinCloud: (id) => request(`/api/linkedin-cloud/slots/${id}/logout`, { method: "POST" }),
-  restartLinkedinCloud: (id) => request(`/api/linkedin-cloud/slots/${id}/restart`, { method: "POST" }),
-  setLinkedinWhere: (where) => request("/api/linkedin-cloud/where", { method: "PUT", body: { where } }),
-  pairLinkedinRunner: (replace = false) => request("/api/linkedin-cloud/runner/pair", { method: "POST", body: { replace } }),
-  cancelLinkedinRunnerPair: () => request("/api/linkedin-cloud/runner/pair", { method: "DELETE" }),
-  renameLinkedinRunner: (id, label) => request(`/api/linkedin-cloud/runner/${id}`, { method: "PUT", body: { label } }),
-  revokeLinkedinRunner: (id) => request(`/api/linkedin-cloud/runner/${id}`, { method: "DELETE" }),
+  linkedinAgent: () => request(liq("/api/linkedin-agent")),
+  saveLinkedinAgent: (body) => request(liq("/api/linkedin-agent"), { method: "PUT", body }),
+  killLinkedinAgents: (on) => request(liq("/api/linkedin-agent/kill"), { method: "PUT", body: { on } }),
+  linkedinCloud: () => request(liq("/api/linkedin-cloud")),
+  addLinkedinCloud: (label) => request(liq("/api/linkedin-cloud/slots"), { method: "POST", body: { label } }),
+  changeLinkedinCloud: (id, body) => request(liq(`/api/linkedin-cloud/slots/${id}`), { method: "PUT", body }),
+  removeLinkedinCloud: (id) => request(liq(`/api/linkedin-cloud/slots/${id}`), { method: "DELETE" }),
+  loginLinkedinCloud: (id, email, password) => request(liq(`/api/linkedin-cloud/slots/${id}/login`), { method: "POST", body: { email, password } }),
+  codeLinkedinCloud: (id, code) => request(liq(`/api/linkedin-cloud/slots/${id}/code`), { method: "POST", body: { code } }),
+  logoutLinkedinCloud: (id) => request(liq(`/api/linkedin-cloud/slots/${id}/logout`), { method: "POST" }),
+  restartLinkedinCloud: (id) => request(liq(`/api/linkedin-cloud/slots/${id}/restart`), { method: "POST" }),
+  setLinkedinWhere: (where) => request(liq("/api/linkedin-cloud/where"), { method: "PUT", body: { where } }),
+  pairLinkedinRunner: (replace = false) => request(liq("/api/linkedin-cloud/runner/pair"), { method: "POST", body: { replace } }),
+  cancelLinkedinRunnerPair: () => request(liq("/api/linkedin-cloud/runner/pair"), { method: "DELETE" }),
+  renameLinkedinRunner: (id, label) => request(liq(`/api/linkedin-cloud/runner/${id}`), { method: "PUT", body: { label } }),
+  revokeLinkedinRunner: (id) => request(liq(`/api/linkedin-cloud/runner/${id}`), { method: "DELETE" }),
   extensionPair: (label) => request("/api/extension/pair", { method: "POST", body: { label } }),
   extensionTokens: () => request("/api/extension/tokens"),
   extensionRevoke: (id) => request(`/api/extension/tokens/${id}`, { method: "DELETE" }),
