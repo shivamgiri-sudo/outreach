@@ -243,13 +243,31 @@ def _settings_line(s: dict) -> str:
     return ("Allowed because: " + "; ".join(parts) + ".") if parts else ""
 
 
-def _timeline_enrolment(lead: Optional[dict]) -> str:
+def _parse(at) -> Optional[datetime]:
+    try:
+        t = datetime.fromisoformat(str(at))
+        return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
+def _timeline_enrolment(lead: Optional[dict], sent_at=None) -> str:
+    """The latest "Enrolled ..." timeline line at or before the send (a later re-enrolment did not cause this email)."""
+    sent = _parse(sent_at)
+    best = None
     for e in (lead or {}).get("timeline") or []:
         text = str(e.get("text") or "")
-        if text.startswith("Enrolled"):              # "Enrolled in email sequence ...", "Enrolled from prospect search ..."
-            who = f" (by {e['by']})" if e.get("by") else ""
-            return f"Lead timeline: “{text}”{who} on {_when(e.get('at'))}."
-    return ""
+        if not text.startswith("Enrolled"):          # "Enrolled in email sequence ...", "Enrolled from prospect search ..."
+            continue
+        at = _parse(e.get("at"))
+        if sent and at and at > sent:
+            continue
+        if best is None or (at and (_parse(best.get("at")) or at) <= at):
+            best = e
+    if best is None:
+        return ""
+    who = f" (by {best['by']})" if best.get("by") else ""
+    return f"Lead timeline: “{best.get('text')}”{who} on {_when(best.get('at'))}."
 
 
 def describe(row: dict, lead: Optional[dict] = None, flows: Optional[dict] = None) -> dict:
@@ -275,7 +293,7 @@ def describe(row: dict, lead: Optional[dict] = None, flows: Optional[dict] = Non
         lines.append(f"The row belongs to flow “{name}”.")
     if row.get("sequence_id"):
         lines.append(f"The row belongs to saved sequence {row['sequence_id']} version {row.get('sequence_version', 1)}.")
-    seen = _timeline_enrolment(lead)
+    seen = _timeline_enrolment(lead, row.get("sent_at"))
     if seen:
         lines.append(seen)
     return {"type": kind, "label": label, "legacy": True, "actor": row.get("by") if kind == "manual" else (SYSTEM if kind == "automatic" else ""),

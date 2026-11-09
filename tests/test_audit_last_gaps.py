@@ -48,3 +48,12 @@ def test_own_password_change_is_in_the_login_history(tmp_path):
     assert c.post("/api/me/password", json={"current": "Rep-pass-123456", "new": "New-pass-654321"}, headers=h).status_code == 200
     rows = [(r["event"], r["result"]) for r in store.read("login_history") if r.get("email") == "rep@acme.com"]
     assert ("password_change", "failure") in rows and ("password_change", "success") in rows
+
+
+def test_legacy_why_uses_the_enrolment_before_the_send():
+    from app.provenance import _timeline_enrolment
+    lead = {"timeline": [{"at": "2026-11-03T14:22:00+00:00", "kind": "sequence", "text": "Enrolled in email sequence"},
+                         {"at": "2026-11-09T07:22:00+00:00", "kind": "sequence", "text": "Enrolled in email sequence", "by": "Later Person"}]}
+    assert "03 Nov" in _timeline_enrolment(lead, "2026-11-09T06:14:00+00:00")
+    assert "Later Person" in _timeline_enrolment(lead, "2026-11-10T06:14:00+00:00")
+    assert _timeline_enrolment(lead, "2026-11-01T00:00:00+00:00") == ""
