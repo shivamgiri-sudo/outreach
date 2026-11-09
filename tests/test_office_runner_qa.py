@@ -30,7 +30,7 @@ FAKE_AGENT = str(ROOT / "tests" / "agent_sim" / "fake_cloud_agent.mjs")
 # =====================================================================================================================
 # 1. Pairing
 # =====================================================================================================================
-def test_reused_expired_and_wrong_codes_are_refused_and_ten_wrong_guesses_cancel(rig, monkeypatch):
+def test_reused_expired_and_wrong_codes_are_refused_and_ten_wrong_guesses_lock_the_address(rig, monkeypatch):
     c, https, owner, store, base = rig
     code = code_for(c, owner)["code"]
     assert pair(https, code).status_code == 200
@@ -42,7 +42,7 @@ def test_reused_expired_and_wrong_codes_are_refused_and_ten_wrong_guesses_cancel
     assert pair(https, code).status_code == 400
     assert https.get(f"/api/linkedin-runner/bundle.zip?code={code}").status_code == 403
     monkeypatch.undo()
-    # ten wrong guesses spread over the three public paths cancel the code
+    # ten wrong guesses spread over the three public paths lock that address out (the code itself stays valid)
     code = code_for(c, owner, replace=True)["code"]
     wrong = "".join("A" if ch != "A" else "B" for ch in code)
     fresh = TestClient(c.app, base_url="https://testserver", client=("203.0.113.50", 1))     # its own rate-limit bucket
@@ -53,8 +53,10 @@ def test_reused_expired_and_wrong_codes_are_refused_and_ten_wrong_guesses_cancel
             assert fresh.get(f"/api/linkedin-runner/bundle.tar.gz?code={wrong}").status_code == 403
         else:
             assert "exit 1" in fresh.get(f"/api/linkedin-runner/install.sh?code={wrong}").text
-    assert runner.pending(store) is None
+    assert runner.pending(store) is not None
     assert fresh.post("/api/linkedin-runner/pair", json={"code": code}).status_code == 400
+    other = TestClient(c.app, base_url="https://testserver", client=("203.0.113.51", 1))
+    assert other.post("/api/linkedin-runner/pair", json={"code": code}).status_code == 200
 
 
 def test_a_code_from_another_owner_session_replaces_the_earlier_one(rig):

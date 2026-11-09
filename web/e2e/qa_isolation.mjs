@@ -97,13 +97,14 @@ await step("Limited login sees only its pages and an empty Leads list", async ()
   const text = await p.locator("main").innerText();
   for (const w of SECRET_WORDS) if (text.includes(w)) throw new Error(`Leads shows ${w}`);
 });
-await step("Quick paste: new lead added, contact held in another workspace skipped", async () => {
+await step("Quick paste: new lead added, contact held in another workspace skipped as a duplicate (where it is stays hidden)", async () => {
   const p = raj.page;
   await p.getByRole("button", { name: "Quick paste" }).click();
   await p.locator("textarea").first().fill(CLIENT_CSV);
   await p.getByRole("button", { name: "Import", exact: true }).click();
   await p.getByText("Added 1").waitFor();
-  await p.getByText("Skipped 1 already held in another workspace.").waitFor();
+  await p.getByText(/skipped 1 duplicates/).waitFor();
+  if (/another workspace/.test(await p.locator("main").innerText())) throw new Error("told that another workspace holds it");
   await p.getByRole("button", { name: "Nandi Foods" }).first().waitFor();
 });
 await step("Every page in the menu: no refused calls and no other client's data", async () => {

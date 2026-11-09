@@ -105,7 +105,7 @@ export default function LeadBulkBar({ picked, pageIds, owners, spaces, onDone, o
         </span>
         <button className="btn ghost danger" onClick={() => confirmThen("do_not_contact", null, "Put on the do-not-contact list?", "Yes, never contact them", true)}>Do not contact</button>
         {isOwner() && <button className="btn ghost danger" onClick={() => confirmThen("delete", null, "Delete these leads?", `Yes, delete ${picked.length}`, true)}>Delete</button>}
-        {spaces.length > 1 && <select aria-label="Move selected leads to a workspace" value="" disabled={busy === "ws"} onChange={(e) => e.target.value && moveTo(e.target.value)} style={{ width: "auto" }}>
+        {isOwner() && spaces.length > 1 && <select aria-label="Move selected leads to a workspace" value="" disabled={busy === "ws"} onChange={(e) => e.target.value && moveTo(e.target.value)} style={{ width: "auto" }}>
           <option value="">Move to workspace…</option>{spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>}
       </>}
       {isOwner() && <DownloadButton path={exportPath("leads")} body={{ ids: picked }} label="Download CSV" testId="download-leads-picked" />}

@@ -38,9 +38,17 @@ def _with_event(lead: dict, kind: str, text: str, by: str) -> list:
 
 
 # ---------- owner ----------
-def owner_choices(store) -> list:
-    """Names a lead can be given to: the team list plus every login (by name, or email when it has none)."""
-    names = [m.get("name") for m in team(store)] + [u.get("name") or u.get("email") for u in auth.users(store)]
+def owner_choices(store, user: Optional[dict] = None) -> list:
+    """Names a lead can be given to: the team list plus every login (by name, or email when it has none). For a login
+    limited to some workspaces (SECURITY): only the logins that share one of its workspaces, and itself."""
+    from .workspaces import allowed_of
+    allowed = allowed_of(user) if user is not None else None
+    if allowed is None:
+        names = [m.get("name") for m in team(store)] + [u.get("name") or u.get("email") for u in auth.users(store)]
+    else:
+        mine = (user or {}).get("email")
+        names = [u.get("name") or u.get("email") for u in auth.users(store)
+                 if u.get("email") == mine or set(u.get("workspaces") or []) & allowed]
     seen, out = set(), []
     for n in names:
         n = " ".join(str(n or "").split())[:OWNER_MAX]
@@ -50,12 +58,12 @@ def owner_choices(store) -> list:
     return out
 
 
-def clean_owner(store, raw, actor_name: str = "") -> str:
+def clean_owner(store, raw, actor_name: str = "", user: Optional[dict] = None) -> str:
     """'' (unassign) or a known owner name, spelled as in the team list. Raises LeadOpRefused."""
     name = " ".join(str(raw or "").split())[:OWNER_MAX]
     if not name:
         return ""
-    for known in owner_choices(store) + ([actor_name] if actor_name else []):
+    for known in owner_choices(store, user) + ([actor_name] if actor_name else []):
         if known.lower() == name.lower():
             return known
     raise LeadOpRefused(f"{name} is not in the team list. Add them under Team first.")

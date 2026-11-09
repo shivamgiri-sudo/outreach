@@ -375,6 +375,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             seen = set().union(*map(keys, leads))
             mine = set().union(*map(keys, workspaces_mod.filter_rows(leads))) if workspaces_mod.scoped() else seen
             created = duplicates = rejected = merged = suppressed = elsewhere = 0
+            limited_login = workspaces_mod._SCOPE.get()[1] is not None
             for row in rows:
                 lead = _build_lead(row, body.source)
                 if lead is None:
@@ -382,7 +383,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                 elif lead_hashes(lead) & erased or (lead.get("email") or "") in blocked:
                     suppressed += 1                  # this person asked for their data to be erased
                 elif lead["dedupe_key"] in seen:
-                    if lead["dedupe_key"] in mine:
+                    if lead["dedupe_key"] in mine or limited_login:     # SECURITY: a limited login is not told it is held elsewhere
                         duplicates += 1
                     else:
                         elsewhere += 1               # held in another workspace: skipped, nothing about it shown

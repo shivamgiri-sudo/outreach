@@ -1,10 +1,13 @@
 # Replaced by setup_server.sh: __HOST__ (e.g. 1-2-3-4.sslip.io or outreach.yourdomain.in)
 __HOST__ {
 	encode gzip
+	# Every response. "?" = only when the app has not set its own (the app sends these too, with a stricter policy on /api,
+	# a page policy on /u/* and a nonce policy on /demo/*, so those are never replaced here).
 	header {
-		Strict-Transport-Security "max-age=31536000"
-		X-Content-Type-Options "nosniff"
-		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		?X-Content-Type-Options "nosniff"
+		?Referrer-Policy "strict-origin-when-cross-origin"
+		?X-Frame-Options "DENY"
 		-Server
 	}
 	# API docs are never public
@@ -12,13 +15,16 @@ __HOST__ {
 	handle @docs {
 		respond 404
 	}
-	# The app's own endpoints go to the single uvicorn worker
+	# The app's own endpoints go to the single uvicorn worker (tracking pixel, clicks, unsubscribe and report files too)
 	@api path /api/* /u/* /demo/*
 	handle @api {
 		reverse_proxy 127.0.0.1:8000
 	}
-	# Everything else is the built web app
+	# Everything else is the built web app. Its policy: own scripts plus the one inline theme script in web/index.html
+	# (by hash; tests/test_security_fixes.py checks the hash matches), Google Fonts, inline styles (email previews in
+	# sandboxed srcdoc frames inherit this policy), images from anywhere over https, no framing by other sites.
 	handle {
+		header Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-2aBRM0wG2AljmnG2DRiR8ZSRCm2bIgC1g7dKaDXoeEs='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'self' blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 		root * /opt/outreach/app/web/dist
 		try_files {path} /index.html
 		file_server

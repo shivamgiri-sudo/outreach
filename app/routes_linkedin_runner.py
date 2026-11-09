@@ -17,7 +17,7 @@ from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
 from . import linkedin_cloud as cloud, linkedin_runner as runner, linkedin_runner_install as installer
-from .web_security import is_https
+from .web_security import client_ip, is_https
 
 PUBLIC_PATHS = ("/api/linkedin-runner/pair", "/api/linkedin-runner/install.ps1", "/api/linkedin-runner/install.sh",
                 "/api/linkedin-runner/bundle.tar.gz", "/api/linkedin-runner/bundle.zip")
@@ -95,7 +95,7 @@ def make_router(store, cloud_router) -> APIRouter:
     def make_code(body: PairCodeBody, request: Request):
         portal = installer.portal_base(store, request)
         try:
-            installer.commands(portal, "AAAAAAAA")               # refuse before making a code when the address is unusable
+            installer.commands(portal, "A" * runner.CODE_LEN)               # refuse before making a code when the address is unusable
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
         try:
@@ -105,7 +105,7 @@ def make_router(store, cloud_router) -> APIRouter:
         current = runner.active(store)
         audit(request, "linkedin_runner.code", "office computer",
               "pairing code made (15 minutes, single use)" + ("; pairing replaces the connected office computer" if current else ""))
-        return {**view(), "code": code, "expires_at": expires, "portal": portal, "commands": installer.commands(portal, code),
+        return {**view(), "code": code, "code_display": runner.show_code(code), "expires_at": expires, "portal": portal, "commands": installer.commands(portal, code),
                 "uninstall": installer.UNINSTALL, "insecure": not portal.startswith("https://")}
 
     @router.delete("/api/linkedin-cloud/runner/pair")
@@ -141,7 +141,7 @@ def make_router(store, cloud_router) -> APIRouter:
         if not secure_enough(request):
             raise HTTPException(403, "Connect over HTTPS (use the https:// address of the portal).")
         try:
-            token, row, replaced = runner.pair(store, body.code, body.model_dump())
+            token, row, replaced = runner.pair(store, body.code, body.model_dump(), client_ip(request))
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
         if replaced:
@@ -175,7 +175,7 @@ def make_router(store, cloud_router) -> APIRouter:
 
     def install(kind: str, request: Request):
         code = runner.norm_code(request.query_params.get("code"))
-        if not runner.code_valid(store, code):
+        if not runner.code_valid(store, code, client_ip(request)):
             text = installer.refusal(kind, "This install command has expired or was already used. In the portal press Connect an office computer again and paste the new line.")
         else:
             try:
@@ -194,7 +194,7 @@ def make_router(store, cloud_router) -> APIRouter:
 
     def bundle(kind: str, request: Request):
         raw = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
-        if not (runner.authenticate(store, raw) if raw else None) and not runner.code_valid(store, request.query_params.get("code")):
+        if not (runner.authenticate(store, raw) if raw else None) and not runner.code_valid(store, request.query_params.get("code"), client_ip(request)):
             raise HTTPException(403, "This download link has expired. Make a new code in the portal.")
         media = "application/zip" if kind == "zip" else "application/gzip"
         return Response(installer.bundle(kind), media_type=media,

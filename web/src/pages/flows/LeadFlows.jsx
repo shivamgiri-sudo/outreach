@@ -51,7 +51,7 @@ export default function LeadFlows({ lead, onChanged }) {
                   </details>
                 )}
               </div>
-              {canWrite() && ["running", "waiting"].includes(r.status) && <button type="button" className="btn ghost" onClick={() => stop(r.id)}>Stop</button>}
+              {isOwner() && ["running", "waiting"].includes(r.status) && <button type="button" className="btn ghost" onClick={() => stop(r.id)}>Stop</button>}
             </li>
           ))}
         </ul>

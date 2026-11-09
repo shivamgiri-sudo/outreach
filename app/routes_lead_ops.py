@@ -53,14 +53,14 @@ def make_router(store, present) -> APIRouter:
 
     @router.get("/api/lead-owners")
     def owners(request: Request):
-        return {"owners": lead_ops.owner_choices(store), "me": actor(request)["name"]}
+        return {"owners": lead_ops.owner_choices(store, getattr(request.state, "user", None)), "me": actor(request)["name"]}
 
     @router.post("/api/leads/{lead_id}/owner")
     def set_owner(lead_id: str, body: OwnerBody, request: Request):
         visible_lead(lead_id)
         who = actor(request)["name"]
         try:
-            owner = lead_ops.clean_owner(store, body.owner, who)
+            owner = lead_ops.clean_owner(store, body.owner, who, getattr(request.state, "user", None))
         except lead_ops.LeadOpRefused as exc:
             raise HTTPException(400, str(exc)) from exc
         saved = lead_ops.set_owner(store, lead_id, owner, who)

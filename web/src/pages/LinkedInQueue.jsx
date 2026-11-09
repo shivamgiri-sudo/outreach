@@ -21,7 +21,7 @@ function Settings({ cfg, onSave }) {
   return (
     <details className="card" style={{ marginBottom: 14 }}>
       <summary><b>LinkedIn settings</b> <span className="sub">— daily limit, who sends, case-study link</span></summary>
-      <fieldset className="ro-fieldset" disabled={!canWrite()}>
+      <fieldset className="ro-fieldset" disabled={!isOwner()}>
       <label>New connection requests per day (start with 10–15)
         <input type="number" min="1" max="40" value={form.linkedin_daily_connections} onChange={(e) => setForm({ ...form, linkedin_daily_connections: e.target.value })} /></label>
       <label>Who sends from the LinkedIn account
@@ -30,7 +30,7 @@ function Settings({ cfg, onSave }) {
         <input value={form.case_study_url} placeholder="https://…" onChange={(e) => setForm({ ...form, case_study_url: e.target.value })} /></label>
       <label className="check-row"><input type="checkbox" data-testid="li-auto-start" checked={!!form.linkedin_auto_start} onChange={(e) => setForm({ ...form, linkedin_auto_start: e.target.checked })} /> Start the sequence automatically: each working day the agent puts the suggested people (with a LinkedIn link, not contacted yet) on the sequence, up to the daily limit above</label>
       </fieldset>
-      {canWrite() && <button className="btn" style={{ marginTop: 8 }} onClick={() => onSave({ ...form, linkedin_daily_connections: Number(form.linkedin_daily_connections) })}>Save</button>}
+      {isOwner() && <button className="btn" style={{ marginTop: 8 }} onClick={() => onSave({ ...form, linkedin_daily_connections: Number(form.linkedin_daily_connections) })}>Save</button>}
     </details>
   );
 }
@@ -255,10 +255,10 @@ function ConnectionNotes({ onMessage }) {
       {["A", "B"].map((v) => (
         <div key={v} style={{ marginTop: 10 }}>
           <label htmlFor={`note-${v}`}><b>Note {v}</b></label> <Score s={scores[v]} />
-          <textarea id={`note-${v}`} rows={3} value={draft[v]} maxLength={600} readOnly={!canWrite()} onChange={(e) => setDraft({ ...draft, [v]: e.target.value })} onBlur={(e) => canWrite() && rescore(v, e.target.value)} style={{ width: "100%" }} />
+          <textarea id={`note-${v}`} rows={3} value={draft[v]} maxLength={600} readOnly={!isOwner()} onChange={(e) => setDraft({ ...draft, [v]: e.target.value })} onBlur={(e) => isOwner() && rescore(v, e.target.value)} style={{ width: "100%" }} />
         </div>
       ))}
-      {canWrite() && <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
+      {isOwner() && <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
         <button className="btn" onClick={save}>Save notes</button>
         <input aria-label="Who you are writing to" placeholder="Optional: who it is for (e.g. CHROs at IT services firms)" value={context} maxLength={500} onChange={(e) => setContext(e.target.value)} style={{ flex: 1, minWidth: 220 }} />
         <button className="btn ghost" onClick={write} disabled={busy}>{busy ? "Writing…" : "Write ideas with Claude"}</button>

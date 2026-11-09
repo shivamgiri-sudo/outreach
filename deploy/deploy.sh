@@ -2,6 +2,9 @@
 # Deploy the current checkout to the server:  deploy/deploy.sh ubuntu@<ip> <public-host>
 # Builds the web app locally, copies code (no data, no secrets), restarts the service (and the cloud LinkedIn agent
 # service outreach-linkedin, only when deploy/setup_cloud_linkedin.sh installed it).
+# Ownership: the code (/opt/outreach/app, with its .venv) belongs to root and is read-only for the service user
+# "outreach", so a compromised app process cannot rewrite the code it runs; only the data and runtime folders
+# (/var/lib/outreach, /var/backups/outreach, the systemd ReadWritePaths) are writable by it.
 set -euo pipefail
 TARGET="${1:?usage: deploy.sh ubuntu@<ip> <public-host>}"; HOST="${2:?public host}"
 KEY="${SSH_KEY:-$HOME/.ssh/oracle_outreach}"
@@ -13,7 +16,10 @@ scp -i "$KEY" -o StrictHostKeyChecking=accept-new /tmp/outreach-release.tgz "$TA
 ssh -i "$KEY" "$TARGET" "sudo mkdir -p /opt/outreach/app && sudo tar -xzf /tmp/outreach-release.tgz -C /opt/outreach/app && \
   (test -x /opt/outreach/app/.venv/bin/uvicorn || sudo bash /opt/outreach/app/deploy/setup_server.sh '$HOST') && \
   sudo /opt/outreach/app/.venv/bin/pip install -q -r /opt/outreach/app/requirements.txt && \
-  sudo chown -R outreach:outreach /opt/outreach && sudo systemctl restart outreach && \
+  sudo chown -R root:root /opt/outreach/app && sudo chmod -R u+rwX,go+rX,go-w /opt/outreach/app && \
+  sudo chown root:root /opt/outreach && sudo chmod 755 /opt/outreach && \
+  sudo mkdir -p /var/lib/outreach /var/backups/outreach && sudo chown -R outreach:outreach /var/lib/outreach /var/backups/outreach && \
+  sudo systemctl restart outreach && \
   if [ -f /etc/systemd/system/outreach-linkedin.service ]; then \
     sudo cp /opt/outreach/app/deploy/outreach-linkedin.service /etc/systemd/system/outreach-linkedin.service && \
     sudo systemctl daemon-reload && sudo systemctl restart outreach-linkedin; fi && \

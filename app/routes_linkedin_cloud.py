@@ -171,6 +171,10 @@ def make_router(store, data_file, jobs: cloud.CloudJobs = None) -> APIRouter:
         s = my_slot(request)
         if body.state not in cloud.STATES:
             raise HTTPException(400, "Unknown state.")
+        try:
+            cloud.renew_due(store, base)                 # server mode: the supervisor restarts the agent with its new token
+        except (OSError, ValueError):
+            pass
         return cloud.set_state(store, s["id"], body.state, body.note, body.account, body.name)
 
     return router

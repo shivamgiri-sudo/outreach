@@ -300,10 +300,10 @@ export default function Leads({ go }) {
             <b>{quality.missing_decision_maker}</b> no decision maker, <b>{quality.missing_website}</b> no website.
           </span>
           <span className="row">
-            {canWrite() && <button className="btn ghost" disabled={enriching || quality.enrichable_now === 0} onClick={runEnrich}>
+            {isOwner() && <button className="btn ghost" disabled={enriching || quality.enrichable_now === 0} onClick={runEnrich}>
               {enriching ? "Checking websites…" : `Fill gaps from company websites (${quality.enrichable_now})`}
             </button>}
-            {apolloReady && canWrite() && <button className="btn ghost" title="Uses up to 10 Apollo credits" onClick={runApollo}>Look up emails in Apollo (10)</button>}
+            {apolloReady && isOwner() && <button className="btn ghost" title="Uses up to 10 Apollo credits" onClick={runApollo}>Look up emails in Apollo (10)</button>}
             {isOwner() && <button className="btn ghost" onClick={downloadApolloList}>Download list for Apollo</button>}
             {go && <button className="btn ghost" onClick={() => go("hygiene")}>Duplicates and clean-up</button>}
           </span>
