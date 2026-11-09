@@ -5,8 +5,8 @@ The app does everything else: picks who to contact today, fills each message for
 hook for their role), schedules the next step once a step is marked sent, waits for the connection to be accepted
 before any message, stops on a reply, and hands "yes to a meeting" to the meeting booking flow.
 
-Sequence (from BookMyInterview_LinkedIn_Apollo_Sequence.xlsx): connection note on day 1; after acceptance,
-messages on days 3, 7, 12, 16, 21 and 28 (spaced from the acceptance / previous message). Step 4 offers a case study:
+Sequence: word for word the Apollo sequences "BMI – LinkedIn Connection – CXO" and "BMI – Executive Hiring
+Conversations": connection note on day 1; after acceptance, a message the same day, then every 4 days (5 before the last). Step 4 offers a case study:
 it is skipped until a real case-study link is set, because no message may promise material that doesn't exist.
 STEPS / PERSONAS below are the built-in defaults; the owner can replace them on the LinkedIn page (app/linkedin_config.py).
 """
@@ -26,31 +26,42 @@ STEPS = [
     {"n": 1, "kind": "connect", "after": "start", "days": 0, "purpose": "Connection request (no pitch)",
      "text": "Hi {first_name}, came across your profile and noticed your involvement in business leadership and talent "
              "development. Always interesting to connect with people who are building and scaling teams. Thought I'd reach out."},
-    {"n": 2, "kind": "message", "after": "accepted", "days": 2, "purpose": "Vacant roles delaying business plans",
-     "text": "Thanks for connecting, {first_name}.\n\n{hook}\n\nCritical positions remaining open for weeks can put considerable "
-             "pressure on existing teams and business timelines.\n\nIs this something you've come across in your organisation?"},
+    {"n": 2, "kind": "message", "after": "accepted", "days": 0, "purpose": "Vacant roles delaying business plans",
+     "text": "Thanks for connecting, {first_name}.\n\nSomething I've been thinking about lately: How often do business plans get "
+             "held back simply because the right people aren't available when they're needed?\n\nCritical positions remaining open "
+             "for weeks can put considerable pressure on existing teams and business timelines.\n\nIs this something you've come "
+             "across in your organisation?"},
     {"n": 3, "kind": "message", "after": "previous", "days": 4, "purpose": "Candidate-pool quality",
      "text": "{first_name}, there's another interesting dimension to hiring.\n\nSometimes the challenge isn't the number of "
              "applications coming in, but the availability of candidates who genuinely match the role requirements.\n\n"
              "Recruiters screen numerous profiles, interview calendars get filled, and yet the final shortlist can be surprisingly "
              "small.\n\nUnder pressure to close positions, companies sometimes end up compromising on candidate quality.\n\n"
              "Have you noticed this becoming a bigger challenge lately?"},
-    {"n": 4, "kind": "message", "after": "previous", "days": 5, "purpose": "Offer the case study", "needs": "case_study_url",
+    {"n": 4, "kind": "message", "after": "previous", "days": 4, "purpose": "Offer the case study", "needs": "case_study_url",
      "text": "{first_name}, this brings me to something I thought you might find interesting.\n\nWe've put together a case study "
              "that looks at hiring from a rather different perspective.\n\nIt explores how companies can rethink candidate "
              "screening, assessment and interview management, ensuring that employers spend more time meeting candidates who have "
-             "already been evaluated against the role requirements.\n\nI'd be happy to share it. Would you be interested?"},
+             "already been evaluated against the role requirements.\n\nI'd be happy to share it. I think the findings will offer "
+             "an interesting perspective on hiring quality.\n\nWould you be interested?"},
     {"n": 5, "kind": "message", "after": "previous", "days": 4, "purpose": "Introduce the platform and ask for a meeting",
-     "text": "Thanks, {first_name}.\n\nWhat we've been building at BookMyInterview.ai brings together job description and candidate "
-             "profile parsing, role-specific tests, audio/video assessments and candidate self-booking of interview slots.\n\n"
-             "The idea is to help employers move beyond simply filling interview calendars and focus on meeting better-assessed "
-             "candidates.\n\nWould you be open to a brief 20-minute conversation sometime next week?\n\nhttps://bookmyinterview.ai/"},
-    {"n": 6, "kind": "message", "after": "previous", "days": 5, "purpose": "Polite meeting follow-up",
+     "text": "Thanks, {first_name}.\n\nThe thinking behind the case study is closely connected to what we've been building at "
+             "BookMyInterview.ai.\n\nThe platform brings together job description and candidate profile parsing, role-specific "
+             "tests, audio/video assessments and candidate self-booking of interview slots.\n\nThe idea is to help employers move "
+             "beyond simply filling interview calendars and focus on meeting better-assessed candidates.\n\nI thought it might be "
+             "worth exchanging perspectives on this. Would you be open to a brief 20-minute conversation sometime next week?\n\n"
+             "https://bookmyinterview.ai/",
+     # Step 4 is skipped while no case-study link is set; then this step must not mention a case study they never saw.
+     "text_no_case_study": "Thanks, {first_name}.\n\nWhat we've been building at BookMyInterview.ai brings together job "
+             "description and candidate profile parsing, role-specific tests, audio/video assessments and candidate self-booking "
+             "of interview slots.\n\nThe idea is to help employers move beyond simply filling interview calendars and focus on "
+             "meeting better-assessed candidates.\n\nI thought it might be worth exchanging perspectives on this. Would you be "
+             "open to a brief 20-minute conversation sometime next week?\n\nhttps://bookmyinterview.ai/"},
+    {"n": 6, "kind": "message", "after": "previous", "days": 4, "purpose": "Polite meeting follow-up",
      "text": "Hi {first_name},\n\nJust following up on my earlier note.\n\nI thought a brief conversation could be useful, particularly "
              "around how organisations can improve the quality of candidates reaching the interview stage without slowing down the "
              "hiring process.\n\nIf this is relevant to your current priorities, perhaps we could find 15–20 minutes to connect.\n\n"
              "No pressure if the timing isn't right."},
-    {"n": 7, "kind": "message", "after": "previous", "days": 7, "purpose": "Close respectfully",
+    {"n": 7, "kind": "message", "after": "previous", "days": 5, "purpose": "Close respectfully",
      "text": "Hi {first_name},\n\nI'll leave it here rather than keep adding to your LinkedIn inbox.\n\nIf improving candidate screening "
              "and hiring quality becomes a priority, I'd be happy to exchange thoughts.\n\nWishing you and your team the best."},
 ]
@@ -98,8 +109,7 @@ DEFAULT_HOOK = ("Something I've been thinking about lately: how often do busines
 # Two openers for the connection request, shared out evenly by lead id so acceptance can be compared fairly.
 CONNECT_VARIANTS = {
     "A": STEPS[0]["text"],
-    "B": "Hi {first_name}, I work with hiring teams on getting interview time spent only on candidates already screened for "
-         "the role. Would be good to connect and swap notes on hiring.",
+    "B": STEPS[0]["text"],          # no built-in second note: the approved (Apollo) wording goes to everyone
 }
 
 
@@ -135,6 +145,8 @@ def render(step: dict, lead: dict, settings: dict) -> str:
     first = clean_first_name(lead.get("contact_name")) or "there"
     _, hook = persona(lead.get("title", ""), settings)
     template = step["text"]
+    if step.get("text_no_case_study") and not (settings or {}).get("case_study_url"):
+        template = step["text_no_case_study"]
     if step["n"] == 1 and step["kind"] == "connect":
         chosen = (lead.get("linkedin_seq") or {}).get("variant")
         if chosen:
@@ -278,6 +290,18 @@ def _close_linkedin_tasks(store, lead_id: str, note: str) -> None:
                                         else t for t in rows])
 
 
+def _fresh_text(task: dict, lead: dict, step_n: Optional[int], settings: dict) -> str:
+    """The message as the sequence words it now (so a wording change reaches steps already queued), else the task's text."""
+    if task.get("source") == "linkedin_sequence" and step_n and lead:
+        step = next((s for s in lead_steps(lead, settings) if s.get("n") == step_n), None)
+        if step:
+            try:
+                return render(step, lead, settings)
+            except Exception:                   # a broken saved template must not empty the queue
+                pass
+    return task.get("text", "")
+
+
 def queue(store, now: Optional[datetime] = None) -> dict:
     """Today's LinkedIn work: due steps (with the filled message) and suggested new people to connect with."""
     now = now or now_utc()
@@ -294,7 +318,7 @@ def queue(store, now: Optional[datetime] = None) -> dict:
             continue
         step_n = int(re.search(r"step (\d+)", t.get("title", "")).group(1)) if re.search(r"step (\d+)", t.get("title", "")) else None
         due.append({"task_id": t["id"], "lead_id": lead.get("id"), "company": lead.get("company"), "name": lead.get("contact_name"),
-                    "title": lead.get("title"), "linkedin_url": lead.get("linkedin_url"), "open_profile": bool((lead.get("linkedin_profile") or {}).get("open_profile")), "step": step_n, "message": t.get("text", ""),
+                    "title": lead.get("title"), "linkedin_url": lead.get("linkedin_url"), "open_profile": bool((lead.get("linkedin_profile") or {}).get("open_profile")), "step": step_n, "message": _fresh_text(t, lead, step_n, settings),
                     "due_at": t.get("due_at"), "persona": (lead.get("linkedin_seq") or {}).get("persona")})
     started_today = sum(1 for l in leads.values() if (l.get("linkedin_seq") or {}).get("started_at", "")[:10] == iso(now)[:10])
     limit = int(settings.get("linkedin_daily_connections") or DEFAULT_DAILY_CONNECTIONS)
