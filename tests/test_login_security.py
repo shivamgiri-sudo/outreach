@@ -292,3 +292,14 @@ def test_secret_is_encrypted_when_the_server_key_is_set(tmp_path, monkeypatch):
     assert user["two_step_secret"].startswith("enc:v1:") and secret not in user["two_step_secret"]
     ticket = login(app, "ann@example.com", PW).json()["ticket"]
     assert fresh(app).post("/api/login/code", json={"ticket": ticket, "code": totp.code_at(secret, time.time() + 30)}).status_code == 200
+
+
+def test_setup_returns_a_qr_code_drawn_locally():
+    """The setup screen shows a QR code for Google Authenticator; it is drawn by the server, never by an outside service."""
+    import base64
+    from app import two_step
+    uri = "otpauth://totp/MCN%20Outreach:a%40b.c?secret=JBSWY3DPEHPK3PXP&issuer=MCN%20Outreach"
+    qr = two_step.qr_data_uri(uri)
+    assert qr.startswith("data:image/svg+xml;base64,")
+    svg = base64.b64decode(qr.split(",", 1)[1]).decode()
+    assert svg.startswith("<svg") and "http" not in svg.replace("http://www.w3.org/2000/svg", "")

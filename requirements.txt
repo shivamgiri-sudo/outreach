@@ -22,3 +22,4 @@ dnspython==2.7.0
 openpyxl==3.1.5
 et_xmlfile==2.0.0
 xlrd==2.0.1
+segno==1.6.1

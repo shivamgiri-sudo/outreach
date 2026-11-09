@@ -118,6 +118,9 @@ await step("With two-step required, Ann (reset) sets it up again while signing i
   await password(ann.page, ANN.email, ANN.password);
   await ann.page.getByRole("heading", { name: "Set up two-step login" }).waitFor();
   await ann.page.getByTestId("two-step-key").waitFor();
+  const qrSrc = await ann.page.getByTestId("two-step-qr").getAttribute("src");            // QR for Google Authenticator, drawn locally
+  if (!qrSrc || !qrSrc.startsWith("data:image/svg+xml;base64,")) throw new Error("no local QR code on the setup screen");
+  await ann.page.screenshot({ path: `${SHOTS}/two-step-qr.png` });
   const fresh = await keyText(ann.page);
   await ann.page.getByLabel("Code the app shows").fill(totp(fresh));
   await ann.page.getByRole("button", { name: "Turn on and sign in" }).click();

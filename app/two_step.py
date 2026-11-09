@@ -83,7 +83,21 @@ def start(store, user: dict) -> dict:
         raise ValueError("Two-step login is already on. Turn it off first to move it to a new phone.")
     secret = totp.new_secret()
     _save(store, user["email"], {"two_step_pending": _seal(secret)})
-    return {"secret": secret, "uri": totp.otpauth_uri(secret, user["email"], issuer(store))}
+    uri = totp.otpauth_uri(secret, user["email"], issuer(store))
+    return {"secret": secret, "uri": uri, "qr": qr_data_uri(uri)}
+
+
+def qr_data_uri(text: str) -> str:
+    """The setup link as a QR code (SVG data URI) drawn here, so no outside QR service ever sees the secret."""
+    try:
+        import io
+        import base64
+        import segno
+        buf = io.BytesIO()
+        segno.make(text, error="m").save(buf, kind="svg", scale=6, border=2, dark="#0F172A", light="#FFFFFF", xmldecl=False)
+        return "data:image/svg+xml;base64," + base64.b64encode(buf.getvalue()).decode()
+    except Exception:                       # no QR library: the key and link still work
+        return ""
 
 
 def _pepper(store) -> str:

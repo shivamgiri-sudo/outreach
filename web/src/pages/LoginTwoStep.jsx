@@ -57,7 +57,7 @@ export default function LoginTwoStep({ step, onSignedIn, onBack }) {
       <h2 id="two-step-heading">{setupMode ? "Set up two-step login" : "Enter your code"}</h2>
       <p className="login-help">{setupMode ? "Your login needs a code from your phone after the password (required for owners and super admins, or set by the owner). Set it up once, now."
         : "Open your authenticator app and type the 6-digit code. Lost your phone? Type one of your recovery codes."}</p>
-      {setupMode && (secret ? <SecretPanel secret={secret.secret} uri={secret.uri} /> : !error && <p className="login-help">Making your key…</p>)}
+      {setupMode && (secret ? <SecretPanel secret={secret.secret} uri={secret.uri} qr={secret.qr} /> : !error && <p className="login-help">Making your key…</p>)}
       <div className="login-field">
         <label htmlFor="otp">{setupMode ? "Code the app shows" : "Code"}</label>
         <div className="login-input">

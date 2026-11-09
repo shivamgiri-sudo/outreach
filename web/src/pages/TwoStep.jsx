@@ -3,9 +3,10 @@ import { api } from "../api.js";
 import { copyText } from "../clipboard.js";
 
 // Two-step login for the signed-in person (Setup > My password), plus the pieces the sign-in page reuses when the
-// owner requires it. The key is shown as text and as an otpauth:// link; no outside QR service ever sees it.
+// owner requires it. The key is shown as a QR code (drawn by our server), as text and as an otpauth:// link; no outside QR
+// service ever sees it.
 
-export function SecretPanel({ secret, uri }) {
+export function SecretPanel({ secret, uri, qr }) {
   const [copied, setCopied] = useState("");
   const copy = async (what, text) => { await copyText(text); setCopied(what); setTimeout(() => setCopied(""), 1500); };
   const grouped = (secret || "").replace(/(.{4})/g, "$1 ").trim();
@@ -13,8 +14,11 @@ export function SecretPanel({ secret, uri }) {
     <div className="two-step-secret" data-testid="two-step-secret">
       <ol className="steps" style={{ margin: "6px 0" }}>
         <li>Open an authenticator app on your phone (Google Authenticator, Microsoft Authenticator, Authy or 1Password).</li>
-        <li>Add an account, choose <b>Enter a setup key</b> and type this key (time based, 6 digits):</li>
+        <li>Tap <b>+</b>, then <b>Scan a QR code</b>{qr ? " and scan this code" : ""}. Can't scan? Choose <b>Enter a setup key</b> and type the key below (time based, 6 digits).</li>
       </ol>
+      {qr && <img src={qr} width={200} height={200} data-testid="two-step-qr"
+        alt="QR code for your authenticator app. If you cannot scan it, type the setup key shown below."
+        style={{ display: "block", margin: "8px 0", border: "1px solid #E2E8F0", borderRadius: 8, background: "#fff", maxWidth: "100%", height: "auto" }} />}
       <p style={{ margin: "4px 0" }}><code data-testid="two-step-key" style={{ fontSize: 16, letterSpacing: 1, wordBreak: "break-all" }}>{grouped}</code>{" "}
         <button type="button" className="btn ghost" onClick={() => copy("key", secret)}>{copied === "key" ? "Copied" : "Copy key"}</button></p>
       <details><summary className="sub">Setup link (for password managers that take an otpauth:// link)</summary>
@@ -69,7 +73,7 @@ export default function TwoStepCard() {
       {!st.on && !setup && <button className="btn" type="button" onClick={() => run(() => api.twoStepStart().then(setSetup))}>Set up two-step login</button>}
       {!st.on && setup && (
         <form onSubmit={(e) => { e.preventDefault(); run(() => api.twoStepConfirm(code).then((r) => { setCodes(r.recovery_codes); setSetup(null); setCode(""); setSt(r); })); }}>
-          <SecretPanel secret={setup.secret} uri={setup.uri} />
+          <SecretPanel secret={setup.secret} uri={setup.uri} qr={setup.qr} />
           <label>3. Type the 6-digit code the app shows<input {...codeInputProps} required value={code} onChange={(e) => setCode(e.target.value)} /></label>
           <div className="row"><button className="btn" type="submit">Turn on</button><button className="btn ghost" type="button" onClick={() => setSetup(null)}>Cancel</button></div>
         </form>
