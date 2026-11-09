@@ -4,7 +4,8 @@
 - Reply answered: hours from a person's reply (interested, question, other, wrong person) to the next thing we did
   for that lead (a call, an email or WhatsApp sent, a LinkedIn step, the reply marked handled).
 Targets are settings.sla_first_touch_hours (default 24) and settings.sla_reply_hours (default 4), in clock hours.
-check() runs with the reminders job: each new breach raises one alert (owner + managers) per lead and kind.
+check() runs with the reminders job: new breaches raise one digest alert per person (owner + managers) per kind and run;
+breaches older than a day when first seen are only shown on Reports, never alerted (no flood from a backlog).
 Only leads in the request's workspace scope count (the job runs without a scope, so it sees every lead).
 """
 from collections import defaultdict
@@ -112,13 +113,18 @@ def measure(store, rng: Optional[dict] = None, now: Optional[datetime] = None) -
             "waiting": sorted(waiting, key=lambda r: -r["hours"])[:LIST_LIMIT], "owners": owners}
 
 
+FRESH_HOURS = 24          # only breaches that crossed the target in the last day raise an alert; older ones show on Reports
+
+
 def check(store, now: Optional[datetime] = None) -> int:
-    """Alert once per lead and kind for each new breach (newer than 7 days). Returns the number of alerts raised."""
+    """Alert about new breaches: one digest per person per run (not one per lead), and only for breaches that crossed
+    the target within FRESH_HOURS, so switching this on (or an old backlog) does not flood the bell. Every breach seen
+    is remembered so it is never alerted twice. Returns the number of breaches alerted."""
     from . import alerts
     now = now or datetime.now(timezone.utc)
     data = measure(store, {"start": now - timedelta(days=7), "end": now + timedelta(seconds=1)}, now)
     done = dict(store.read("settings").get("sla_alerted") or {})
-    raised = 0
+    new = {}
     for kind, rows, what in (("untouched", data["untouched"], "No attempt yet, {h} hours after the lead was added (target {t} h)."),
                              ("waiting", data["waiting"], "Their reply has waited {h} hours for an answer (target {t} h).")):
         limit = data["targets"]["first_touch_hours" if kind == "untouched" else "reply_hours"]
@@ -126,10 +132,13 @@ def check(store, now: Optional[datetime] = None) -> int:
             key = f"{r['lead_id']}:{kind}:{r['since']}"
             if key in done:
                 continue
-            alerts.safe(store, "sla", r["lead_id"], what.format(h=r["hours"], t=int(limit)), managers=True)
             done[key] = now.isoformat(timespec="seconds")
-            raised += 1
-    if raised:
+            if r["hours"] - limit <= FRESH_HOURS:
+                new.setdefault(kind, []).append((r["lead_id"], what.format(h=r["hours"], t=int(limit))))
+    seen = {k: v for k, v in done.items() if k not in (store.read("settings").get("sla_alerted") or {})}
+    for kind, items in new.items():
+        alerts.digest(store, "sla", items, managers=True)
+    if seen:
         cut = (now - timedelta(days=14)).isoformat()
-        store.update("settings", lambda s: {**s, "sla_alerted": {k: v for k, v in {**(s.get("sla_alerted") or {}), **done}.items() if v >= cut}})
-    return raised
+        store.update("settings", lambda s: {**s, "sla_alerted": {k: v for k, v in {**(s.get("sla_alerted") or {}), **seen}.items() if v >= cut}})
+    return sum(len(v) for v in new.values())

@@ -101,3 +101,20 @@ def test_response_times_and_breach_alerts(tmp_path):
     assert sum(1 for n in store.read("notifications") if n["kind"] == "alert:sla") == 2
     assert c.put("/api/reports/sla-targets", json={"first_touch_hours": 48, "reply_hours": 2}).json()["first_touch_hours"] == 48
     assert c.get("/api/reports/sla", params={"days": 7}).json()["first_touch"]["breaches"] == 0
+
+
+def test_breach_alerts_are_one_digest_and_skip_an_old_backlog(tmp_path):
+    c, store, ids = make(tmp_path)
+    store.update("settings", lambda s: {**s, "alert_managers": ["Boss"]})
+    stale = (datetime.now(timezone.utc) - timedelta(hours=100)).isoformat(timespec="seconds")
+    store.update("leads", lambda rows: [{**l, "created_at": stale} for l in rows])
+    assert sla.check(store) == 0                                        # an old backlog is not alerted...
+    assert not [n for n in store.read("notifications") if n["kind"] == "alert:sla"]
+    assert len(store.read("settings")["sla_alerted"]) == 2              # ...but remembered
+    c.post("/api/leads/import", json={"csv": "company,contact_name,email\nGamma,G One,g@gamma.in\nDelta,D Two,d@delta.in\nEps,E Three,e@eps.in\n"})
+    fresh = (datetime.now(timezone.utc) - timedelta(hours=30)).isoformat(timespec="seconds")
+    store.update("leads", lambda rows: [{**l, "created_at": fresh} if l["company"] in ("Gamma", "Delta", "Eps") else l for l in rows])
+    assert sla.check(store) == 3 and sla.check(store) == 0
+    got = [n for n in store.read("notifications") if n["kind"] == "alert:sla"]
+    assert sorted(n["to"] for n in got) == ["Boss", "Sales team"]       # one digest each, not one per lead
+    assert all(n["title"].endswith("3 leads") and "Gamma" in n["text"] for n in got)

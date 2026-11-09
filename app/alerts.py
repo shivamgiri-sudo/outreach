@@ -73,6 +73,42 @@ def send(store, kind: str, lead_id: str, text: str, managers: bool = False, base
     return done
 
 
+DIGEST_LINES = 15
+
+
+def digest(store, kind: str, items: list, managers: bool = False, base_url: str = "") -> int:
+    """One alert per person for many leads at once (items: [(lead_id, text)]), so a batch of breaches is one bell
+    entry and one email per person, not one per lead. Returns the number of people alerted."""
+    from .reminders import _log_transactional, notify
+    by_id = {l.get("id"): l for l in store.read("leads")}
+    per_person = {}
+    for lead_id, text in items:
+        lead = by_id.get(lead_id)
+        if lead is None:
+            continue
+        for name in recipients(store, lead, managers):
+            per_person.setdefault(name, []).append((lead, text))
+    settings = store.read("settings")
+    link = (settings.get("public_base_url") or base_url or "").rstrip("/")
+    for name, rows in per_person.items():
+        company = lambda l: l.get("company") or l.get("contact_name") or "a lead"
+        title = f"{TITLES.get(kind, 'Alert')}: {company(rows[0][0])}" if len(rows) == 1 else f"{TITLES.get(kind, 'Alert')}: {len(rows)} leads"
+        lines = [f"- {company(l)}: {t}" for l, t in rows[:DIGEST_LINES]]
+        if len(rows) > DIGEST_LINES:
+            lines.append(f"... and {len(rows) - DIGEST_LINES} more.")
+        text = rows[0][1] if len(rows) == 1 else "\n".join(lines)
+        notify(store, name, title, text, lead_id=rows[0][0].get("id") if len(rows) == 1 else None, kind=f"alert:{kind}")
+        email = _address(store, name)
+        if SENDER and email and settings.get("alerts_email", True) is not False:
+            body = f"{text}\n\n{('See them all: ' + link + '/#reports') if link else ''}".strip()
+            try:
+                result = SENDER({"to": email, "subject": f"[Outreach] {title}", "body": body, "kind": "internal"})
+            except Exception as exc:
+                result = {"status": "failed", "error": str(exc)[:200]}
+            _log_transactional(store, email, f"[Outreach] {title}", body, "internal", None, result)
+    return len(per_person)
+
+
 def safe(store, kind: str, lead_id: Optional[str], text: str, managers: bool = False) -> None:
     if not lead_id:
         return
