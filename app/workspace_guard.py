@@ -40,6 +40,8 @@ LIMITED_OK = {
     # browser extension: pairing its own token, saving a profile (into this workspace), matching and its queue
     ("POST", "/api/extension/pair"), ("GET", "/api/extension/tokens"), ("DELETE", "/api/extension/tokens/{token_id}"),
     ("POST", "/api/extension/save-profile"), ("GET", "/api/extension/match"), ("GET", "/api/extension/queue"),
+    # LinkedIn account per lead and the stage board (both only touch / count leads in the login's workspaces)
+    ("GET", "/api/linkedin/accounts"), ("POST", "/api/linkedin/assign"), ("GET", "/api/linkedin/stages"), ("GET", "/api/linkedin/stages.csv"),
     # workspace admins: logins of their own workspaces (the routes check every target and workspace)
     ("GET", "/api/users"), ("POST", "/api/users"), ("PUT", "/api/users/{email}"), ("DELETE", "/api/users/{email}"),
     ("GET", "/api/reports/sla"), ("GET", "/api/reports/daily"), ("GET", "/api/reports/daily.csv"), ("POST", "/api/reports/email"),

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, canWrite, isOwner } from "../api.js";
 import LinkedInSequenceEditor from "./LinkedInSequenceEditor.jsx";
 import LinkedInCloud from "./LinkedInCloud.jsx";
+import LinkedInStageBoard from "./LinkedInStageBoard.jsx";
 import { copyText } from "../clipboard.js";
 import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
@@ -297,6 +298,7 @@ export default function LinkedInQueue() {
         they accept the connection, and any reply stops the sequence.</p>
       {error && <ErrorState message="The LinkedIn queue could not load." detail={error} onRetry={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
+      <LinkedInStageBoard onMessage={setMessage} />
       {isOwner() && <LinkedInCloud onMessage={setMessage} />}
       <ToolBridge onDone={load} />
       {isOwner() && <LinkedInAgent onMessage={setMessage} />}

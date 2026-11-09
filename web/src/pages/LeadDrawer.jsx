@@ -15,6 +15,7 @@ import LeadFlows from "./flows/LeadFlows.jsx";
 import LeadStage from "./LeadStage.jsx";
 import { EditDetails, InlineForm, LeadOrigin, PrivacyActions, SIGNAL_LABELS, linkedinDrafts, replyMeaning, sequenceStatus } from "./LeadDrawerParts.jsx";
 import LeadAssign from "./LeadAssign.jsx";
+import LinkedInAccountPick from "./LinkedInAccountPick.jsx";
 import { LeadCustomData } from "./LeadCustomFields.jsx";
 import PhoneTag, { isLandline } from "./PhoneTag.jsx";
 
@@ -205,6 +206,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
         : "Not on the LinkedIn sequence. Start it from Leads (select, then Start LinkedIn outreach), or copy a draft below and send it yourself."}
         {/^https?:\/\//i.test(lead.linkedin_url || "") && <> <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer">Open profile</a></>}
         {lead.linkedin_profile?.open_profile && <span className="pill" style={{ marginLeft: 6 }}>Open Profile</span>}</p>
+      <LinkedInAccountPick lead={lead} onChanged={load} />
       {linkedinDrafts(lead).map(([title, text]) => (
         <div className="tip" key={title} style={{ marginBottom: 8 }}>
           <b>{title}</b> <small>({text.length} characters)</small>

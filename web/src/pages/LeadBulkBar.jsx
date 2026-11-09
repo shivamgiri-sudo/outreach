@@ -4,6 +4,7 @@ import { STAGE_LABELS, stageLabel } from "../labels.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import ConfirmDialog from "./ConfirmDialog.jsx";
 import { usePrompt } from "../Dialog.jsx";
+import { BulkLinkedInAccount } from "./LeadLinkedInStage.jsx";
 
 const VERBS = {
   enroll: "Started the email sequence for", stage: "Moved", owner: "Assigned", tag_add: "Tagged", tag_remove: "Removed the tag from",
@@ -85,6 +86,7 @@ export default function LeadBulkBar({ picked, pageIds, owners, spaces, onDone, o
         <button className="btn" disabled={busy === "enroll"} onClick={() => confirmThen("enroll", null, "Start the email sequence?", `Yes, start for ${picked.length}`)}>
           {busy === "enroll" ? "Starting…" : "Start email sequence"}</button>
         <button className="btn ghost" disabled={busy === "li"} onClick={bulkLinkedIn}>{busy === "li" ? "Starting…" : "Start LinkedIn outreach"}</button>
+        <BulkLinkedInAccount picked={picked} onDone={onDone} />
         <button className="btn ghost" disabled={busy === "list"} onClick={saveAsList}>Save as list</button>
         <select aria-label="Change stage of selected leads" value="" onChange={(e) => e.target.value && confirmThen("stage", e.target.value, `Move to ${stageLabel(e.target.value)}?`, "Yes, move them")} style={{ width: "auto" }}>
           <option value="">Change stage…</option>

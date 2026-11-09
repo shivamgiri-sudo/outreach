@@ -176,8 +176,11 @@ def _open_task(store, lead_id: str) -> Optional[dict]:
     return min(rows, key=lambda t: t.get("due_at") or "") if rows else None
 
 
-def owner_of(lead: dict) -> str:
-    return (lead.get("linkedin_seq") or {}).get("account") or ""
+def owner_of(lead: dict, settings: Optional[dict] = None) -> str:
+    """The LinkedIn account this lead belongs to: the one that took it, else the one picked for it (per lead or the
+    owner's default; see app/linkedin_accounts.py). '' = any account may take it."""
+    from .linkedin_accounts import assigned
+    return assigned(lead, settings)
 
 
 def describe(store, lead: dict, account: str = "") -> dict:
@@ -199,8 +202,9 @@ def describe(store, lead: dict, account: str = "") -> dict:
         out["reason"] = "Not on the LinkedIn sequence yet. Start it from the LinkedIn page in the app."
         return out
     status = seq.get("status")
-    if account and owner_of(lead) and owner_of(lead) != account:
-        out["reason"] = f"Another LinkedIn account ({owner_of(lead)}) is handling this person; only that account messages them."
+    holder = owner_of(lead, settings)
+    if account and holder and holder != account:
+        out["reason"] = f"Another LinkedIn account ({holder}) is handling this person; only that account messages them."
         return out
     if status == "stopped":
         out["reason"] = "The sequence is stopped" + (" because they replied." if seq.get("stopped") == "replied" else ".")
@@ -247,7 +251,7 @@ def queue(store, account: str = "") -> dict:
     settings = store.read("settings")
     leads = {l["id"]: l for l in store.read("leads")}
     from . import workspaces
-    mine = lambda lead: (not account or owner_of(lead) in ("", account)) and workspaces.visible(lead)
+    mine = lambda lead: (not account or owner_of(lead, settings) in ("", account)) and workspaces.visible(lead)
     due = []
     for d in q["due"]:
         lead = leads.get(d["lead_id"]) or {}

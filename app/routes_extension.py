@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from . import extension_api as ext, extension_save, linkedin_agent as agent_mod, linkedin_seq as li
+from . import extension_api as ext, extension_save, linkedin_accounts as accts, linkedin_agent as agent_mod, linkedin_seq as li
 
 
 class PairBody(BaseModel):
@@ -95,7 +95,7 @@ def make_router(store) -> APIRouter:
         account = account_of(request)
         ctl = agent_mod.control(store, account=account)
         if ctl["active_now"]:                       # daily auto-start: only while the agent is really working
-            started = li.auto_start(store, ctl["connections_left_today"])
+            started = accts.auto_start_for(store, account, ctl["connections_left_today"])   # only this account's or unassigned people
             if started:
                 names = ", ".join(s.get("name") or s.get("company") or "?" for s in started[:8]) + (" …" if len(started) > 8 else "")
                 agent_mod.note(store, "auto_start", f"Started the LinkedIn sequence for {len(started)} people: {names}", account)
@@ -118,13 +118,15 @@ def make_router(store) -> APIRouter:
         if not account:
             return {"ok": True, "account": ""}
         won = {}
+        settings = store.read("settings")
 
         def apply(l):
             seq = l.get("linkedin_seq")
-            if not seq:
+            holder = accts.assigned(l, settings)          # taken by, picked for, or the owner's default account
+            if holder and holder != account:
+                won["other"] = holder
                 return None
-            if seq.get("account") and seq["account"] != account:
-                won["other"] = seq["account"]
+            if not seq:
                 return None
             if seq.get("account") == account:
                 return None
@@ -152,8 +154,9 @@ def make_router(store) -> APIRouter:
     def accepted(lead_id: str, request: Request):
         lead = lead_or_404(lead_id)
         account = account_of(request)
-        if account and ext.owner_of(lead) not in ("", account):
-            raise HTTPException(409, f"Another LinkedIn account ({ext.owner_of(lead)}) sent this request.")
+        holder = ext.owner_of(lead, store.read("settings"))
+        if account and holder not in ("", account):
+            raise HTTPException(409, f"Another LinkedIn account ({holder}) sent this request.")
         if (lead.get("linkedin_seq") or {}).get("status") != "waiting_for_acceptance":
             refuse(ext.describe(store, lead), "This person is not waiting to accept a connection request.")
         result = li.mark_accepted(store, lead_id)
@@ -161,7 +164,7 @@ def make_router(store) -> APIRouter:
         when = (f"The first message is scheduled for {task['due_at'][:10]}." if task else "No message step is left.")
         from . import alerts
         alerts.safe(store, "li_accepted", lead_id, f"{lead.get('contact_name') or 'They'} accepted your LinkedIn connection request. {when}")
-        if account and not ext.owner_of(lead):
+        if account and not (lead.get("linkedin_seq") or {}).get("account"):
             store.update_lead(lead_id, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "account": account}})
         return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id), account)}
 

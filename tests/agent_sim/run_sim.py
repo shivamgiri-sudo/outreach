@@ -307,6 +307,18 @@ inv = [i for i in fake_state()["invites"] if i["to"] == "upsell-1"]
 check("S17 switch on: the Premium offer is closed and the request goes without a note", len(inv) == 1 and inv[0]["note"] == "", out17[-500:])
 check("S17 the log says it went without a note", any("without a note" in r["note"] and r.get("lead_id") == up for r in agent.log_rows(store)))
 
+# ---------------------------------------------------------------- S18: a lead assigned to account B is never contacted by A
+asg = add_lead("connect-18", "AssignCo")
+code18 = http("PUT", f"/api/leads/{asg}/linkedin-account", {"account": "acct-b"}, owner)[0]
+login_profile(PROFILE_B, "acct-b")
+run_until_idle(PROFILE_A)
+check("S18 account A never invites a person assigned to account B", code18 == 200
+      and not any(i["to"] == "connect-18" for i in fake_state()["invites"]) and seq(asg).get("account") in (None, ""), str(seq(asg)))
+run_until_idle(PROFILE_B)
+inv18 = [i for i in fake_state()["invites"] if i["to"] == "connect-18"]
+check("S18 account B sends the request and keeps the person", len(inv18) == 1 and inv18[0]["from"] == "acct-b"
+      and seq(asg).get("account") == "acct-b", str(inv18) + str(seq(asg)))
+
 # ---------------------------------------------------------------- done
 fake.terminate()
 server.should_exit = True

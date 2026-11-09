@@ -48,6 +48,8 @@ from .routes_today import make_router as make_today_router
 from .routes_providers import make_router as make_providers_router
 from .routes_activities import make_router as make_activities_router
 from .routes_linkedin import make_router as make_linkedin_router
+from . import linkedin_stages
+from .routes_linkedin_accounts import make_router as make_linkedin_accounts_router
 from .routes_lists import make_router as make_lists_router
 from .routes_companies import make_router as make_companies_router
 from .routes_prospects import make_router as make_prospects_router
@@ -344,7 +346,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
 
     @app.get("/api/leads")
     def list_leads():
-        return with_list_extras(store, sorted((_present(lead) for lead in workspaces_mod.filter_rows(store.read("leads"))), key=lambda x: -x["score"]))
+        return linkedin_stages.list_extras(store, with_list_extras(store, sorted((_present(lead) for lead in workspaces_mod.filter_rows(store.read("leads"))), key=lambda x: -x["score"])))
 
     @app.get("/api/leads/{lead_id}")
     def get_lead(lead_id: str):
@@ -554,6 +556,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_contacts_router(store, _present))
     app.include_router(make_tracking_router(store, base_url_of))
     app.include_router(make_linkedin_router(store))
+    app.include_router(make_linkedin_accounts_router(store))
     app.include_router(make_lists_router(store, _present))
     app.include_router(make_companies_router(store))
     app.include_router(make_workspaces_router(store))

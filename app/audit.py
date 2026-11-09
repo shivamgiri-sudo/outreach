@@ -142,6 +142,8 @@ ACTIONS = {
     "prospects.erase": "Prospect erased", "prospects.edit": "Prospect edited", "prospects.settings": "Prospect sources changed",
     "prospects.enrich": "Prospect emails looked up", "prospects.spend": "Lookup budget changed",
     "hygiene.restore_landlines": "Landlines restored to leads", "hygiene.restore_landlines_undo": "Landline restore undone",
+    "linkedin.account": "LinkedIn account for a lead changed", "linkedin.owner_account": "Owner's default LinkedIn account changed",
+    "linkedin.stages_export": "LinkedIn stage list downloaded",
     "export.download": "Data downloaded", "backup.download": "Backup downloaded", "backup.restore": "Backup restored",
 }
 MAX_DETAIL = 500

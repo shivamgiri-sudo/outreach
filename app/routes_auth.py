@@ -28,7 +28,7 @@ OWNER_ROUTES = {
     ("POST", "/api/sequences"), ("PUT", "/api/sequences/{seq_id}"), ("POST", "/api/sequences/{seq_id}/duplicate"),       # sequence library
     ("POST", "/api/sequences/{seq_id}/archive"), ("POST", "/api/sequences/{seq_id}/steps/{index}/send-preview"),
     ("GET", "/api/scoring"), ("PUT", "/api/scoring"),
-    ("PUT", "/api/linkedin/sequence"), ("POST", "/api/linkedin/sequence/reset"), ("PUT", "/api/lead-fields"),   # industry setup
+    ("PUT", "/api/linkedin/owner-accounts"), ("PUT", "/api/linkedin/sequence"), ("POST", "/api/linkedin/sequence/reset"), ("PUT", "/api/lead-fields"),   # industry setup
     ("POST", "/api/presets/{preset_id}/apply"),
     ("POST", "/api/prospects/export"), ("POST", "/api/prospects/import"), ("POST", "/api/prospects/suppress"),       # prospect DB
     ("GET", "/api/prospects/suppressions"), ("POST", "/api/prospects/unsuppress"),
