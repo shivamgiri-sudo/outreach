@@ -99,6 +99,8 @@ CALLER_WRITES = {
 # Templates (snippets, LinkedIn connection notes) are edited only by owners (any workspace) and workspace admins (their
 # own workspace; the template routes / workspace guard check which). Never by callers.
 ADMIN_WRITES = {
+    # workspace management of their own workspaces (app/routes_workspaces.py checks the workspace is theirs)
+    ("PUT", "/api/workspaces/{ws_id}"), ("POST", "/api/workspaces/{ws_id}/members"), ("DELETE", "/api/workspaces/{ws_id}/members/{email}"),
     ("POST", "/api/snippets"), ("PUT", "/api/snippets/{snippet_id}"), ("DELETE", "/api/snippets/{snippet_id}"),
     ("PUT", "/api/linkedin/variants"), ("POST", "/api/linkedin/variants/generate"), ("POST", "/api/linkedin/variants/score"),
 }

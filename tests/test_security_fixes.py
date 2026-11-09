@@ -41,10 +41,13 @@ def rig(tmp_path, monkeypatch=None, superadmin=""):
     c.post("/api/leads/import", json={"csv": CSV, "source": "apollo"}, headers=bearer(owner))
 
     def login_as(email, role, workspaces=(), ip="198.51.100.7", name=""):
-        r = c.post("/api/users", json={"email": email, "name": name or email.split("@")[0], "role": role, "password": PW,
-                                       "workspaces": list(workspaces)}, headers=bearer(owner))
+        body = {"email": email, "name": name or email.split("@")[0], "role": role, "password": PW, "workspaces": list(workspaces)}
+        if not workspaces:
+            body["all_workspaces"] = True                     # an explicit choice is required once workspaces exist
+        r = c.post("/api/users", json=body, headers=bearer(owner))
         assert r.status_code == 200, r.text
-        return client(ip).post("/api/login", json={"email": email, "password": PW}).json()["token"]
+        from tests.two_step_helpers import sign_in             # owners must set up two-step login first
+        return sign_in(client(ip), email, PW)
     return c, owner, app.state.store, login_as, client
 
 

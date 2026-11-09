@@ -93,7 +93,7 @@ await step("Limited login sees only its pages and an empty Leads list", async ()
   const p = raj.page;
   await signIn(p, "raj@client.example", "long-password-1");
   menu = (await p.locator("nav.side").getByRole("button").allInnerTexts()).map((t) => t.trim()).filter(Boolean);
-  for (const hidden of ["Campaigns", "Prospect search", "LinkedIn outreach", "Data hygiene", "Buying signals", "Flow builder"])
+  for (const hidden of ["Campaigns", "Prospect search", "Data hygiene", "Buying signals"])     // LinkedIn + flows: own workspace only
     if (menu.includes(hidden)) throw new Error(`menu shows ${hidden}`);
   await nav(p, "Leads");
   const text = await p.locator("main").innerText();

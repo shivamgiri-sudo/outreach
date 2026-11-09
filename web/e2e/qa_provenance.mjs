@@ -88,9 +88,7 @@ await step("Download with why gives a CSV with provenance columns", async () => 
 
 await step("Internal emails tab renders", async () => {
   await p.getByTestId("tab-internal").click();
-  await p.waitForTimeout(800);
-  const text = await p.locator("main").innerText();
-  if (!/No internal emails yet|When \(IST\)/.test(text)) throw new Error("internal tab did not render");
+  await p.locator("main").getByText(/No internal emails yet|Emails the app sends to the team/).first().waitFor({ timeout: 15000 });
   await p.screenshot({ path: `${SHOTS}/provenance-internal.png`, fullPage: false });
 });
 
