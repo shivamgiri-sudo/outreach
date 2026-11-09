@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, canWrite, getToken, getWorkspace, setCanEditContacts, setRole, setToken, setWorkspace } from "./api.js";
+import { api, canWrite, getToken, getWorkspace, setCanEditContacts, setMyWorkspaces, setRole, setToken, setWorkspace } from "./api.js";
 import Icon from "./icons.jsx";
 import { stageLabel } from "./labels.js";
 import Login from "./pages/Login.jsx";
@@ -88,7 +88,7 @@ const BY_ID = Object.fromEntries(PAGES.map((p) => [p[0], p]));
 // Pages whose every API call is owner-only: hidden from callers and viewers, and a short note if they open the link.
 const OWNER_PAGES = new Set(["engine"]);
 // A login limited to some workspaces sees only pages built from its own workspace's leads (the server refuses the rest).
-const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "replies", "calls", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports"]);
+const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "replies", "calls", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports", "linkedin", "flows"]);
 const isLimited = (me) => me.role !== "owner" && ((me.workspaces || []).length > 0 || me.role === "admin");
 const pageAllowed = (me, id) => (me.role === "owner" || !OWNER_PAGES.has(id)) && (!isLimited(me) || LIMITED_PAGES.has(id));
 const GROUPS = GROUPS_ALL.map(([g, ids]) => [g, ids.filter((id) => BY_ID[id])]).filter(([, ids]) => ids.length);
@@ -258,7 +258,7 @@ function Shell() {
   useEffect(() => {
     if (!auth.signedIn) { setMe(null); return; }
     api.me().then((m) => {
-      setRole(m.role); setCanEditContacts(m.can_edit_contacts); setMe(m);
+      setRole(m.role); setCanEditContacts(m.can_edit_contacts); setMyWorkspaces(m.workspaces); setMe(m);
       if ((m.role === "caller" || m.role === "admin") && !window.location.hash.replace(/^#\/?/, "")) setPage("myday");     // callers start on My day
     }).catch(() => setMe({ role: "owner" }));
   }, [auth.signedIn]);

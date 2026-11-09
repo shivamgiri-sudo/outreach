@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { api, isOwner } from "../api.js";
+import { api, getWorkspace, isOwner, isWorkspaceAdmin } from "../api.js";
 import { copyText } from "../clipboard.js";
 import PreviewDrawer from "./sequences/PreviewDrawer.jsx";
 import SequenceEditor from "./sequences/SequenceEditor.jsx";
 import Snippets from "./sequences/Snippets.jsx";
+import WorkspaceTag from "./sequences/WorkspaceTag.jsx";
 import { humanDay, stepTitle } from "./sequences/lint.js";
 
 const UNSUB = "\n\nPrefer no more emails? {{unsub_link}}";
@@ -39,20 +40,24 @@ function CopyCard({ t, copied, onCopy }) {
   );
 }
 
-function SequenceCard({ s, onOpen, onDuplicate, onArchive, onPreview }) {
+function SequenceCard({ s, onOpen, onDuplicate, onArchive, onPreview, onDefault }) {
   const tests = s.steps.filter((x) => (x.variants || []).length).length;
+  const manager = isOwner() || isWorkspaceAdmin();
+  const copyLabel = isOwner() || s.can_edit ? "Duplicate" : "Copy into my workspace";
   return (
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div style={{ minWidth: 0 }}>
           <b>{s.name}</b> {s.builtin && <span className="pill">Built in</span>} {s.archived && <span className="pill warn">Archived</span>}
+          {" "}<WorkspaceTag row={s} />{s.is_default && <span className="pill ok" style={{ marginLeft: 4 }}>Default</span>}
           {tests > 0 && <span className="pill rec" style={{ marginLeft: 4 }}>A/B on {tests} step{tests > 1 ? "s" : ""}</span>}
           <p className="sub" style={{ margin: "4px 0 0" }}>{s.steps.length} emails on day {s.steps.map((x) => humanDay(x.day)).join(", ")} · {s.in_use} running now{s.notes ? ` · ${s.notes}` : ""}</p>
         </div>
         <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-          <button className="btn ghost" onClick={() => onOpen(s)}>{s.builtin || !isOwner() ? "View" : "Edit"}</button>
-          {isOwner() && <button className="btn ghost" onClick={() => onDuplicate(s)}>Duplicate</button>}
-          {isOwner() && !s.builtin && <button className="btn ghost" onClick={() => onArchive(s)}>{s.archived ? "Restore" : "Archive"}</button>}
+          <button className="btn ghost" onClick={() => onOpen(s)}>{s.can_edit ? "Edit" : "View"}</button>
+          {manager && <button className="btn ghost" onClick={() => onDuplicate(s)}>{copyLabel}</button>}
+          {s.can_edit && <button className="btn ghost" onClick={() => onArchive(s)}>{s.archived ? "Restore" : "Archive"}</button>}
+          {manager && !s.is_default && !s.archived && (s.workspace_id === "main" || !isOwner() || s.workspace_id === getWorkspace()) && <button className="btn ghost" title="Leads of this workspace start this sequence when nobody picks one" onClick={() => onDefault(s)}>Make default</button>}
         </span>
       </div>
       <details>
@@ -80,11 +85,9 @@ export default function Templates() {
   const [whatsapp, setWhatsapp] = useState([]);
   const [copied, setCopied] = useState("");
   const [msg, setMsg] = useState("");
-  const [me, setMe] = useState(null);
 
   const load = () => api.sequences(showArchived).then(setList).catch((e) => setMsg(e.message));
   useEffect(() => { load(); }, [showArchived]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { api.me().then(setMe).catch(() => setMe(null)); }, []);
   useEffect(() => {
     api.whatsappTemplates()
       .then((all) => setWhatsapp(Object.entries(all).map(([key, body]) => ({ name: waName(key), channel: "WhatsApp", body }))))
@@ -102,11 +105,15 @@ export default function Templates() {
     try { const copyRow = await api.duplicateSequence(s.id); await load(); setEditing(copyRow); setMsg(`Made “${copyRow.name}”. Change it below and save.`); }
     catch (e) { setMsg(e.message); }
   };
+  const makeDefault = async (s) => {
+    try { await api.makeDefaultSequence(s.id); await load(); setMsg(`“${s.name}” is now the default for new leads of this workspace.`); }
+    catch (e) { setMsg(e.message); }
+  };
   const archive = async (s) => {
     if (!s.archived && !window.confirm(`Archive “${s.name}”? Leads already in it carry on; it can't be chosen for new leads.`)) return;
     try { await api.archiveSequence(s.id, !s.archived); load(); } catch (e) { setMsg(e.message); }
   };
-  const newSequence = () => setEditing({ name: "", notes: "", steps: [{ day: 0, name: "Email 1", subject: "", body: "{{greeting}}\n\n\n\nRegards,\n{{sender}}\n\nNot relevant? Unsubscribe: {{unsub_link}}", variants: [] }] });
+  const newSequence = () => setEditing({ can_edit: true, name: "", notes: "", steps: [{ day: 0, name: "Email 1", subject: "", body: "{{greeting}}\n\n\n\nRegards,\n{{sender}}\n\nNot relevant? Unsubscribe: {{unsub_link}}", variants: [] }] });
 
   return (
     <>
@@ -125,13 +132,13 @@ export default function Templates() {
         <>
           <p className="sub">Each email goes out designed (logo, layout) with the same words, plus a plain-text version. Pick the sequence when you start a lead (contact panel); lists and campaigns use the default.</p>
           <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-            {isOwner() && <button className="btn" onClick={newSequence}>New sequence</button>}
+            {(isOwner() || isWorkspaceAdmin()) && <button className="btn" onClick={newSequence}>New sequence</button>}
             <label className="row" style={{ gap: 6, margin: 0 }}><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} style={{ width: "auto" }} /> Show archived</label>
           </div>
-          {list.map((s) => <SequenceCard key={s.id} s={s} onOpen={setEditing} onDuplicate={duplicate} onArchive={archive} onPreview={preview} />)}
+          {list.map((s) => <SequenceCard key={s.id} s={s} onOpen={setEditing} onDuplicate={duplicate} onArchive={archive} onPreview={preview} onDefault={makeDefault} />)}
         </>
       ))}
-      {tab === "snippets" && <Snippets me={me} />}
+      {tab === "snippets" && <Snippets />}
       {tab === "other" && (
         <>
           <h3>WhatsApp (only after a recorded yes)</h3>

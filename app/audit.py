@@ -159,6 +159,11 @@ ACTIONS = {
     "task.delete": "Task deleted", "person.remove": "Contact person removed", "contact_point.remove": "Contact point removed",
     "ai.draft": "AI draft written", "ai.sent": "AI-drafted message sent", "ai.approve": "AI-drafted text approved",
     "audit.pack": "Audit pack downloaded", "audit.verify": "Change log checked", "consent.do_not_contact": "Put on do-not-contact",
+    "sequence.create": "Sequence created", "sequence.change": "Sequence changed", "sequence.copy": "Sequence copied",
+    "sequence.default": "Default sequence chosen", "snippet.create": "Snippet added", "snippet.change": "Snippet changed",
+    "template.linkedin_sequence": "LinkedIn sequence changed (workspace)", "template.linkedin_notes": "LinkedIn connection notes changed (workspace)",
+    "flow.create": "Flow created", "flow.change": "Flow changed", "flow.activate": "Flow turned on", "flow.pause": "Flow paused",
+    "flow.enroll": "Leads started on a flow",
 }
 MAX_DETAIL = 500
 

@@ -1,11 +1,14 @@
-"""Flow builder API: flows, templates, validation, activation, enrolment, simulation, runs and the engine tick."""
+"""Flow builder API: flows, templates, validation, activation, enrolment, simulation, runs and the engine tick.
+
+A flow belongs to a workspace (missing = main; app/ws_templates.py): owners change any flow, a workspace admin only its
+own workspace's flows, and a workspace's flow only takes that workspace's leads."""
 import os
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from . import brand, capture_connectors, routes_outreach
+from . import brand, capture_connectors, routes_outreach, ws_templates as wst
 from .activation import EVENT_STEP
 from .activities import caller_name, team
 from .flow_engine import Context, enroll, flow_stats, present_run, stop_run, tick
@@ -30,9 +33,11 @@ class FlowBody(BaseModel):
     nodes: Optional[list] = None
     edges: Optional[list] = None
     settings: Optional[dict] = None
+    workspace: Optional[str] = None
 
 
 class ImportBody(BaseModel):
+    workspace: Optional[str] = None
     format: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None
@@ -75,8 +80,23 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
 
     def find(flow_id: str) -> dict:
         flow = next((f for f in store.read("flows") if f["id"] == flow_id), None)
-        if flow is None:
+        if flow is None or not wst.readable(flow):
             raise HTTPException(404, "Flow not found")
+        return flow
+
+    def editable(flow_id: str, request: Request) -> dict:
+        flow = find(flow_id)
+        wst.require_edit(wst.user_of(request), wst.tpl_ws(flow))
+        return flow
+
+    def new_in(request: Request, wanted: Optional[str], flow: dict) -> dict:
+        """The new flow, stamped with the workspace it is made for (checked: the person may change that workspace)."""
+        user = wst.user_of(request)
+        ws = wst.target_ws(store, user, wanted)
+        wst.require_edit(user, ws)
+        flow = {**flow, **({"workspace": ws} if ws != wst.MAIN else {})}
+        store.update("flows", lambda rows: [*rows, flow])
+        wst.record(store, request, "flow.create", ws, flow.get("name") or flow["id"], f"id {flow['id']}")
         return flow
 
     def runs_of(flow_id: str) -> list:
@@ -85,6 +105,8 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
     def present(flow: dict, full: bool = True) -> dict:
         shown = {k: v for k, v in flow.items() if k != "versions"} if full else {
             k: flow[k] for k in ("id", "name", "description", "status", "version", "created_at", "updated_at", "activated_at")}
+        ws = wst.tpl_ws(flow)
+        shown.update(workspace_id=ws, workspace_name=wst.name_of(store, ws))
         trigger = next((n for n in flow["nodes"] if n["type"].startswith("trigger.")), None)
         shown.update(stats=flow_stats(runs_of(flow["id"])), trigger=trigger["type"] if trigger else None,
                      steps=len(flow["nodes"]))
@@ -98,7 +120,7 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
 
     @router.get("/api/flows")
     def list_flows():
-        return sorted((present(f, full=False) for f in store.read("flows")), key=lambda f: f["updated_at"], reverse=True)
+        return sorted((present(f, full=False) for f in wst.filter_readable(store.read("flows"))), key=lambda f: f["updated_at"], reverse=True)
 
     @router.get("/api/flows/catalog")
     def catalog():
@@ -115,13 +137,12 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
         return template_list()
 
     @router.post("/api/flows/templates/{key}")
-    def from_template(key: str):
+    def from_template(key: str, request: Request, workspace: str = ""):
         try:
             flow = flow_from_template(key)
         except LookupError:
             raise HTTPException(404, "Unknown template")
-        store.update("flows", lambda rows: [*rows, flow])
-        return present(flow)
+        return present(new_in(request, workspace, flow))
 
     @router.post("/api/flows/tick")
     def run_tick(body: TickBody):
@@ -129,16 +150,16 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
         return tick(store, routes_outreach.resolve_now(body.now), context())
 
     @router.post("/api/flows")
-    def create_flow(body: FlowBody):
+    def create_flow(body: FlowBody, request: Request):
+        wst.require_edit(wst.user_of(request), wst.target_ws(store, wst.user_of(request), body.workspace))
         try:
             flow = build_flow(body.name, body.description or "", body.nodes, body.edges, body.settings, brand.stage_labels(store))
         except FlowError as exc:
             raise HTTPException(400, str(exc))
-        store.update("flows", lambda rows: [*rows, flow])
-        return present(flow)
+        return present(new_in(request, body.workspace, flow))
 
     @router.post("/api/flows/import")
-    def import_flow(body: ImportBody):
+    def import_flow(body: ImportBody, request: Request):
         """A flow exported from this app (or written by hand). It arrives as a draft: you check it, then turn it on."""
         if body.format not in (None, EXPORT_FORMAT):
             raise HTTPException(400, "This file is not a flow exported from this app.")
@@ -149,8 +170,7 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
                               brand.stage_labels(store))
         except FlowError as exc:
             raise HTTPException(400, str(exc))
-        store.update("flows", lambda rows: [*rows, flow])
-        return present(flow)
+        return present(new_in(request, body.workspace, flow))
 
     @router.get("/api/flows/{flow_id}/export")
     def export_flow(flow_id: str):
@@ -163,32 +183,33 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
         return present(find(flow_id))
 
     @router.put("/api/flows/{flow_id}")
-    def edit_flow(flow_id: str, body: FlowBody):
-        flow = find(flow_id)
-        changes = body.model_dump()
+    def edit_flow(flow_id: str, body: FlowBody, request: Request):
+        flow = editable(flow_id, request)
+        changes = body.model_dump(exclude={"workspace"})
         try:
             updated = apply_edit(flow, changes, has_runs=any(r["flow_version"] == flow["version"] for r in runs_of(flow_id)),
                                  team_names=_team_names(store), stage_labels=brand.stage_labels(store))
         except FlowError as exc:
             raise HTTPException(400, str(exc))
+        pick = lambda f: {"name": f.get("name"), "description": f.get("description"), "version": f.get("version"), "steps": len(f.get("nodes") or [])}
+        wst.record_diff(store, request, "flow.change", wst.tpl_ws(flow), flow.get("name") or flow_id, pick(flow), pick(updated))
         return present(save(updated))
 
     @router.delete("/api/flows/{flow_id}")
     def delete_flow(flow_id: str, request: Request):
-        flow = find(flow_id)
+        flow = editable(flow_id, request)
         stopped = 0
         for run in runs_of(flow_id):
             if run["status"] in ("running", "waiting"):
                 stop_run(store, run["id"], "the flow was deleted")
                 stopped += 1
         store.update("flows", lambda rows: [f for f in rows if f["id"] != flow_id])
-        from . import audit
-        audit.record(store, getattr(request.state, "user", None), "flow.delete", flow.get("name") or flow_id, f"id {flow_id}; {stopped} running lead(s) stopped")
+        wst.record(store, request, "flow.delete", wst.tpl_ws(flow), flow.get("name") or flow_id, f"id {flow_id}; {stopped} running lead(s) stopped")
         return {"deleted": flow_id, "runs_stopped": stopped}
 
     @router.post("/api/flows/{flow_id}/validate")
-    def validate(flow_id: str, body: Optional[GraphBody] = None):
-        flow = find(flow_id)
+    def validate(flow_id: str, request: Request, body: Optional[GraphBody] = None):
+        flow = editable(flow_id, request)
         if body is not None and (body.nodes is not None or body.edges is not None):
             try:
                 nodes, edges = normalise_graph(body.nodes if body.nodes is not None else flow["nodes"],
@@ -221,44 +242,54 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
                 "counters": connector.get("counters") or {}, "active": flow["status"] == "active"}
 
     @router.post("/api/flows/{flow_id}/activate")
-    def activate(flow_id: str):
-        flow = find(flow_id)
+    def activate(flow_id: str, request: Request):
+        flow = editable(flow_id, request)
         errors = validate_flow(flow, _team_names(store))
         if errors:
             raise HTTPException(400, "Fix these first: " + " ".join(e["message"] for e in errors[:3]))
         if any(n["type"] == "trigger.webhook" for n in flow["nodes"]):
             webhook_connector(flow, make=True)
         versions = {**flow.get("versions", {}), str(flow["version"]): graph_of(flow)}
+        wst.record(store, request, "flow.activate", wst.tpl_ws(flow), flow.get("name") or flow_id, f"id {flow_id}; version {flow['version']}")
         return present(save({**flow, "status": "active", "activated_at": now_iso(), "versions": versions, "updated_at": now_iso()}))
 
     @router.post("/api/flows/{flow_id}/pause")
-    def pause(flow_id: str):
-        flow = find(flow_id)
+    def pause(flow_id: str, request: Request):
+        flow = editable(flow_id, request)
+        wst.record(store, request, "flow.pause", wst.tpl_ws(flow), flow.get("name") or flow_id, f"id {flow_id}")
         return present(save({**flow, "status": "paused", "updated_at": now_iso()}))
 
     @router.post("/api/flows/{flow_id}/enroll")
     def enroll_leads(flow_id: str, body: EnrollBody, request: Request):
-        flow = find(flow_id)
+        from . import workspaces
+        flow = editable(flow_id, request)
         if len(body.lead_ids) > MAX_BULK:
             raise HTTPException(400, f"Enrol at most {MAX_BULK} leads at a time.")
         now = routes_outreach.resolve_now(None)
         from .provenance import person_of
         who = person_of(getattr(request.state, "user", None))
         enrolled, refused = [], []
+        in_scope = set(workspaces.only_visible_ids(store, [str(i) for i in body.lead_ids]))
         for lead_id in dict.fromkeys(str(i) for i in body.lead_ids):
+            if lead_id not in in_scope:
+                refused.append({"lead_id": lead_id, "reason": "Lead not found"})
+                continue
             try:
                 enrolled.append(enroll(store, flow, lead_id, now, by=who["name"], by_email=who["email"], via="by hand")["lead_id"])
             except LookupError:
                 refused.append({"lead_id": lead_id, "reason": "Lead not found"})
             except FlowError as exc:
                 refused.append({"lead_id": lead_id, "reason": str(exc)})
+        if enrolled:
+            wst.record(store, request, "flow.enroll", wst.tpl_ws(flow), flow.get("name") or flow_id, f"{len(enrolled)} lead(s) started by hand")
         return {"enrolled": enrolled, "refused": refused}
 
     @router.post("/api/flows/{flow_id}/simulate")
-    def simulate_flow(flow_id: str, body: SimulateBody):
-        flow = find(flow_id)
+    def simulate_flow(flow_id: str, body: SimulateBody, request: Request):
+        from . import workspaces
+        flow = editable(flow_id, request)
         lead = next((l for l in store.read("leads") if l["id"] == body.lead_id), None)
-        if lead is None:
+        if lead is None or not workspaces.visible(lead):
             raise HTTPException(404, "Lead not found")
         if body.assume_reply not in REPLY_OUTPUTS:
             raise HTTPException(400, "Unknown reply to assume")
@@ -266,9 +297,11 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
 
     @router.get("/api/flows/{flow_id}/runs")
     def flow_runs(flow_id: str):
+        from . import workspaces
         flow = find(flow_id)
         leads = {l["id"]: l for l in store.read("leads")}
-        runs = sorted(runs_of(flow_id), key=lambda r: r["started_at"], reverse=True)
+        ids = workspaces.visible_lead_ids(store)
+        runs = sorted((r for r in runs_of(flow_id) if ids is None or r["lead_id"] in ids), key=lambda r: r["started_at"], reverse=True)
         return [present_run(r, flow, leads.get(r["lead_id"])) for r in runs]
 
     @router.get("/api/leads/{lead_id}/flows")

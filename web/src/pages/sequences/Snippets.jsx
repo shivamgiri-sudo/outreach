@@ -1,26 +1,30 @@
 import { useEffect, useState } from "react";
-import { api, canWrite as roleCanWrite, isOwner } from "../../api.js";
+import { api, getRole, getWorkspace, isLimitedLogin, isOwner, isWorkspaceAdmin } from "../../api.js";
 import { copyText } from "../../clipboard.js";
 import { lintText } from "./lint.js";
+import WorkspaceTag from "./WorkspaceTag.jsx";
 
 const CHANNELS = [["email", "Email"], ["whatsapp", "WhatsApp"], ["linkedin", "LinkedIn"], ["sms", "SMS"]];
 const EMPTY = { name: "", channel: "email", subject: "", body: "" };
 
-// The snippet library: short reusable messages per channel. Callers add their own; the owner can change or delete any.
-export default function Snippets({ me }) {
+// The snippet library: short reusable messages per channel, per workspace. Owners and a workspace's admins change that
+// workspace's snippets; in Main an unlimited caller still adds its own and changes them (the server says which: can_edit).
+export default function Snippets() {
   const [rows, setRows] = useState([]);
   const [filter, setFilter] = useState("");
   const [form, setForm] = useState(null);
   const [msg, setMsg] = useState("");
   const [copied, setCopied] = useState("");
+  const [spaces, setSpaces] = useState([]);
   const load = () => api.snippets().then(setRows).catch((e) => setMsg(e.message));
-  useEffect(() => { load(); }, []);
-  const canWrite = roleCanWrite();
-  const mayChange = (s) => isOwner() || (canWrite && me?.email && s.created_by_email === me.email);
+  useEffect(() => { load(); if (isOwner()) api.workspaces().then(setSpaces).catch(() => {}); }, []);
+  const canWrite = isOwner() || isWorkspaceAdmin() || (getRole() === "caller" && !isLimitedLogin());
+  const mayChange = (s) => !!s.can_edit;
   const save = async (e) => {
     e.preventDefault(); setMsg("");
     try {
-      if (form.id) await api.updateSnippet(form.id, form); else await api.createSnippet(form);
+      const { workspace, ...fields } = form;
+      if (form.id) await api.updateSnippet(form.id, fields); else await api.createSnippet({ ...fields, ...(isOwner() ? { workspace } : {}) });
       setForm(null); load();
     } catch (err) { setMsg(err.message); }
   };
@@ -42,7 +46,7 @@ export default function Snippets({ me }) {
           <button type="button" className={`chip${filter === "" ? " on" : ""}`} onClick={() => setFilter("")}>All</button>
           {CHANNELS.map(([k, label]) => <button type="button" key={k} className={`chip${filter === k ? " on" : ""}`} onClick={() => setFilter(k)}>{label}</button>)}
         </div>
-        {canWrite && !form && <button type="button" className="btn" onClick={() => setForm({ ...EMPTY, channel: filter || "email" })}>New snippet</button>}
+        {canWrite && !form && <button type="button" className="btn" onClick={() => setForm({ ...EMPTY, channel: filter || "email", workspace: getWorkspace() || "main" })}>New snippet</button>}
       </div>
       {msg && <p className="error" role="alert">{msg}</p>}
       {form && (
@@ -51,6 +55,8 @@ export default function Snippets({ me }) {
             <label>Name<input required maxLength={120} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
             <label>Channel<select value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
               {CHANNELS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}</select></label>
+            {isOwner() && !form.id && spaces.length > 1 && <label>Workspace<select aria-label="Workspace of this snippet" value={form.workspace} onChange={(e) => setForm({ ...form, workspace: e.target.value })}>
+              {spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>}
           </div>
           {form.channel === "email" && <label>Subject<input maxLength={200} value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></label>}
           <label>Text<textarea required rows={6} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} /></label>
@@ -63,7 +69,7 @@ export default function Snippets({ me }) {
       {shown.map((s) => (
         <div key={s.id} className="card" style={{ marginBottom: 12 }}>
           <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-            <b>{s.name} <span className="pill">{CHANNELS.find(([k]) => k === s.channel)?.[1] || s.channel}</span></b>
+            <b>{s.name} <span className="pill">{CHANNELS.find(([k]) => k === s.channel)?.[1] || s.channel}</span> <WorkspaceTag row={s} /></b>
             <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
               <button type="button" className="btn ghost" onClick={() => copy(s)}>{copied === s.id ? "Copied" : "Copy"}</button>
               {mayChange(s) && <button type="button" className="btn ghost" onClick={() => setForm({ ...EMPTY, ...s })}>Edit</button>}

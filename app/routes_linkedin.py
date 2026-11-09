@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import audit, linkedin_bridge, linkedin_config, linkedin_seq as li, opener_lab, provenance
+from . import audit, linkedin_bridge, linkedin_config, linkedin_seq as li, opener_lab, provenance, ws_templates as wst
 
 
 class SentBody(BaseModel):
@@ -34,6 +34,7 @@ class NoteBody(BaseModel):
 class VariantsBody(BaseModel):
     A: Optional[str] = Field(default=None, max_length=600)
     B: Optional[str] = Field(default=None, max_length=600)
+    workspace: Optional[str] = Field(default=None, max_length=60)
 
 
 class GenerateBody(BaseModel):
@@ -46,6 +47,11 @@ class SequenceBody(BaseModel):
     personas: Optional[list] = None
     default_hook: Optional[str] = Field(default=None, max_length=600)
     variant_b: Optional[str] = Field(default=None, max_length=600)
+    workspace: Optional[str] = Field(default=None, max_length=60)
+
+
+class WorkspaceBody(BaseModel):
+    workspace: Optional[str] = Field(default=None, max_length=60)
 
 
 class SequencePreviewBody(BaseModel):
@@ -53,6 +59,7 @@ class SequencePreviewBody(BaseModel):
     kind: str = "message"
     lead_id: Optional[str] = None
     title: str = Field(default="", max_length=200)
+    workspace: Optional[str] = Field(default=None, max_length=60)
 
 
 SAMPLE_LEAD = {"id": "sample", "contact_name": "Venkataraghavan Iyer", "company": "Example Realty Pvt Ltd", "title": "Founder"}
@@ -86,44 +93,89 @@ def make_router(store) -> APIRouter:
     def queue():
         return li.queue(store)
 
-    @router.get("/api/linkedin/steps")
-    def steps():
+    def ws_view(request: Request, wanted: Optional[str] = None) -> tuple:
+        """(workspace, settings as that workspace sees them) for the LinkedIn templates shown / saved."""
+        ws = wst.target_ws(store, wst.user_of(request), wanted)
+        return ws, wst.settings_for(store.read("settings"), ws)
+
+    def ws_fields(request: Request, ws: str) -> dict:
         settings = store.read("settings")
+        return {"workspace": ws, "workspace_name": wst.name_of(store, ws), "can_edit": wst.can_edit(wst.user_of(request), ws),
+                "own": ws == wst.MAIN or bool(wst.own(settings, ws).get(linkedin_config.SETTINGS_KEY)),
+                "own_notes": ws == wst.MAIN or bool(wst.own(settings, ws).get("linkedin_connect_variants"))}
+
+    def own_snapshot(ws: str) -> dict:
+        settings = store.read("settings")
+        if ws == wst.MAIN:
+            return {linkedin_config.SETTINGS_KEY: settings.get(linkedin_config.SETTINGS_KEY), "notes": settings.get("linkedin_connect_variants")}
+        mine = wst.own(settings, ws)
+        return {linkedin_config.SETTINGS_KEY: mine.get(linkedin_config.SETTINGS_KEY), "notes": mine.get("linkedin_connect_variants")}
+
+    @router.get("/api/linkedin/steps")
+    def steps(request: Request, workspace: str = ""):
+        _ws, settings = ws_view(request, workspace)
         return [{**s, "skipped": bool(s.get("needs") and not settings.get(s["needs"]))} for s in li.current_steps(settings)]
 
     @router.get("/api/linkedin/sequence")
-    def get_sequence():
-        settings = store.read("settings")
+    def get_sequence(request: Request, workspace: str = ""):
+        ws, settings = ws_view(request, workspace)
         cfg = linkedin_config.current(settings)
         notes = linkedin_config.variants(settings)
         steps = [{**s, "text": notes["A"]} if s["n"] == 1 else s for s in cfg["steps"]]
         return {**{k: v for k, v in cfg.items() if k != "history"}, "steps": steps, "variant_b": notes["B"],
                 "history_versions": [h["version"] for h in cfg.get("history") or []], "note_limit": li.NOTE_LIMIT,
                 "placeholders": {"single": list(linkedin_config.SINGLE)},
-                "in_flight": len(linkedin_config.leads_in_flight(store))}
+                "in_flight": len(linkedin_config.leads_in_flight(store, ws)), **ws_fields(request, ws)}
 
     @router.put("/api/linkedin/sequence")
     def put_sequence(body: SequenceBody, request: Request):
         from . import audit_settings
+        ws = wst.target_ws(store, wst.user_of(request), body.workspace)
+        wst.require_edit(wst.user_of(request), ws)
+        who = audit.actor_of(getattr(request.state, "user", None))["name"]
         try:
-            with audit_settings.watch(store, request, "LinkedIn sequence", action="settings.save", key=linkedin_config.SETTINGS_KEY):
-                saved = linkedin_config.save(store, body.model_dump(), audit.actor_of(getattr(request.state, "user", None))["name"])
+            if ws == wst.MAIN:
+                with audit_settings.watch(store, request, "LinkedIn sequence", action="settings.save", key=linkedin_config.SETTINGS_KEY):
+                    saved = linkedin_config.save(store, body.model_dump(exclude={"workspace"}), who)
+            else:
+                before = own_snapshot(ws)
+                saved = linkedin_config.save(store, body.model_dump(exclude={"workspace"}), who, ws)
+                wst.record_diff(store, request, "template.linkedin_sequence", ws, "LinkedIn sequence", before, own_snapshot(ws))
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
-        return {k: v for k, v in saved.items() if k != "history"}
+        return {**{k: v for k, v in saved.items() if k != "history"}, **ws_fields(request, ws)}
 
     @router.post("/api/linkedin/sequence/reset")
-    def reset_sequence(request: Request):
-        cfg = linkedin_config.reset(store)
-        audit.record(store, getattr(request.state, "user", None), "settings.save", "LinkedIn sequence", "reset to built-in")
-        return {k: v for k, v in cfg.items() if k != "history"}
+    def reset_sequence(request: Request, body: Optional[WorkspaceBody] = None):
+        ws = wst.target_ws(store, wst.user_of(request), body.workspace if body else None)
+        wst.require_edit(wst.user_of(request), ws)
+        cfg = linkedin_config.reset(store, ws)
+        if ws == wst.MAIN:
+            audit.record(store, getattr(request.state, "user", None), "settings.save", "LinkedIn sequence", "reset to built-in")
+        else:
+            wst.record(store, request, "template.linkedin_sequence", ws, "LinkedIn sequence", "back to Main's sequence")
+        return {**{k: v for k, v in cfg.items() if k != "history"}, **ws_fields(request, ws)}
+
+    @router.post("/api/linkedin/sequence/copy")
+    def copy_sequence(request: Request, body: Optional[WorkspaceBody] = None):
+        """Copy into my workspace: the workspace gets its own, editable copy of main's steps, personas and notes."""
+        ws = wst.target_ws(store, wst.user_of(request), body.workspace if body else None)
+        if ws == wst.MAIN:
+            raise HTTPException(400, "Pick the workspace to copy Main's LinkedIn sequence into.")
+        wst.require_edit(wst.user_of(request), ws)
+        cfg = linkedin_config.copy_from_main(store, ws, audit.actor_of(getattr(request.state, "user", None))["name"])
+        wst.record(store, request, "template.linkedin_sequence", ws, "LinkedIn sequence", "copied from Main")
+        return {**{k: v for k, v in cfg.items() if k != "history"}, **ws_fields(request, ws)}
 
     @router.post("/api/linkedin/sequence/preview")
-    def preview_sequence_step(body: SequencePreviewBody):
+    def preview_sequence_step(body: SequencePreviewBody, request: Request):
         """A step's text filled in for a sample lead (or a real one), with its length against LinkedIn's 300 limit."""
-        settings = store.read("settings")
+        from . import workspaces
+        ws, settings = ws_view(request, body.workspace)
         lead = next((l for l in store.read("leads") if l["id"] == body.lead_id), None) if body.lead_id else None
-        lead = lead or {**SAMPLE_LEAD, "title": body.title or SAMPLE_LEAD["title"]}
+        if lead is not None and not workspaces.visible(lead):
+            lead = None
+        lead = lead or {**SAMPLE_LEAD, "title": body.title or SAMPLE_LEAD["title"], **({"workspace": ws} if ws != wst.MAIN else {})}
         from .lead_fields import sample_custom
         if not body.lead_id:
             lead = {**lead, "custom": sample_custom(store)}
@@ -197,15 +249,27 @@ def make_router(store) -> APIRouter:
             raise HTTPException(400, str(exc)) from None
 
     @router.get("/api/linkedin/variants")
-    def get_variants():
-        return opener_lab.current(store)
+    def get_variants(request: Request, workspace: str = ""):
+        ws = wst.target_ws(store, wst.user_of(request), workspace)
+        return {**opener_lab.current(store, ws), **ws_fields(request, ws)}
 
     @router.put("/api/linkedin/variants")
     def put_variants(body: VariantsBody, request: Request):
         from . import audit_settings
+        from .workspace_guard import limited
+        user = wst.user_of(request)
+        ws = wst.target_ws(store, user, body.workspace)
+        if not (wst.can_edit(user, ws) or (ws == wst.MAIN and user.get("role") == "caller" and not limited(user))):
+            raise HTTPException(403, wst.refusal(user, ws))      # main's notes: owners, and unlimited callers as before
+        who, stamp = audit.actor_of(getattr(request.state, "user", None))["name"], li.iso(li.now_utc())
         try:
-            with audit_settings.watch(store, request, "LinkedIn connection notes", action="settings.change", key="linkedin_connect_variants"):
-                return opener_lab.save(store, body.A, body.B, audit.actor_of(getattr(request.state, "user", None))["name"], li.iso(li.now_utc()))
+            if ws == wst.MAIN:
+                with audit_settings.watch(store, request, "LinkedIn connection notes", action="settings.change", key="linkedin_connect_variants"):
+                    return {**opener_lab.save(store, body.A, body.B, who, stamp), **ws_fields(request, ws)}
+            before = own_snapshot(ws)
+            out = opener_lab.save(store, body.A, body.B, who, stamp, ws)
+            wst.record_diff(store, request, "template.linkedin_notes", ws, "LinkedIn connection notes", before, own_snapshot(ws))
+            return {**out, **ws_fields(request, ws)}
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
 

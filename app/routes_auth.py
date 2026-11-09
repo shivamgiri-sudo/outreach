@@ -5,6 +5,8 @@ Roles:
   caller  works leads, calls, meetings and tasks; cannot change settings, integrations, campaign rules or live
           switches, run or resume sending, or download CSV exports
   viewer  read only: any request that changes something is refused (except signing out)
+  admin   a workspace admin: works like a caller in its own workspaces, manages their logins and changes their
+          templates (app/ws_templates.py; never main's or another workspace's)
 """
 from typing import List, Optional
 
@@ -14,6 +16,7 @@ from pydantic import BaseModel
 from . import auth
 from .hygiene import normalise_email
 from .web_security import client_ip
+from .ws_templates import ADMIN_TEMPLATE_ROUTES
 
 LOCAL_OWNER = {"sub": "local", "email": "", "name": "This computer", "role": "owner", "claims": None}
 ANYONE = {("POST", "/api/logout"), ("POST", "/api/me/password"),
@@ -98,6 +101,8 @@ def role_guard(request: Request) -> None:
     needed = needed_role(request.method, path)
     if user.get("role") == "admin" and (path == "/api/users" or path.startswith("/api/users/")):
         return                                # workspace admins manage their own workspaces' logins (checked in the routes)
+    if user.get("role") == "admin" and (request.method, path) in ADMIN_TEMPLATE_ROUTES:
+        return                                # workspace admins change their own workspace's templates (checked in the routes)
     if not allowed(user.get("role", ""), needed):
         what = "make changes" if user.get("role") == "viewer" else "do this"
         raise HTTPException(403, f"Your role ({user.get('role')}) cannot {what}. Ask the owner.")

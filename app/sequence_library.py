@@ -207,7 +207,8 @@ def create_sequence(store, body: dict, by: str) -> dict:
     return row
 
 
-def duplicate_sequence(store, seq_id: str, by: str, name: str = "") -> dict:
+def duplicate_sequence(store, seq_id: str, by: str, name: str = "", workspace=None) -> dict:
+    """A copy (into `workspace` when given, else the source's workspace; "" = main)."""
     source = get_sequence(store, seq_id)
     if source is None:
         raise LookupError("Sequence not found")
@@ -216,7 +217,8 @@ def duplicate_sequence(store, seq_id: str, by: str, name: str = "") -> dict:
               "name": re.sub(r"\s*\(Day \d+\)\s*$", "", s.get("name") or "")} for s in source["steps"]]
     notes = "Copy of the built-in executive sequence." if source.get("builtin") else source.get("notes", "")
     return create_sequence(store, {"name": name or f"Copy of {source['name']}"[:MAX_NAME], "notes": notes,
-                                   "workspace": source.get("workspace", ""), "steps": steps}, by)
+                                   "workspace": source.get("workspace", "") if workspace is None else workspace,
+                                   "steps": steps}, by)
 
 
 def update_sequence(store, seq_id: str, body: dict, by: str) -> dict:
@@ -411,10 +413,11 @@ def list_snippets(store, channel: str = "") -> list:
     return sorted([r for r in rows if not channel or r.get("channel") == channel], key=lambda r: r.get("name", "").lower())
 
 
-def create_snippet(store, body: dict, by: dict) -> dict:
+def create_snippet(store, body: dict, by: dict, workspace: str = "") -> dict:
     if len(_read(store, "snippets")) >= MAX_SNIPPETS:
         raise ValueError(f"At most {MAX_SNIPPETS} snippets.")
-    row = {"id": uuid.uuid4().hex[:10], **clean_snippet(body), "created_by": by.get("name", ""),
+    row = {"id": uuid.uuid4().hex[:10], **clean_snippet(body), **({"workspace": workspace} if workspace and workspace != "main" else {}),
+           "created_by": by.get("name", ""),
            "created_by_email": by.get("email", ""), "created_at": _now_iso(), "updated_at": _now_iso()}
     _update(store, "snippets", lambda rows: [*rows, row])
     return row
@@ -426,21 +429,26 @@ def _may_change(row: dict, by: dict) -> bool:
     return bool(by.get("email")) and row.get("created_by_email") == by.get("email")
 
 
-def update_snippet(store, snippet_id: str, body: dict, by: dict) -> dict:
-    row = next((r for r in _read(store, "snippets") if r["id"] == snippet_id), None)
+def get_snippet(store, snippet_id: str):
+    return next((r for r in _read(store, "snippets") if r["id"] == snippet_id), None)
+
+
+def update_snippet(store, snippet_id: str, body: dict, by: dict, allowed: bool = False) -> dict:
+    """`allowed`: the caller already checked the person may change it (an admin of the snippet's workspace)."""
+    row = get_snippet(store, snippet_id)
     if row is None:
         raise LookupError("Snippet not found")
-    if not _may_change(row, by):
+    if not allowed and not _may_change(row, by):
         raise PermissionError("Only the person who made this snippet, or the owner, can change it.")
     cleaned = clean_snippet({**row, **{k: v for k, v in body.items() if v is not None}})
     saved = _update(store, "snippets", lambda rows: [{**r, **cleaned, "updated_at": _now_iso()} if r["id"] == snippet_id else r for r in rows])
     return next(r for r in saved if r["id"] == snippet_id)
 
 
-def delete_snippet(store, snippet_id: str, by: dict) -> None:
-    row = next((r for r in _read(store, "snippets") if r["id"] == snippet_id), None)
+def delete_snippet(store, snippet_id: str, by: dict, allowed: bool = False) -> None:
+    row = get_snippet(store, snippet_id)
     if row is None:
         raise LookupError("Snippet not found")
-    if not _may_change(row, by):
+    if not allowed and not _may_change(row, by):
         raise PermissionError("Only the person who made this snippet, or the owner, can delete it.")
     _update(store, "snippets", lambda rows: [r for r in rows if r["id"] != snippet_id])

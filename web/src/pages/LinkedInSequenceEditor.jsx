@@ -1,19 +1,20 @@
-// The owner's LinkedIn sequence: connection note + follow-up messages (delay and "after" rule each) and personas
-// (job-title pattern -> hook line). Saved on the server (settings "linkedin_sequence"); leads part-way through keep the
-// steps they started with when the shape of the sequence changes.
+// A workspace's LinkedIn sequence: connection note + follow-up messages (delay and "after" rule each) and personas
+// (job-title pattern -> hook line). Main's is settings "linkedin_sequence"; another workspace uses main's until it has
+// its own copy (app/ws_templates.py), which only owners and that workspace's admins change. Leads part-way through keep
+// the steps they started with when the shape of the sequence changes.
 import { useEffect, useState } from "react";
 import { apiRequest, isOwner } from "../api.js";
 
 const LIMIT = 300;
 
-function Preview({ text, kind, title }) {
+function Preview({ text, kind, title, workspace }) {
   const [p, setP] = useState(null);
   useEffect(() => {
     if (!text.trim()) { setP(null); return undefined; }
-    const t = setTimeout(() => apiRequest("/api/linkedin/sequence/preview", { method: "POST", body: { text, kind, title } })
+    const t = setTimeout(() => apiRequest("/api/linkedin/sequence/preview", { method: "POST", body: { text, kind, title, workspace } })
       .then(setP).catch(() => setP(null)), 350);
     return () => clearTimeout(t);
-  }, [text, kind, title]);
+  }, [text, kind, title, workspace]);
   if (!p) return null;
   const over = kind === "connect" && p.longest_length > LIMIT;
   return (
@@ -26,7 +27,7 @@ function Preview({ text, kind, title }) {
   );
 }
 
-function StepRow({ step, index, count, onChange, onRemove, onMove, readOnly, sampleTitle }) {
+function StepRow({ step, index, count, onChange, onRemove, onMove, readOnly, sampleTitle, workspace }) {
   const connect = index === 0;
   const set = (key, value) => onChange({ ...step, [key]: value });
   return (
@@ -58,7 +59,7 @@ function StepRow({ step, index, count, onChange, onRemove, onMove, readOnly, sam
       <label htmlFor={`li-text-${index}`}>{connect ? `Connection note (LinkedIn allows ${LIMIT} characters)` : "Message"}</label>
       <textarea id={`li-text-${index}`} rows={connect ? 3 : 5} value={step.text} disabled={readOnly} maxLength={connect ? 600 : 2000}
         onChange={(e) => set("text", e.target.value)} style={{ width: "100%" }} />
-      <Preview text={step.text} kind={connect ? "connect" : "message"} title={sampleTitle} />
+      <Preview text={step.text} kind={connect ? "connect" : "message"} title={sampleTitle} workspace={workspace} />
     </div>
   );
 }
@@ -70,7 +71,7 @@ export default function LinkedInSequenceEditor({ onMessage }) {
   const [hook, setHook] = useState("");
   const [noteB, setNoteB] = useState("");
   const [sampleTitle, setSampleTitle] = useState("Founder");
-  const readOnly = !isOwner();
+  const readOnly = !data || !data.can_edit || !data.own;
   const load = () => apiRequest("/api/linkedin/sequence").then((r) => {
     setData(r); setSteps(r.steps.map((s) => ({ ...s }))); setPersonas(r.personas.map((p) => ({ ...p }))); setHook(r.default_hook); setNoteB(r.variant_b || "");
   }).catch((e) => onMessage?.(e.message));
@@ -79,14 +80,24 @@ export default function LinkedInSequenceEditor({ onMessage }) {
 
   const save = async () => {
     try {
-      const r = await apiRequest("/api/linkedin/sequence", { method: "PUT", body: { steps, personas, default_hook: hook, variant_b: noteB } });
+      const r = await apiRequest("/api/linkedin/sequence", { method: "PUT", body: { steps, personas, default_hook: hook, variant_b: noteB, workspace: data.workspace } });
       onMessage?.(r.new_version ? `Saved as version ${r.version}. People already part-way keep the steps they started with.` : "LinkedIn steps saved.");
       load();
     } catch (e) { onMessage?.(e.message); }
   };
   const reset = async () => {
-    try { await apiRequest("/api/linkedin/sequence/reset", { method: "POST" }); onMessage?.("Back to the built-in steps."); load(); } catch (e) { onMessage?.(e.message); }
+    try {
+      await apiRequest("/api/linkedin/sequence/reset", { method: "POST", body: { workspace: data.workspace } });
+      onMessage?.(data.workspace === "main" ? "Back to the built-in steps." : "Back to Main's steps."); load();
+    } catch (e) { onMessage?.(e.message); }
   };
+  const copyIn = async () => {
+    try {
+      await apiRequest("/api/linkedin/sequence/copy", { method: "POST", body: { workspace: data.workspace } });
+      onMessage?.("Copied into your workspace. Change the steps below and save."); load();
+    } catch (e) { onMessage?.(e.message); }
+  };
+  const inherited = data.workspace !== "main" && !data.own;
   const move = (i, d) => setSteps((list) => { const out = [...list]; [out[i], out[i + d]] = [out[i + d], out[i]]; return out.map((s, j) => (j === 1 ? { ...s, after: "accepted" } : s)); });
   const addStep = () => setSteps([...steps, { kind: "message", after: "previous", days: 4, purpose: `Message ${steps.length}`, text: "Hi {first_name}, " }]);
   const setPersona = (i, key, value) => setPersonas(personas.map((p, j) => (i === j ? { ...p, [key]: value } : p)));
@@ -94,21 +105,26 @@ export default function LinkedInSequenceEditor({ onMessage }) {
   return (
     <details className="card" style={{ marginBottom: 12 }} data-testid="li-sequence-editor">
       <summary><b>Steps &amp; personas</b> <small className="sub-inline">
-        {data.builtin ? "built-in steps" : `your steps · version ${data.version}`} · {steps.length} steps · {personas.length} personas</small></summary>
+        {inherited ? "Main's steps" : data.builtin ? "built-in steps" : `your steps · version ${data.version}`} · {steps.length} steps · {personas.length} personas
+        {(isOwner() || data.workspace !== "main") && <> · <span className="pill" data-testid="li-ws">{data.workspace_name}</span></>}</small></summary>
+      {inherited && <p className="tip" role="note">This workspace uses Main's LinkedIn steps (read-only here).
+        {data.can_edit ? " Copy them into your workspace to change them; only this workspace's leads get your copy." : " An admin of this workspace can copy them in to change them."}
+        {data.can_edit && <> <button type="button" className="btn" onClick={copyIn} data-testid="li-copy">Copy into my workspace</button></>}</p>}
+      {!inherited && !data.can_edit && <p className="sub">Read-only: only an owner or an admin of this workspace changes these steps.</p>}
       <p className="sub">Placeholders: {"{first_name}"}, {"{hook}"} (the persona line below), {"{company}"}, {"{case_study_url}"} and any email placeholder such as {"{{my_company}}"} or {"{{custom.<field>}}"}.
         Changing days, the number of steps or the order while people are part-way creates a new version; they finish on the old one.</p>
       <label style={{ maxWidth: 320 }}>Preview as a person whose title is
         <input value={sampleTitle} onChange={(e) => setSampleTitle(e.target.value)} maxLength={120} />
       </label>
       {steps.map((s, i) => (
-        <StepRow key={i} step={s} index={i} count={steps.length} readOnly={readOnly} sampleTitle={sampleTitle}
+        <StepRow key={i} step={s} index={i} count={steps.length} readOnly={readOnly} sampleTitle={sampleTitle} workspace={data.workspace}
           onChange={(v) => setSteps(steps.map((x, j) => (i === j ? v : x)))} onRemove={() => setSteps(steps.filter((_, j) => j !== i))} onMove={(d) => move(i, d)} />
       ))}
       {!readOnly && steps.length < 10 && <button type="button" className="btn ghost" onClick={addStep}>Add a message</button>}
 
       <h4>Connection note B (A/B test)</h4>
       <textarea aria-label="Connection note B" rows={3} value={noteB} maxLength={600} disabled={readOnly} onChange={(e) => setNoteB(e.target.value)} style={{ width: "100%" }} />
-      <Preview text={noteB} kind="connect" title={sampleTitle} />
+      <Preview text={noteB} kind="connect" title={sampleTitle} workspace={data.workspace} />
 
       <h4>Personas</h4>
       <p className="sub">Matched on the person's job title, top to bottom; the first match gives the {"{hook}"} line. The pattern is a regular expression (for example <code>{"\\b(founder|ceo)\\b"}</code>).</p>
@@ -125,7 +141,8 @@ export default function LinkedInSequenceEditor({ onMessage }) {
       {!readOnly && (
         <div className="row" style={{ marginTop: 10 }}>
           <button type="button" className="btn" onClick={save}>Save LinkedIn steps</button>
-          {!data.builtin && <button type="button" className="btn ghost" onClick={reset}>Use the built-in steps</button>}
+          {data.workspace === "main" && !data.builtin && <button type="button" className="btn ghost" onClick={reset}>Use the built-in steps</button>}
+          {data.workspace !== "main" && <button type="button" className="btn ghost" onClick={reset}>Use Main's steps again</button>}
         </div>
       )}
     </details>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, isOwner } from "../../api.js";
+import { api, getWorkspace, isOwner, isWorkspaceAdmin } from "../../api.js";
 import StepEditor from "./StepEditor.jsx";
 import { humanDay, lintStep, stepTitle } from "./lint.js";
 
@@ -42,8 +42,12 @@ function AbStats({ stats }) {
 
 // Edit (or view) one sequence. Saving goes to the server, which checks everything again.
 export default function SequenceEditor({ sequence, onSaved, onClose, onDuplicate }) {
-  const readOnly = sequence.builtin || !isOwner();
+  const readOnly = sequence.builtin || !sequence.can_edit;
   const [draft, setDraft] = useState(() => ({ name: sequence.name || "", notes: sequence.notes || "", steps: (sequence.steps || []).map((s) => ({ ...s, variants: s.variants || [] })) }));
+  // Owners pick whose sequence it is (default: the workspace chosen in the menu, else Main); admins make their own workspace's.
+  const [spaces, setSpaces] = useState([]);
+  const [workspace, setWorkspace] = useState(sequence.workspace_id || getWorkspace() || "main");
+  useEffect(() => { if (isOwner() && !readOnly) api.workspaces().then(setSpaces).catch(() => setSpaces([])); }, [readOnly]);
   const [active, setActive] = useState({ index: 0, variant: "A" });
   const [preview, setPreview] = useState(null);
   const [stats, setStats] = useState(null);
@@ -68,7 +72,7 @@ export default function SequenceEditor({ sequence, onSaved, onClose, onDuplicate
 
   const save = async () => {
     setBusy(true); setMsg("");
-    const body = { name: draft.name, notes: draft.notes, steps: draft.steps.map((s) => ({ ...s, day: Number(s.day) })) };
+    const body = { name: draft.name, notes: draft.notes, steps: draft.steps.map((s) => ({ ...s, day: Number(s.day) })), ...(isOwner() ? { workspace } : {}) };
     try {
       const saved = sequence.id ? await api.updateSequence(sequence.id, body) : await api.createSequence(body);
       setMsg(saved.new_version ? `Saved as version ${saved.version}. Leads already part-way keep the days they started on.` : "Saved.");
@@ -81,19 +85,23 @@ export default function SequenceEditor({ sequence, onSaved, onClose, onDuplicate
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
         <h3 style={{ margin: 0 }}>{sequence.id ? (readOnly ? "View sequence" : "Edit sequence") : "New sequence"}{sequence.version > 1 ? ` · version ${sequence.version}` : ""}</h3>
         <span className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-          {sequence.id && isOwner() && <button type="button" className="btn ghost" onClick={() => onDuplicate(sequence)}>Duplicate</button>}
+          {sequence.id && (isOwner() || isWorkspaceAdmin()) && <button type="button" className="btn ghost" onClick={() => onDuplicate(sequence)}>{isOwner() || sequence.can_edit ? "Duplicate" : "Copy into my workspace"}</button>}
           {!readOnly && <button type="button" className="btn" disabled={busy || errors.length > 0} onClick={save}>{busy ? "Saving…" : "Save sequence"}</button>}
           <button type="button" className="btn ghost" onClick={onClose}>Back to list</button>
         </span>
       </div>
       {sequence.builtin && <p className="sub">The built-in sequence is read-only. Duplicate it to change the words, days or add an A/B test.</p>}
-      {!sequence.builtin && !isOwner() && <p className="sub">Only the owner can change sequences.</p>}
+      {!sequence.builtin && readOnly && <p className="sub">{sequence.workspace_id === "main" && isWorkspaceAdmin()
+        ? "Main's sequences are shared and read-only here. Use “Copy into my workspace” to make your own copy."
+        : "Only an owner or an admin of this workspace can change this sequence."}</p>}
       {sequence.in_use > 0 && !readOnly && <p className="sub">{sequence.in_use} lead(s) are part-way through. Wording changes apply to their next emails; changing days saves a new version and they keep theirs.</p>}
       {msg && <p className={/saved/i.test(msg) ? "sub" : "error"} role={/saved/i.test(msg) ? "status" : "alert"}>{msg}</p>}
       {errors.length > 0 && !readOnly && <p className="error" role="alert">{errors.length} thing(s) to fix before saving (see the steps).</p>}
       <div className="split-2">
         <label>Name<input disabled={readOnly} maxLength={120} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
         <label>Who it is for (notes)<input disabled={readOnly} maxLength={500} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} /></label>
+        {isOwner() && !readOnly && spaces.length > 1 && <label>Workspace<select aria-label="Workspace of this sequence" value={workspace} onChange={(e) => setWorkspace(e.target.value)}>
+          {spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>}
       </div>
       <AbStats stats={stats} />
       <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", alignItems: "start" }}>

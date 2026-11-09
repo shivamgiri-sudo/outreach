@@ -209,7 +209,7 @@ def describe(store, lead: dict, account: str = "") -> dict:
     if status == "stopped":
         out["reason"] = "The sequence is stopped" + (" because they replied." if seq.get("stopped") == "replied" else ".")
         return out
-    nxt = li._next_step(seq, settings)
+    nxt = li._next_step(seq, li.lead_settings(settings, lead))
     if status == "finished" or nxt is None:
         out["reason"] = "All steps are done for this person."
         out["actions"] = ["replied"]
