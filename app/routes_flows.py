@@ -2,7 +2,7 @@
 import os
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from . import brand, capture_connectors, routes_outreach
@@ -235,15 +235,17 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
         return present(save({**flow, "status": "paused", "updated_at": now_iso()}))
 
     @router.post("/api/flows/{flow_id}/enroll")
-    def enroll_leads(flow_id: str, body: EnrollBody):
+    def enroll_leads(flow_id: str, body: EnrollBody, request: Request):
         flow = find(flow_id)
         if len(body.lead_ids) > MAX_BULK:
             raise HTTPException(400, f"Enrol at most {MAX_BULK} leads at a time.")
         now = routes_outreach.resolve_now(None)
+        from .provenance import person_of
+        who = person_of(getattr(request.state, "user", None))
         enrolled, refused = [], []
         for lead_id in dict.fromkeys(str(i) for i in body.lead_ids):
             try:
-                enrolled.append(enroll(store, flow, lead_id, now)["lead_id"])
+                enrolled.append(enroll(store, flow, lead_id, now, by=who["name"], by_email=who["email"], via="by hand")["lead_id"])
             except LookupError:
                 refused.append({"lead_id": lead_id, "reason": "Lead not found"})
             except FlowError as exc:

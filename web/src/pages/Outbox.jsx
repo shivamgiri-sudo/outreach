@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { istLabel } from "../time.js";
-import { api, isOwner } from "../api.js";
+import { api, isOwner, isWorkspaceAdmin } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import LiveSendingSwitch from "./LiveSendingSwitch.jsx";
 import OutboxTable from "./OutboxTable.jsx";
+import { InternalEmails } from "./SendWhy.jsx";
 
 function Downloads() {
   return (
@@ -22,6 +23,14 @@ function Downloads() {
 }
 
 const STATUS_LABEL = { dry_run: "practice", provider_error: "provider problem" };
+
+// Who sent a WhatsApp: the person, "System" for flows, or "Before tracking" for rows older than 9 Nov 2026.
+function sentBy(m) {
+  const o = m.origin;
+  if (o?.type === "manual") return o.actor?.name || m.by || "A person";
+  if (o?.type === "automatic") return `System${o.rule?.flow_name ? ` (flow ${o.rule.flow_name})` : ""}`;
+  return m.by ? `${m.by} (before tracking)` : "Before tracking";
+}
 
 function SendingBanner({ status, onResume, onClearPractice }) {
   if (!status) return null;
@@ -63,6 +72,8 @@ export default function Outbox({ go }) {
   const [message, setMessage] = useState("");
   const [wa, setWa] = useState([]);
   const [loadError, setLoadError] = useState("");
+  const [tab, setTab] = useState("emails");
+  const seesInternal = isOwner() || isWorkspaceAdmin();
   const load = () => {
     setLoadError("");
     const fail = (e) => setLoadError(e.message);
@@ -142,7 +153,13 @@ export default function Outbox({ go }) {
         </div>
       )}
       <p className="sub">Sends only Mon–Fri, 9am–6pm IST, one step per lead. Any reply stops the sequence for that lead.</p>
-      <OutboxTable refreshKey={refresh} />
+      {seesInternal && (
+        <div className="tabs" role="tablist" aria-label="Outbox lists" style={{ marginBottom: 10 }}>
+          <button role="tab" aria-selected={tab === "emails"} className={tab === "emails" ? "on" : ""} onClick={() => setTab("emails")}>Emails to leads</button>
+          <button role="tab" aria-selected={tab === "internal"} className={tab === "internal" ? "on" : ""} data-testid="tab-internal" onClick={() => setTab("internal")}>Internal emails</button>
+        </div>
+      )}
+      {tab === "internal" && seesInternal ? <InternalEmails /> : <OutboxTable refreshKey={refresh} />}
       <div className="card" style={{ margin: "14px 0" }}>
         <b>Replies received</b> <span className="sub-inline">are on the Replies page, with how each was read and which lead it matched.</span>{" "}
         <button className="btn ghost" onClick={() => (go ? go("replies") : (window.location.hash = "replies"))}>Open Replies</button>
@@ -151,9 +168,9 @@ export default function Outbox({ go }) {
       <div className="card" style={{ padding: 0, overflowX: "auto" }}>
         {wa.length === 0 ? <p className="empty">No WhatsApp messages yet. Record a lead's yes, then send from the lead.</p> : (
           <table>
-            <thead><tr><th>When</th><th>To</th><th>Template</th><th>Message</th><th>Status</th></tr></thead>
+            <thead><tr><th>When</th><th>To</th><th>Template</th><th>Message</th><th>Sent by</th><th>Status</th></tr></thead>
             <tbody>{wa.map((m, i) => (
-              <tr key={i}><td>{istLabel(m.sent_at)}</td><td>{m.to}</td><td>{m.template}</td><td>{m.body}</td>
+              <tr key={i}><td>{istLabel(m.sent_at)}</td><td>{m.to}</td><td>{m.template}</td><td>{m.body}</td><td data-testid="wa-sent-by">{sentBy(m)}</td>
                 <td><span className={`pill ${m.status === "sent" ? "ok" : ""}`}>{STATUS_LABEL[m.status] || m.status}</span></td></tr>
             ))}</tbody>
           </table>

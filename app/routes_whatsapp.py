@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from .audit import actor_of
+from .provenance import person_of
 from .growth_core import public_base_url
 from .whatsapp import TEMPLATES, WhatsAppError, send
 
@@ -25,7 +26,8 @@ def make_router(store, present) -> APIRouter:
         who = actor_of(getattr(request.state, "user", None))
         me = who["name"] if who["email"] else ""          # no login (local use): fall back to the team name in Settings
         try:
-            return present(send(store, lead_id, body.template, body.text, datetime.now(timezone.utc), public_base_url(store, BASE_URL), sender=me))
+            return present(send(store, lead_id, body.template, body.text, datetime.now(timezone.utc), public_base_url(store, BASE_URL), sender=me,
+                                 origin={"trigger": "whatsapp_by_hand", "actor": person_of(getattr(request.state, "user", None))}))
         except LookupError:
             raise HTTPException(404, "Lead not found")
         except WhatsAppError as exc:

@@ -156,6 +156,10 @@ def log_activity(store, lead_id: str, kind: str, body: dict) -> dict:
                                                        "email": lead.get("email"), "linkedin": lead.get("linkedin_url")}.get(kind) or ""
     if to:
         row["to"] = to                              # the number / address / profile this contact used
+    from .provenance import build, person
+    row["origin"] = body.get("origin") if isinstance(body.get("origin"), dict) else build(
+        store, "call_logged" if kind == "call" else "activity_logged", True, lead,
+        person(row["by"] or "Unknown person", body.get("by_email") or ""), channel=kind)
     store.update("activities", lambda rows: [*rows, row])
     summary = f"{kind.title()}" + (f" — {row['outcome'].replace('_', ' ')}" if row["outcome"] else "") + (f": {row['body'][:200]}" if row["body"] else "")
     store.update_lead(lead_id, lambda l: {**l, "last_activity_at": at,
@@ -171,17 +175,19 @@ _DETAILED_ELSEWHERE = {"email", "practice", "whatsapp", "call", "meeting", "sms"
 
 def lead_activity(store, lead: dict) -> list:
     """Everything that happened on one lead, newest first, each with date-time, type, direction and full content."""
+    from .provenance import short_who
     lid = lead["id"]
     items = []
     for m in store.read("outbox"):
         if m.get("lead_id") == lid:
             items.append({"at": m["sent_at"], "type": "email", "direction": "out", "title": m.get("subject", ""),
                           "body": m.get("body", ""), "status": {"dry_run": "practice (not sent)"}.get(m.get("status"), m.get("status")),
-                          "detail": m.get("step", "") + (f" · by {m['by']}" if m.get("by") else ""), "to": m.get("to"), "delivered_at": m.get("delivered_at"), "error": m.get("error")})
+                          "detail": m.get("step", "") + (f" · {short_who(m)}" if short_who(m) else ""), "to": m.get("to"), "delivered_at": m.get("delivered_at"), "error": m.get("error")})
     for m in store.read("whatsapp_outbox"):
         if m.get("lead_id") == lid:
             items.append({"at": m["sent_at"], "type": "whatsapp", "direction": "out", "title": m.get("template", ""),
-                          "body": m.get("body", ""), "status": {"dry_run": "practice (not sent)"}.get(m.get("status"), m.get("status")), "to": m.get("to")})
+                          "body": m.get("body", ""), "status": {"dry_run": "practice (not sent)"}.get(m.get("status"), m.get("status")), "to": m.get("to"),
+                          "detail": short_who(m)})
     for m in store.read("inbox"):
         if m.get("lead_id") == lid:
             items.append({"at": m.get("received_at"), "type": m.get("channel", "email"), "direction": "in",

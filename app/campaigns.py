@@ -236,7 +236,8 @@ def _enrol(store, campaign: dict, ids: list, report: dict) -> None:
     sequence_id = campaign["rules"].get("sequence_id") or "default"
     for lead_id in ids:
         try:
-            enroll_lead(store, lead_id, note=f"Enrolled in email sequence by campaign {campaign['name']}", sequence_id=sequence_id)
+            enroll_lead(store, lead_id, note=f"Enrolled in email sequence by campaign {campaign['name']}", sequence_id=sequence_id,
+                        via="campaign auto-enrol", campaign_id=campaign.get("id"), detail=f"campaign {campaign['name']}")
             report["enrolled"] += 1
         except (EnrollRefused, LookupError) as exc:
             refused[str(exc)] = refused.get(str(exc), 0) + 1

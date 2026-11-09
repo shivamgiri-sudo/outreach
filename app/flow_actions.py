@@ -17,7 +17,7 @@ import re
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
 
-from . import linkedin_seq, sequence_runner, sequences
+from . import linkedin_seq, provenance, sequence_runner, sequences
 from .activities import add_task, caller_name, next_call_slot, on_became_interested, update_task
 from .channels.http import request
 from .channels.netguard import check_public_url
@@ -285,7 +285,10 @@ def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
     mode = "live" if live else "practice"
     message.update({"idempotency_key": f"flow:{run['id']}:{run['step']}:{mode}",
                     "message_id": f"<{uuid.uuid4().hex}.{lead['id']}@{sequence_runner._message_domain(store)}>",
-                    "flow_id": flow["id"], "flow_run_id": run["id"], "flow_node": node["id"], "flow_variants": run.get("variants") or {}})
+                    "flow_id": flow["id"], "flow_run_id": run["id"], "flow_node": node["id"], "flow_variants": run.get("variants") or {},
+                    "origin": provenance.build(store, "flow", live, lead, rule=provenance.flow_rule(flow, node, run),
+                                               enrolment=provenance.enrolment_from(run), cfg=cfg,
+                                               hours="not checked (hours rule switched off for testing)" if ctx.ignore_hours else provenance.HOURS_CHECKED)})
     if not sequence_runner._RUN_LOCK.acquire(blocking=False):
         return idle("another send run is in progress")
     try:
@@ -322,10 +325,17 @@ def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
 
 
 # ---------------------------------------------------------------- other actions (claimed by the engine first)
+def _run_of(store, flow: dict, lead: dict):
+    """This lead's run of this flow (one per flow and lead), for who started it."""
+    return next((r for r in store.read("flow_runs") if r.get("flow_id") == flow.get("id") and r.get("lead_id") == lead.get("id")), None)
+
+
 def do_whatsapp(store, flow, node, lead, now, ctx) -> dict:
     template = (node.get("config") or {}).get("template")
     try:
-        saved = send_whatsapp_message(store, lead["id"], template, "", now, ctx.base_url, ctx.transport)
+        run = _run_of(store, flow, lead)
+        saved = send_whatsapp_message(store, lead["id"], template, "", now, ctx.base_url, ctx.transport, origin={
+            "trigger": "whatsapp_auto", "rule": provenance.flow_rule(flow, node, run), "enrolment": provenance.enrolment_from(run)})
     except WhatsAppError as exc:
         return refused(f"WhatsApp not sent: {exc}")
     status = next((m["status"] for m in reversed(store.read("whatsapp_outbox")) if m.get("lead_id") == lead["id"]), "dry_run")
@@ -346,7 +356,9 @@ def do_sms(store, flow, node, lead, now, ctx) -> dict:
     result = send_sms(store, lead["phone"], text, (node.get("config") or {}).get("template_id") or None, None,
                       ctx.transport or request, ctx.resolver)
     row = {"id": uuid.uuid4().hex[:12], "lead_id": lead["id"], "type": "sms", "direction": "out", "subject": f"Flow {flow['name']}",
-           "body": text, "outcome": result.get("status", "dry_run"), "by": "flow", "at": iso(now), "created_at": iso(now)}
+           "body": text, "outcome": result.get("status", "dry_run"), "by": "flow", "at": iso(now), "created_at": iso(now),
+           "origin": provenance.build(store, "flow", result.get("status") != "dry_run", lead, rule=provenance.flow_rule(flow, node, _run_of(store, flow, lead)),
+                                      enrolment=provenance.enrolment_from(_run_of(store, flow, lead)), channel="sms")}
     store.update("activities", lambda rows: [*rows, row])
     if result.get("status") == "failed":
         return refused(f"SMS not sent: {result.get('error') or 'the provider refused it'}")
@@ -358,6 +370,7 @@ def do_linkedin(store, flow, node, lead, now, ctx) -> dict:
     if c.get("mode", "task") == "start_sequence":
         try:
             linkedin_seq.start(store, lead["id"], now)
+            provenance.stamp_linkedin_start(store, lead["id"], provenance.SYSTEM, "", "flow trigger", f"flow {flow.get('name')}")
         except (ValueError, LookupError) as exc:
             return refused(f"LinkedIn sequence not started: {exc}")
         return ok("LinkedIn sequence started (step 1 task for the person who sends it)")

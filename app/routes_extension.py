@@ -145,7 +145,7 @@ def make_router(store) -> APIRouter:
             refuse(info)
         if info["message"]["step"] != body.step:
             refuse(info, f"The step to send now is {info['message']['step']}, not {body.step}.")
-        li.mark_sent(store, lead_id, body.step)
+        li.mark_sent(store, lead_id, body.step, origin=_agent_origin(store, lead_or_404(lead_id), body.step, account_of(request), request))
         return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id))}
 
     @router.post("/api/extension/leads/{lead_id}/accepted")
@@ -205,3 +205,13 @@ def make_router(store) -> APIRouter:
             raise HTTPException(exc.status, exc.message)
 
     return router
+
+
+def _agent_origin(store, lead: dict, step: int, account: str, request: Request) -> dict:
+    """The LinkedIn agent sent this step from a connected account: automatic, with the account and pairing token."""
+    from . import provenance
+    token = getattr(request.state, "user", None) or {}
+    rule = {"account": account or token.get("name") or "the paired browser", "step": f"LinkedIn step {step}",
+            "paired_by": token.get("email") or ""}
+    return provenance.build(store, "linkedin_agent", True, lead, provenance.system(account=account), rule,
+                            provenance.linkedin_enrolment(lead), "linkedin")

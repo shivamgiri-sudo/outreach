@@ -122,7 +122,8 @@ def start_email(store, list_id: str, by: str, only: Optional[list] = None) -> di
     done, refused = 0, {}
     for lid in ids:
         try:
-            enroll_lead(store, lid, note=f"Enrolled in email sequence by {by} (list {row['name']})")
+            enroll_lead(store, lid, note=f"Enrolled in email sequence by {by} (list {row['name']})", by=by, via="bulk action",
+                        detail=f"list {row['name']}")
             done += 1
         except (EnrollRefused, LookupError) as exc:
             refused[str(exc)] = refused.get(str(exc), 0) + 1

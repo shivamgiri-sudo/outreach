@@ -92,6 +92,13 @@ def make_router(store, base_url_of, sender) -> APIRouter:
         mail = report_mail.compose(store, rng, body.who, body.kind, scope, who, base_url_of())
         results = {a: sender({"to": a, "subject": mail["subject"], "body": mail["body"], "html": mail["html"],
                               "attachments": mail["attachments"], "kind": "report"}).get("status") for a in to}
+        from .provenance import internal, person_of
+        from .reminders import _log_transactional
+        for a, status in results.items():               # listed on the Outbox "Internal emails" tab, with who asked for it
+            _log_transactional(store, a, mail["subject"], f"Activity report {rng['from']} to {rng['to']} (download link not kept)",
+                               "report", None, {"status": status or "dry_run"},
+                               extra={"origin": internal("report", person_of(user), live=status != "dry_run",
+                                                         rule={"period": f"{rng['from']} to {rng['to']}"})})
         audit.record(store, user, "report.email", ", ".join(to), f"{rng['from']} to {rng['to']}: " + ", ".join(f"{a} {s}" for a, s in results.items()))
         return {"sent_to": to, "results": results, "subject": mail["subject"], "link": mail["link"], "html": mail["html"]}
 

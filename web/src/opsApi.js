@@ -34,6 +34,13 @@ export const ops = {
   insights: (range) => request(`/api/insights${range ? `?${rangeQuery(range)}` : ""}`),
   outboxPage: (params) => request(`/api/outbox${query({ page: 1, ...params })}`),
   outboxMessage: (key) => request(`/api/outbox/message?key=${encodeURIComponent(key)}`),
+  outboxInternal: (params = {}) => request(`/api/outbox/internal${query(params)}`),
+  async outboxAuditCsv(params = {}) {
+    const { blob, filename } = await apiDownload(`/api/outbox/export.csv${query(params)}`, { withName: true });
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement("a"), { href: url, download: filename || "outbox-audit.csv" });
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  },
   liveSending: () => request("/api/settings/live-sending"),
   setLiveSending: (on, confirm = "") => request("/api/settings/live-sending", { method: "POST", body: { on, confirm } }),
   audit: (params) => request(`/api/audit${query(params)}`),

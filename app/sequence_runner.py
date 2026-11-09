@@ -17,7 +17,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 
 from .template_vars import brand_variables
-from . import email_domain
+from . import email_domain, provenance
 from . import sequence_library, sequences
 from .channels.security import server_secret
 from .growth_core import ensure_demo, get_offer, offer_line
@@ -163,6 +163,7 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
         message, demo = composed
         _tag(message, step, seq)
         day = steps[0]["day"]
+        message["origin"] = provenance.for_sequence(store, lead, seq, step, day, live, cfg)
         key = f"{lead['id']}:{day}:{counts['mode']}"
         # The Message-ID comes from the key: a retry must be the same request, or Resend refuses it (409).
         message.update({"idempotency_key": key,
@@ -354,7 +355,7 @@ def clear_practice(store) -> dict:
     return removed
 
 
-def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str = "") -> dict:
+def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str = "", by_email: str = "") -> dict:
     """A person presses "Send email now" for ONE lead: its next due sequence email goes at once.
 
     Same compose / claim / record path as the scheduled run, so the sequence carries on normally afterwards. A person chose
@@ -407,6 +408,7 @@ def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str 
         _tag(message, step, seq)
         day = steps[0]["day"]
         key = f"{lead['id']}:{day}:{'live' if live else 'practice'}"
+        message["origin"] = provenance.for_sequence(store, lead, seq, step, day, live, cfg, "send_now", provenance.person(by, by_email))
         message.update({"idempotency_key": key, "by": by, "manual": True,
                         "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead['id']}@{_message_domain(store)}>"})
         if not _claim(store, lead["id"], day, now, lead["email"], demo):
@@ -426,7 +428,8 @@ def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str 
 MAX_MANUAL_SUBJECT, MAX_MANUAL_BODY = 200, 8000
 
 
-def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, base_url: str, sender, by: str = "") -> dict:
+def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, base_url: str, sender, by: str = "",
+                by_email: str = "") -> dict:
     """One email a person wrote (or pasted from a template) for ONE lead, outside the sequence. Not part of the sequence
     and does not change it. The same safety rules apply: unsubscribed / suppressed / bounced / erased / failed-check
     addresses are refused, an unsubscribe line is always added, practice mode until 'Send for real' is on."""
@@ -463,7 +466,8 @@ def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, bas
     key = f"{lead_id}:manual:{uuid.uuid4().hex[:8]}"
     message = {"lead_id": lead_id, "to": email, "subject": subject, "body": body, "step": "One-off email", "variant": "manual",
                "manual": True, "by": by, "sent_at": now.isoformat(timespec="seconds"), "sent_at_ist_date": now.astimezone(IST).date().isoformat(),
-               "idempotency_key": key, "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead_id}@{_message_domain(store)}>"}
+               "idempotency_key": key, "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead_id}@{_message_domain(store)}>",
+               "origin": provenance.build(store, "one_off", live, lead, provenance.person(by, by_email), cfg=cfg, hours=provenance.HOURS_PERSON)}
     message.update(sender(message))
     store.update("outbox", lambda rows: [*rows, message])
     if message["status"] in ("provider_error", "failed"):
