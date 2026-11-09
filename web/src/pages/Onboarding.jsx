@@ -167,7 +167,7 @@ export default function Onboarding({ onClose, go }) {
           {step === "team" && (
             <>
               <p className="sub">Give each caller and viewer their own login. Owners see everything; callers work leads and calls.</p>
-              <button type="button" className="btn ghost" onClick={() => leave("setup?tab=team")}>Open Team &amp; workspaces</button>
+              <button type="button" className="btn ghost" onClick={() => leave("setup/members")}>Open Team members</button>
             </>
           )}
           {step === "done" && (

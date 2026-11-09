@@ -224,9 +224,10 @@ function Shell() {
 
   // go("leads") or go("leads?lead=<id>"): the part after "?" is kept in the hash for the page to read.
   const go = (id) => {
-    const [base, qs] = String(id).split("?");
+    const [path, qs] = String(id).split("?");
+    const [base, ...sub] = path.split("/");            // "setup/members": the page, then its own section
     const target = ALIASES[base] || base;
-    const full = qs ? `${target}?${qs}` : target;
+    const full = `${target}${sub.length ? `/${sub.join("/")}` : ""}${qs ? `?${qs}` : ""}`;
     setMenuOpen(false);
     setPage(target);
     if (window.location.hash.replace(/^#\/?/, "") !== full) window.location.hash = full;
