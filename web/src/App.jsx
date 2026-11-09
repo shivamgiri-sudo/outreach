@@ -3,6 +3,8 @@ import { api, canWrite, getAccount, getToken, getWorkspace, setAccount, setCanEd
 import Icon from "./icons.jsx";
 import { stageLabel } from "./labels.js";
 import Login from "./pages/Login.jsx";
+import Legal from "./pages/Legal.jsx";
+import { legalFromLocation } from "./legal/index.js";
 import Workflows from "./pages/Workflows.jsx";
 import FlowBuilder from "./pages/FlowBuilder.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
@@ -191,7 +193,16 @@ function QuickSearch({ onClose, onPage, onLead }) {
   );
 }
 
+// The public legal pages (/terms, /privacy, /dpa or #terms ...) show before sign-in and need no API session.
 export default function App() {
+  const [legal, setLegal] = useState(legalFromLocation);
+  useEffect(() => {
+    const on = () => setLegal(legalFromLocation());
+    window.addEventListener("hashchange", on);
+    window.addEventListener("popstate", on);
+    return () => { window.removeEventListener("hashchange", on); window.removeEventListener("popstate", on); };
+  }, []);
+  if (legal) return <Legal doc={legal} key={legal} />;
   return <DialogProvider><Shell /></DialogProvider>;
 }
 

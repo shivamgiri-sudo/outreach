@@ -1,5 +1,6 @@
 // A tiny static server for a built UI (vite build --outDir DIR) that proxies /api, /u and /demo to the API.
 //   node e2e/static_proxy.mjs <dist dir> <port> <api origin>
+// Like Caddy (try_files {path} /index.html), any path that is not a file (/terms, /privacy, /dpa ...) gets index.html.
 // Used by e2e/industry_flows.mjs; it never touches the dev servers' ports.
 // CADDY_HEADERS=<deploy/Caddyfile.template>: the built app is served with the same security headers as production
 // (its Content-Security-Policy is read from that file), to check the app still works under that policy.
@@ -7,7 +8,8 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 
-const [dist, port, api] = process.argv.slice(2);
+const [distArg, port, api] = process.argv.slice(2);
+const dist = path.resolve(distArg);       // a relative dir works too (the path check below compares against the absolute one)
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png",
   ".json": "application/json", ".ico": "image/x-icon", ".woff2": "font/woff2", ".webmanifest": "application/manifest+json" };
 const target = new URL(api);
