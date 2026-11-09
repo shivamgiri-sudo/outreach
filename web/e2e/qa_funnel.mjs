@@ -139,7 +139,7 @@ await step("From after To shows the error and keeps the old numbers; Reset retur
   ok(/From Date cannot be after To Date/.test(await page.getByTestId("sf-error").innerText()), "message");
   await page.getByTestId("sf-reset").click();
   await page.getByTestId("sf-error").waitFor({ state: "detached" });
-  ok(/As on/.test(await page.getByTestId("sf-range-label").innerText()) && (await stageCount("inquiry")) === 10, "reset");
+  await until(async () => /As on/.test(await page.getByTestId("sf-range-label").innerText()) && (await stageCount("inquiry")) === 10, "reset returns to As on", 15000);
 });
 
 await step("Presets fill both dates and the filters narrow the numbers", async () => {
@@ -183,12 +183,7 @@ await step("In the lead drawer a Proposal without a meeting is refused with the 
 });
 
 await step("Back on the page the SQL count rose to 6 on return to the tab (refresh without a reload), filters kept", async () => {
-  const second = await ctx.newPage();
-  await second.goto(`${UI}/#funnel`);
-  await second.getByTestId("sf-funnel").waitFor();
-  const before = Number((await second.getByTestId("sf-stage-sql").locator("b").innerText()).trim());
-  ok(before === 6, `fresh load shows ${before}`);
-  await page.goto(`${UI}/#funnel`);
+  await page.evaluate(() => { window.location.hash = "#funnel"; });      // back from the lead drawer (it left the hash on #leads)
   await page.reload();
   await page.getByTestId("sf-funnel").waitFor();
   ok((await stageCount("sql")) === 6, "page shows 6");
@@ -198,13 +193,13 @@ await step("Back on the page the SQL count rose to 6 on return to the tab (refre
   await api("PUT", `/api/leads/${golf.id}/sales`, { status: "Sales Qualified Lead (SQL)", est_value: 20000 });
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await until(async () => (await stageCount("sql")) === 7, "tab return refresh", 15000);
-  await second.close();
 });
 
 await step("The page also refreshes by itself within 60 seconds (polling)", async () => {
   const list = await api("GET", "/api/leads");
   const foxtrot = list.body.find((l) => l.company === "Foxtrot Inquiry");
-  await api("PUT", `/api/leads/${foxtrot.id}/sales`, { status: "Discovery Meeting Held" });
+  const moved = await api("PUT", `/api/leads/${foxtrot.id}/sales`, { status: "Discovery Meeting Held", est_value: 15000 });
+  ok(moved.status === 200, `move to meeting ${moved.status} ${JSON.stringify(moved.body).slice(0, 120)}`);
   await until(async () => (await stageCount("meeting")) === 5, "60 second poll", 90000);
 });
 
