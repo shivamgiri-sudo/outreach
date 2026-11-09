@@ -92,6 +92,14 @@ def skip_gap():
     store.update("settings", back)
 
 
+def six_hours_pass():
+    """Acceptance checks are offered once per 6 hours per profile (app/linkedin_guard.py): time travel past that."""
+    from app import linkedin_guard
+    for l in store.read("leads"):
+        if l.get(linkedin_guard.CHECKED):
+            store.update_lead(l["id"], lambda x: {**x, linkedin_guard.CHECKED: None})
+
+
 def fake_state():
     return http("GET", "/__state", base=FAKE)[1]
 
@@ -159,6 +167,7 @@ http("POST", f"/__accept?slug=connect-1&acct={own}", base=FAKE)
 prof = {"acct-a": PROFILE_A, "acct-b": PROFILE_B}
 run_agent(prof[other], "--once"); skip_gap()
 check("S3 the other account does not mark someone else's connection accepted", seq(first)["status"] == "waiting_for_acceptance")
+six_hours_pass()
 run_agent(prof[own], "--once"); skip_gap()
 check("S3 the owning account sees the acceptance", seq(first)["status"] == "messaging", seq(first).get("status"))
 # make step 2 due now

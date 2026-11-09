@@ -115,7 +115,12 @@ def make_router(store) -> APIRouter:
         """Before an agent touches a person: the lead becomes this account's (atomically), unless another account has it."""
         account = account_of(request)
         lead_or_404(lead_id)
+        from . import linkedin_guard
+        held = linkedin_guard.refusal(store, lead_id, account)
+        if held:
+            raise HTTPException(409, f"This person was {held}.")
         if not account:
+            linkedin_guard.count_try(store, lead_id)
             return {"ok": True, "account": ""}
         won = {}
         settings = store.read("settings")
@@ -135,6 +140,7 @@ def make_router(store) -> APIRouter:
         store.update_lead(lead_id, apply)
         if won.get("other"):
             raise HTTPException(409, f"Another LinkedIn account ({won['other']}) is handling this person.")
+        linkedin_guard.count_try(store, lead_id)
         return {"ok": True, "account": account}
 
     def refuse(info: dict, why: str = ""):
@@ -147,6 +153,8 @@ def make_router(store) -> APIRouter:
             refuse(info)
         if info["message"]["step"] != body.step:
             refuse(info, f"The step to send now is {info['message']['step']}, not {body.step}.")
+        from . import linkedin_guard
+        linkedin_guard.clear(store, lead_id)
         li.mark_sent(store, lead_id, body.step, origin=_with_ai_note(store, lead_or_404(lead_id), body.step,
                                                                      _agent_origin(store, lead_or_404(lead_id), body.step, account_of(request), request)))
         return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id))}
@@ -161,6 +169,8 @@ def make_router(store) -> APIRouter:
         if (lead.get("linkedin_seq") or {}).get("status") != "waiting_for_acceptance":
             refuse(ext.describe(store, lead), "This person is not waiting to accept a connection request.")
         result = li.mark_accepted(store, lead_id)
+        from . import linkedin_guard
+        linkedin_guard.clear(store, lead_id)
         task = result.get("next_task")
         when = (f"The first message is scheduled for {task['due_at'][:10]}." if task else "No message step is left.")
         from . import alerts

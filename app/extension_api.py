@@ -260,7 +260,14 @@ def queue(store, account: str = "") -> dict:
         kind = next((s["kind"] for s in li.lead_steps(lead, settings) if s["n"] == d["step"]), None)
         due.append({"lead_id": d["lead_id"], "name": d["name"], "company": d["company"], "title": d["title"], "step": d["step"],
                     "kind": kind, "due_at": d["due_at"], "profile_url": safe_http_url(d.get("linkedin_url"))})
+    from . import linkedin_guard
     waiting = [{"lead_id": w["lead_id"], "name": w["name"], "company": w["company"], "since": w["since"],
                 "profile_url": safe_http_url(w.get("linkedin_url"))} for w in q["waiting_for_acceptance"]
-               if (leads.get(w["lead_id"]) or {}).get("stage") not in ("unsubscribed", "disqualified") and mine(leads.get(w["lead_id"]) or {})]
+               if (leads.get(w["lead_id"]) or {}).get("stage") not in ("unsubscribed", "disqualified") and mine(leads.get(w["lead_id"]) or {})
+               and (not account or linkedin_guard.check_due(leads.get(w["lead_id"]) or {}))]
+    if account:                                  # an agent: each profile looked at once per 6 hours, whatever restarts it
+        waiting = waiting[:3]
+    if account and waiting:
+        linkedin_guard.stamp_checked(store, [w["lead_id"] for w in waiting])
+    due = [d for d in due if not linkedin_guard.held_until(leads.get(d["lead_id"]) or {})]   # held after failed tries
     return {"due": due, "waiting_for_acceptance": waiting, "owner": q["owner"]}
