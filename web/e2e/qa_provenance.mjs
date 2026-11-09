@@ -25,7 +25,34 @@ await step("Sign in and open the Outbox", async () => {
   await p.locator("main").waitFor();
   const later = p.getByRole("button", { name: "Skip setup" });
   await later.waitFor({ timeout: 6000 }).then(async () => { await later.click(); await later.waitFor({ state: "detached", timeout: 20000 }); }, () => {});
+  // Make one automatic email (a scheduled sequence step) and one manual one (a one-off a person writes), all in the UI.
+  const nav = async (label) => { await p.locator("nav.side").getByRole("button", { name: label, exact: true }).click(); await p.waitForTimeout(900); };
+  await nav("Leads");
+  await p.getByRole("button", { name: "Quick paste" }).click();
+  await p.locator("textarea").first().fill("company,contact_name,title,email,website\nAcme Corp,Ravi Kumar,Head of HR,ravi@acmecorp.example,https://acmecorp.example\nBeta Ltd,Sita Rao,HR Manager,sita@betaltd.example,https://betaltd.example");
+  await p.getByRole("button", { name: "Import", exact: true }).click();
+  await p.getByText("Added 2").waitFor();
+  await p.getByRole("button", { name: "Acme Corp" }).first().click();
+  let d = p.getByRole("dialog").first();
+  await d.getByRole("tab", { name: "Outreach" }).click();
+  await d.getByRole("button", { name: /email sequence$/ }).click();
+  await p.waitForTimeout(1200);
+  await p.keyboard.press("Escape");
+  await p.getByRole("button", { name: "Beta Ltd" }).first().click();
+  d = p.getByRole("dialog").first();
+  await d.getByRole("tab", { name: "Activity" }).click();
+  await d.getByRole("button", { name: "Write an email" }).click();
+  await d.getByLabel("Subject").fill("Quick question about hiring");
+  await d.getByLabel(/^Message/).fill("Hi Sita, a quick question about your hiring plans this quarter.");
+  await d.getByRole("button", { name: "Send email" }).click();
+  await p.getByRole("alertdialog").or(p.getByRole("dialog").last()).getByRole("button", { name: "Send", exact: true }).click();
+  await p.getByText(/Practised \(not sent\)|Sent:/).first().waitFor({ timeout: 10000 });
+  await p.keyboard.press("Escape");
   await p.evaluate(() => { window.location.hash = "outbox"; });
+  await p.waitForTimeout(1200);
+  await p.getByRole("button", { name: "Run sequences now" }).click();
+  await p.waitForTimeout(2500);
+  await p.reload(); await p.locator("main").waitFor(); await p.waitForTimeout(1500);
   await p.getByTestId("outbox-table").waitFor({ timeout: 10000 });
 });
 

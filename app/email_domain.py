@@ -5,10 +5,11 @@ address on a domain that does not exist (a typo such as "tvalueserve.com") is ca
 status(): "ok" | "no_domain" (the domain does not exist) | "no_mail" (exists, but has no mail server) | "unknown" (DNS
 did not answer in time: never block on that). CHECK = False turns the lookups off (tests set it; no network there).
 """
+import os
 import time
 from typing import Optional
 
-CHECK = True
+CHECK = os.environ.get("OUTREACH_EMAIL_DOMAIN_CHECK", "1") != "0"     # 0 only on local test rigs with made-up domains
 CACHE_SECONDS = 6 * 3600
 TIMEOUT = 3.0
 _CACHE: dict = {}
