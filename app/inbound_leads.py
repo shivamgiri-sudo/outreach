@@ -265,7 +265,7 @@ def _enroll(store, flow_id: str, lead_id: str, now: datetime):
     if flow is None:
         return {"enrolled": False, "reason": "That flow is not active."}
     try:
-        enroll(store, flow, lead_id, now, why="inbound capture")
+        enroll(store, flow, lead_id, now, why="inbound capture", via="import")
         return {"enrolled": True}
     except (LookupError, FlowError) as exc:
         return {"enrolled": False, "reason": str(exc)}

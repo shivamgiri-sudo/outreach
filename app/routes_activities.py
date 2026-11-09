@@ -92,7 +92,9 @@ def make_router(store, transactional_sender=None) -> APIRouter:
         if body.type == "call" and body.outcome and body.outcome not in CALL_OUTCOMES:
             raise HTTPException(400, f"call outcome must be one of: {', '.join(CALL_OUTCOMES)}")
         at = _parse_when(body.at, "at")
-        row = log_activity(store, lead_id, body.type, {**body.model_dump(), "at": iso(at) if at else None})
+        user = getattr(request.state, "user", None) or {}
+        mine = user.get("email") if body.by.strip() == (user.get("name") or user.get("email") or "") else ""   # typed someone else: no email
+        row = log_activity(store, lead_id, body.type, {**body.model_dump(), "at": iso(at) if at else None, "by_email": mine or ""})
         follow = _parse_when(body.follow_up_at, "follow_up_at")
         task = None
         if follow:

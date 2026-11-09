@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import audit, linkedin_bridge, linkedin_config, linkedin_seq as li, opener_lab
+from . import audit, linkedin_bridge, linkedin_config, linkedin_seq as li, opener_lab, provenance
 
 
 class SentBody(BaseModel):
@@ -141,12 +141,24 @@ def make_router(store) -> APIRouter:
                 "persona": li.persona(lead.get("title", ""), settings)[0], "problem": problem}
 
     @router.post("/api/leads/{lead_id}/linkedin/start")
-    def start(lead_id: str):
-        return call(li.start, lead_id)
+    def start(lead_id: str, request: Request):
+        out = call(li.start, lead_id)
+        who = provenance.person_of(getattr(request.state, "user", None))
+        out["lead"] = provenance.stamp_linkedin_start(store, lead_id, who["name"], who["email"], "by hand") or out["lead"]
+        return out
 
     @router.post("/api/leads/{lead_id}/linkedin/sent")
-    def sent(lead_id: str, body: SentBody):
-        return call(li.mark_sent, lead_id, body.step)
+    def sent(lead_id: str, body: SentBody, request: Request):
+        lead = lead_or_404(lead_id)
+        origin = provenance.build(store, "linkedin_by_hand", True, lead, provenance.person_of(getattr(request.state, "user", None)),
+                                  {"step": f"LinkedIn step {body.step}"}, provenance.linkedin_enrolment(lead), "linkedin",
+                                  hours=provenance.HOURS_PERSON)
+        try:
+            return li.mark_sent(store, lead_id, body.step, origin=origin)
+        except LookupError as exc:
+            raise HTTPException(404, str(exc))
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
 
     @router.post("/api/leads/{lead_id}/linkedin/accepted")
     def accepted(lead_id: str):

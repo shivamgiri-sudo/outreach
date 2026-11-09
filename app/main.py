@@ -95,6 +95,7 @@ from .routes_outreach import make_router
 from .routes_sequences import make_router as make_sequences_router
 from .routes_lead_fields import make_router as make_lead_fields_router
 from .routes_lead_ops import make_router as make_lead_ops_router
+from .routes_send_audit import make_router as make_send_audit_router
 from .lead_ops import with_list_extras
 from .store import Store
 from .suggest import suggest_next
@@ -529,6 +530,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         return {"prompt": build_prompt(spec, profile=profile), "ai": False}
 
     app.include_router(make_lead_ops_router(store, _present))     # before the outreach routes: /api/leads/bulk
+    app.include_router(make_send_audit_router(store))
     app.include_router(make_router(store, _build_lead, _present, email_sender, ai_transport))
     app.include_router(make_jobs_router(store, _build_lead, _present))
     app.include_router(make_growth_router(store, _build_lead, _present))

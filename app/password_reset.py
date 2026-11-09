@@ -52,6 +52,12 @@ def request_reset(store, email: str, base_url: str, send, now: Optional[datetime
             f"<p style=\"margin:20px 0;\"><a href=\"{link}\" style=\"background:#0369a1;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;\">Set a new password</a></p>"
             f"<p style=\"font-size:13px;color:#475569;\">The link works for {TOKEN_MINUTES} minutes and only once. If you did not ask for this, ignore this email.</p></div>")
     result = send({"to": user["email"], "subject": "Reset your MCN Outreach password", "body": body, "html": html, "kind": "password_reset"})
+    from .provenance import internal
+    from .reminders import _log_transactional
+    # Logged for the audit without the link itself (the one-time link is a password; it is never stored in clear).
+    _log_transactional(store, user["email"], "Reset your MCN Outreach password", "(password reset link, not kept)", "password_reset", None,
+                       result, extra={"origin": internal("password_reset", live=result.get("status") != "dry_run",
+                                                         rule={"requested": "Forgot password on the sign-in page"})})
     return {"message": GENERIC, "sent": result.get("status") == "sent", "status": result.get("status")}
 
 

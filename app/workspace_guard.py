@@ -34,6 +34,7 @@ LIMITED_OK = {
     ("GET", "/api/intelligence"), ("GET", "/api/analytics"), ("GET", "/api/analytics/overview"), ("GET", "/api/analytics/pipeline"),
     ("GET", "/api/analytics/pipeline/leads"), ("GET", "/api/insights"),
     ("GET", "/api/outbox"), ("GET", "/api/outbox/message"), ("GET", "/api/inbox"),
+    ("GET", "/api/outbox/internal"), ("GET", "/api/outbox/export.csv"),      # owner/admin only; rows filtered by lead scope
     ("GET", "/api/reply-inbox"), ("POST", "/api/reply-inbox/action"),
     ("GET", "/api/meetings"), ("POST", "/api/meetings/{meeting_id}/cancel"), ("POST", "/api/meetings/{meeting_id}/done"),
     ("GET", "/api/quality"), ("GET", "/api/change-log"), ("GET", "/api/whatsapp/outbox"), ("GET", "/api/readiness"),

@@ -51,8 +51,12 @@ def notify(store, to, title: str, text: str, lead_id=None, task_id=None, kind: s
 
 
 def _log_transactional(store, to, subject, body, kind, lead_id, result, extra: dict = None) -> dict:
+    from .provenance import INTERNAL_KIND_TRIGGER, internal
     row = {"id": uuid.uuid4().hex[:10], "to": to, "subject": subject, "body": body, "kind": kind, "lead_id": lead_id,
            "status": result.get("status", "dry_run"), "error": result.get("error"), "at": iso(datetime.now(IST)), **(extra or {})}
+    if not isinstance(row.get("origin"), dict):        # why it was sent: alerts, reminders and invites are the System's
+        row["origin"] = internal(INTERNAL_KIND_TRIGGER.get(kind, "alert"), live=row["status"] != "dry_run",
+                                 rule={k: v for k, v in (("meeting_id", row.get("meeting_id")), ("kind", kind)) if v})
     store.update("transactional_outbox", lambda rows: [*rows[-4999:], row])
     return row
 

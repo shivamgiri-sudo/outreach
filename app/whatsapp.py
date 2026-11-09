@@ -102,7 +102,8 @@ def within_session_window(lead: dict, now: datetime) -> bool:
     return bool(last) and now - last <= SESSION_WINDOW
 
 
-def send(store, lead_id: str, template: str, text: str, now: datetime, base_url: str, transport=None, sender: str = "") -> dict:
+def send(store, lead_id: str, template: str, text: str, now: datetime, base_url: str, transport=None, sender: str = "",
+         origin: dict = None, sender_email: str = "") -> dict:
     """Queue one WhatsApp message (practice mode until a provider is live) and return the updated lead.
 
     `sender` is the representative sending it: their name goes into the message, and into the log. Flows and other
@@ -147,7 +148,8 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
                            "en", params, text=body if template == "custom" else None, transport=transport or request)
     message = {"lead_id": lead_id, "to": lead["phone"], "template": template, "body": body,
                "sent_at": now.isoformat(timespec="seconds"), "status": result.get("status", "dry_run"),
-               "provider_id": result.get("provider_id"), "error": result.get("error"), "by": sender.strip()}
+               "provider_id": result.get("provider_id"), "error": result.get("error"), "by": sender.strip(),
+               "origin": _origin(store, lead, origin, sender, sender_email, result.get("status", "dry_run") != "dry_run")}
     store.update("whatsapp_outbox", lambda rows: [*rows, message])
     if message["status"] == "failed":
         raise WhatsAppError(f"The WhatsApp provider refused the message: {message['error'] or 'unknown error'}")
@@ -159,3 +161,12 @@ def send(store, lead_id: str, template: str, text: str, now: datetime, base_url:
         stage = "whatsapp_active" if latest["stage"] in ("interested", "engaged") else latest["stage"]
         return {**demo, **latest, "stage": stage, "timeline": [*latest["timeline"], event]}
     return store.update_lead(lead_id, record)
+
+
+def _origin(store, lead: dict, given: dict, sender: str, sender_email: str, live: bool) -> dict:
+    """Who sent this WhatsApp: the representative (by hand) or the System (a flow step passes `given`)."""
+    from . import provenance
+    given = given or {}
+    trigger = given.get("trigger") or ("whatsapp_by_hand" if sender.strip() or sender_email else "whatsapp_auto")
+    actor = (given.get("actor") or provenance.person(sender, sender_email)) if trigger == "whatsapp_by_hand" else None
+    return provenance.build(store, trigger, live, lead, actor, given.get("rule"), given.get("enrolment"), "whatsapp")

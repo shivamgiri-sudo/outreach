@@ -218,8 +218,10 @@ def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = Fals
     return {"lead": saved, "task": task}
 
 
-def mark_sent(store, lead_id: str, step_n: int, now: Optional[datetime] = None) -> dict:
-    """The person sent step n on LinkedIn. Schedule the next one (message steps wait for the connection)."""
+def mark_sent(store, lead_id: str, step_n: int, now: Optional[datetime] = None, origin: Optional[dict] = None) -> dict:
+    """The person sent step n on LinkedIn. Schedule the next one (message steps wait for the connection).
+
+    `origin` (app/provenance.py) says who: a person marking it sent, or the LinkedIn agent; it goes on the timeline line."""
     now = now or now_utc()
     settings = store.read("settings")
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
@@ -237,11 +239,19 @@ def mark_sent(store, lead_id: str, step_n: int, now: Optional[datetime] = None) 
         new_state["status"] = "finished"
     saved = store.update_lead(lead_id, lambda l: {**l, "linkedin_seq": new_state, "last_activity_at": iso(now),
                                                   "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin",
-                                                                                "text": f"LinkedIn step {step_n} sent"}]})
+                                                                                "text": f"LinkedIn step {step_n} sent",
+                                                                                **_origin_fields(origin)}]})
     task = None
     if nxt and (nxt["after"] != "accepted" or new_state.get("accepted_at")) and status == "messaging":
         task = _schedule(store, saved, nxt, now + timedelta(days=nxt["days"]), settings)
     return {"lead": saved, "next_task": task}
+
+
+def _origin_fields(origin: Optional[dict]) -> dict:
+    if not origin:
+        return {}
+    actor = (origin.get("actor") or {}).get("name") or ""
+    return {"origin": origin, **({"by": actor} if actor else {})}
 
 
 def mark_accepted(store, lead_id: str, now: Optional[datetime] = None) -> dict:

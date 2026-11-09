@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from . import flow_actions as act
+from . import flow_actions as act, provenance
 from .flows import FlowError, ensure_collections, graph_for_version, is_trigger, outputs_of, title_of
 from .sequence_runner import WARM_STAGES
 
@@ -109,8 +109,11 @@ def _change_run(store, run_id: str, expected_step: Optional[int], change) -> Opt
 
 
 # ---------------------------------------------------------------- enrolment
-def enroll(store, flow: dict, lead_id: str, now: datetime, why: str = "added by hand") -> dict:
-    """Start one lead on an active flow. Raises LookupError or FlowError (with a reason a person can read)."""
+def enroll(store, flow: dict, lead_id: str, now: datetime, why: str = "added by hand", by: str = "", by_email: str = "",
+           via: str = "") -> dict:
+    """Start one lead on an active flow. Raises LookupError or FlowError (with a reason a person can read).
+
+    `by` / `via` record who started it and how (app/provenance.py): a person "by hand", else the System by "flow trigger"."""
     ensure_collections(store)
     lead = _lead(store, lead_id)
     if lead is None:
@@ -130,7 +133,8 @@ def enroll(store, flow: dict, lead_id: str, now: datetime, why: str = "added by 
            "reply_mark": len(reply_events(lead)), "variants": {}, "claim": None, "deferred": None, "attempts": {},
            "stop_reason": None if first else "the trigger is not connected to a step",
            # A lead already warm when it starts (a "they replied yes" or "stage changed" flow) is what the flow is for.
-           "warm_ok": lead.get("stage") in WARM_STAGES}
+           "warm_ok": lead.get("stage") in WARM_STAGES,
+           **provenance.enrol_fields(by, by_email, via or ("by hand" if by else "flow trigger"), detail=why)}
     added = {}
 
     def add(rows: list) -> list:

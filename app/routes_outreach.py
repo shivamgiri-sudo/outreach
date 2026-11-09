@@ -121,7 +121,8 @@ class EnrollRefused(ValueError):
     """The lead may not be put into the email sequence; the message says why in plain words."""
 
 
-def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence", sequence_id: str = "default") -> dict:
+def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence", sequence_id: str = "default", by: str = "",
+                by_email: str = "", via: str = "by hand", **detail) -> dict:
     """Start one lead's email sequence. The only way in: the Enrol button, bulk enrol and campaigns all use it.
 
     Refuses leads without an email, leads that may not be emailed (unsubscribed, disqualified, not now, customers),
@@ -131,6 +132,8 @@ def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence", s
 
     `sequence_id` picks a saved sequence (app/sequence_library.py); the lead keeps its id and version, so later edits
     to the sequence's days never break a lead that is part-way through. "default" is the built-in 6-email sequence.
+
+    `by` / `by_email` / `via` record who started it and how (app/provenance.py); an empty `by` means the System.
     """
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None:
@@ -147,8 +150,9 @@ def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence", s
         raise EnrollRefused(ALREADY_ENROLLED)
     if is_blocked(store, lead["email"]):
         raise EnrollRefused("This address is on the suppression list (unsubscribed or bounced)")
+    from .provenance import SYSTEM, enrol_fields
     sequence = {"enrolled_at": _now_iso(), "sent_days": [], "stopped": None, "sequence_id": chosen["id"],
-                "version": chosen.get("version", 1)}
+                "version": chosen.get("version", 1), **enrol_fields(by, by_email, via, **detail)}
     if chosen["id"] != DEFAULT_ID:
         note = f"{note} ({chosen['name']})"
     applied = {}
@@ -160,7 +164,7 @@ def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence", s
             applied["blocked"] = True
             return None
         applied["ok"] = True
-        return {**l, "sequence": sequence, "timeline": [*l["timeline"], _event("sequence", note)]}
+        return {**l, "sequence": sequence, "timeline": [*l["timeline"], {**_event("sequence", note), "by": by or SYSTEM, "via": via}]}
     saved = store.update_lead(lead_id, start)
     if applied.get("blocked"):
         raise EnrollRefused("This address is on the suppression list (unsubscribed or bounced)")
@@ -335,9 +339,12 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         return list(reversed(workspaces.filter_by_lead(store, store.read("inbox"))))[:500]
 
     @router.post("/api/leads/{lead_id}/enroll")
-    def enroll(lead_id: str, body: Optional[EnrollBody] = None):
+    def enroll(lead_id: str, request: Request, body: Optional[EnrollBody] = None):
+        from .provenance import person_of
+        who = person_of(getattr(request.state, "user", None))
         try:
-            return present(enroll_lead(store, lead_id, sequence_id=(body.sequence_id if body else "") or "default"))
+            return present(enroll_lead(store, lead_id, sequence_id=(body.sequence_id if body else "") or "default",
+                                       by=who["name"], by_email=who["email"], via="by hand"))
         except LookupError:
             raise HTTPException(404, "Lead not found")
         except EnrollRefused as exc:
@@ -349,7 +356,7 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         from .audit import actor_of
         try:
             result = send_now(store, lead_id, resolve_now(None), public_base_url(store, BASE_URL), email_sender,
-                              actor_of(getattr(request.state, "user", None))["name"])
+                              actor_of(getattr(request.state, "user", None))["name"], actor_of(getattr(request.state, "user", None))["email"])
         except LookupError:
             raise HTTPException(404, "Lead not found")
         except ValueError as exc:
@@ -363,7 +370,7 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         from .audit import actor_of
         try:
             result = send_manual(store, lead_id, body.subject, body.body, resolve_now(None), public_base_url(store, BASE_URL), email_sender,
-                                 actor_of(getattr(request.state, "user", None))["name"])
+                                 actor_of(getattr(request.state, "user", None))["name"], actor_of(getattr(request.state, "user", None))["email"])
         except LookupError:
             raise HTTPException(404, "Lead not found")
         except ValueError as exc:
@@ -381,14 +388,14 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
 
     @router.get("/api/outbox")
     def get_outbox(page: Optional[int] = None, size: int = 50, status: str = "", step: str = "", date_from: str = Query("", alias="from"),
-                   date_to: str = Query("", alias="to"), campaign_id: str = "", kind: str = "", q: str = ""):
+                   date_to: str = Query("", alias="to"), campaign_id: str = "", kind: str = "", q: str = "", origin: str = ""):
         """Without `page`: every row, newest first (older callers). With `page`: one page of the filtered rows."""
         if page is None:
             from . import workspaces
             return list(reversed(workspaces.filter_by_lead(store, store.read("outbox"))))
         from . import outbox_view
         return outbox_view.search(store, status=status[:20], step=step[:120], date_from=date_from[:10], date_to=date_to[:10],
-                                  campaign_id=campaign_id[:40], kind=kind[:20], q=q, page=page, size=size)
+                                  campaign_id=campaign_id[:40], kind=kind[:20], q=q, page=page, size=size, origin=origin[:20])
 
     @router.get("/api/outbox/message")
     def outbox_message(key: str = Query(..., max_length=300)):

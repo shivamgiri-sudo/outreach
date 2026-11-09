@@ -240,7 +240,8 @@ def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool
     if action == "enroll":
         for lead_id in wanted:
             try:
-                enroll(store, lead_id, f"Enrolled in email sequence (bulk, by {who})")
+                enroll(store, lead_id, f"Enrolled in email sequence (bulk, by {who})", by=who, by_email=actor.get("email") or "",
+                       via="bulk action")
             except LookupError:
                 reasons[lead_id] = "not found"
             except ValueError as exc:          # EnrollRefused
