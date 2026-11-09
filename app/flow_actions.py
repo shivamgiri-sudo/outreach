@@ -228,6 +228,15 @@ def compose_email(store, flow: dict, node: dict, lead: dict, now: datetime, base
     return sequence_runner._compose(lead, email_step(flow, node), cfg, get_offer(store), base_url, now, now.astimezone(IST).date())
 
 
+AI_VARS = "__ai__"          # names of the fields an "Ask Claude" draft step made in this run
+
+
+def ai_text(*texts) -> bool:
+    """True when any of these texts uses a field an "Ask Claude" draft step wrote earlier in this run."""
+    made = set(CURRENT_VARS.get().get(AI_VARS) or [])
+    return bool(made) and any(m.group(1) in made for t in texts for m in _VAR_TOKEN.finditer(str(t or "")))
+
+
 def text_for(store, lead: dict, text: str, base_url: str, now: datetime) -> tuple:
     lead = ensure_demo(lead, now)
     variables = lead_variables(lead, get_settings(store)["sender_name"], base_url, {"demo_link": f"{base_url}/demo/{lead['demo_token']}"}, brand=store)
@@ -283,6 +292,9 @@ def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
         return refused("a detail the email needs is missing (an unfilled {{placeholder}}), so nothing was sent")
     message, demo = composed
     mode = "live" if live else "practice"
+    c = node.get("config") or {}
+    if ai_text(c.get("subject"), c.get("body"), c.get("subject_no_role"), c.get("body_no_role")):
+        message.update({"ai_drafted": True, "ai_approved_by": f"flow {flow['name']}", "ai_source": "flow Ask Claude step"})
     message.update({"idempotency_key": f"flow:{run['id']}:{run['step']}:{mode}",
                     "message_id": f"<{uuid.uuid4().hex}.{lead['id']}@{sequence_runner._message_domain(store)}>",
                     "flow_id": flow["id"], "flow_run_id": run["id"], "flow_node": node["id"], "flow_variants": run.get("variants") or {},
@@ -314,7 +326,11 @@ def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
         return defer(now + RETRY_AFTER, f"send failed ({message.get('error', 'unknown error')}); retrying in an hour")
     ctx.emails_sent += 1
     label = "sent" if live else "practice only, not sent"
-    event = {"at": iso(now), "kind": "flow", "text": f"Flow {flow['name']}: email “{message['subject']}” — {label}"}
+    event = {"at": iso(now), "kind": "flow", "text": f"Flow {flow['name']}: email “{message['subject']}” — {label}",
+             **({"ai_drafted": True} if message.get("ai_drafted") else {})}
+    if message.get("ai_drafted"):
+        from . import ai_marks
+        ai_marks.log_sent(store, f"Flow {flow['name']}", lead["id"], "email", f"flow {flow['name']}", "flow Ask Claude step")
 
     def record(latest: dict) -> dict:
         stage = "contacted" if live and latest["stage"] in EARLY_STAGES else latest["stage"]
@@ -357,8 +373,9 @@ def do_sms(store, flow, node, lead, now, ctx) -> dict:
                       ctx.transport or request, ctx.resolver)
     row = {"id": uuid.uuid4().hex[:12], "lead_id": lead["id"], "type": "sms", "direction": "out", "subject": f"Flow {flow['name']}",
            "body": text, "outcome": result.get("status", "dry_run"), "by": "flow", "at": iso(now), "created_at": iso(now),
-           "origin": provenance.build(store, "flow", result.get("status") != "dry_run", lead, rule=provenance.flow_rule(flow, node, _run_of(store, flow, lead)),
-                                      enrolment=provenance.enrolment_from(_run_of(store, flow, lead)), channel="sms")}
+            "origin": provenance.build(store, "flow", result.get("status") != "dry_run", lead, rule=provenance.flow_rule(flow, node, _run_of(store, flow, lead)),
+                                       enrolment=provenance.enrolment_from(_run_of(store, flow, lead)), channel="sms"),
+            **({"ai_drafted": True, "ai_approved_by": f"flow {flow['name']}"} if ai_text((node.get("config") or {}).get("text")) else {})}
     store.update("activities", lambda rows: [*rows, row])
     if result.get("status") == "failed":
         return refused(f"SMS not sent: {result.get('error') or 'the provider refused it'}")
@@ -546,7 +563,10 @@ def do_ai(store, flow, node, lead, now, ctx) -> dict:
         word = re.sub(r"[^a-z0-9 _-]", "", answer.lower().strip().splitlines()[0] if answer else "")
         answer = word if word in options else "unknown"
     name = str(c.get("save_as"))
-    return ok_with(f"Claude answered: {answer[:80]}", {name: answer[:2000]}, {name: answer[:300]})
+    made = {name: answer[:2000]}
+    if mode == "draft":                          # later steps that send this text mark their message AI-drafted
+        made[AI_VARS] = sorted({*(CURRENT_VARS.get().get(AI_VARS) or []), name})
+    return ok_with(f"Claude answered: {answer[:80]}", made, {name: answer[:300]})
 
 
 def do_http(store, flow, node, lead, now, ctx) -> dict:

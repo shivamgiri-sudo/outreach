@@ -18,6 +18,7 @@ import LeadAssign from "./LeadAssign.jsx";
 import LinkedInAccountPick from "./LinkedInAccountPick.jsx";
 import { LeadCustomData } from "./LeadCustomFields.jsx";
 import PhoneTag, { isLandline } from "./PhoneTag.jsx";
+import { LeadAuditPack, LeadConsent } from "./LeadAudit.jsx";
 
 // The lead drawer is a header (name, score, stage, prev/next) over five tabs. HOW TO ADD A SMALL PANEL:
 //   - lead-level facts / ownership / tags / other contacts  -> the OVERVIEW tab, at the "SLOT: overview panels" line;
@@ -111,6 +112,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
       <LeadStage lead={lead} onLead={setLead} onError={setError} />
       <LeadPlan lead={lead} />
       {/* SLOT: overview panels (LeadOwner, LeadTags, OtherContacts …) — one line each */}
+      <LeadConsent lead={lead} />
       <LeadAssign lead={lead} onChanged={setLead} />
       <LeadPeople lead={lead} onLead={setLead} />
       <OtherContacts lead={lead} />
@@ -130,7 +132,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
       <h3>Conversation & history</h3>
       <div className="timeline">
         {[...lead.timeline].reverse().map((t, i) => (
-          <div key={i} className={t.kind === "edit" ? "timeline-edit" : undefined}><small>{istLabel(t.at)} · {t.kind === "edit" ? "details edited" : t.kind}{t.by ? ` · ${t.by}` : ""}</small>{t.text}</div>
+          <div key={i} className={t.kind === "edit" ? "timeline-edit" : undefined}><small>{istLabel(t.at)} · {t.kind === "edit" ? "details edited" : t.kind}{t.by ? ` · ${t.by}` : ""}{t.ai_drafted ? " · " : ""}{t.ai_drafted && <span className="pill">AI-drafted</span>}</small>{t.text}</div>
         ))}
       </div>
     </>
@@ -287,6 +289,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
       ))}
       <LeadOrigin lead={lead} />
       <CompanyHealth lead={lead} />
+      <LeadAuditPack lead={lead} />
       {isOwner() && <PrivacyActions lead={lead} onErased={onClose} />}
     </>
   );

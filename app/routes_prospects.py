@@ -279,6 +279,7 @@ def make_router(store, transports=None) -> APIRouter:
         n = repo_for(store).x("DELETE FROM pdb_saved_searches WHERE id = ? AND owner = ?", (search_id, _owner_key(request)))
         if not n:
             raise HTTPException(404, "Saved search not found")
+        audit.record(store, getattr(request.state, "user", None), "prospects.search_delete", search_id)
         return {"ok": True}
 
     # ---- owner

@@ -107,7 +107,7 @@ export default function OutboxTable({ refreshKey }) {
                 <td data-label="When">{istLabel(m.sent_at)}</td>
                 <td data-label="To">{m.to}{m.company && <><br /><small>{m.company}</small></>}</td>
                 <td data-label="Step">{m.step}{m.manual ? <><br /><small>one-off{m.by ? ` by ${m.by}` : ""}</small></> : m.by && <><br /><small>sent now by {m.by}</small></>}{m.campaign && <><br /><small>{m.campaign}</small></>}</td>
-                <td data-label="Subject">{m.subject}<br /><small className="sub-inline">{m.preview}</small></td>
+                <td data-label="Subject">{m.subject}{m.ai_drafted && <> <span className="pill" data-testid="ai-drafted-pill" title={`Written by the AI; approved and sent by ${m.ai_approved_by || "a person"}`}>AI-drafted</span></>}<br /><small className="sub-inline">{m.preview}</small></td>
                 <td data-label="Sent by"><OriginPill type={m.origin_type} label={m.origin_label} actor={m.origin_actor} />
                   {m.origin_actor && <><br /><small>{m.origin_actor}</small></>}<br />
                   <button className="btn ghost" aria-expanded={why === m.key} data-testid="why-toggle"

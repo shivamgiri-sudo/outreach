@@ -104,12 +104,12 @@ def make_router(store) -> APIRouter:
 
     @router.put("/api/linkedin/sequence")
     def put_sequence(body: SequenceBody, request: Request):
+        from . import audit_settings
         try:
-            saved = linkedin_config.save(store, body.model_dump(), audit.actor_of(getattr(request.state, "user", None))["name"])
+            with audit_settings.watch(store, request, "LinkedIn sequence", action="settings.save", key=linkedin_config.SETTINGS_KEY):
+                saved = linkedin_config.save(store, body.model_dump(), audit.actor_of(getattr(request.state, "user", None))["name"])
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
-        audit.record(store, getattr(request.state, "user", None), "settings.save", "LinkedIn sequence",
-                     f"{len(saved['steps'])} steps, {len(saved['personas'])} personas, version {saved['version']}")
         return {k: v for k, v in saved.items() if k != "history"}
 
     @router.post("/api/linkedin/sequence/reset")
@@ -201,8 +201,10 @@ def make_router(store) -> APIRouter:
 
     @router.put("/api/linkedin/variants")
     def put_variants(body: VariantsBody, request: Request):
+        from . import audit_settings
         try:
-            return opener_lab.save(store, body.A, body.B, audit.actor_of(getattr(request.state, "user", None))["name"], li.iso(li.now_utc()))
+            with audit_settings.watch(store, request, "LinkedIn connection notes", action="settings.change", key="linkedin_connect_variants"):
+                return opener_lab.save(store, body.A, body.B, audit.actor_of(getattr(request.state, "user", None))["name"], li.iso(li.now_utc()))
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
 
@@ -223,16 +225,12 @@ def make_router(store) -> APIRouter:
     @router.put("/api/linkedin/settings")
     def put_settings(body: SettingsBody, request: Request):
         changes = {k: v for k, v in body.model_dump().items() if v is not None}
-        before = store.read("settings")
         url = changes.get("case_study_url")
         if url and not url.startswith("https://"):
             raise HTTPException(400, "The case-study link must start with https://")
-        store.update("settings", lambda s: {**s, **changes})
-        from . import audit
-        changed = sorted(k for k, v in changes.items() if before.get(k) != v)
-        if changed:
-            audit.record(store, getattr(request.state, "user", None), "linkedin.settings", "LinkedIn settings",
-                         "; ".join(f"{k}: {before.get(k)!r} -> {changes[k]!r}" for k in changed))
+        from . import audit_settings
+        with audit_settings.watch(store, request, "LinkedIn settings", action="linkedin.settings"):
+            store.update("settings", lambda s: {**s, **changes})
         return get_settings()
 
     return router

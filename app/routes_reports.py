@@ -57,9 +57,9 @@ def make_router(store, base_url_of, sender) -> APIRouter:
         role = (getattr(request.state, "user", None) or {"role": "owner"}).get("role")
         if role != "owner":
             raise HTTPException(403, "Only an owner can change the response-time targets.")
-        store.update("settings", lambda s: {**s, "sla_first_touch_hours": body.first_touch_hours, "sla_reply_hours": body.reply_hours})
-        audit.record(store, getattr(request.state, "user", None), "settings.change", "response-time targets",
-                     f"first touch {body.first_touch_hours} h, reply {body.reply_hours} h")
+        from . import audit_settings
+        with audit_settings.watch(store, request, "response-time targets"):
+            store.update("settings", lambda s: {**s, "sla_first_touch_hours": body.first_touch_hours, "sla_reply_hours": body.reply_hours})
         from . import sla
         return sla.targets(store)
 

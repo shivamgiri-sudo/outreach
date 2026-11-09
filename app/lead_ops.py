@@ -155,7 +155,7 @@ def _stage_side_effects(store, lead_id: str, stage: str, who: str) -> None:
     if stage == "interested":
         on_became_interested(store, lead_id, f"Moved to Interested (bulk, by {who})")
     if stage == "unsubscribed":
-        record_consent(store, lead_id, "withdrawn", "any", "", "moved to Unsubscribed by a person (bulk)")
+        record_consent(store, lead_id, "withdrawn", "any", "", "moved to Unsubscribed by a person (bulk)", "person", who)
     fire(store, "stage_change", stage, lead_id)
 
 
@@ -272,8 +272,14 @@ def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool
         store.update("leads", apply)
         if action == "delete" and gone:
             rows = [_log_delete(l, actor) for l in gone]
-            store.update("audit", lambda audit_rows: [*audit_rows, *rows])
+            from .audit import MAX_AUDIT_ROWS, record
+            store.update("audit", lambda audit_rows: [*audit_rows, *rows][-MAX_AUDIT_ROWS:])
+            names = ", ".join((l.get("company") or l.get("email") or l["id"]) for l in gone[:20])
+            record(store, {"name": actor.get("name"), "email": actor.get("email"), "role": actor.get("role", "")}, "bulk.delete",
+                   f"{len(gone)} lead(s)", names + (" …" if len(gone) > 20 else ""), {"lead_ids": [l["id"] for l in gone][:500]})
         if action == "do_not_contact":
+            for lead in done:
+                record_consent(store, lead["id"], "do_not_contact", "any", "", "put on the do-not-contact list (bulk)", "person", who)
             emails = {l.get("email") for l in done if l.get("email")}
             if emails:                         # the same list unsubscribes and bounces use; every sender checks it
                 store.update("suppressed", lambda rows: [*rows, *sorted(e for e in emails if e not in rows)])

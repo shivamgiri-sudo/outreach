@@ -1,7 +1,7 @@
 """Buying-signal watchlist and article list. Owner-only for changes; reading is open to the team."""
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from . import signals
@@ -36,9 +36,11 @@ def make_router(store, fetch=None, ai_transport=None) -> APIRouter:
             raise HTTPException(400, str(exc))
 
     @router.delete("/api/signals/watch/{watch_id}")
-    def drop_watch(watch_id: str):
+    def drop_watch(watch_id: str, request: Request):
         if not signals.remove_watch(store, watch_id):
             raise HTTPException(404, "Not on the list")
+        from . import audit
+        audit.record(store, getattr(request.state, "user", None), "signal.delete", watch_id)
         return {"removed": watch_id}
 
     @router.post("/api/signals/run")

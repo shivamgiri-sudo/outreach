@@ -188,8 +188,10 @@ def make_router(store, present) -> APIRouter:
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
         who = rw.actor_name(store, user)
-        store.update("settings", lambda s: {**s, "call_script": {"script": script, "objections": objections,
-                                                                 "updated_by": who, "updated_at": iso(now_utc())}})
+        from . import audit_settings
+        with audit_settings.watch(store, request, "Call script"):
+            store.update("settings", lambda s: {**s, "call_script": {"script": script, "objections": objections,
+                                                                     "updated_by": who, "updated_at": iso(now_utc())}})
         return rw.call_script(store)
 
     @router.delete("/api/call-script")
@@ -197,7 +199,9 @@ def make_router(store, present) -> APIRouter:
         user = _user(request)
         if user and user.get("role") != "owner":
             raise HTTPException(403, "Only an owner can change the call script.")
-        store.update("settings", lambda s: {k: v for k, v in s.items() if k != "call_script"})
+        from . import audit_settings
+        with audit_settings.watch(store, request, "Call script (back to the built-in one)"):
+            store.update("settings", lambda s: {k: v for k, v in s.items() if k != "call_script"})
         return rw.call_script(store)
 
     @router.get("/api/leads/{lead_id}/stage-options")

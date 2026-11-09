@@ -148,15 +148,31 @@ ACTIONS = {
     "linkedin.account": "LinkedIn account for a lead changed", "linkedin.owner_account": "Owner's default LinkedIn account changed",
     "linkedin.stages_export": "LinkedIn stage list downloaded",
     "export.download": "Data downloaded", "backup.download": "Backup downloaded", "backup.restore": "Backup restored",
+    "settings.change": "Settings changed", "linkedin.settings": "LinkedIn settings saved", "brand.save": "Brand saved",
+    "offer.save": "What you sell saved", "brand.reset": "Brand reset", "labels.save": "Labels saved",
+    "integration.save": "Connection saved", "channel.save": "Channel provider saved", "channel.remove": "Channel provider removed",
+    "bulk.delete": "Leads deleted (bulk)", "lead.delete": "Lead deleted", "import.undo": "Import undone",
+    "flow.delete": "Flow deleted", "sequence.archive": "Sequence archived", "snippet.delete": "Snippet deleted",
+    "workflow.delete": "Rule deleted", "view.delete": "Saved view deleted", "signal.delete": "Signal watch deleted",
+    "capture.delete": "Lead capture connector deleted", "capture.test_leads_delete": "Test leads deleted",
+    "prospects.search_delete": "Saved prospect search deleted", "practice.clear": "Practice messages cleared",
+    "task.delete": "Task deleted", "person.remove": "Contact person removed", "contact_point.remove": "Contact point removed",
+    "ai.draft": "AI draft written", "ai.sent": "AI-drafted message sent", "ai.approve": "AI-drafted text approved",
+    "audit.pack": "Audit pack downloaded", "audit.verify": "Change log checked", "consent.do_not_contact": "Put on do-not-contact",
 }
 MAX_DETAIL = 500
 
 
-def record(store, user, action: str, target: str = "", detail: str = "") -> dict:
-    """One audit row {at, by, action, target, detail}. Never put secret values in `detail` (key names only)."""
+def record(store, user, action: str, target: str = "", detail: str = "", extra: Optional[dict] = None) -> dict:
+    """One audit row {at, by, action, target, detail}. Never put secret values in `detail` (key names only).
+    `extra` adds fields such as lead_id or changes ([{key, old, new}], secrets already masked). The store seals the
+    row into the hash chain (app/audit_chain.py)."""
     actor = actor_of(user) if not isinstance(user, str) else {"name": user or "Unknown", "email": "", "role": ""}
     row = {"at": now_iso(), "by": actor["name"], "by_email": actor["email"], "by_role": actor["role"], "action": str(action)[:60],
            "target": str(target or "")[:200], "detail": " ".join(str(detail or "").split())[:MAX_DETAIL]}
+    for key, value in (extra or {}).items():
+        if key not in row and key not in ("seq", "prev_hash", "hash"):
+            row[key] = value
     store.update("audit", lambda old: [*old, row][-MAX_AUDIT_ROWS:])
     return row
 
@@ -171,9 +187,11 @@ def record_stage(store, request, lead_id: str, stage: str) -> None:
 
 def as_action(row: dict) -> dict:
     """Any audit row in the {at, by, action, target, detail} shape (contact edits are mapped onto it)."""
+    sealed = {k: row[k] for k in ("seq", "lead_id", "changes", "ai_drafted") if row.get(k) not in (None, "", [])}
     if row.get("action"):
-        return {k: row.get(k, "") for k in ("at", "by", "by_email", "by_role", "action", "target", "detail")}
-    return {"at": row.get("at", ""), "by": row.get("by", ""), "by_email": row.get("by_email", ""), "by_role": "", "action": "contact.edit",
+        return {**{k: row.get(k, "") for k in ("at", "by", "by_email", "by_role", "action", "target", "detail")}, **sealed}
+    return {**sealed, "at": row.get("at", ""), "by": row.get("by", ""), "by_email": row.get("by_email", ""), "by_role": "",
+            "action": "lead.delete" if row.get("field") == "deleted" else "contact.edit",
             "target": row.get("company") or row.get("lead_id") or "",
             "detail": f"{row.get('label') or row.get('field')}: {row.get('old') or '(empty)'} -> {row.get('new') or '(empty)'}"
                       + (f" (reason: {row['reason']})" if row.get("reason") else "")}
@@ -184,7 +202,8 @@ def trail(store, action: str = "", by: str = "", q: str = "", date_from: str = "
     date_from / date_to are IST days (YYYY-MM-DD, inclusive)."""
     from datetime import datetime, timedelta, timezone
     ist = timezone(timedelta(hours=5, minutes=30))
-    rows = [as_action(r) for r in reversed(store.read("audit"))]
+    from .audit_chain import is_anchor
+    rows = [as_action(r) for r in reversed(store.read("audit")) if not is_anchor(r)]
 
     def day(r):
         try:

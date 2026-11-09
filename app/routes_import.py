@@ -154,6 +154,11 @@ def make_router(store) -> APIRouter:
         result = holder["result"]
         if result["source_opt_outs"]:          # a "no" recorded in the source CRM goes on the do-not-contact list
             store.update("suppressed", lambda rows: [*rows, *(e for e in result["source_opt_outs"] if e not in rows)])
+            from .privacy import record_consent       # the consent record shows where the "no" came from
+            outs = set(result["source_opt_outs"])
+            for lead in store.read("leads"):
+                if lead.get("email") in outs:
+                    record_consent(store, lead["id"], "withdrawn", "email", "", f"opt-out in the imported file ({ctx['source']})", "import")
         entry = {"id": import_id, "at": now_iso(), "source": ctx["source"], "format": ctx["format"]["name"],
                  "summary": result["summary"], "created": holder["fingerprints"], "merged_ids": result["merged_ids"],
                  "workspace": workspaces.for_new_lead()}
@@ -174,7 +179,7 @@ def make_router(store) -> APIRouter:
                  "undone_at": r.get("undone_at"), "undo": r.get("undo")} for r in reversed(rows)]
 
     @router.post("/api/import/{import_id}/undo")
-    def undo(import_id: str):
+    def undo(import_id: str, request: Request):
         entry = next((r for r in _collection(store, "imports") if r["id"] == import_id), None)
         if entry is None or not workspaces.visible(entry):
             raise HTTPException(404, "Import not found")
@@ -204,6 +209,8 @@ def make_router(store) -> APIRouter:
         store.update("imports", lambda rows: [{**r, "undone_at": now_iso(), "undo": {"removed": len(removed),
                                                                                      "kept": len(kept)}}
                                               if r["id"] == import_id else r for r in rows])
+        audit.record(store, getattr(request.state, "user", None), "import.undo", f"import from {entry.get('source') or 'a file'}",
+                     f"id {import_id}; {len(removed)} lead(s) removed, {len(kept)} kept", {"lead_ids": removed[:500]})
         return outcome
 
     # ---------------------------------------------------------------- hygiene

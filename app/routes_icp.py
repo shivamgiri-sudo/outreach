@@ -1,7 +1,7 @@
 """Ideal-customer gate: read/save the description and threshold, preview what it would hold back, score leads with the AI."""
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from . import icp
@@ -27,9 +27,11 @@ def make_router(store, ai_transport=None) -> APIRouter:
         return {**icp.get_icp(store), "preview": icp.preview(store)}
 
     @router.put("/api/icp")
-    def save(body: IcpBody):
+    def save(body: IcpBody, request: Request):
+        from . import audit_settings
         try:
-            icp.set_icp(store, body.model_dump(exclude_none=True))
+            with audit_settings.watch(store, request, "Ideal customer profile"):
+                icp.set_icp(store, body.model_dump(exclude_none=True))
         except ValueError as exc:
             raise HTTPException(400, str(exc))
         return {**icp.get_icp(store), "preview": icp.preview(store)}

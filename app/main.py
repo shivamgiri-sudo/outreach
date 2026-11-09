@@ -55,6 +55,7 @@ from .routes_lists import make_router as make_lists_router
 from .routes_companies import make_router as make_companies_router
 from .routes_prospects import make_router as make_prospects_router
 from .routes_analytics import make_router as make_analytics_router
+from .routes_audit import make_router as make_audit_router
 from .routes_contacts import make_router as make_contacts_router
 from .routes_password import PUBLIC_PATHS as PASSWORD_PUBLIC_PATHS, make_router as make_password_router
 from .routes_reports import PUBLIC_PREFIX as REPORT_FILE_PREFIX, make_router as make_reports_router
@@ -425,7 +426,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         if body.stage == "interested":
             on_became_interested(store, lead_id, "Moved to Interested")
         if body.stage == "unsubscribed":
-            ledger_consent(store, lead_id, "withdrawn", "any", "", "moved to Unsubscribed by a person")
+            ledger_consent(store, lead_id, "withdrawn", "any", "", "moved to Unsubscribed by a person", "person",
+                           audit.actor_of(getattr(request.state, "user", None))["name"])
         fire(store, "stage_change", body.stage, lead_id)
         return _present(next(l for l in store.read("leads") if l["id"] == lead_id))
 
@@ -443,7 +445,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                                                   "channel": channel}),
             "consent_withdrawn_at": None,
             "timeline": [*lead["timeline"], {**_event("consent", f"Said yes ({channel}): {text[:500]} (recorded by {who})"), "by": who}]})
-        ledger_consent(store, lead_id, "given", channel, text, body.source or "recorded by a person")
+        ledger_consent(store, lead_id, "given", channel, text, body.source or "recorded by a person", "person", who)
         if body.move_to_interested:
             moved = store.update_lead(lead_id, lambda lead: {**lead, "stage": "interested", "timeline": [*lead["timeline"], {
                 **_event("stage", f"{lead['stage']} → interested (consent recorded by {who})"), "by": who}]}
@@ -495,7 +497,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         return integrations.describe(store.read("integrations"))
 
     @app.put("/api/integrations/{integration_id}")
-    def save_integration(integration_id: str, body: IntegrationBody):
+    def save_integration(integration_id: str, body: IntegrationBody, request: Request):
         if integration_id not in integrations.known_ids():
             raise HTTPException(404, "Unknown integration")
         if body.mode not in next(i for i in integrations.CATALOGUE + integrations.SOURCE_CATALOGUE if i["id"] == integration_id)["modes"]:
@@ -508,7 +510,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             if dial_link_problem(merged["click_to_call_url"]):
                 raise HTTPException(400, dial_link_problem(merged["click_to_call_url"]))
         # keep hub data (other providers, last test, tokens) stored next to mode / values
-        store.write("integrations", {**saved, integration_id: {**saved.get(integration_id, {}), "mode": body.mode, "values": merged}})
+        from . import audit_settings
+        with audit_settings.watch(store, request, f"Connection: {integration_id}", "integration.save", "integrations", integration_id, all_secret=True):
+            store.write("integrations", {**saved, integration_id: {**saved.get(integration_id, {}), "mode": body.mode, "values": merged}})
         return next(i for i in integrations.describe(store.read("integrations"), all_cards=True) if i["id"] == integration_id)
 
     @app.get("/api/stories")
@@ -564,6 +568,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_lists_router(store, _present))
     app.include_router(make_companies_router(store))
     app.include_router(make_workspaces_router(store))
+    app.include_router(make_audit_router(store))
     app.include_router(make_analytics_router(store))
     app.include_router(make_extension_router(store))
     app.include_router(make_compliance_router(store))

@@ -336,7 +336,7 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
             return {**l, **changes}
         saved = store.update_lead(lead_id, yes)
         if result["consent_recorded"]:
-            record_consent(store, lead_id, "given", "call", saved["consent"]["text"], "phone call")
+            record_consent(store, lead_id, "given", "call", saved["consent"]["text"], "phone call", "person", who)
         result["stage"] = saved["stage"]
         result["task"] = add_task(store, lead_id, "follow_up", "Said yes on the call: send the demo link and set up their first role.",
                                   due_at=next_business_morning(now), owner=who, priority="high", title="Follow up after the yes", source="activity")

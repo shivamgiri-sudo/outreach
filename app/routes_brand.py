@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-from . import audit
+from . import audit, audit_settings
 from . import brand as b
 
 ONBOARDING_STEPS = ("business", "offer", "industry", "email", "leads", "team", "done")
@@ -141,8 +141,8 @@ def make_router(store) -> APIRouter:
                 if field in changes:
                     out[key] = changes[field]
             return out
-        store.update("settings", apply)
-        audit.record(store, who(request), "brand.save", "Brand", "Changed: " + ", ".join(sorted(changes)) if changes else "No change")
+        with audit_settings.watch(store, request, "Brand", action="brand.save"):
+            store.update("settings", apply)
         return full()
 
     @router.put("/api/brand/offer")
@@ -151,16 +151,16 @@ def make_router(store) -> APIRouter:
             changes = b.validate_offer(body.model_dump())
         except ValueError as exc:
             raise HTTPException(400, str(exc))
-        store.update("settings", lambda s: {**s, "offer": {**(s.get("offer") or {}), **changes}})
-        audit.record(store, who(request), "offer.save", "What you sell", "Changed: " + ", ".join(sorted(changes)) if changes else "No change")
+        with audit_settings.watch(store, request, "What you sell", action="offer.save"):
+            store.update("settings", lambda s: {**s, "offer": {**(s.get("offer") or {}), **changes}})
         return full()
 
     @router.post("/api/brand/reset")
     def reset_brand(request: Request):
         """Back to the original brand and offer (the uploaded logo is removed too)."""
-        store.update("settings", lambda s: {k: v for k, v in s.items() if k not in ("brand", "offer")})
+        with audit_settings.watch(store, request, "Brand (back to the default brand)", action="brand.reset"):
+            store.update("settings", lambda s: {k: v for k, v in s.items() if k not in ("brand", "offer")})
         store.update("brand_assets", lambda a: {k: v for k, v in (a or {}).items() if k != "logo"})
-        audit.record(store, who(request), "brand.reset", "Brand", "Back to the default brand")
         return full()
 
     @router.post("/api/brand/logo")
@@ -238,8 +238,8 @@ def make_router(store) -> APIRouter:
             if body.lead_terms is not None:
                 out["lead_terms"] = terms
             return out
-        store.update("settings", apply)
-        audit.record(store, who(request), "labels.save", "Labels", "Stage and lead names changed")
+        with audit_settings.watch(store, request, "Labels", action="labels.save"):
+            store.update("settings", apply)
         return read_labels()
 
     @router.get("/api/onboarding")

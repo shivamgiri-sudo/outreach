@@ -458,6 +458,8 @@ def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, bas
     body, missing = render(body, variables)
     if missing or re.search(r"\{\{|\}\}", subject + body):
         raise ValueError("Fill in or remove the {{placeholders}} first: " + ", ".join(sorted(set(missing))) if missing else "Remove the {{ }} left in the text.")
+    from . import ai_marks
+    ai_draft = ai_marks.match(store, lead_id, body, now)         # a person sending (an edit of) an AI draft
     if "/u/" not in body:
         body += f"\n\nNot relevant? Unsubscribe: {unsub_url(store, base_url, lead_id)}"
     footer = sequences.identity_footer(cfg)
@@ -466,8 +468,10 @@ def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, bas
     key = f"{lead_id}:manual:{uuid.uuid4().hex[:8]}"
     message = {"lead_id": lead_id, "to": email, "subject": subject, "body": body, "step": "One-off email", "variant": "manual",
                "manual": True, "by": by, "sent_at": now.isoformat(timespec="seconds"), "sent_at_ist_date": now.astimezone(IST).date().isoformat(),
-               "idempotency_key": key, "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead_id}@{_message_domain(store)}>",
-               "origin": provenance.build(store, "one_off", live, lead, provenance.person(by, by_email), cfg=cfg, hours=provenance.HOURS_PERSON)}
+                "idempotency_key": key, "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead_id}@{_message_domain(store)}>",
+                "origin": provenance.build(store, "one_off", live, lead, provenance.person(by, by_email), cfg=cfg, hours=provenance.HOURS_PERSON)}
+    if ai_draft:
+        ai_marks.mark(message, by, ai_draft.get("source") or "reply draft", ai_draft.get("id", ""))
     message.update(sender(message))
     store.update("outbox", lambda rows: [*rows, message])
     if message["status"] in ("provider_error", "failed"):
@@ -476,5 +480,8 @@ def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, bas
     store.update_lead(lead_id, lambda l: {**l, "last_activity_at": now.isoformat(timespec="seconds"),
                                           "stage": "contacted" if sent and l["stage"] in EARLY_STAGES else l["stage"],
                                           "timeline": [*l["timeline"], {"at": now.isoformat(timespec="seconds"), "kind": "email" if sent else "practice",
-                                                                        "text": f"One-off email: {subject} — {message['status'] if sent else 'practice only, not sent'}", "by": by}]})
+                                                                        "text": f"One-off email: {subject} — {message['status'] if sent else 'practice only, not sent'}", "by": by,
+                                                                        **({"ai_drafted": True} if ai_draft else {})}]})
+    if ai_draft:
+        ai_marks.log_sent(store, by, lead_id, "email", by, ai_draft.get("source") or "reply draft")
     return {"status": message["status"], "to": email, "subject": subject, "mode": "live" if live else "practice"}

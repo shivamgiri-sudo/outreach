@@ -45,6 +45,8 @@ export const ops = {
   setLiveSending: (on, confirm = "") => request("/api/settings/live-sending", { method: "POST", body: { on, confirm } }),
   audit: (params) => request(`/api/audit${query(params)}`),
   auditCsvPath: (params) => `/api/audit.csv${query(params)}`,
+  auditVerify: () => request("/api/audit/verify"),
+  auditPackPath: (params) => `/api/audit/pack${query(params)}`,
   health: () => request("/api/system/health"),
   campaignLeadsPage: (id, params) => request(`/api/campaigns/${id}/leads${query({ page: 1, ...params })}`),
 };
