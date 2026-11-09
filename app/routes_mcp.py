@@ -14,6 +14,9 @@ def make_router(store) -> APIRouter:
 
     @router.post("/api/mcp")
     async def mcp(request: Request):
+        user = getattr(request.state, "user", None) or {}
+        if str(user.get("token_label") or "").startswith("cloud:"):   # a cloud LinkedIn agent's slot token reads no leads here
+            return JSONResponse(mcp_server._error(None, -32001, "This token cannot use the MCP address."), status_code=403)
         raw = await request.body()
         if len(raw) > MAX_BODY:
             return JSONResponse(mcp_server._error(None, -32600, "Request too large"), status_code=413)

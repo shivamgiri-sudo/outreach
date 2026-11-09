@@ -2,8 +2,10 @@
 
 Roles:
   owner   everything
-  caller  works leads, calls, meetings and tasks; cannot change settings, integrations, campaign rules or live
-          switches, run or resume sending, or download CSV exports
+  admin   workspace admin: a caller who also manages the caller and viewer logins of its own workspaces
+  caller  works leads, calls, meetings and tasks: only the writes listed in CALLER_WRITES (every other write, including
+          any route added later, needs an owner); cannot change settings, integrations, campaigns or live switches,
+          run or resume sending, merge or clean data, spend provider credits, or download CSV exports
   viewer  read only: any request that changes something is refused (except signing out)
   admin   a workspace admin: works like a caller in its own workspaces, manages their logins and changes their
           templates (app/ws_templates.py; never main's or another workspace's)
@@ -46,6 +48,62 @@ OWNER_PREFIXES = ("/api/users", "/api/compliance", "/api/backup", "/api/export/"
 OWNER_WRITE_PREFIXES = ("/api/integrations", "/api/channels", "/api/workflows", "/api/flows", "/api/brand", "/api/labels", "/api/onboarding")   # anything but GET
 READ_METHODS = ("GET", "HEAD", "OPTIONS")
 
+# ---------- SECURITY: writes a caller (and a workspace admin) may make. Every other write needs an owner. ----------
+# Deny by default: a new write route is owner-only until it is reviewed and listed here. Kept to a caller's daily work
+# (leads, calls, notes, tasks, meetings, replies, one-off emails / WhatsApp, LinkedIn marks, imports, lists, views),
+# plus routes that run without a login (their own secret or token is the check) and the paired-tool routes.
+CALLER_WRITES = {
+    # no login needed (sign-in, password reset, webhooks, tracking, the office runner swapping its one-time code)
+    ("POST", "/api/login"), ("POST", "/api/login/code"), ("POST", "/api/login/setup/start"), ("POST", "/api/login/setup/confirm"),
+    ("POST", "/api/password/forgot"), ("POST", "/api/password/reset"), ("POST", "/api/linkedin-runner/pair"),
+    ("POST", "/api/webhooks/{channel}/{provider}"), ("POST", "/api/inbound/{connector_id}"), ("POST", "/api/inbound/google/{connector_id}"),
+    ("POST", "/api/inbound/meta/{connector_id}"), ("POST", "/api/activation/event"), ("POST", "/u/{token}"), ("POST", "/demo/{token}/opened"),
+    # paired tools: the Chrome assistant / LinkedIn agent token, the office runner, MCP (each limited to its own paths)
+    ("POST", "/api/extension/pair"), ("DELETE", "/api/extension/tokens/{token_id}"), ("POST", "/api/extension/save-profile"),
+    ("POST", "/api/extension/inbox"), ("POST", "/api/extension/agent/event"), ("POST", "/api/extension/cloud/state"),
+    ("POST", "/api/extension/leads/{lead_id}/sent"), ("POST", "/api/extension/leads/{lead_id}/accepted"),
+    ("POST", "/api/extension/leads/{lead_id}/replied"), ("POST", "/api/extension/leads/{lead_id}/profile"),
+    ("POST", "/api/extension/leads/{lead_id}/claim"), ("POST", "/api/linkedin-runner/heartbeat"), ("POST", "/api/mcp"),
+    # leads: add, import, edit, work
+    ("POST", "/api/leads/import"), ("POST", "/api/leads/import-sheet"), ("POST", "/api/leads/bulk"), ("PATCH", "/api/leads/{lead_id}"),
+    ("PATCH", "/api/leads/{lead_id}/custom"), ("POST", "/api/leads/{lead_id}/stage"), ("POST", "/api/leads/{lead_id}/tags"),
+    ("POST", "/api/leads/{lead_id}/owner"), ("POST", "/api/leads/{lead_id}/note"), ("POST", "/api/leads/{lead_id}/activity"),
+    ("POST", "/api/leads/{lead_id}/call-outcome"), ("POST", "/api/leads/{lead_id}/consent"), ("POST", "/api/leads/{lead_id}/reply"),
+    ("POST", "/api/leads/{lead_id}/draft-reply"), ("POST", "/api/leads/{lead_id}/meetings"), ("POST", "/api/leads/{lead_id}/whatsapp"),
+    ("POST", "/api/leads/{lead_id}/email-compose"), ("POST", "/api/leads/{lead_id}/email-now"), ("POST", "/api/leads/{lead_id}/enroll"),
+    ("POST", "/api/leads/{lead_id}/sequence/resume"), ("POST", "/api/leads/{lead_id}/sequence/clear-stuck"),
+    ("POST", "/api/leads/{lead_id}/contact-points"), ("POST", "/api/leads/{lead_id}/contact-points/primary"),
+    ("POST", "/api/leads/{lead_id}/contact-points/remove"), ("POST", "/api/leads/{lead_id}/people"),
+    ("PUT", "/api/leads/{lead_id}/people/{person_id}"), ("DELETE", "/api/leads/{lead_id}/people/{person_id}"),
+    ("POST", "/api/leads/{lead_id}/company-health"), ("POST", "/api/leads/{lead_id}/demo-link"), ("POST", "/api/leads/{lead_id}/pilot"),
+    ("POST", "/api/leads/{lead_id}/referral"), ("PUT", "/api/leads/{lead_id}/linkedin-account"),
+    ("POST", "/api/leads/{lead_id}/linkedin/start"), ("POST", "/api/leads/{lead_id}/linkedin/stop"), ("POST", "/api/leads/{lead_id}/linkedin/sent"),
+    ("POST", "/api/leads/{lead_id}/linkedin/accepted"), ("POST", "/api/leads/{lead_id}/linkedin/replied"),
+    ("POST", "/api/leads/{lead_id}/linkedin/branch"), ("POST", "/api/linkedin/assign"), ("POST", "/api/linkedin/results"),
+    ("POST", "/api/import/preview"), ("POST", "/api/import/excel"), ("POST", "/api/import/commit"), ("POST", "/api/import/{import_id}/undo"),
+    ("POST", "/api/scrape/extract"), ("POST", "/api/jobs/ingest"), ("POST", "/api/prospects/add-to-leads"),
+    ("POST", "/api/signals/items/{item_id}/lead"), ("POST", "/api/signals/items/{item_id}/status"),
+    # tasks, meetings, replies, notifications, the rep's own day, lists and saved views
+    ("POST", "/api/tasks"), ("POST", "/api/tasks/done"), ("PUT", "/api/tasks/{task_id}"), ("POST", "/api/tasks/{task_id}/done"),
+    ("POST", "/api/meetings/{meeting_id}/cancel"), ("POST", "/api/meetings/{meeting_id}/done"), ("POST", "/api/reply-inbox/action"),
+    ("POST", "/api/notifications/read"), ("PUT", "/api/my-day/targets"), ("POST", "/api/intelligence/remind-stale"),
+    ("POST", "/api/lists"), ("DELETE", "/api/lists/{list_id}"), ("POST", "/api/lists/{list_id}/members"),
+    ("POST", "/api/lists/{list_id}/start-email"), ("POST", "/api/lists/{list_id}/start-linkedin"),
+    ("POST", "/api/lead-views"), ("DELETE", "/api/lead-views/{view_id}"),
+    # writing help and shared snippets, stories, partners, call script, reports by email, estimates and searches (no spend)
+    ("POST", "/api/prompts/generate"), ("POST", "/api/sequences/preview-draft"), ("POST", "/api/stories"), ("POST", "/api/partners"), ("POST", "/api/partners/{partner_id}/status"),
+    ("PUT", "/api/call-script"), ("DELETE", "/api/call-script"), ("POST", "/api/reports/email"), ("POST", "/api/find-leads/estimate"),
+    ("POST", "/api/prospects/enrich/estimate"), ("POST", "/api/prospects/people/search"), ("POST", "/api/prospects/saved-searches"),
+    ("DELETE", "/api/prospects/saved-searches/{search_id}"),
+}
+# Templates (snippets, LinkedIn connection notes) are edited only by owners (any workspace) and workspace admins (their
+# own workspace; the template routes / workspace guard check which). Never by callers.
+ADMIN_WRITES = {
+    ("POST", "/api/snippets"), ("PUT", "/api/snippets/{snippet_id}"), ("DELETE", "/api/snippets/{snippet_id}"),
+    ("PUT", "/api/linkedin/variants"), ("POST", "/api/linkedin/variants/generate"), ("POST", "/api/linkedin/variants/score"),
+}
+# ---------- end SECURITY block ----------
+
 
 class LoginBody(BaseModel):
     email: str = ""
@@ -84,7 +142,9 @@ def needed_role(method: str, path: str) -> str:
         return "caller"                       # viewers cannot create, list or revoke pairing tokens
     if method in READ_METHODS:
         return "viewer"
-    return "owner" if path.startswith(OWNER_WRITE_PREFIXES) else "caller"
+    if path.startswith(OWNER_WRITE_PREFIXES):
+        return "owner"
+    return "caller" if (method, path) in CALLER_WRITES else "owner"        # SECURITY: writes default to owner
 
 
 def allowed(role: str, needed: str) -> bool:
@@ -98,12 +158,14 @@ def role_guard(request: Request) -> None:
     if user is None:
         return
     route = request.scope.get("route")
-    path = getattr(route, "path", request.url.path)
+    path = getattr(route, "path", None)
+    if path is None:                          # SECURITY: no matched route template means no reviewed decision: refuse
+        raise HTTPException(403, "This request is not allowed.")
     needed = needed_role(request.method, path)
     if user.get("role") == "admin" and (path == "/api/users" or path.startswith("/api/users/")):
         return                                # workspace admins manage their own workspaces' logins (checked in the routes)
-    if user.get("role") == "admin" and (request.method, path) in ADMIN_TEMPLATE_ROUTES:
-        return                                # workspace admins change their own workspace's templates (checked in the routes)
+    if user.get("role") == "admin" and (request.method, path) in (ADMIN_TEMPLATE_ROUTES | ADMIN_WRITES):
+        return                                # SECURITY: workspace admins edit their own workspace's templates (checked in the routes)
     if not allowed(user.get("role", ""), needed):
         what = "make changes" if user.get("role") == "viewer" else "do this"
         raise HTTPException(403, f"Your role ({user.get('role')}) cannot {what}. Ask the owner.")
@@ -213,7 +275,8 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
         if role not in auth.ROLES:
             raise HTTPException(400, "Role must be owner, admin, caller or viewer.")
 
-    ADMIN_GIVES = ("admin", "caller", "viewer")
+    ADMIN_GIVES = ("caller", "viewer")             # SECURITY: only owners add, change or remove workspace admin logins
+    ADMIN_SEES = ("admin", "caller", "viewer")     # an admin still sees its own workspaces' admins (read only)
 
     def admin_spaces(request: Request) -> Optional[set]:
         """The workspaces a workspace admin manages, or None when the person is an owner (manages everyone)."""
@@ -225,7 +288,12 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
         if mine is None:
             return True
         spaces = set(target.get("workspaces") or [])
-        return target.get("role") in ADMIN_GIVES and bool(spaces) and spaces <= mine
+        return target.get("role") in ADMIN_SEES and bool(spaces) and spaces <= mine
+
+    def guard_admin_change(request: Request, target: dict) -> None:
+        """SECURITY: a workspace admin may change or remove callers and viewers only, never another admin (nor itself)."""
+        if admin_spaces(request) is not None and target.get("role") not in ADMIN_GIVES:
+            raise HTTPException(403, "Only an owner can change or remove a workspace admin login.")
 
     def clean_spaces(request: Request, role: str, spaces: list) -> list:
         """Workspaces for a login: they must exist; a workspace admin gives only its own (its own by default); an
@@ -238,7 +306,7 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
         mine = admin_spaces(request)
         if mine is not None:
             if role not in ADMIN_GIVES:
-                raise HTTPException(403, "A workspace admin can add admins, callers and viewers only.")
+                raise HTTPException(403, "A workspace admin can add callers and viewers only.")
             spaces = spaces or sorted(mine)
             if not set(spaces) <= mine:
                 raise HTTPException(403, "You can give access only to your own workspaces.")
@@ -317,6 +385,7 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
         user = auth.find_user(store, email)
         if not user or not manageable(request, user):
             raise HTTPException(404, "No login with that email.")
+        guard_admin_change(request, user)
         guard_owner_change(request, user, body.role)
         changes = {}
         if body.name is not None:
@@ -357,6 +426,7 @@ def make_router(store, admin_password: str, limiter: auth.LoginLimiter, admin_lo
         user = auth.find_user(store, email)
         if not user or not manageable(request, user):
             raise HTTPException(404, "No login with that email.")
+        guard_admin_change(request, user)
         guard_owner_change(request, user, removing=True)
         remaining = [u for u in auth.users(store) if u["email"] != user["email"]]
         if not owner_left(remaining):

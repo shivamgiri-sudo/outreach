@@ -341,7 +341,10 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
                 out["rejected"].append({"row": n, "reason": reason, "values": row})
                 action = "rejected"
         if action is None and elsewhere is not None and _same_person(elsewhere.match(rec)):
-            out["skipped"].append({"row": n, "reason": ELSEWHERE, "values": row})      # nothing about the other lead is shown
+            if workspaces._SCOPE.get()[1] is not None:      # SECURITY: a limited login only learns it is already in the app
+                out["skipped"].append({"row": n, "reason": ALREADY_IN_APP, "values": row})
+            else:
+                out["skipped"].append({"row": n, "reason": ELSEWHERE, "values": row})  # nothing about the other lead is shown
             action = "skipped"
         if action is None:
             action = _place(leads, index, rec, n, source, import_id, at, created, touched, out, warn)
@@ -360,6 +363,7 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
 
 
 ELSEWHERE = "Already held in another workspace (skipped)"
+ALREADY_IN_APP = "Already in the app (duplicate, skipped)"
 
 
 def _same_person(hit) -> bool:

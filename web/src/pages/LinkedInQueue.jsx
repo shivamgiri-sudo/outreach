@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, canWrite, getRole, isLimitedLogin, isOwner } from "../api.js";
+import { api, canWrite, getRole, isLimitedLogin, isOwner, isWorkspaceAdmin } from "../api.js";
 import LinkedInSequenceEditor from "./LinkedInSequenceEditor.jsx";
 import LinkedInCloud from "./LinkedInCloud.jsx";
 import LinkedInStageBoard from "./LinkedInStageBoard.jsx";
@@ -21,7 +21,7 @@ function Settings({ cfg, onSave }) {
   return (
     <details className="card" style={{ marginBottom: 14 }}>
       <summary><b>LinkedIn settings</b> <span className="sub">— daily limit, who sends, case-study link</span></summary>
-      <fieldset className="ro-fieldset" disabled={!canWrite()}>
+      <fieldset className="ro-fieldset" disabled={!isOwner()}>
       <label>New connection requests per day (start with 10–15)
         <input type="number" min="1" max="40" value={form.linkedin_daily_connections} onChange={(e) => setForm({ ...form, linkedin_daily_connections: e.target.value })} /></label>
       <label>Who sends from the LinkedIn account
@@ -30,7 +30,7 @@ function Settings({ cfg, onSave }) {
         <input value={form.case_study_url} placeholder="https://…" onChange={(e) => setForm({ ...form, case_study_url: e.target.value })} /></label>
       <label className="check-row"><input type="checkbox" data-testid="li-auto-start" checked={!!form.linkedin_auto_start} onChange={(e) => setForm({ ...form, linkedin_auto_start: e.target.checked })} /> Start the sequence automatically: each working day the agent puts the suggested people (with a LinkedIn link, not contacted yet) on the sequence, up to the daily limit above</label>
       </fieldset>
-      {canWrite() && <button className="btn" style={{ marginTop: 8 }} onClick={() => onSave({ ...form, linkedin_daily_connections: Number(form.linkedin_daily_connections) })}>Save</button>}
+      {isOwner() && <button className="btn" style={{ marginTop: 8 }} onClick={() => onSave({ ...form, linkedin_daily_connections: Number(form.linkedin_daily_connections) })}>Save</button>}
     </details>
   );
 }
@@ -250,7 +250,7 @@ function ConnectionNotes({ onMessage }) {
   const save = () => api.saveLinkedinVariants({ ...draft, workspace: cur.workspace }).then((r) => { setCur(r); onMessage("Connection notes saved. New leads get the new A or B note."); }).catch((e) => onMessage(e.message));
   if (!cur) return null;
   // Main's notes: owners (and callers with every workspace, as before); a workspace's: owners and its own admins.
-  const editable = !!cur.can_edit || (cur.workspace === "main" && getRole() === "caller" && !isLimitedLogin());
+  const editable = !!cur.can_edit && (isOwner() || isWorkspaceAdmin());   // templates: owners and workspace admins only
   return (
     <details className="card" style={{ marginBottom: 12 }}>
       <summary><b>Connection notes A / B</b> <small className="sub-inline">each new lead gets one of the two; compare accept rates on the Intelligence page

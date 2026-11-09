@@ -10,10 +10,13 @@ Settings:
                                        disabled, so the server supervisor idles, and the runner gets the enabled slots.
   settings["linkedin_runners"]         runner records {id, label, created_by, created_at, last_seen, hostname, os, version,
                                        status: active|revoked, hash (SHA-256 of the runner token; never the token)}.
-  settings["linkedin_runner_pairing"]  the one pending pairing code {hash, expires_at, created_by, replace, failures}.
+  settings["linkedin_runner_pairing"]  the one pending pairing code {hash, expires_at, created_by, replace, failures,
+                                       failed_by_ip}. `hash` is HMAC-SHA256 keyed with the server secret ("v2:" prefix), so a
+                                       leaked settings row cannot be brute-forced offline.
 
-Pairing: the owner makes a one-time 8-character code (15 minutes, single use, cancelled after MAX_FAILED wrong guesses,
-and the pairing route is rate limited per address). The office computer swaps it for a long-lived runner token
+Pairing: the owner makes a one-time 12-character code shown as XXXX-XXXX-XXXX (60 bits; 15 minutes, single use). Wrong
+guesses are counted per address: an address with MAX_FAILED wrong guesses is refused until the code expires, but the code
+itself stays valid, so a stranger cannot cancel the owner's code (and the pairing route is rate limited per address). The office computer swaps it for a long-lived runner token
 ("mcnr_..."), which may call only RUNNER_PATHS. Only one runner is active at a time: pairing a new one revokes the old
 and rotates the slot tokens, so the old computer's agents stop at once (two machines never drive one LinkedIn account).
 """
@@ -29,9 +32,10 @@ from .activities import iso, now_utc
 TOKEN_PREFIX = "mcnr_"
 SETTINGS_KEY, PAIR_KEY = "linkedin_runners", "linkedin_runner_pairing"
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"      # no 0/O, 1/I: read aloud or typed from a screen
-CODE_LEN = 8
+CODE_LEN = 12
 CODE_TTL = 15 * 60
-MAX_FAILED = 10                                         # wrong codes before the pending code is cancelled
+MAX_FAILED = 10                                         # wrong codes from one address before that address is refused
+MAX_TRACKED_IPS = 500
 ONLINE_SECONDS = 90
 KEEP_REVOKED = 5
 WHERE = ("office", "server")
@@ -53,6 +57,18 @@ def path_allowed(method: str, path: str) -> bool:
 
 def _hash(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8", "replace")).hexdigest()
+
+
+def _code_hash(store, code: str) -> str:
+    """Keyed hash of a pairing code: without the server secret a stored hash says nothing about the code."""
+    from .channels.security import server_secret
+    key = hashlib.sha256(("linkedin-runner-pairing:" + server_secret(store)).encode()).digest()
+    return "v2:" + hmac.new(key, code.encode("utf-8", "replace"), hashlib.sha256).hexdigest()
+
+
+def show_code(code: str) -> str:
+    """XXXX-XXXX-XXXX: easier to read aloud and type; norm_code takes it with or without the dashes."""
+    return "-".join(code[i:i + 4] for i in range(0, len(code), 4))
 
 
 def _clean(text, limit: int) -> str:
@@ -124,7 +140,7 @@ def new_code(store, user: dict, replace: bool = False) -> tuple:
                        "Connecting another one disconnects it.")
     code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LEN))
     expires = iso(now_utc() + timedelta(seconds=CODE_TTL))
-    row = {"hash": _hash(code), "expires_at": expires, "created_by": user.get("name") or user.get("email") or "owner",
+    row = {"hash": _code_hash(store, code), "expires_at": expires, "created_by": user.get("name") or user.get("email") or "owner",
            "created_sub": user.get("sub", ""), "replace": bool(current), "failures": 0}
     store.update("settings", lambda s: {**s, PAIR_KEY: row})
     return code, expires
@@ -134,34 +150,52 @@ def cancel_code(store) -> None:
     store.update("settings", lambda s: {k: v for k, v in s.items() if k != PAIR_KEY})
 
 
-def code_valid(store, code) -> bool:
-    """True when `code` is the pending, unexpired code (not used up). A wrong guess counts towards MAX_FAILED."""
+def _ip_key(ip: str) -> str:
+    return str(ip or "unknown")[:64]
+
+
+def ip_blocked(pending_row: Optional[dict], ip: str) -> bool:
+    return int(((pending_row or {}).get("failed_by_ip") or {}).get(_ip_key(ip), 0)) >= MAX_FAILED
+
+
+def _matches(store, p: dict, code: str) -> bool:
+    return len(code) == CODE_LEN and hmac.compare_digest(str(p.get("hash") or ""), _code_hash(store, code))
+
+
+def code_valid(store, code, ip: str = "") -> bool:
+    """True when `code` is the pending, unexpired code (not used up) and this address has not used up its guesses. A
+    wrong guess counts against the address (never cancels the code)."""
     code = norm_code(code)
     p = pending(store)
-    if p and len(code) == CODE_LEN and hmac.compare_digest(p["hash"], _hash(code)):
+    if not p or ip_blocked(p, ip):
+        return False
+    if _matches(store, p, code):
         return True
-    if p and code:
-        _count_failure(store)
+    if code:
+        _count_failure(store, ip)
     return False
 
 
-def _count_failure(store) -> None:
+def _count_failure(store, ip: str = "") -> None:
+    key = _ip_key(ip)
+
     def apply(s):
         p = s.get(PAIR_KEY)
         if not isinstance(p, dict):
             return s
-        failures = int(p.get("failures") or 0) + 1
-        if failures >= MAX_FAILED:
-            return {k: v for k, v in s.items() if k != PAIR_KEY}          # too many guesses: the code is gone
-        return {**s, PAIR_KEY: {**p, "failures": failures}}
+        by_ip = dict(p.get("failed_by_ip") or {})
+        by_ip[key] = int(by_ip.get(key, 0)) + 1
+        if len(by_ip) > MAX_TRACKED_IPS:                               # bounded: the oldest addresses are forgotten first
+            by_ip = dict(list(by_ip.items())[-MAX_TRACKED_IPS:])
+        return {**s, PAIR_KEY: {**p, "failures": int(p.get("failures") or 0) + 1, "failed_by_ip": by_ip}}
     store.update("settings", apply)
 
 
-def pair(store, code, info: dict) -> tuple:
+def pair(store, code, info: dict, ip: str = "") -> tuple:
     """Swap the one-time code for a runner token: (raw token, new runner row, [revoked rows]). ValueError on a bad code.
     Single use: the code is consumed in the same atomic update that adds the runner and revokes any other."""
     code = norm_code(code)
-    digest = _hash(code)
+    digest = _code_hash(store, code)
     raw = TOKEN_PREFIX + secrets.token_urlsafe(32)
     now = iso(now_utc())
     hostname = _clean(info.get("hostname"), 80)
@@ -175,7 +209,7 @@ def pair(store, code, info: dict) -> tuple:
             fresh = isinstance(p, dict) and p.get("hash") and datetime.fromisoformat(p["expires_at"]) > now_utc()
         except (KeyError, TypeError, ValueError):
             fresh = False
-        if not fresh or len(code) != CODE_LEN or not hmac.compare_digest(p["hash"], digest):
+        if not fresh or ip_blocked(p, ip) or len(code) != CODE_LEN or not hmac.compare_digest(str(p["hash"]), digest):
             return s
         outcome["ok"] = True
         row["created_by"] = p.get("created_by") or "owner"
@@ -192,7 +226,7 @@ def pair(store, code, info: dict) -> tuple:
     store.update("settings", apply)
     if not outcome.get("ok"):
         if code:
-            _count_failure(store)
+            _count_failure(store, ip)
         raise ValueError("That code is wrong, already used or expired. Make a new one in the portal (LinkedIn outreach, Office computer).")
     return raw, public(row), [public(r) for r in outcome["revoked"]]
 

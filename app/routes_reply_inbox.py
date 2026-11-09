@@ -44,7 +44,7 @@ def make_router(store) -> APIRouter:
     router = APIRouter()
 
     @router.get("/api/reply-inbox")
-    def inbox(label: str = "", channel: str = "", only_action: bool = False, limit: int = 200, assignee: str = ""):
+    def inbox(request: Request, label: str = "", channel: str = "", only_action: bool = False, limit: int = 200, assignee: str = ""):
         from . import workspaces
         data = build_inbox(workspaces.filter_rows(store.read("leads")), label=label if label in LABELS_SHOWN else "", channel=channel[:20],
                            only_action=only_action, limit=limit, state=store.read("settings").get("reply_state") or {},
@@ -53,7 +53,7 @@ def make_router(store) -> APIRouter:
         for r in data["replies"]:
             r["subject"] = _subject_for(r["lead_id"], r["at"], inbox_rows, outbox_rows)
         data["labels"] = list(LABELS_SHOWN)
-        data["team"] = owner_choices(store)        # the task team plus every login, as for lead owners
+        data["team"] = owner_choices(store, getattr(request.state, "user", None))   # as for lead owners (scoped for limited logins)
         return data
 
     @router.post("/api/reply-inbox/action")
@@ -75,7 +75,7 @@ def make_router(store) -> APIRouter:
             change = {"read": body.action == "read"}
         elif body.action == "assign":
             name = (body.assignee or "").strip()[:120]
-            if name and name not in owner_choices(store):
+            if name and name not in owner_choices(store, getattr(request.state, "user", None)):
                 raise HTTPException(400, "Pick someone from the team (a login, or Tasks → Team & reminders).")
             change = {"assignee": name, "assigned_by": who, "assigned_at": stamp}
         elif body.action == "label":

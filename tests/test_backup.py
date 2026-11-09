@@ -119,20 +119,32 @@ def test_dry_run_flag_wins_over_confirm(seeded):
     assert len(store.read("leads")) == 4
 
 
-def test_secrets_backup_restores_keys_but_server_secret_only_when_asked(tmp_path):
+def test_secrets_backup_from_another_server_restores_without_secrets(tmp_path):
     source_client, source = make_client(tmp_path / "a")
     seed(source)
     file = source_client.get("/api/backup?include_secrets=1").content
     client, store = make_client(tmp_path / "b")
     store.write("settings", {"server_secret": "server-B"})
+    plan = client.post("/api/backup/restore", content=file).json()          # signed by server A, not this one
+    assert plan["backup"]["includes_secrets"] is False and any("not signed" in n for n in plan["notes"])
+    done = client.post("/api/backup/restore?confirm=1&keep_secrets=1", content=file).json()
+    assert done["server_secret"] == "kept from this server" and store.read("settings")["server_secret"] == "server-B"
+    assert "api_key" not in store.read("integrations")["sending_domain"]["values"]
+    assert "webhook_secret" not in store.read("settings") and store.read("settings")["live_sending"] is False
+
+
+def test_secrets_backup_from_this_server_restores_keys_but_never_the_server_secret(tmp_path):
+    client, store = make_client(tmp_path)
+    seed(store)
+    file = client.get("/api/backup?include_secrets=1").content
+    store.update("settings", lambda s: {**s, "webhook_secret": "changed"})
+    store.update("integrations", lambda i: {**i, "sending_domain": {"values": {}}})
     plan = client.post("/api/backup/restore", content=file).json()
-    assert plan["backup"]["includes_secrets"] is True and any("own server secret" in n for n in plan["notes"])
-    assert client.post("/api/backup/restore?confirm=1", content=file).json()["server_secret"] == "kept from this server"
-    assert store.read("settings")["server_secret"] == "server-B"
+    assert plan["backup"]["includes_secrets"] is True and plan["backup"]["signed"] is True
+    done = client.post("/api/backup/restore?confirm=1&keep_secrets=1", content=file).json()
+    assert done["server_secret"] == "kept from this server" and store.read("settings")["server_secret"] == SECRETS[2]
     assert store.read("integrations")["sending_domain"]["values"]["api_key"] == SECRETS[0]
-    assert store.read("settings")["webhook_secret"] == SECRETS[1] and store.read("settings")["live_sending"] is False
-    again = client.post("/api/backup/restore?confirm=1&keep_secrets=1", content=file).json()
-    assert again["server_secret"] == "from the backup" and store.read("settings")["server_secret"] == SECRETS[2]
+    assert store.read("settings")["webhook_secret"] == SECRETS[1]
 
 
 def test_keep_secrets_ignored_for_a_backup_without_secrets(seeded):

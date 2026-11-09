@@ -4,10 +4,12 @@ import json
 import logging
 import os
 import stat
+from datetime import timedelta
 
 import pytest
 
 from app import linkedin_cloud as cloud, linkedin_runner
+from app.activities import iso, now_utc
 from tests.test_extension_api import bearer, make, pair
 
 SECRET = "Sup3r-Secret-Pa55word!"
@@ -49,7 +51,7 @@ def test_adding_a_slot_writes_a_private_slots_file_with_its_own_token(rig):
     assert not [p for p in base.iterdir() if p.name.endswith(".tmp")]              # written atomically, no leftovers
     tok = next(t for t in store.read("settings")["extension_tokens"] if t["label"] == f"cloud:{s['id']}")
     assert row["token"] not in json.dumps(store.read("settings"))                  # the store keeps only the hash
-    assert tok["expires_at"][:4] >= "2036"                                         # a slot token does not lapse after 90 days
+    assert cloud.TOKEN_DAYS == 90 and tok["expires_at"] > iso(now_utc() + timedelta(days=85))   # 90 days, renewed before it lapses
     # it works as an agent token, but is not shown or revocable in the Chrome-assistant token list
     assert c.get("/api/extension/agent", headers=bearer(row["token"])).status_code == 200
     assert all(not t["label"].startswith("cloud:") for t in c.get("/api/extension/tokens", headers=bearer(owner)).json())

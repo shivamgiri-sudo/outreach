@@ -40,7 +40,7 @@ cp "$APP/deploy/linkedin-runtime/package.json" "$APP/deploy/linkedin-runtime/pac
 # 4. Chromium + the OS libraries it needs (apt, so as root), into a shared folder the service user can read
 mkdir -p "$BROWSERS"
 (cd "$RUNTIME" && PLAYWRIGHT_BROWSERS_PATH="$BROWSERS" npx --no-install playwright install --with-deps chromium)
-chown -R outreach:outreach "$RUNTIME" "$BROWSERS"
+chown -R root:root "$RUNTIME" "$BROWSERS" && chmod -R u+rwX,go+rX,go-w "$RUNTIME" "$BROWSERS"   # code: read-only for the service user
 
 # 5. Folders (0700, service user) and settings
 mkdir -p "$CLOUD/home" "$CLOUD/profiles"

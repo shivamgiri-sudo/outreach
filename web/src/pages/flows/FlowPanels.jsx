@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, canWrite } from "../../api.js";
+import { api, isOwner } from "../../api.js";
 import { istLabel } from "../../time.js";
 import { BRANCH_HEADINGS } from "./catalog.js";
 
@@ -105,7 +105,7 @@ export function RunsPanel({ flowId, refreshKey }) {
                 <br /><small>{r.current_title ? `At: ${r.current_title}` : r.stop_reason}{r.deferred ? ` (${r.deferred})` : ""}
                   {r.wait_until ? ` · until ${istLabel(r.wait_until)}` : ""} · v{r.flow_version}</small>
               </div>
-              {canWrite() && ["running", "waiting"].includes(r.status) && (
+              {isOwner() && ["running", "waiting"].includes(r.status) && (
                 <button type="button" className="btn ghost" onClick={() => api.stopFlowRun(r.id).then(load)}>Stop</button>
               )}
             </li>

@@ -25,6 +25,15 @@ def require_owner(request: Request) -> None:
         raise HTTPException(403, "Only the owner can do this.")
 
 
+def require_super_admin(request: Request, what: str) -> None:
+    """A backup with secrets holds every key and password hash, and a restore replaces all data: super admin only
+    (OUTREACH_SUPER_ADMIN, or the server admin password; with no super admin set, any owner, as auth.is_super_admin)."""
+    from . import auth
+    user = getattr(request.state, "user", None)
+    if user is not None and not auth.is_super_admin(user):
+        raise HTTPException(403, f"Only the super admin can {what}.")
+
+
 def _attachment(name: str) -> dict:
     return {"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"}
 
@@ -75,6 +84,8 @@ def make_router(store, present) -> APIRouter:
     @router.get("/api/backup")
     def download_backup(request: Request, include_secrets: bool = False):
         require_owner(request)
+        if include_secrets:
+            require_super_admin(request, "download a backup with keys and secrets")
         now = backup.now_utc()
         audit.record(store, getattr(request.state, "user", None), "backup.download", "Full backup",
                      "with connection keys and secrets" if include_secrets else "without connection keys")
@@ -86,6 +97,7 @@ def make_router(store, present) -> APIRouter:
     async def restore_backup(request: Request, dry_run: Optional[bool] = None, confirm: bool = False, keep_secrets: bool = False):
         """Upload a backup (raw body, or multipart field 'file'). Dry run by default; ?confirm=1 replaces everything."""
         require_owner(request)
+        require_super_admin(request, "restore a backup")
         declared = request.headers.get("content-length") or ""
         if declared.isdigit() and int(declared) > backup.MAX_UPLOAD_BYTES:
             raise HTTPException(413, "The file is too large to be an Outreach OS backup.")

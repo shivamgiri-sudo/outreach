@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, canWrite } from "../api.js";
+import { api, isOwner } from "../api.js";
 import { EmptyArt } from "../states.jsx";
 import { istLabel } from "../time.js";
 import CampaignWizard from "./CampaignWizard.jsx";
@@ -51,7 +51,7 @@ function CampaignDetail({ id, go, onBack, onEdit }) {
         <div><h2>{campaign.name}</h2><p className="sub"><StatusPill status={campaign.status} /> {campaign.stats?.leads_added || 0} leads added, {campaign.stats?.enrolled || 0} started in the sequence over {campaign.stats?.runs || 0} run(s).</p></div>
         <button className="btn ghost" onClick={onBack}>All campaigns</button>
       </div>
-      {canWrite() && <div className="row">
+      {isOwner() && <div className="row">
         <button className="btn ghost" disabled={!!busy} onClick={() => act("preview")}>{busy === "preview" ? "Searching…" : "Run now (preview)"}</button>
         <button className="btn" disabled={!!busy} onClick={() => act("real")}>{busy === "real" ? "Running…" : "Run for real"}</button>
         {campaign.status === "running"
@@ -111,11 +111,11 @@ export default function Campaigns({ go }) {
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div><h2>Campaigns</h2><p className="sub">One click finds companies that are hiring, fills in contacts, checks emails and, if you allow it, starts the email sequence.
           The caller gets an update after every run.</p></div>
-        {canWrite() && <button className="btn" onClick={() => setView({ mode: "wizard", campaign: null })}>New campaign</button>}
+        {isOwner() && <button className="btn" onClick={() => setView({ mode: "wizard", campaign: null })}>New campaign</button>}
       </div>
       {error && <div className="tip error" role="alert">{error}</div>}
       {!list ? <p className="empty">Loading…</p> : list.length === 0 ? (
-        <div className="card"><div className="empty"><EmptyArt name="campaigns" /><p>{canWrite() ? "No campaigns yet. Click “New campaign” to set up your first one, for example BPOs in Pune hiring customer support staff." : "No campaigns yet."}</p></div></div>
+        <div className="card"><div className="empty"><EmptyArt name="campaigns" /><p>{isOwner() ? "No campaigns yet. Click “New campaign” to set up your first one, for example BPOs in Pune hiring customer support staff." : "No campaigns yet."}</p></div></div>
       ) : (
         <div className="grid g2">
           {list.map((c) => (

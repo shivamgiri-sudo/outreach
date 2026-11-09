@@ -70,13 +70,33 @@ def dns_mx(domain: str) -> Optional[list]:
         return None
 
 
-def smtp_connect(host: str, helo: str, timeout: int = CONNECT_TIMEOUT):
-    """Connect over IPv4 when the host has an address for it: receiving servers judge IPv6 senders much more harshly."""
-    server = smtplib.SMTP(timeout=timeout, local_hostname=helo)
+def mx_address(host: str) -> str:
+    """The address to connect to: IPv4 when the host has one (receiving servers judge IPv6 senders much more harshly),
+    else any. SECURITY: an MX record pointing at a private, loopback or link-local address is refused (OSError), so a
+    domain's DNS cannot make this server probe its own network."""
+    from .channels.netguard import is_public_ip
+    address = ""
+    for family in (socket.AF_INET, 0):
+        try:
+            address = socket.getaddrinfo(host, 25, family, socket.SOCK_STREAM)[0][4][0]
+            break
+        except (OSError, IndexError):
+            continue
+    if not address:
+        raise OSError("the mail server's address could not be found")
     try:
-        address = socket.getaddrinfo(host, 25, socket.AF_INET, socket.SOCK_STREAM)[0][4][0]
-    except (OSError, IndexError):
-        address = host
+        public = is_public_ip(address)
+    except ValueError:
+        public = False
+    if not public:
+        raise OSError("the mail server's address is not a public internet address")
+    return address
+
+
+def smtp_connect(host: str, helo: str, timeout: int = CONNECT_TIMEOUT):
+    """Connect to the receiving server on port 25 (only at a public address, see mx_address)."""
+    address = mx_address(host)
+    server = smtplib.SMTP(timeout=timeout, local_hostname=helo)
     server.connect(address, 25)
     return server
 
@@ -236,7 +256,7 @@ class Prober:
 def port_25_open(host: str = "gmail-smtp-in.l.google.com", timeout: int = 6) -> bool:
     """Is outbound port 25 usable from here? Cloud providers usually block it."""
     try:
-        with socket.create_connection((host, 25), timeout=timeout):
+        with socket.create_connection((mx_address(host), 25), timeout=timeout):
             return True
     except OSError:
         return False

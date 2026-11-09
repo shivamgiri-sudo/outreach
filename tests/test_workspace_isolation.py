@@ -64,7 +64,7 @@ def test_quick_paste_skips_contacts_held_elsewhere_without_merging(tmp_path):
     c, ho, hr, w = setup(tmp_path)
     csv = "company,contact_name,email,phone\nAcme,Ravi Kumar,ravi@acme.com,98765 43210\nNewCo,Om Das,om@newco.in,99887 76655\n"
     r = c.post("/api/leads/import", json={"csv": csv, "source": "upload"}, headers=hr).json()
-    assert r["created"] == 1 and r.get("elsewhere") == 1 and r["merged"] == 0
+    assert r["created"] == 1 and r["duplicates"] == 1 and "elsewhere" not in r and r["merged"] == 0   # not told where it is
     assert [l["company"] for l in c.get("/api/leads", headers=hr).json()] == ["NewCo"]
     acme = next(l for l in c.get("/api/leads", headers=ho).json() if l["company"] == "Acme")
     assert (acme.get("workspace") or "main") == "main"
@@ -81,7 +81,8 @@ def test_smart_import_lands_in_the_workspace_and_hides_other_leads(tmp_path):
     assert "Sita" not in text and all(m.get("lead_id") is None or False for m in pre.get("merges", []))
     done = c.post("/api/import/commit", json={"csv": csv, "source": "upload"}, headers=hr).json()
     assert done["summary"]["create"] == 2 and done["summary"]["skipped"] == 1 and done["summary"]["merge"] == 0
-    assert any(s["reason"].startswith("Already held in another workspace") for s in done["skipped"])
+    assert any(s["reason"].startswith("Already in the app") for s in done["skipped"])
+    assert "another workspace" not in str(done)
     mine = c.get("/api/leads", headers=hr).json()
     assert sorted(l["company"] for l in mine) == ["Acme", "NewCo"]
     owner_acme = [l for l in c.get("/api/leads", headers=ho).json() if l["company"] == "Acme"]

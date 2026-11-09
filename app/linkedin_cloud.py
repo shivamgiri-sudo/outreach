@@ -33,7 +33,8 @@ from .activities import iso, now_utc
 
 SETTINGS_KEY, STATE_KEY = "linkedin_cloud", "linkedin_cloud_state"
 TOKEN_LABEL = "cloud:"
-TOKEN_DAYS = 3650                         # the slot's own token; rotated when the slot is removed
+TOKEN_DAYS = 90                           # the slot's own token; rotated when the slot is removed or the office computer changes
+RENEW_DAYS = 30                           # renewed (new token, agent restarted with it) once fewer days than this are left
 JOB_TTL = 600                             # seconds a login or code job waits for the agent
 LOGIN_ATTEMPTS_PER_HOUR = 5
 MAX_PASSWORD = 200
@@ -174,7 +175,25 @@ def slot_for_token(store, user: Optional[dict]) -> Optional[dict]:
 
 
 def _token_ok(store, token_id: str) -> bool:
-    return any(t.get("id") == token_id for t in ext.tokens(store))
+    """The slot's token exists, has more than RENEW_DAYS left and no more than TOKEN_DAYS (an old 10-year token is
+    replaced too); otherwise sync() replaces it."""
+    row = next((t for t in ext.tokens(store) if t.get("id") == token_id), None)
+    if row is None:
+        return False
+    try:
+        left = (datetime.fromisoformat(row["expires_at"]) - now_utc()).total_seconds()
+        return RENEW_DAYS * 86400 < left <= (TOKEN_DAYS + 1) * 86400
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def renew_due(store, base: Path) -> bool:
+    """Renew slot tokens that are close to expiry (called from the runner's and the cloud agent's regular calls).
+    True when something was renewed."""
+    if not any(s.get("token_id") and not _token_ok(store, s["token_id"]) for s in slots(store)):
+        return False
+    sync(store, base)
+    return True
 
 
 def profile_dir(base: Path, slot_id: str) -> Path:
@@ -251,6 +270,7 @@ def runner_slots(store, base: Path) -> list:
         except (OSError, ValueError, KeyError, TypeError):
             return {}
     office = runner_mod.where(store) == "office"
+    renew_due(store, base)                                  # a token near its expiry: a new one, the runner restarts that agent
     on_file = tokens_on_file()
     if office and any(s.get("enabled") and not on_file.get(s["id"]) for s in slots(store)):
         sync(store, base)                                   # a lost slots.json: new tokens, written again

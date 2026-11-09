@@ -2,7 +2,8 @@
 
 Tools are read-only except `add_lead_note`. Nothing here can send a message, change a stage, start a sequence or
 change settings, so a leaked token cannot do harm beyond reading and leaving notes. Authenticated by the same pairing
-token as the Chrome assistant (a "caller" at most, never an owner).
+token as the Chrome assistant (a "caller" at most, never an owner). Cloud LinkedIn slot tokens are refused (routes_mcp),
+and every tool sees only the leads in the request's workspace scope (workspaces.visible), like the web pages.
 """
 import json
 from typing import Optional
@@ -56,7 +57,8 @@ def _limit(args: dict, default: int = 20) -> int:
 def call_tool(store, name: str, args: dict):
     if not isinstance(args, dict):
         raise ToolError("arguments must be an object")
-    leads = store.read("leads")
+    from . import workspaces
+    leads = workspaces.filter_rows(store.read("leads"))          # a limited login's token sees only its workspaces
     if name == "search_leads":
         words = str(args.get("query") or "").lower().split()
         stage = str(args.get("stage") or "")
@@ -93,6 +95,8 @@ def call_tool(store, name: str, args: dict):
             raise ToolError("the note is empty")
         if len(note) > NOTE_MAX:
             raise ToolError(f"keep the note under {NOTE_MAX} characters")
+        if not any(l["id"] == str(args.get("lead_id") or "") for l in leads):
+            raise ToolError("no such lead")
         saved = store.update_lead(str(args.get("lead_id") or ""), lambda l: {**l, "timeline": [*l["timeline"], event("note", f"[via MCP] {note}")]})
         if saved is None:
             raise ToolError("no such lead")

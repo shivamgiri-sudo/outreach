@@ -257,20 +257,21 @@ def test_only_the_owner_edits_sequences_everyone_reads(tmp_path):
     assert len(c.get("/api/sequences", headers=h["view@x.in"]).json()) == 2
 
 
-def test_snippets_callers_make_their_own_owner_deletes_any(tmp_path):
+def test_snippets_are_written_by_owners_only(tmp_path):
+    """Templates are edited by owners (and workspace admins, see test_security_fixes); callers and viewers only use them."""
     c, h = _auth_client(tmp_path)
     s = {"name": "Pricing reply", "channel": "email", "subject": "Pricing for {{company}}", "body": "{{greeting}} here it is."}
     assert c.post("/api/snippets", json=s, headers=h["view@x.in"]).status_code == 403
-    mine = c.post("/api/snippets", json=s, headers=h["cal@x.in"]).json()
-    assert mine["created_by_email"] == "cal@x.in"
-    assert c.post("/api/snippets", json={**s, "channel": "fax"}, headers=h["cal@x.in"]).status_code == 400
-    assert c.post("/api/snippets", json={**s, "body": "Hi {{nickname}}"}, headers=h["cal@x.in"]).status_code == 400
-    wa = c.post("/api/snippets", json={"name": "WA hello", "channel": "whatsapp", "body": "Hi {{first_name}}"}, headers=h["cal2@x.in"]).json()
+    assert c.post("/api/snippets", json=s, headers=h["cal@x.in"]).status_code == 403
+    mine = c.post("/api/snippets", json=s, headers=h["owner"]).json()
+    assert c.post("/api/snippets", json={**s, "channel": "fax"}, headers=h["owner"]).status_code == 400
+    assert c.post("/api/snippets", json={**s, "body": "Hi {{nickname}}"}, headers=h["owner"]).status_code == 400
+    wa = c.post("/api/snippets", json={"name": "WA hello", "channel": "whatsapp", "body": "Hi {{first_name}}"}, headers=h["owner"]).json()
     assert wa["subject"] == ""
     assert [x["name"] for x in c.get("/api/snippets?channel=email", headers=h["view@x.in"]).json()] == ["Pricing reply"]
     assert c.put(f"/api/snippets/{mine['id']}", json={"name": "Taken"}, headers=h["cal2@x.in"]).status_code == 403
     assert c.delete(f"/api/snippets/{mine['id']}", headers=h["cal2@x.in"]).status_code == 403
-    assert c.put(f"/api/snippets/{mine['id']}", json={"name": "Pricing v2"}, headers=h["cal@x.in"]).json()["name"] == "Pricing v2"
+    assert c.put(f"/api/snippets/{mine['id']}", json={"name": "Pricing v2"}, headers=h["owner"]).json()["name"] == "Pricing v2"
     assert c.delete(f"/api/snippets/{mine['id']}", headers=h["owner"]).status_code == 200
-    assert c.delete(f"/api/snippets/{wa['id']}", headers=h["cal2@x.in"]).status_code == 200
+    assert c.delete(f"/api/snippets/{wa['id']}", headers=h["owner"]).status_code == 200
     assert c.get("/api/snippets", headers=h["owner"]).json() == []

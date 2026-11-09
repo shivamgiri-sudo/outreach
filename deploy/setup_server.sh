@@ -31,7 +31,8 @@ cd /opt/outreach/app
 python3 -m venv .venv
 .venv/bin/pip install -q --upgrade pip
 .venv/bin/pip install -q -r requirements.txt
-chown -R outreach:outreach /opt/outreach
+# code and venv stay root's (read-only for the service user); only data and backups are the service user's
+chown -R root:root /opt/outreach && chmod -R u+rwX,go+rX,go-w /opt/outreach
 
 # Environment file (created once; edit /etc/outreach/outreach.env to change)
 if [ ! -f /etc/outreach/outreach.env ]; then

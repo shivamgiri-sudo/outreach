@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, getRole, getWorkspace, isLimitedLogin, isOwner, isWorkspaceAdmin } from "../../api.js";
+import { api, getWorkspace, isOwner, isWorkspaceAdmin } from "../../api.js";
 import { copyText } from "../../clipboard.js";
 import { lintText } from "./lint.js";
 import WorkspaceTag from "./WorkspaceTag.jsx";
@@ -18,8 +18,8 @@ export default function Snippets() {
   const [spaces, setSpaces] = useState([]);
   const load = () => api.snippets().then(setRows).catch((e) => setMsg(e.message));
   useEffect(() => { load(); if (isOwner()) api.workspaces().then(setSpaces).catch(() => {}); }, []);
-  const canWrite = isOwner() || isWorkspaceAdmin() || (getRole() === "caller" && !isLimitedLogin());
-  const mayChange = (s) => !!s.can_edit;
+  const canWrite = isOwner() || isWorkspaceAdmin();      // templates: owners and workspace admins only (as the server)
+  const mayChange = (s) => canWrite && !!s.can_edit;
   const save = async (e) => {
     e.preventDefault(); setMsg("");
     try {

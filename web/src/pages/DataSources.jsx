@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { canWrite, getToken } from "../api.js";
+import { getToken, isOwner } from "../api.js";
 import { istLabel } from "../time.js";
 import { GuideButton } from "../GuidePanel.jsx";
 
@@ -125,7 +125,7 @@ function ResultRow({ m, run, onApplied }) {
       <td>{m.bounced ?? 0}</td>
       <td title={(m.error_messages || []).join("\n")}>{m.errors}</td>
       <td>
-        {canWrite() ? <button className="btn ghost" disabled={busy || applied} onClick={use}>
+        {isOwner() ? <button className="btn ghost" disabled={busy || applied} onClick={use}>
           {applied ? "Used" : busy ? "Saving…" : "Use these results"}
         </button> : applied ? "Used" : ""}
         {note && <><br /><small style={{ color: "var(--ok)" }}>{note}</small></>}
@@ -246,10 +246,10 @@ export default function DataSources({ go }) {
       <Alert text={error} />
       <div className="grid g2">
         <ProviderList list={list} go={go} />
-        {canWrite() && <CompareForm list={list} onDone={(run) => { setCurrent(run); refresh(run.id); }} />}
+        {isOwner() && <CompareForm list={list} onDone={(run) => { setCurrent(run); refresh(run.id); }} />}
       </div>
       <Results run={current} onApplied={() => current && refresh(current.id)} />
-      {canWrite() && <div className="grid g2" style={{ marginTop: 16 }}>
+      {isOwner() && <div className="grid g2" style={{ marginTop: 16 }}>
         <ImportCard />
       </div>}
       <History runs={runs} current={current} onShow={setCurrent} />

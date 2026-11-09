@@ -38,7 +38,6 @@ export default function BackupRestore() {
   const [withSecrets, setWithSecrets] = useState(false);
   const [file, setFile] = useState(null);
   const [plan, setPlan] = useState(null);
-  const [keepSecrets, setKeepSecrets] = useState(false);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(null);
@@ -52,7 +51,7 @@ export default function BackupRestore() {
   const restore = async () => {
     if (!(await confirm({ message: "Replace ALL data in this app with the backup? The current data is kept as a copy on the server, and real sending will be switched off.", confirmLabel: "Replace all data", danger: true }))) return;
     setBusy("restore"); setError("");
-    try { setDone(await api.restoreBackup(file, { confirm: true, keepSecrets })); setPlan(null); } catch (e) { setError(e.message); }
+    try { setDone(await api.restoreBackup(file, { confirm: true })); setPlan(null); } catch (e) { setError(e.message); }
     setBusy("");
   };
 
@@ -92,9 +91,10 @@ export default function BackupRestore() {
           Replaces everything in this app with the file. First you see what would change; nothing happens until you confirm.
         </p>
         <p className="sub" style={{ margin: "0 0 8px" }}>
-          A backup made without keys has no login passwords. Restoring it does not sign anyone out of a working login: people
-          who already have a login here keep their current password, and logins only on this server stay. Logins that exist
-          only in the backup come back with no password; set one for each on the Team page before they can sign in.
+          Team logins (passwords and two-step login), the server secret and pairing tokens are never taken from a backup
+          file: everyone keeps the login they have here. Logins that exist only in the backup are not restored; add them
+          again on the Team page. Keys in a backup are used only when this server made and signed it. Only the super admin
+          can restore.
         </p>
         <label htmlFor="restore-file">Backup file (.json.gz)</label>
         <input id="restore-file" type="file" accept=".gz,.json,application/gzip,application/json"
@@ -107,12 +107,6 @@ export default function BackupRestore() {
           <div className="tip" role="status" style={{ marginTop: 10 }} data-testid="restore-plan">
             <b>{plan.message}</b>
             <Summary plan={plan} />
-            {plan.backup.includes_secrets && (
-              <label className="check-row">
-                <input type="checkbox" checked={keepSecrets} onChange={(e) => setKeepSecrets(e.target.checked)} />
-                <span>Also use the backup's server secret (only when moving this same install to a new server)</span>
-              </label>
-            )}
             <div className="row" style={{ marginTop: 8 }}>
               <button className="btn danger-solid" disabled={!!busy} onClick={restore}>{busy === "restore" ? "Restoring…" : "Replace everything with this backup"}</button>
               <button className="btn ghost" disabled={!!busy} onClick={() => setPlan(null)}>Cancel</button>

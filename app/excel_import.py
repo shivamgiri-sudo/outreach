@@ -35,8 +35,35 @@ def _cell(v) -> str:
     return str(v).strip()
 
 
+# SECURITY: an .xlsx is a zip; check it before openpyxl unpacks anything ("zip bombs": tiny file, huge content)
+ZIP_MAX_TOTAL = 200 * 1024 * 1024        # all members unpacked
+ZIP_MAX_MEMBER = 100 * 1024 * 1024       # one member unpacked
+ZIP_MAX_RATIO = 100                      # unpacked / packed, per member (worth checking above 1 MB unpacked)
+ZIP_MAX_MEMBERS = 2000
+TOO_BIG = "This Excel file unpacks to far more data than a lead list holds, so it was not opened. Save it again as .xlsx (or as CSV) and try again."
+
+
+def check_zip(data: bytes) -> None:
+    """Refuse (ExcelError) a zip whose declared sizes are too large, too compressed or too many before unpacking it."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            members = zf.infolist()
+    except (zipfile.BadZipFile, OSError, ValueError) as exc:
+        raise ExcelError("This Excel file could not be read. Open it in Excel and save it again as .xlsx.") from exc
+    if len(members) > ZIP_MAX_MEMBERS:
+        raise ExcelError(TOO_BIG)
+    total = 0
+    for m in members:
+        total += m.file_size
+        if m.file_size > ZIP_MAX_MEMBER or total > ZIP_MAX_TOTAL:
+            raise ExcelError(TOO_BIG)
+        if m.file_size > 1024 * 1024 and m.file_size > ZIP_MAX_RATIO * max(m.compress_size, 1):
+            raise ExcelError(TOO_BIG)
+
+
 def _xlsx_sheets(data: bytes):
     import openpyxl
+    check_zip(data)
     try:
         book = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
     except (zipfile.BadZipFile, KeyError, OSError, ValueError) as exc:

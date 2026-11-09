@@ -26,6 +26,13 @@ IGNORE_BUSINESS_HOURS = os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1" 
 # Only tests may set the clock; otherwise a caller could skip business hours or the daily cap.
 ALLOW_NOW_OVERRIDE = os.environ.get("OUTREACH_TEST_MODE") == "1"
 HIDDEN_SETTINGS = PRIVATE_SETTINGS          # the server secret and password hashes never leave the server
+# GET /api/settings returns ONLY these keys (an allowlist: runner pairing hashes, cloud agent state, reset links, report
+# links, tokens and anything added later stay on the server). Every login gets SHOWN_TO_ALL (the sender identity on the
+# Outbox page, alert and tracking switches on Response times); owners also get what Setup edits.
+SHOWN_TO_ALL = ("daily_cap", "per_run_cap", "live_sending", "sender_name", "sender_company", "sender_address", "sender_website",
+                "sender_contact_email", "email1_include_link", "track_email", "alerts_email", "alert_managers")
+SHOWN_TO_OWNERS = ("public_base_url", "webhook_secret", "confirm_bmi_limits", "privacy_url", "retention_days_cold",
+                   "whatsapp_template_params", "workspaces", "live_sending_changed")
 NOT_PUBLIC_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0", "::1")
 CAP_LIMITS = {"daily_cap": (1, 500), "per_run_cap": (1, 50), "retention_days_cold": (30, 3650)}
 
@@ -195,8 +202,12 @@ class ComposeBody(BaseModel):
 def make_router(store, build_lead, present, email_sender, ai_transport=None) -> APIRouter:
     router = APIRouter()
 
-    def settings() -> dict:
-        shown = {k: v for k, v in get_settings(store).items() if k not in HIDDEN_SETTINGS and k not in ("company_health", "system_status")}   # server_secret never leaves the server
+    def settings(user: Optional[dict] = None) -> dict:
+        from .workspace_guard import limited
+        owner = (user or {"role": "owner"}).get("role") == "owner" and not limited(user)
+        keys = SHOWN_TO_ALL + (SHOWN_TO_OWNERS if owner else ())
+        current = get_settings(store)
+        shown = {k: current[k] for k in keys if k in current and k not in HIDDEN_SETTINGS}
         secret = shown.get("webhook_secret")
         if secret:
             shown["webhook_secret"] = "••••" + secret[-4:]
@@ -217,15 +228,9 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
     def with_event(lead: dict, kind: str, text: str) -> list:
         return [*lead["timeline"], _event(kind, text)]
 
-    LIMITED_HIDDEN = ("workspaces", "reply_state", "import_mappings", "team", "live_sending_changed", "workspace_templates")
-
     @router.get("/api/settings")
     def read_settings(request: Request):
-        from .workspace_guard import limited
-        shown = settings()
-        if limited(getattr(request.state, "user", None)):         # other clients' names, reply notes and team stay out
-            shown = {k: v for k, v in shown.items() if k not in LIMITED_HIDDEN}
-        return shown
+        return settings(getattr(request.state, "user", None))     # other clients' names and secrets stay out (allowlist)
 
     def live_switch(request: Request, on: bool, how: str) -> None:
         """Keep who switched real sending and when, and put it in the audit trail."""
@@ -293,7 +298,7 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
                 raise HTTPException(400, "Real sending stays off until: " + " ".join(blockers))
         if "live_sending" in changes and bool(changes["live_sending"]) != was_live:
             live_switch(request, bool(changes["live_sending"]), "changed with the settings form")
-        return settings()
+        return settings(getattr(request.state, "user", None))
 
     def mine() -> list:
         from . import workspaces

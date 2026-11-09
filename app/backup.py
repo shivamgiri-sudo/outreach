@@ -7,8 +7,16 @@ safe to keep on a laptop; connections are then entered again after a restore.
 A restore checks the file first and shows what would change (dry run). Confirmed, it waits for any email run to finish,
 keeps the current file as store.json.pre-restore-<time>, swaps the data in under the store lock and switches every kind
 of real sending off, so nothing goes out until the owner has looked at the restored data.
+
+Security (downloading with secrets and restoring are for the super admin only, see routes_exports):
+  - the logins (settings.users with password hashes and two-step data), the server secret, the two-step switch and the
+    pairing tokens are NEVER taken from an uploaded file: this server keeps its own, and the result says what was skipped.
+  - a backup made with secrets carries an HMAC signature keyed with this server's secret. A file whose signature is
+    missing or wrong (older backups, another server's, or an edited file) is restored WITHOUT any of its secrets.
 """
 import gzip
+import hashlib
+import hmac
 import io
 import json
 import os
@@ -33,14 +41,21 @@ DROPPED_KEYS = ("tokens", "webhook_tokens")    # OAuth tokens and webhook secret
 SCRUBBED_COLLECTIONS = ("integrations", "users")
 DROPPED_COLLECTIONS = ("sessions",)
 # settings that hold login credentials: password hashes, runner token hashes, the pending runner pairing code
-LOGIN_HASH_FIELDS = {"users": "password_hash", "linkedin_runners": "hash"}
-DROPPED_SETTINGS = ("linkedin_runner_pairing",)
+LOGIN_HASH_FIELDS = {"users": ("password_hash", "two_step_secret", "two_step_pending", "two_step_recovery"),
+                     "linkedin_runners": ("hash",)}
+DROPPED_SETTINGS = ("linkedin_runner_pairing", "password_resets")
 NO_SECRETS_NOTE = ("Connection keys, login password hashes, pairing tokens, OAuth tokens, webhook secrets and the server "
                    "secret were left out of this backup. After a restore, enter the connections again on the Integrations "
                    "page (and the activity-event secret under Setup). Team logins that already exist keep their current "
                    "password; logins only in the backup need a new password from the owner (Team page).")
 WITH_SECRETS_NOTE = ("This backup contains connection keys, login password hashes, tokens and the server secret in plain text. "
                      "Keep it as safe as a password: never email it or put it in a shared folder.")
+# settings an upload never replaces: this server's logins (password hashes, two-step), secret and pairing tokens
+KEPT_FROM_SERVER = ("users", "server_secret", "require_two_step", "extension_tokens", "password_resets")
+UNSIGNED_NOTE = ("This backup says it includes secrets, but it is not signed by this server (an older backup, one made on "
+                 "another server, or a changed file), so it is restored WITHOUT its connection keys and secrets.")
+KEPT_NOTE = ("Team logins (passwords and two-step login), the server secret and pairing tokens always stay as they are on "
+             "this server; they are never taken from a backup file.")
 SENDING_OFF_NOTE = ("Real sending (email, WhatsApp and SMS) is OFF after a restore. Check the data, then switch it on again "
                     "on the Outbox page (email) and the Integrations page (WhatsApp, SMS).")
 
@@ -98,9 +113,9 @@ def strip_secrets(data: dict) -> dict:
     extra = _hub_secret_keys()
     out = {k: v for k, v in data.items() if k not in DROPPED_COLLECTIONS}
     settings = {k: v for k, v in (data.get("settings") or {}).items() if not _is_secret(k, extra) and k not in DROPPED_SETTINGS}
-    for key, field in LOGIN_HASH_FIELDS.items():
+    for key, fields in LOGIN_HASH_FIELDS.items():
         if isinstance(settings.get(key), list):
-            settings[key] = [{k: v for k, v in row.items() if k != field} if isinstance(row, dict) else row
+            settings[key] = [{k: v for k, v in row.items() if k not in fields} if isinstance(row, dict) else row
                              for row in settings[key]]
     out["settings"] = settings
     for key in SCRUBBED_COLLECTIONS:
@@ -113,15 +128,42 @@ def ist_label(when: datetime) -> str:
     return when.astimezone(IST).strftime("%d %b %Y, %I:%M %p IST")
 
 
+def _signing_key(store) -> bytes:
+    from .channels.security import server_secret
+    return hashlib.sha256(("backup-signature:" + server_secret(store)).encode()).digest()
+
+
+def signature(store, payload: dict) -> str:
+    body = {k: v for k, v in payload.items() if k != "signature"}
+    text = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
+    return "v1:" + hmac.new(_signing_key(store), text.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def signed_by_this_server(store, payload: dict) -> bool:
+    given = payload.get("signature")
+    return isinstance(given, str) and hmac.compare_digest(given, signature(store, payload))
+
+
+def trusted(store, payload: dict) -> tuple:
+    """(payload to use, note or ''). A backup claiming secrets without this server's valid signature loses them."""
+    if not payload.get("includes_secrets") or signed_by_this_server(store, payload):
+        return payload, ""
+    return {**payload, "includes_secrets": False, "data": strip_secrets(payload["data"])}, UNSIGNED_NOTE
+
+
 def build_backup(store, include_secrets: bool = False, now: datetime = None) -> dict:
     now = now or now_utc()
     data = store.snapshot()
     if not include_secrets:
         data = strip_secrets(data)
-    return {"format": FORMAT, "version": VERSION, "created_at": now.isoformat(timespec="seconds"),
-            "created_at_ist": ist_label(now), "app_commit": os.environ.get("OUTREACH_COMMIT") or None,
-            "includes_secrets": bool(include_secrets), "note": WITH_SECRETS_NOTE if include_secrets else NO_SECRETS_NOTE,
-            "counts": counts(data), "data": data}
+    payload = {"format": FORMAT, "version": VERSION, "created_at": now.isoformat(timespec="seconds"),
+               "created_at_ist": ist_label(now), "app_commit": os.environ.get("OUTREACH_COMMIT") or None,
+               "includes_secrets": bool(include_secrets), "note": WITH_SECRETS_NOTE if include_secrets else NO_SECRETS_NOTE,
+               "counts": counts(data), "data": data}
+    if include_secrets:
+        payload = json.loads(json.dumps(payload, ensure_ascii=False, default=str))    # sign exactly what the file will hold
+        payload["signature"] = signature(store, payload)
+    return payload
 
 
 def to_bytes(payload: dict) -> bytes:
@@ -194,27 +236,23 @@ def _ordered(names) -> list:
 
 
 def summary(store, payload: dict, keep_secrets: bool = False) -> dict:
-    """What a restore of this file would do; nothing is changed."""
+    """What a restore of this file would do; nothing is changed. `keep_secrets` is accepted for old callers and ignored:
+    the server secret is never taken from a file."""
+    payload, unsigned = trusted(store, validate(payload))
     now_counts, after_counts = counts(store.snapshot()), counts(payload["data"])
     secrets = bool(payload.get("includes_secrets"))
-    notes = [SENDING_OFF_NOTE,
+    logins = login_plan(store.read("settings"), payload["data"].get("settings") or {})
+    notes = [SENDING_OFF_NOTE, *([unsigned] if unsigned else []),
              "The backup includes connection keys and secrets; they will be used." if secrets
              else "The backup has no connection keys: enter the connections again on the Integrations page afterwards.",
-             "The server secret from the backup will be used." if secrets and keep_secrets
-             else "This server keeps its own server secret (it signs calendar sign-in links); it is never taken from "
-                  "another install unless the backup includes secrets and you ask for it."]
-    logins = None
-    if secrets:
-        notes.append("Team logins and their passwords come from the backup (it includes password hashes).")
-    else:
-        logins = login_plan(store.read("settings"), payload["data"].get("settings") or {})
-        notes.append(login_note(logins))
-    return {"dry_run": True, "logins": logins,
-            "backup": {k: payload.get(k) for k in ("created_at", "created_at_ist", "app_commit", "version", "includes_secrets")},
+             KEPT_NOTE, login_note(logins)]
+    return {"dry_run": True, "logins": logins, "skipped": skipped_settings(payload["data"].get("settings") or {}),
+            "backup": {**{k: payload.get(k) for k in ("created_at", "created_at_ist", "app_commit", "version", "includes_secrets")},
+                       "signed": not unsigned and secrets},
             "collections": [{"name": n, "now": now_counts.get(n, 0), "after": after_counts.get(n, 0)}
                             for n in _ordered(set(now_counts) | set(after_counts))],
             "will_replace": "Everything in this app (leads, messages, tasks, campaigns, settings and connections) is replaced "
-                            "by the backup. Nothing is merged.",
+                            "by the backup, except the logins and the server secret. Nothing is merged.",
             "pre_restore_copy": f"The current data file is kept as {store.path.name}.pre-restore-<time> in the same folder.",
             "notes": notes, "message": "Nothing has been changed yet. Confirm to replace everything with this backup."}
 
@@ -223,54 +261,37 @@ def _rows(settings: dict, key: str) -> list:
     return [r for r in (settings or {}).get(key) or [] if isinstance(r, dict)]
 
 
+def skipped_settings(data: dict) -> list:
+    """Settings present in the file that the restore leaves as they are on this server."""
+    return [k for k in KEPT_FROM_SERVER if k in (data or {})]
+
+
 def login_plan(current: dict, data: dict) -> dict:
-    """For a backup without secrets: which logins keep their current password, which come back without one."""
-    now_users = {r.get("email"): r for r in _rows(current, "users") if r.get("email")}
-    backup_users = [r for r in _rows(data, "users") if r.get("email")]
-    kept = [r["email"] for r in backup_users if (now_users.get(r["email"]) or {}).get("password_hash")]
-    no_password = [r["email"] for r in backup_users if r["email"] not in kept]
-    added_back = [e for e in now_users if e not in {r["email"] for r in backup_users}]
-    return {"kept": kept, "no_password": no_password, "only_here": added_back}
+    """Logins are never restored: those on this server stay exactly as they are; those only in the backup are skipped."""
+    now_users = [r.get("email") for r in _rows(current, "users") if r.get("email")]
+    skipped = [r["email"] for r in _rows(data, "users") if r.get("email") and r["email"] not in now_users]
+    return {"kept": now_users, "skipped": skipped}
 
 
 def login_note(plan: dict) -> str:
-    text = ("The backup has no login passwords. Team logins that exist on this server keep their current password"
-            f" ({len(plan['kept'])})")
-    if plan["only_here"]:
-        text += f"; logins that are only on this server stay as they are ({len(plan['only_here'])})"
-    if plan["no_password"]:
-        text += (f". Logins only in the backup come back with no password ({len(plan['no_password'])}: "
-                 f"{', '.join(plan['no_password'][:5])}{'…' if len(plan['no_password']) > 5 else ''}) and cannot sign in "
-                 "until the owner sets a new password for them on the Team page")
+    text = f"Team logins on this server stay as they are ({len(plan['kept'])})"
+    if plan["skipped"]:
+        text += (f". Logins only in the backup are not restored ({len(plan['skipped'])}: {', '.join(plan['skipped'][:5])}"
+                 f"{'…' if len(plan['skipped']) > 5 else ''}); add them again on the Team page if they still need access")
     return text + "."
 
 
-def keep_current_logins(current: dict, settings: dict) -> dict:
-    """A backup without secrets has no password hashes. Logins on this server keep their current password (and logins
-    missing from the backup are kept as they are, so nobody is locked out); logins only in the backup get no password
-    until the owner sets one. Runner token hashes are kept by runner id the same way."""
-    out = dict(settings)
-    here = {r.get("email"): r for r in _rows(current, "users") if r.get("email")}
-    users = []
-    for row in _rows(settings, "users"):
-        row = {k: v for k, v in row.items() if k != "password_hash"}
-        old = here.get(row.get("email")) or {}
-        if old.get("password_hash"):
-            row["password_hash"] = old["password_hash"]
-            if old.get("password_changed_at"):
-                row["password_changed_at"] = old["password_changed_at"]
-        users.append(row)
-    in_backup = {r.get("email") for r in users}
-    users += [r for e, r in here.items() if e not in in_backup]
-    if users or "users" in settings:
-        out["users"] = users
-    runner_hash = {r.get("id"): r.get("hash") for r in _rows(current, "linkedin_runners") if r.get("hash")}
-    if "linkedin_runners" in settings:
+def keep_current_logins(current: dict, settings: dict, secrets: bool = False) -> dict:
+    """This server's logins (with password hashes and two-step data), server secret, two-step switch and pairing tokens
+    replace whatever the file had. Runner token hashes come from the file only in a signed backup with secrets; else they
+    are kept from this server by runner id."""
+    current = current or {}
+    out = {k: v for k, v in settings.items() if k not in KEPT_FROM_SERVER}
+    out.update({k: current[k] for k in KEPT_FROM_SERVER if k in current})
+    if "linkedin_runners" in settings and not secrets:
+        runner_hash = {r.get("id"): r.get("hash") for r in _rows(current, "linkedin_runners") if r.get("hash")}
         out["linkedin_runners"] = [{**r, "hash": runner_hash[r.get("id")]} if r.get("id") in runner_hash
                                    else {k: v for k, v in r.items() if k != "hash"} for r in _rows(settings, "linkedin_runners")]
-    for key in ("extension_tokens",):                   # pairing tokens stay with this server
-        if (current or {}).get(key):
-            out[key] = current[key]
     return out
 
 
@@ -284,25 +305,21 @@ def _copy_name(path: Path, now: datetime) -> Path:
 
 
 def restore(store, payload: dict, keep_secrets: bool = False, now: datetime = None) -> dict:
-    """Replace the whole store with the backup. Sending stays off afterwards; the old file is kept beside the new one."""
-    payload = validate(payload)
+    """Replace the whole store with the backup. Sending stays off afterwards; the old file is kept beside the new one.
+    Logins, the server secret and pairing tokens stay this server's (`keep_secrets` is ignored)."""
+    payload, unsigned = trusted(store, validate(payload))
     now = now or now_utc()
     if not sequence_runner._RUN_LOCK.acquire(timeout=SEND_RUN_WAIT_SECONDS):
         raise BackupError("Emails are being sent right now. Wait a minute and try the restore again.", 409)
     try:
         copy = _copy_name(store.path, now)
-        logins = None if payload.get("includes_secrets") else login_plan(store.read("settings"), payload["data"].get("settings") or {})
-        use_backup_secret = bool(payload.get("includes_secrets") and keep_secrets and payload["data"].get("settings", {}).get("server_secret"))
+        logins = login_plan(store.read("settings"), payload["data"].get("settings") or {})
+        skipped = skipped_settings(payload["data"].get("settings") or {})
 
         def swap(current: dict) -> dict:
             data = json.loads(json.dumps(payload["data"]))
-            settings = dict(data.get("settings") or {})
-            if not use_backup_secret:
-                settings.pop("server_secret", None)
-                if (current.get("settings") or {}).get("server_secret"):
-                    settings["server_secret"] = current["settings"]["server_secret"]
-            if not payload.get("includes_secrets"):
-                settings = keep_current_logins(current.get("settings") or {}, settings)
+            settings = keep_current_logins(current.get("settings") or {}, dict(data.get("settings") or {}),
+                                           bool(payload.get("includes_secrets")))
             settings.update({flag: False for flag in LIVE_FLAGS})
             # an older backup must not bring back people erased or unsubscribed since it was made (DPDP; a no stays a no)
             erased = set(data.get("suppressed_hashes") or []) | set(current.get("suppressed_hashes") or [])
@@ -314,13 +331,13 @@ def restore(store, payload: dict, keep_secrets: bool = False, now: datetime = No
         saved = store.replace_all(swap, keep_copy_as=copy)
     finally:
         sequence_runner._RUN_LOCK.release()
-    notes = [SENDING_OFF_NOTE]
+    notes = [SENDING_OFF_NOTE, *([unsigned] if unsigned else [])]
     if not payload.get("includes_secrets"):
         notes.append("The backup had no connection keys: enter the connections again on the Integrations page.")
-        notes.append(login_note(logins))
-    return {"logins": logins, "restored": True, "counts": counts(saved), "pre_restore_copy": copy.name,
-            "live_sending": False, "live_whatsapp": False, "live_sms": False,
-            "server_secret": "from the backup" if use_backup_secret else "kept from this server",
+    notes += [KEPT_NOTE, login_note(logins)]
+    return {"logins": logins, "skipped": skipped, "restored": True, "counts": counts(saved), "pre_restore_copy": copy.name,
+            "live_sending": False, "live_whatsapp": False, "live_sms": False, "server_secret": "kept from this server",
+            "secrets_used": bool(payload.get("includes_secrets")),
             "message": f"Restored the backup from {payload.get('created_at_ist') or payload.get('created_at')}. "
                        f"The previous data was kept as {copy.name}. " + SENDING_OFF_NOTE,
             "notes": notes}

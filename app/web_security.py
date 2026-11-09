@@ -27,7 +27,7 @@ RATE_LIMITS = (
     ("/api/webhooks/", False, 120),
     ("/api/inbound/", False, 120),
     ("/api/activation/event", True, 120),
-    ("/api/linkedin-runner/pair", True, 10),        # office runner pairing codes: guessing is also capped per code
+    ("/api/linkedin-runner/pair", True, 10),        # office runner pairing codes: wrong guesses are also capped per address and code
     ("/api/linkedin-runner/install", False, 20),
     ("/api/linkedin-runner/bundle", False, 20),
 )

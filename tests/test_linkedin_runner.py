@@ -85,7 +85,7 @@ def test_a_pairing_code_is_hashed_single_use_and_gives_a_hashed_runner_token(rig
     c, https, owner, store, base = rig
     made = code_for(c, owner)
     code = made["code"]
-    assert len(code) == 8 and set(code) <= set(runner.CODE_ALPHABET)
+    assert len(code) == 12 and set(code) <= set(runner.CODE_ALPHABET)
     assert code not in json.dumps(store.read("settings"))                          # only its hash is kept
     assert made["pairing"]["expires_at"] == made["expires_at"]
     r = pair(https, code.lower()[:4] + "-" + code.lower()[4:])                     # typed loosely: still the same code
@@ -108,7 +108,7 @@ def test_a_pairing_code_expires_after_fifteen_minutes(rig, monkeypatch):
     assert "expired" in https.get(f"/api/linkedin-runner/install.sh?code={code}").text
 
 
-def test_wrong_guesses_cancel_the_code(rig):
+def test_wrong_guesses_lock_out_the_address_but_keep_the_code(rig):
     c, https, owner, store, base = rig
     code = code_for(c, owner)["code"]
     wrong = "".join("A" if ch != "A" else "B" for ch in code)
@@ -116,8 +116,10 @@ def test_wrong_guesses_cancel_the_code(rig):
         assert pair(https, wrong).status_code == 400
     assert store.read("settings")[runner.PAIR_KEY]["failures"] == runner.MAX_FAILED - 1
     assert https.get(f"/api/linkedin-runner/install.sh?code={wrong}").text.startswith("#!/usr/bin/env bash\necho")  # one more guess
-    assert runner.PAIR_KEY not in store.read("settings")
-    assert pair(https, code).status_code == 400                                     # the real code is gone too
+    assert runner.PAIR_KEY in store.read("settings")                                # a stranger cannot cancel the owner's code
+    assert pair(https, code).status_code == 400                                     # but this address may not try again
+    other = TestClient(c.app, base_url="https://testserver", client=("203.0.113.77", 1))
+    assert pair(other, code).status_code == 200
 
 
 def test_pairing_is_rate_limited_per_address(rig):
