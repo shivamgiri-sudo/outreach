@@ -44,6 +44,11 @@ def add_point(store, lead_id: str, kind: str, raw: str, actor: dict) -> dict:
     if not value:
         raise EditRefused(f"Enter the {kind}.")
     _not_blocked(store, kind, value)
+    if kind == "email":
+        from .email_domain import problem
+        bad = problem(value)
+        if bad:
+            raise EditRefused(f"Not added: {bad}.")
     key, label = KINDS[kind]
     lead = _lead(store, lead_id)
     have = [v for v in (lead.get(key) or []) if v]

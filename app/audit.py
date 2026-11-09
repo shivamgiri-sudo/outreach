@@ -69,6 +69,11 @@ def edit_contact(store, lead_id: str, changes: dict, actor: dict, reason: str = 
     cleaned = {k: v for k, v in cleaned.items() if (current.get(k) or "") != v}
     if not cleaned:
         return {"lead": current, "changed": []}
+    if cleaned.get("email"):
+        from .email_domain import problem
+        bad = problem(cleaned["email"])
+        if bad:
+            raise EditRefused(f"Not saved: {bad}.")
     probe = {**current, **cleaned}
     if "phone" in cleaned:
         probe["phone_type"] = phone_type(cleaned["phone"]) if cleaned["phone"] else None

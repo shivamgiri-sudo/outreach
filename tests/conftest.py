@@ -6,7 +6,8 @@ ENROL_TIME = "2026-11-03T04:00:00+00:00"
 
 @pytest.fixture(autouse=True)
 def fixed_enrolment_clock(monkeypatch):
-    from app import routes_jobs, routes_outreach, store
+    from app import email_domain, routes_jobs, routes_outreach, store
+    monkeypatch.setattr(email_domain, "CHECK", False)              # no DNS lookups in tests (no network)
     monkeypatch.setattr(routes_jobs, "ALLOW_NOW_OVERRIDE", True)
     monkeypatch.setattr(store, "FSYNC", False)
     monkeypatch.setattr(routes_outreach, "_now_iso", lambda: ENROL_TIME)

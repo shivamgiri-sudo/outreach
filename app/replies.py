@@ -13,6 +13,10 @@ _QUOTE_STARTS = re.compile(
     r"((thanks|thank you|warm|best|kind|with) )?(&|and )?regards,?|thanks (&|and) regards,?|"
     r"(disclaimer|confidentiality notice)\b.*|this e-?mail and any (files|attachments)\b.*)\s*$",
     re.IGNORECASE)
+_DSN = re.compile(r"undelivered mail returned to sender|host or domain name not found|name service error for name=|"
+                  r"domain (name )?not found|this is the mail system at host|delivery to the following recipients? failed|"
+                  r"the email account that you tried to reach does not exist|recipient not found|address not found|"
+                  r"no mx (record|host)|unrouteable address|mailbox unavailable", re.IGNORECASE)
 _NEGATION_WORDS = r"(not|no|never|nahi|nahin|dont|don't|\w+n't)"
 
 _RULES = (
@@ -99,6 +103,8 @@ def classify_reply(text: str) -> str:
     if not lowered:
         return "other"                             # only quoted history (our own email) or a signature: nothing to read
     lowered = _NOT_A_NO.sub("fine", lowered)
+    if re.search(_RULES[0][1], " ".join(lowered.split())) or _DSN.search(" ".join(lowered.split())):
+        return "bounce"                            # delivery reports wrap lines ("could not\nbe delivered"): read them flat
     for label, pattern in _RULES:
         for match in re.finditer(pattern, lowered, re.MULTILINE):
             if label == "interested" and _is_negated(lowered, match.start()):

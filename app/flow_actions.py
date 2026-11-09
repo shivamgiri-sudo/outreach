@@ -253,6 +253,9 @@ def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
         return refused(f"lead is {lead['stage']} and cannot be emailed")
     if not lead.get("email"):
         return refused("this lead has no email address")
+    from .email_domain import problem as domain_problem
+    if (bad := domain_problem(lead["email"])):
+        return refused(bad)
     if not ctx.ignore_hours and not in_business_hours(now):
         return defer(next_business_time(now), "waiting for business hours (Mon–Fri 9–18 IST)")
     if live and (pause := sending_paused(store, now)):

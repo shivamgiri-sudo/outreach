@@ -17,6 +17,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 
 from .template_vars import brand_variables
+from . import email_domain
 from . import sequence_library, sequences
 from .channels.security import server_secret
 from .growth_core import ensure_demo, get_offer, offer_line
@@ -129,6 +130,11 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
         if (lead.get("email_check") or {}).get("status") == "invalid":
             counts["blocked"] += 1          # a mailbox check said this address does not exist: never send to it
             _set_sequence(store, lead["id"], blocked="the email address failed a mailbox check")
+            continue
+        if (bad := email_domain.problem(lead["email"])):
+            counts["blocked"] += 1          # the domain does not exist / takes no mail (e.g. a typo): it would only bounce
+            if seq.get("blocked") != bad:
+                _set_sequence(store, lead["id"], blocked=bad)
             continue
         held = icp_gate_reason(lead, icp_rules)
         if held:
@@ -372,6 +378,8 @@ def send_now(store, lead_id: str, now: datetime, base_url: str, sender, by: str 
             raise ValueError("This address may not be emailed (unsubscribed, bounced, erased or on the do-not-contact list).")
         if (lead.get("email_check") or {}).get("status") == "invalid":
             raise ValueError("A mailbox check said this address does not exist.")
+        if (bad := email_domain.problem(lead["email"])):
+            raise ValueError(f"Not sent: {bad}.")
         if seq.get("in_flight"):
             raise ValueError("An email to this lead is being sent right now.")
         cfg = get_settings(store)
@@ -436,6 +444,8 @@ def send_manual(store, lead_id: str, subject: str, body: str, now: datetime, bas
         raise ValueError("This address may not be emailed (unsubscribed, bounced, erased or on the do-not-contact list).")
     if (lead.get("email_check") or {}).get("status") == "invalid":
         raise ValueError("A mailbox check said this address does not exist.")
+    if (bad := email_domain.problem(email)):
+        raise ValueError(f"Not sent: {bad}.")
     cfg = get_settings(store)
     live = bool(cfg["live_sending"]) and bool(email_ready(store))
     if live and (pause := sending_paused(store, now)):
