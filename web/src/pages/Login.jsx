@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, setToken } from "../api.js";
+import { platform } from "../platformApi.js";
 import { ForgotForm, ResetForm, resetTokenFromHash } from "./PasswordReset.jsx";
 import LoginTwoStep from "./LoginTwoStep.jsx";
 import { MagicForm, MagicVerify, OidcButtons, OidcReturn, SignupForm, VerifyPage, isOidcReturn, magicTokenFromHash, verifyTokenFromHash } from "./Signup.jsx";
@@ -44,6 +45,8 @@ export default function Login({ onSignedIn }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(false);          // the "Create an account" link shows only when a super admin opened sign-up
+  useEffect(() => { platform.signupConfig().then((c) => setSignupOpen(!!c.signup)).catch(() => {}); }, []);
   const [show, setShow] = useState(false);
   const [caps, setCaps] = useState(false);
   const pw = useRef(null);
@@ -145,7 +148,7 @@ export default function Login({ onSignedIn }) {
           <div className="row" style={{ gap: 14, flexWrap: "wrap", marginTop: 8 }}>
             <button type="button" className="link" onClick={() => setMode("forgot")} data-testid="forgot-link">Forgot password?</button>
             <button type="button" className="link" onClick={() => setMode("magic")} data-testid="magic-link">Email me a sign-in link</button>
-            <button type="button" className="link" onClick={() => setMode("signup")} data-testid="signup-link">Create an account</button>
+            {signupOpen && <button type="button" className="link" onClick={() => setMode("signup")} data-testid="signup-link">Create an account</button>}
           </div>
           <p className="login-fine"><Icon name="lock" size={14} />Sessions stay on this browser tab only.</p>
         </form>}

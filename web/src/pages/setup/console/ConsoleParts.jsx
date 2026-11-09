@@ -56,6 +56,30 @@ export function StopAllSwitch({ stop, onChanged }) {
   );
 }
 
+export function SignupSwitch({ open, onChanged }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const flip = async (on) => {
+    if (on && !window.confirm("Open public sign-up? Anyone can then ask for an account (you still approve each one). Make sure the Terms, Privacy and DPA pages are ready.")) return;
+    setBusy(true); setError("");
+    try { await platform.setSignupOpen(on); onChanged(); } catch (err) { setError(err.message); }
+    setBusy(false);
+  };
+  return (
+    <section className="card" data-testid="signup-switch" style={{ marginBottom: 14, borderLeft: `4px solid ${open ? "#b45309" : "#16a34a"}` }}>
+      <div className="row" style={{ gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ flex: "1 1 280px" }}>
+          <b>Public sign-up</b>
+          <div className="hint">{open ? "OPEN. The sign-in page shows “Create an account”; every new account still waits for your approval."
+            : "Closed. The sign-in page has no sign-up link and the sign-up form refuses requests. Accounts are created by you in this console."}</div>
+        </div>
+        <button className={open ? "btn" : "btn"} disabled={busy} onClick={() => flip(!open)} data-testid="signup-switch-button">{open ? "Close sign-up" : "Open sign-up"}</button>
+      </div>
+      {error && <p className="field-error" role="alert">{error}</p>}
+    </section>
+  );
+}
+
 export function StatusFilter({ value, onChange }) {
   return (
     <label className="row" style={{ gap: 6, alignItems: "center" }}>Show

@@ -78,7 +78,7 @@ def make_router(store, admin_password: str, base_url_of, sender) -> APIRouter:
         super_only(request)
         from . import integrations          # the same grantable list as Setup > Accounts
         from . import abuse_alerts
-        return {"accounts": super_console.overview(store, status[:20]), "stop_all_sending": platform_controls.public_stop(store),
+        return {"accounts": super_console.overview(store, status[:20]), "stop_all_sending": platform_controls.public_stop(store), "signup_open": platform_controls.signup_open(store),
                 "alerts": abuse_alerts.feed(store),
                 "grantable": [{"id": i["id"], "title": i["title"]} for i in integrations.CATALOGUE + integrations.SOURCE_CATALOGUE],
                 "limit_keys": list(accounts.LIMIT_KEYS), "statuses": list(accounts.STATUSES)}
@@ -186,6 +186,17 @@ def make_router(store, admin_password: str, base_url_of, sender) -> APIRouter:
         if user.get("role") != "admin" or not accounts.is_client(user):
             raise HTTPException(403, "Only a client account's admins see this page (owners use Setup > Audit).")
         return audit.trail(store, limit=max(1, min(limit, 500)), offset=max(0, offset), account=accounts.of_user(user))
+
+    @router.put("/api/console/signup-open")
+    def signup_switch(body: StopBody, request: Request):
+        user = super_only(request)
+        before = platform_controls.signup_open(store)
+        platform_controls.set_signup(store, body.on)
+        if before != body.on:
+            word = "OPEN: anyone can ask for an account" if body.on else "CLOSED: no new sign-ups"
+            audit.record(store, user, "platform.signup", "public sign-up", word)
+            super_admin.alert(store, f"Public sign-up {'opened' if body.on else 'closed'}", f"{who(user)} set public sign-up {word}.")
+        return {"signup_open": platform_controls.signup_open(store)}
 
     @router.put("/api/console/stop-sending")
     def stop_sending(body: StopBody, request: Request):

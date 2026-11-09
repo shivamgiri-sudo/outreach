@@ -270,3 +270,22 @@ def test_magic_link_still_asks_for_two_step_when_on(tmp_path, monkeypatch):
     r = c.post("/api/magic-link/verify", json={"token": link_token(outbox, "cal@mcn.example", "magic")})
     assert r.status_code == 200 and r.json()["two_step"] == "setup"
     assert sign_in(c, "cal@mcn.example", "long-password-1")
+
+
+def test_public_signup_is_closed_until_a_super_admin_opens_it(tmp_path, monkeypatch):
+    c, ha, hs, outbox = make(tmp_path, monkeypatch, open_signup=False)
+    raw = {"company": "Delta Freight", "name": "Dev Patel", "email": "dev@deltafreight.example", "password": "delta-long-password-1",
+           "accept": True, "ticket": "x"}
+    assert c.get("/api/signup/config").json()["signup"] is False                  # no "Create an account" link on the sign-in page
+    assert c.post("/api/signup", json=raw).status_code == 403
+    assert c.get("/api/signup/form").status_code == 403
+    assert mails(outbox, "dev@deltafreight.example") == []
+    assert c.post("/api/users", json={"email": "plain@owner.example", "name": "Plain", "role": "owner", "password": "plain-owner-pass-1"}, headers=hs).status_code == 200
+    plain = {"Authorization": f"Bearer {sign_in(c, 'plain@owner.example', 'plain-owner-pass-1')}"}
+    assert c.put("/api/console/signup-open", json={"on": True}, headers=plain).status_code in (401, 403)   # only a super admin flips it
+    assert c.put("/api/console/signup-open", json={"on": True}, headers=hs).json() == {"signup_open": True}
+    assert c.get("/api/signup/config").json()["signup"] is True
+    assert c.post("/api/signup", json=form(c)).status_code == 200
+    assert c.put("/api/console/signup-open", json={"on": False}, headers=hs).json() == {"signup_open": False}
+    assert c.post("/api/signup", json={**raw, "email": "other@deltafreight.example"}).status_code == 403
+    assert any(r.get("action") == "platform.signup" for r in c.app.state.store.read("audit"))

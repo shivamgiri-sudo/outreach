@@ -141,7 +141,7 @@ ACTIONS = {
     "super_admin.admin_login": "Server admin password used", "super_admin.failed_logins": "Failed super admin sign-ins",
     "super_admin.recovery_codes": "Super admin recovery codes made", "super_admin.recovery_used": "Super admin recovery code used",
     "user.reset_withheld": "Reset link not sent (super admin: use recovery)",
-    "workspace.create": "Workspace created", "workspace.delete": "Workspace deleted", "workspace.rename": "Workspace renamed",
+    "platform.signup": "Public sign-up opened or closed", "workspace.create": "Workspace created", "workspace.delete": "Workspace deleted", "workspace.rename": "Workspace renamed",
     "workspace.member_add": "Added to a workspace", "workspace.member_remove": "Taken out of a workspace", "linkedin_agent.on": "LinkedIn agent switched on",
     "linkedin_agent.off": "LinkedIn agent switched off", "linkedin_agent.settings": "LinkedIn agent settings saved",
     "settings.save": "Settings saved", "contact.edit": "Contact details corrected",

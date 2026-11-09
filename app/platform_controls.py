@@ -74,3 +74,16 @@ def send_mail(store, sender, to: str, subject: str, body: str, kind: str, has_li
     except Exception:
         pass
     return result
+
+
+SIGNUP_KEY = "public_signup_open"
+
+
+def signup_open(store) -> bool:
+    """Public sign-up ("Create an account") is closed until a super admin opens it (legal pages, terms, capacity)."""
+    return bool(store.read("settings").get(SIGNUP_KEY))
+
+
+def set_signup(store, on: bool) -> bool:
+    store.update("settings", lambda s: {**s, SIGNUP_KEY: bool(on)})
+    return bool(on)

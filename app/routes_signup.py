@@ -85,15 +85,21 @@ def make_router(store, admin_password: str, base_url_of, sender) -> APIRouter:
 
     @router.get("/api/signup/config")
     def config():
-        return {"providers": oidc.public_list(), "magic_link": True, "signup": True,
+        return {"providers": oidc.public_list(), "magic_link": True, "signup": platform_controls.signup_open(store),
                 "terms": {"terms": signup.TERMS_VERSION, "privacy": signup.PRIVACY_VERSION, "dpa": signup.DPA_VERSION}}
+
+    def require_open():
+        if not platform_controls.signup_open(store):
+            raise HTTPException(403, "Sign-up is not open yet. Ask the platform admin for an invitation.")
 
     @router.get("/api/signup/form")
     def form():
+        require_open()
         return {"ticket": signup.form_ticket(store), "min_seconds": signup.MIN_FILL_SECONDS}
 
     @router.post("/api/signup")
     def create(body: SignupBody, request: Request):
+        require_open()
         ip = client_ip(request)
         try:
             result = signup.request_signup(store, body.model_dump(), ip, base_url_of(), sender)
@@ -118,6 +124,7 @@ def make_router(store, admin_password: str, base_url_of, sender) -> APIRouter:
 
     @router.post("/api/signup/oidc")
     def oidc_signup(body: OidcSignupBody, request: Request):
+        require_open()
         claims = signup.unsign(store, "oidc-signup", body.ticket)
         if not claims:
             raise HTTPException(400, "This sign-up has expired. Start again with Google or Microsoft.")

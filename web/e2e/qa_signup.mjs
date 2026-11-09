@@ -32,10 +32,32 @@ function verifyLink() {
   return `${UI}/#verify?token=${m[1]}`;
 }
 
+const sup = await session();
 const client = await session();
+await step("Sign-up is closed by default: no 'Create an account' link; the super admin opens it in Setup > Accounts", async () => {
+  const c = client.page;
+  await c.goto(UI);
+  await c.getByLabel("Password").waitFor();
+  if (await c.getByTestId("signup-link").count()) throw new Error("sign-up link shown while sign-up is closed");
+  const p = sup.page;
+  await p.goto(UI);
+  await p.getByLabel("Password").fill(ADMIN);
+  await p.getByRole("button", { name: "Sign in" }).click();
+  await p.locator("main").waitFor();
+  const later = p.getByRole("button", { name: "Skip setup" });
+  await later.waitFor({ timeout: 6000 }).then(async () => { await later.click(); }, () => {});
+  await nav(p, "Setup");
+  await p.getByTestId("setup-nav-accounts").click();
+  const sw = p.getByTestId("signup-switch");
+  await sw.waitFor();
+  p.once("dialog", (d) => d.accept());
+  await sw.getByTestId("signup-switch-button").click();
+  await sw.getByText(/OPEN\./).waitFor();
+});
 await step("Sign-up form from the sign-in page: 'Create an account' -> check your inbox", async () => {
   const p = client.page;
   await p.goto(UI);
+  await p.getByTestId("signup-link").waitFor();
   await p.getByTestId("signup-link").click();
   const f = p.getByTestId("signup-form");
   await f.getByLabel("Company name").fill("Delta Freight");
@@ -60,15 +82,9 @@ await step("The emailed link confirms the address and opens the waiting page", a
   await p.screenshot({ path: `${SHOTS}/signup-pending.png` });
 });
 
-const sup = await session();
 await step("Super admin sees the sign-up in the bell and approves it in Setup > Accounts", async () => {
   const p = sup.page;
-  await p.goto(UI);
-  await p.getByLabel("Password").fill(ADMIN);
-  await p.getByRole("button", { name: "Sign in" }).click();
-  await p.locator("main").waitFor();
-  const later = p.getByRole("button", { name: "Skip setup" });
-  await later.waitFor({ timeout: 6000 }).then(async () => { await later.click(); }, () => {});
+  await p.reload(); await p.locator("main").waitFor(); await p.waitForTimeout(1200);
   await nav(p, "Setup");
   await p.getByTestId("setup-nav-accounts").click();
   const q = p.getByTestId("pending-queue");

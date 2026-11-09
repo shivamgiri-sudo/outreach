@@ -17,7 +17,7 @@ SUPER = "boss@mcn.example"
 SUPER_PW = "boss-long-password-1"
 
 
-def make(tmp_path, monkeypatch, ip="203.0.113.9"):
+def make(tmp_path, monkeypatch, ip="203.0.113.9", open_signup=True):
     outbox = tmp_path / "dev_outbox.jsonl"
     monkeypatch.setenv("OUTREACH_DEV_OUTBOX", str(outbox))
     monkeypatch.setenv("OUTREACH_SUPER_ADMIN", SUPER)
@@ -27,6 +27,8 @@ def make(tmp_path, monkeypatch, ip="203.0.113.9"):
     ha = {"Authorization": f"Bearer {c.post('/api/login', json={'password': ADMIN}).json()['token']}"}
     assert c.post("/api/users", json={"email": SUPER, "name": "Boss", "role": "owner", "password": SUPER_PW}, headers=ha).status_code == 200
     hs = {"Authorization": f"Bearer {sign_in(c, SUPER, SUPER_PW)}"}
+    if open_signup:                          # public sign-up is closed by default; most tests exercise it open
+        assert c.put("/api/console/signup-open", json={"on": True}, headers=hs).status_code == 200
     return c, ha, hs, outbox
 
 

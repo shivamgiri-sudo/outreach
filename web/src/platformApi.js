@@ -37,6 +37,7 @@ export const platform = {
   remove: (id, confirm) => post(`/api/console/accounts/${encodeURIComponent(id)}/delete`, { confirm }),
   approveWorkspace: (id) => post(`/api/workspaces/${encodeURIComponent(id)}/approve`),
   rejectWorkspace: (id) => post(`/api/workspaces/${encodeURIComponent(id)}/reject`),
+  setSignupOpen: (on) => request("/api/console/signup-open", { method: "PUT", body: { on, reason: "" } }),
   stopSending: (on, reason = "") => request("/api/console/stop-sending", { method: "PUT", body: { on, reason } }),
   accountAudit: () => request("/api/account/audit"),
   usage: (accountId = "") => request(`/api/account/usage${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ""}`),
