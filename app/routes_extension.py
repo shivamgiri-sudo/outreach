@@ -114,8 +114,12 @@ def make_router(store) -> APIRouter:
     def claim(lead_id: str, request: Request):
         """Before an agent touches a person: the lead becomes this account's (atomically), unless another account has it."""
         account = account_of(request)
-        lead_or_404(lead_id)
+        lead = lead_or_404(lead_id)
         from . import linkedin_guard
+        settings = store.read("settings")
+        holder = accts.assigned(lead, settings) if account else ""
+        if holder and holder != account:                   # another account's person: say so before anything else
+            raise HTTPException(409, f"Another LinkedIn account ({holder}) is handling this person.")
         held = linkedin_guard.refusal(store, lead_id, account)
         if held:
             raise HTTPException(409, f"This person was {held}.")
@@ -123,7 +127,6 @@ def make_router(store) -> APIRouter:
             linkedin_guard.count_try(store, lead_id)
             return {"ok": True, "account": ""}
         won = {}
-        settings = store.read("settings")
 
         def apply(l):
             seq = l.get("linkedin_seq")
