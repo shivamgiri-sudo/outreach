@@ -42,6 +42,10 @@ const PATHS = {
   menu: "M4 6h16M4 12h16M4 18h16",
   close: "M18 6 6 18M6 6l12 12",
   capslock: "M9 18v-6H5l7-7 7 7h-4v6zM9 21h6",
+  more: "M12 5.5h.01M12 12h.01M12 18.5h.01",
+  pencil: "M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z",
+  trash: "M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6",
+  building: "M4 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18M16 9h2a2 2 0 0 1 2 2v11M2 22h20M8 6h4M8 10h4M8 14h4M8 18h4",
 };
 
 export default function Icon({ name, size = 18 }) {

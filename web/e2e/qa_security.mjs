@@ -63,7 +63,7 @@ await step("Owner signs in and adds a caller login", async () => {
 });
 await step("Setup > Security shows the owner's sign-in in the login history", async () => {
   await nav(owner.page, "Setup");
-  await owner.page.getByRole("tab", { name: "Security" }).click();
+  await owner.page.getByTestId("setup-nav-security").click();
   await owner.page.getByTestId("login-table").waitFor();
   const t = await owner.page.getByTestId("login-table").innerText();
   if (!/admin password/.test(t) || !/Success/.test(t)) throw new Error(t.slice(0, 200));
@@ -75,7 +75,7 @@ await step("Ann turns on two-step login from Setup > My password and gets 8 reco
   await password(ann.page, ANN.email, ANN.password);
   await intoApp(ann.page);
   await nav(ann.page, "Setup");
-  await ann.page.getByRole("tab", { name: "My password" }).click();
+  await ann.page.getByTestId("setup-nav-account").click();
   await ann.page.getByRole("button", { name: "Set up two-step login" }).click();
   secret = await keyText(ann.page);
   if (secret.length !== 32) throw new Error(`key ${secret}`);
@@ -98,8 +98,8 @@ await step("Signing in again asks for the code; a wrong code is refused, the rig
   await intoApp(ann.page);
 });
 await step("Owner sees Ann's sign-ins (failed code, two-step yes), requires two-step for everyone and resets Ann's", async () => {
-  await owner.page.getByRole("tab", { name: "Audit" }).click();
-  await owner.page.getByRole("tab", { name: "Security" }).click();
+  await owner.page.getByTestId("setup-nav-audit").click();
+  await owner.page.getByTestId("setup-nav-security").click();
   await owner.page.getByTestId("login-table").waitFor();
   const t = await owner.page.getByTestId("login-table").innerText();
   if (!/wrong two-step code/.test(t) || !/Waiting for code/.test(t)) throw new Error(t.slice(0, 400));
@@ -127,7 +127,7 @@ await step("With two-step required, Ann (reset) sets it up again while signing i
   await ann.page.getByRole("button", { name: "I saved them, continue" }).click();
   await intoApp(ann.page);
   await nav(ann.page, "Setup");
-  if (await ann.page.getByRole("tab", { name: "Security" }).count()) throw new Error("a caller sees the Security tab");
+  if (await ann.page.getByTestId("setup-nav-security").count()) throw new Error("a caller sees the Security tab");
 });
 for (const s of [owner, ann]) if (s.errors.length) results.push([false, `page errors: ${s.errors.join(" | ").slice(0, 300)}`]);
 

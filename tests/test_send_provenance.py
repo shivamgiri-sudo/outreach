@@ -237,7 +237,8 @@ def test_export_has_provenance_columns_is_audited_and_scoped(tmp_path):
     assert c.post(f"/api/workspaces/{w['id']}/move", json={"lead_ids": [leads["Acme"]]}, headers=ho).status_code == 200
     c.post("/api/users", json={"email": "boss@one.example", "name": "Boss", "role": "admin", "password": "long-password-1",
                                "workspaces": [w["id"]]}, headers=ho)
-    c.post("/api/users", json={"email": "cal@one.example", "name": "Cal", "role": "caller", "password": "long-password-1"}, headers=ho)
+    c.post("/api/users", json={"email": "cal@one.example", "name": "Cal", "role": "caller", "password": "long-password-1",
+                               "all_workspaces": True}, headers=ho)
     ha = {"Authorization": f"Bearer {c.post('/api/login', json={'email': 'boss@one.example', 'password': 'long-password-1'}).json()['token']}"}
     hc = {"Authorization": f"Bearer {c.post('/api/login', json={'email': 'cal@one.example', 'password': 'long-password-1'}).json()['token']}"}
 
