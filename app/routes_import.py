@@ -3,7 +3,7 @@ import re
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from . import workspaces
@@ -111,6 +111,23 @@ def make_router(store) -> APIRouter:
                 "fields": {**FIELDS, **{f"custom:{f['key']}": f"{f['label']} (custom)" for f in ctx["custom_fields"]}},
                 "rows": result["sample"], **{k: v for k, v in trim_lists(result).items()
                                              if k not in ("sample", "created_ids", "merged_ids")}}
+
+    @router.post("/api/import/excel")
+    async def excel(request: Request, filename: str = Query("", max_length=200), sheet: str = Query("", max_length=120)):
+        """An Excel file (raw body) as CSV text for the import screens; nothing is saved."""
+        from .excel_import import MAX_BYTES, ExcelError, to_csv
+        if int(request.headers.get("content-length") or 0) > MAX_BYTES:
+            raise HTTPException(413, f"The file is larger than {MAX_BYTES // (1024 * 1024)} MB.")
+        data = await request.body()
+        if len(data) > MAX_BYTES:
+            raise HTTPException(413, f"The file is larger than {MAX_BYTES // (1024 * 1024)} MB.")
+        try:
+            out = to_csv(data, filename, sheet)
+        except ExcelError as exc:
+            raise HTTPException(400, str(exc)) from None
+        if len(out["csv"]) > MAX_CSV_CHARS:
+            raise HTTPException(400, "This sheet is too large to import in one go. Split it into smaller files.")
+        return out
 
     @router.post("/api/import/preview")
     def preview(body: ImportBody):

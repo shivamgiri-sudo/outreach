@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, canWrite, isOwner } from "../api.js";
+import { api, canWrite, EXCEL_ACCEPT, isOwner, readLeadFile } from "../api.js";
 import { EmptyArt } from "../states.jsx";
 import { BAND_LABELS, STAGE_LABELS, STAGE_ORDER, sourceId, sourceLabel, sourceOptions, stageLabel, useSourceRegistry } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
@@ -237,7 +237,8 @@ export default function Leads({ go }) {
     }
   };
 
-  const readFile = (file) => file && file.text().then(setCsv);
+  const readFile = (file) => file && readLeadFile(file).then((r) => { setCsv(r.csv); if (r.sheet) setMessage(`Read sheet "${r.sheet}" (${r.rows} rows) from ${file.name}.`); })
+    .catch((e) => setMessage(e.message));
 
   const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, hasFilter)
     && customMatches(l, customFilter, customFields)).sort(SORTS[sort]),
@@ -338,8 +339,8 @@ export default function Leads({ go }) {
               </select>
             </div>
             <div style={{ flex: 1 }}>
-              <label>Upload a CSV (Apollo, Sales Navigator export…)</label>
-              <input type="file" accept=".csv" onChange={(e) => readFile(e.target.files[0])} />
+              <label>Upload a CSV or Excel file (Apollo, Sales Navigator export…)</label>
+              <input type="file" accept={EXCEL_ACCEPT} onChange={(e) => readFile(e.target.files[0])} />
             </div>
           </div>
           <label>Or paste CSV (first row = column names)</label>

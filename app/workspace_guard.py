@@ -43,7 +43,7 @@ LIMITED_OK = {
     # workspace admins: logins of their own workspaces (the routes check every target and workspace)
     ("GET", "/api/users"), ("POST", "/api/users"), ("PUT", "/api/users/{email}"), ("DELETE", "/api/users/{email}"),
     ("GET", "/api/reports/sla"), ("GET", "/api/reports/daily"), ("GET", "/api/reports/daily.csv"), ("POST", "/api/reports/email"),
-    ("POST", "/api/import/preview"), ("POST", "/api/import/commit"), ("GET", "/api/import/history"), ("POST", "/api/import/{import_id}/undo"),
+    ("POST", "/api/import/preview"), ("POST", "/api/import/excel"), ("POST", "/api/import/commit"), ("GET", "/api/import/history"), ("POST", "/api/import/{import_id}/undo"),
 }
 LEAD_PARAMS = ("{lead_id}", "{task_id}")
 NOT_FOR_LEAD_PARAMS = ()

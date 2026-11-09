@@ -83,6 +83,16 @@ async function upload(path, file) {
   return res.json();
 }
 
+// A lead file for the import screens: CSV is read as text; an Excel file (.xlsx / .xlsm / .xls) is turned into CSV by
+// the server (first sheet with data, or `sheet`). Returns { csv, sheet?, sheets?, rows? }.
+export const EXCEL_ACCEPT = ".csv,.xlsx,.xlsm,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+export async function readLeadFile(file, sheet = "") {
+  if (!/\.(xlsx|xlsm|xls)$/i.test(file.name)) return { csv: await file.text() };
+  const q = new URLSearchParams({ filename: file.name, ...(sheet ? { sheet } : {}) });
+  const res = await fileRequest(`/api/import/excel?${q}`, { method: "POST", body: file, contentType: "application/octet-stream", what: "Reading the Excel file" });
+  return res.json();
+}
+
 export const api = {
   download,
   upload,

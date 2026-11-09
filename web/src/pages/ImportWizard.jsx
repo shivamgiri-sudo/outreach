@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { istLabel } from "../time.js";
-import { api, canWrite } from "../api.js";
+import { api, canWrite, EXCEL_ACCEPT, readLeadFile } from "../api.js";
 import { sourceLabel, sourceOptions, useSourceRegistry } from "../labels.js";
 
 // Four steps: add the list, check the columns, dry run (nothing saved), import (with undo).
@@ -198,7 +198,13 @@ export default function ImportWizard({ onClose, onDone }) {
   const changeOptions = (next) => { setOptions(next); run(async () => setPreview(await api.importPreview(body({ options: next })))); };
   const commit = () => run(async () => { setResult(await api.importCommit(body())); setStep(3); onDone?.(); });
   const undo = (id) => api.importUndo(id).then((r) => { setUndone(r); onDone?.(); return r; });
-  const readFile = (file) => { if (!file) return; setFileName(file.name); file.text().then(setCsv); };
+  const [sheets, setSheets] = useState(null);       // Excel: { file, sheet, sheets, rows }
+  const readFile = (file, sheet = "") => {
+    if (!file) return;
+    setFileName(file.name); setError("");
+    readLeadFile(file, sheet).then((r) => { setCsv(r.csv); setSheets(r.sheets ? { file, sheet: r.sheet, sheets: r.sheets, rows: r.rows } : null); })
+      .catch((e) => { setCsv(""); setSheets(null); setError(e.message); });
+  };
   if (!canWrite()) return null;                // viewers can't import (the server refuses)
 
   return (
@@ -218,11 +224,17 @@ export default function ImportWizard({ onClose, onDone }) {
             Any export works: Apollo, Sales Navigator, Lusha, ZoomInfo, Hunter, job boards, IndiaMART, Google Maps, the team sheet or your own columns.
             Duplicates are found and merged; nothing is saved until the last step.
           </p>
-          <label htmlFor="import-file">Upload a CSV file (save Excel sheets as CSV first)</label>
-          <input id="import-file" type="file" accept=".csv,.tsv,.txt,text/csv" onChange={(e) => readFile(e.target.files[0])} />
-          {fileName && <small className="sub-inline">Loaded {fileName}</small>}
+          <label htmlFor="import-file">Upload a CSV or Excel file (.csv, .xlsx, .xls)</label>
+          <input id="import-file" type="file" accept={`${EXCEL_ACCEPT},.tsv,.txt`} onChange={(e) => readFile(e.target.files[0])} />
+          {fileName && <small className="sub-inline" data-testid="import-loaded">Loaded {fileName}{sheets ? ` · sheet "${sheets.sheet}" · ${sheets.rows} rows` : ""}</small>}
+          {sheets && sheets.sheets.length > 1 && (
+            <label>Sheet to import
+              <select data-testid="import-sheet" value={sheets.sheet} onChange={(e) => readFile(sheets.file, e.target.value)}>
+                {sheets.sheets.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select></label>
+          )}
           <label htmlFor="import-paste">Or paste the rows (first row = column names; copying from Excel or Google Sheets works)</label>
-          <textarea id="import-paste" rows={6} value={csv} onChange={(e) => { setCsv(e.target.value); setFileName(""); }} />
+          <textarea id="import-paste" rows={6} value={csv} onChange={(e) => { setCsv(e.target.value); setFileName(""); setSheets(null); }} />
           <label htmlFor="import-source">Where did this list come from?</label>
           <select id="import-source" value={source} onChange={(e) => setSource(e.target.value)}>
             <option value="">Work it out from the columns</option>
