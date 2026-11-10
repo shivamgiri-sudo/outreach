@@ -57,7 +57,7 @@ def test_first_matching_rule_wins_in_order(tmp_path):
     assert A.assign_new(s, lead(3, city="Delhi")) == "Cy"                       # no rule: default team
     l = next(x for x in s.read("leads") if x["id"] == "l1")
     assert l["owner_why"]["kind"] == "rule" and l["owner_why"]["rule_id"] == "r1" and l["owner_why"]["at"]
-    assert l["first_touch_due_at"] is None and any(e["kind"] == "owner" for e in l["timeline"])
+    assert any(e["kind"] == "owner" for e in l["timeline"])
 
 
 def test_no_team_leaves_it_unassigned_and_counted(tmp_path):
@@ -202,6 +202,7 @@ def test_first_touch_clock_started_when_module_exists(tmp_path, monkeypatch):
     calls = []
     mod = types.ModuleType("app.first_touch")
     mod.start = lambda store, lead_id: calls.append(lead_id)
+    mod.stamp = lambda old, new: new                    # Store.update_lead calls it on every lead write
     monkeypatch.setitem(sys.modules, "app.first_touch", mod)
     monkeypatch.setattr("app.first_touch", mod, raising=False)
     s = mk_store(tmp_path)

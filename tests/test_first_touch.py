@@ -33,7 +33,9 @@ def fake(monkeypatch):
     mod.next_member = next_member
     mod.team_of_owner = lambda store, ws, owner: state["teams"].get(owner, "")
     mod.manager_of = lambda store, ws, owner: state["manager"]
+    import app as app_pkg
     monkeypatch.setitem(sys.modules, "app.assignment", mod)
+    monkeypatch.setattr(app_pkg, "assignment", mod, raising=False)         # `from . import assignment` reads the package attribute
     return state
 
 

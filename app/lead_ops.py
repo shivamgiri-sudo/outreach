@@ -74,7 +74,9 @@ def _owner_change(lead: dict, owner: str, by: str, why: str = ""):
     if old == owner:
         return None
     text = f"Owner: {old or 'nobody'} → {owner or 'nobody'}" + (f" ({why})" if why else "") + f" (by {by})"
-    return {**lead, "owner": owner, "owner_at": now_iso(), "timeline": _with_event(lead, "owner", text, by)}
+    kind = "list" if str(why).startswith("list") else "reassigned" if by == "system" else "upload" if str(why).startswith("upload") else "manual"
+    return {**lead, "owner": owner, "owner_at": now_iso(), "owner_why": {"kind": kind, "at": now_iso(), "by": by, "note": why},
+            "timeline": _with_event(lead, "owner", text, by)}
 
 
 def set_owner(store, lead_id: str, owner: str, by: str, why: str = "") -> Optional[dict]:

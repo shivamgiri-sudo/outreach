@@ -101,6 +101,20 @@ await step("Admin still sees every list and lead", async () => {
   ok((Array.isArray(all) ? all : all.leads || []).length >= 4, "admin leads");
   await admin.screenshot({ path: `${SHOTS}/own-admin-lists.png`, fullPage: true });
 });
+await step("Admin dashboard shows the first-touch card", async () => {
+  await go(admin, "#dashboard");
+  await admin.getByText("First touch by person").waitFor({ timeout: 8000 });
+  await admin.screenshot({ path: `${SHOTS}/own-dashboard.png`, fullPage: true });
+});
+await step("Lead drawer shows who assigned the lead and how", async () => {
+  await go(admin, "#leads");
+  await admin.getByRole("button", { name: "Alpha Ltd" }).first().click();
+  const d = admin.getByRole("dialog").first();
+  await d.getByRole("tab", { name: "Outreach" }).click();
+  await d.getByText(/Assigned by/).first().waitFor({ timeout: 8000 });
+  await admin.screenshot({ path: `${SHOTS}/own-drawer.png`, fullPage: true });
+  await admin.keyboard.press("Escape");
+});
 await step("Member cannot reach admin-only assignment screens", async () => {
   const r = await api(priya, "PUT", `/api/lists/${listP.id}/assign`, { to: "Priya" });
   ok(r.status === 403, `assign status ${r.status}`);
