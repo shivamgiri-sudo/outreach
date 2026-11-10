@@ -1,6 +1,7 @@
 """Sales funnel through the app: the lead's sales stage, the dashboard numbers, drill-down, settings, permissions, account
 scoping, and the import / sheet / Meta paths that fill the record. Pure rules are in test_sales_funnel.py."""
 import time
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -23,6 +24,9 @@ def rig(tmp_path, monkeypatch):
     assert c.post("/api/leads/import", json={"csv": CSV_B}, headers=r["hb"]).status_code == 200
     r["b_ids"] = [l["id"] for l in c.get("/api/leads", headers=r["hb"]).json()]
     return r
+
+
+TODAY = (datetime.now(timezone.utc) + timedelta(minutes=330)).date().isoformat()          # IST today: the tests import leads "now"
 
 
 def put(r, lead_id, body, h=None):
@@ -205,7 +209,7 @@ def test_settings_are_editable_by_owner_and_workspace_admin_only_and_belong_to_t
     assert c.get("/api/funnel/settings", headers=rig["hc"]).json()["sla_hours"] == 4         # shared inside the account
     assert c.get("/api/funnel/settings", headers=rig["ho"]).json()["sla_hours"] == 24        # not Mas Callnet's
     assert c.put("/api/funnel/settings", json={"sla_hours": 0}, headers=rig["hb"]).status_code == 400
-    d = funnel(rig, **{"from": "2026-11-01", "to": "2026-11-09"}).json()
+    d = funnel(rig, **{"from": "2026-11-01", "to": TODAY}).json()
     assert d["sla"]["hours"] == 4 and d["coverage"]["target"] == 500000
     assert any(a["action"] == "sales.settings" for a in rig["store"].read("audit"))
     assert c.put("/api/funnel/settings", json={"sla_hours": 12}, headers=rig["ho"]).status_code == 200
@@ -246,7 +250,7 @@ def test_smart_import_reads_rajeshs_columns_and_the_dashboard_matches(rig):
     assert done.status_code == 200, done.text
     warnings = " ".join(w["text"] for w in done.json().get("warnings", []))
     assert "Meeting Held Date" in warnings                                        # Gamma's Proposal without a meeting is refused, with the reason
-    d = funnel(rig, **{"from": "2026-10-01", "to": "2026-11-09"}).json()
+    d = funnel(rig, **{"from": "2026-10-01", "to": TODAY}).json()           # leads imported now are created today
     leads = {l["email"]: l for l in rig["store"].read("leads") if l["email"] in ("a@acme.example", "b@beta.example", "g@gamma.example")}
     acme, beta, gamma = leads["a@acme.example"], leads["b@beta.example"], leads["g@gamma.example"]
     assert acme["owner"] == "Asha" and acme["sales"]["status"] == M.WON and gamma["sales"].get("status") in (None, M.INQUIRY)
