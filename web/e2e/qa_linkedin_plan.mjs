@@ -64,6 +64,31 @@ await step("Communication plan shows LinkedIn and email steps and the follow-up"
   if (!/LinkedIn step 1/.test(fu)) throw new Error(`follow-ups: ${fu}`);
   await p.screenshot({ path: `${SHOTS}/lead-plan.png`, fullPage: true });
 });
+await step("Lead shows who has contacted this person on LinkedIn (own workspace only)", async () => {
+  await p.getByRole("dialog").first().getByRole("tab", { name: "Outreach" }).click();
+  const box = p.getByRole("dialog").first().getByTestId("li-contacts");
+  await box.waitFor({ timeout: 8000 });
+  const t = await box.innerText();
+  if (!/this lead/.test(t) || !/on the sequence, nothing sent yet/.test(t)) throw new Error(t.slice(0, 300));
+  await p.screenshot({ path: `${SHOTS}/lead-contacts.png`, fullPage: true });
+  await p.keyboard.press("Escape");
+});
+await step("Start LinkedIn on a lead with no link: it is looked up, not refused", async () => {
+  await nav("Leads");
+  await p.getByRole("button", { name: "Quick paste" }).click();
+  await p.locator("textarea").first().fill("company,contact_name,title,email\nFind Me Pvt Ltd,Anita Desai,HR Head,anita@findme.example");
+  await p.getByRole("button", { name: "Import", exact: true }).click();
+  await p.getByText("Added 1").waitFor();
+  await p.getByRole("checkbox", { name: /Select all shown/ }).check();
+  await p.getByRole("checkbox", { name: /Select Rohit/ }).uncheck().catch(() => {});
+  await p.getByRole("button", { name: "Start LinkedIn outreach" }).click();
+  await p.getByText(/being looked up/).first().waitFor({ timeout: 10000 });
+  await p.getByRole("button", { name: "Find Me Pvt Ltd" }).first().click();
+  const d = p.getByRole("dialog").first();
+  await d.getByRole("tab", { name: "Outreach" }).click();
+  await d.getByText(/Finding profile/).first().waitFor({ timeout: 8000 });
+  await p.screenshot({ path: `${SHOTS}/lead-finding.png`, fullPage: true });
+});
 
 await browser.close();
 for (const [ok, name] of results) console.log(`${ok ? "PASS" : "FAIL"} ${name}`);

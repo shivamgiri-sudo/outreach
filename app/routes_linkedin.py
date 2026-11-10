@@ -204,6 +204,15 @@ def make_router(store) -> APIRouter:
         out["lead"] = provenance.stamp_linkedin_start(store, lead_id, who["name"], who["email"], "by hand") or out["lead"]
         return out
 
+    @router.get("/api/leads/{lead_id}/linkedin/contacts")
+    def contacts(lead_id: str):
+        """Who in this lead's workspace is connected to / has contacted this LinkedIn person (never another workspace)."""
+        from . import linkedin_dupes, workspaces
+        lead = lead_or_404(lead_id)
+        if not workspaces.visible(lead):
+            raise HTTPException(404, "Lead not found")
+        return {"contacts": linkedin_dupes.contacts(store, lead)}
+
     @router.post("/api/leads/{lead_id}/linkedin/find")
     def find(lead_id: str, body: FindBody, request: Request):
         """A person settles a profile lookup: pick one of the people found, paste the link, or skip."""

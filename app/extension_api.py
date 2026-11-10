@@ -216,7 +216,7 @@ def describe(store, lead: dict, account: str = "") -> dict:
         out["actions"] = ["replied"] if seq else []
         return out
     from . import linkedin_dupes
-    dup = linkedin_dupes.duplicate_of(store, lead)
+    dup = linkedin_dupes.duplicate_of(store, lead, account)
     if dup:                                        # the same person was already contacted through another lead
         out.update(reason=dup["reason"], duplicate=dup)
         return out

@@ -234,7 +234,7 @@ def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = Fals
     if lead.get("linkedin_seq"):
         raise ValueError("This lead is already on the LinkedIn sequence; it is never restarted.")
     from . import linkedin_dupes
-    dup = linkedin_dupes.duplicate_of(store, lead)          # the same person is contacted once per client account
+    dup = linkedin_dupes.duplicate_of(store, lead)          # the same person is contacted once per LinkedIn ID
     if dup:
         linkedin_dupes.mark(store, lead_id, dup)
         raise ValueError(dup["reason"])

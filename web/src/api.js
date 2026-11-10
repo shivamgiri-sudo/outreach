@@ -192,6 +192,7 @@ export const api = {
   findRecent: () => request("/api/find-leads"),
   linkedinResults: (csv) => request("/api/linkedin/results", { method: "POST", body: { csv } }),
   linkedinQueue: () => request("/api/linkedin/queue"),
+  linkedinContacts: (id) => request(`/api/leads/${id}/linkedin/contacts`),
   linkedinFind: (id, action, url = "") => request(`/api/leads/${id}/linkedin/find`, { method: "POST", body: { action, url } }),
   linkedinSettings: () => request("/api/linkedin/settings"),
   linkedinAccounts: () => request("/api/linkedin/accounts"),

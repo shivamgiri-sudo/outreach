@@ -176,7 +176,7 @@ def make_router(store) -> APIRouter:
         if holder and holder != account:                   # another account's person: say so before anything else
             raise HTTPException(409, f"Another LinkedIn account ({holder}) is handling this person.")
         from . import linkedin_dupes
-        dup = linkedin_dupes.duplicate_of(store, lead)          # never the same person from two leads / two LinkedIn accounts
+        dup = linkedin_dupes.duplicate_of(store, lead, account)  # never the same person twice from the same LinkedIn ID
         if dup:
             raise HTTPException(409, dup["reason"])
         held = linkedin_guard.refusal(store, lead_id, account)
@@ -194,7 +194,7 @@ def make_router(store) -> APIRouter:
                 won["other"] = holder
                 return None
             if seq and not seq.get("account"):           # re-check inside the lock: a sibling may have been taken meanwhile
-                again = linkedin_dupes.Index(store).of(l)
+                again = linkedin_dupes.Index(store).of(l, account)
                 if again:
                     won["dup"] = again["reason"]
                     return None

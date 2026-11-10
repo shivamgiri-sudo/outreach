@@ -1,13 +1,14 @@
-"""One LinkedIn person is contacted once per client account, whichever lead, team member, workspace or LinkedIn account.
+"""One LinkedIn person is contacted once per LinkedIn ID (sender profile) inside one workspace.
 
-Two leads are "the same person" when their profile links reduce to the same key (see profile_key). The scope is the
-client account (app/accounts.py), not one workspace. A person counts as already contacted when another lead with the
-same key in the account has a connect/message sent, or is currently held by a LinkedIn account. A lead that was itself
-contacted is never called a duplicate (it is the original; its follow-ups go on).
+Two leads are "the same person" when their profile links reduce to the same key (see profile_key). A different
+LinkedIn ID may still contact the person: only the SAME sender profile never contacts them twice. The sender of a lead is
+the LinkedIn account that holds it, else the one picked for it / the owner's default; a lead with no sender yet is judged
+when an account claims it. The scope is the client account (app/accounts.py). A lead that was itself contacted is never
+called a duplicate (it is the original; its follow-ups go on).
 """
 from typing import Optional
 
-from . import accounts
+from . import accounts, workspaces
 from .activities import iso, now_utc
 
 
@@ -54,20 +55,27 @@ class Index:
 
     def __init__(self, store, leads: Optional[list] = None):
         self.amap = accounts.ws_account_map(store)
+        self.settings = store.read("settings")
         self.by_key = {}
         for l in (leads if leads is not None else store.read("leads")):
             if contacted(l) or held(l) or pending(l):
                 key = profile_key(l.get("linkedin_url"))
                 if key:
-                    self.by_key.setdefault((accounts.account_of_lead(self.amap, l), key), []).append(l)
+                    self.by_key.setdefault((workspaces.ws_of(l), key), []).append(l)
 
-    def of(self, lead: dict) -> Optional[dict]:
-        """{lead_id, name, reason, ...} of the lead that already has this person, or None."""
+    def sender(self, lead: dict, account: str = "") -> str:
+        """The LinkedIn ID that sends for this lead: the asking account, the one holding it, else picked / owner default."""
+        from . import linkedin_accounts as accts
+        return account or ((lead.get("linkedin_seq") or {}).get("account") or "") or accts.assigned(lead, self.settings)
+
+    def of(self, lead: dict, account: str = "") -> Optional[dict]:
+        """{lead_id, name, reason, ...} of the lead that already has this person from the same LinkedIn ID, or None."""
         key = profile_key((lead or {}).get("linkedin_url"))
-        if not key or contacted(lead) or held(lead):
+        me = self.sender(lead, account) if key else ""
+        if not key or not me or contacted(lead) or held(lead):
             return None
-        rows = [o for o in self.by_key.get((accounts.account_of_lead(self.amap, lead), key), []) if o.get("id") != lead.get("id")
-                and (contacted(o) or held(o) or not lead.get("linkedin_seq"))]
+        rows = [o for o in self.by_key.get((workspaces.ws_of(lead), key), []) if o.get("id") != lead.get("id")
+                and self.sender(o) == me and (contacted(o) or held(o) or not lead.get("linkedin_seq"))]
         if not rows:
             return None
         rows.sort(key=lambda o: (not contacted(o), (o.get("linkedin_seq") or {}).get("started_at") or ""))
@@ -77,8 +85,8 @@ class Index:
                 "reason": _reason(o)}
 
 
-def duplicate_of(store, lead: dict) -> Optional[dict]:
-    return Index(store).of(lead)
+def duplicate_of(store, lead: dict, account: str = "") -> Optional[dict]:
+    return Index(store).of(lead, account)
 
 
 def mark(store, lead_id: str, dup: dict) -> None:
@@ -103,3 +111,39 @@ def mirror(store, lead_id: str, text: str) -> None:
                 store.update_lead(l["id"], apply)
     except Exception:
         pass
+
+
+def _status(l: dict) -> str:
+    seq = l.get("linkedin_seq") or {}
+    if seq.get("status") == "stopped":
+        return "stopped" + (f" ({seq['stopped']})" if seq.get("stopped") else "")
+    if seq.get("accepted_at"):
+        return "connected"
+    if contacted(l):
+        return "connection request sent, waiting"
+    if seq:
+        return "on the sequence, nothing sent yet"
+    return "not started"
+
+
+def contacts(store, lead: dict) -> list:
+    """Who in THIS lead's workspace is connected to or has contacted this person: one row per lead with the same profile
+    (the lead itself included): the user, the LinkedIn ID, where it stands and the dates. Other workspaces never appear."""
+    key = profile_key((lead or {}).get("linkedin_url"))
+    if not key:
+        return []
+    ws = workspaces.ws_of(lead)
+    names = {w.get("id"): w.get("name") for w in workspaces.all_workspaces(store)}
+    out = []
+    for l in store.read("leads"):
+        if workspaces.ws_of(l) != ws or profile_key(l.get("linkedin_url")) != key:
+            continue
+        seq = l.get("linkedin_seq") or {}
+        if not seq and not l.get("linkedin_dup_of") and l.get("id") != lead.get("id"):
+            continue
+        out.append({"lead_id": l["id"], "this_lead": l.get("id") == lead.get("id"), "lead": l.get("contact_name") or l.get("company"),
+                    "user": seq.get("enrolled_by") or l.get("owner") or "", "workspace": names.get(ws) or ws,
+                    "linkedin_account": seq.get("account") or l.get("linkedin_account") or "", "status": _status(l),
+                    "sent_on": (seq.get("last_sent_at") or "")[:10], "connected_on": (seq.get("accepted_at") or "")[:10],
+                    "steps_done": sorted(seq.get("done") or [])})
+    return out

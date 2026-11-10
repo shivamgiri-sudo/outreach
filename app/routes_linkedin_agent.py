@@ -60,6 +60,10 @@ def make_router(store, notify_sender=None) -> APIRouter:
                 names.setdefault(row["account_id"], scope.name_of(store, row["account_id"]))
                 row["account_name"] = names[row["account_id"]]
         out["account_name"] = scope.name_of(store, owner) if owner else "All accounts"
+        from . import workspaces
+        seen = workspaces.visible_lead_ids(store)          # None = every workspace; else a log line about another workspace's lead is hidden
+        if seen is not None:
+            out["log"] = [r for r in out["log"] if not r.get("lead_id") or r["lead_id"] in seen]
         mine = scope.my_slugs(store, user)
         if mine is not None:                         # not an owner: only the LinkedIn profiles that are theirs
             out["accounts"] = [a for a in out["accounts"] if a["account"] in mine]

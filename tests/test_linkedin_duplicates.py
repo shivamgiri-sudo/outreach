@@ -1,5 +1,5 @@
-"""One LinkedIn person is contacted once per client account: same profile under any spelling, from any lead / team member /
-workspace of the account, from any LinkedIn account. Different client accounts never block each other."""
+"""One LinkedIn person is contacted once per LinkedIn ID: same profile under any spelling, from any lead / team member /
+workspace. A different LinkedIn ID may still contact the person. A workspace never sees or is blocked by another workspace."""
 import pytest
 from fastapi.testclient import TestClient
 
@@ -40,13 +40,20 @@ def put(store, lid, ws, **extra):
     store.update_lead(lid, lambda l: {**l, "workspace": ws, **extra})
 
 
+def same_id(store, *ids, account="li-b"):
+    """Both leads are sent from one LinkedIn ID (the "Send from" pick)."""
+    for i in ids:
+        store.update_lead(i, lambda l: {**l, "linkedin_account": account})
+
+
 def lead(store, lid):
     return next(l for l in store.read("leads") if l["id"] == lid)
 
 
 def test_second_lead_refused_everywhere_in_one_account(rig):
     c, store, a, b, h = rig["c"], rig["store"], rig["a"], rig["b"], rig["h"]
-    put(store, a, "main"); put(store, b, "w4")                    # two workspaces, one account
+    put(store, a, "main"); put(store, b, "main")                    # two workspaces, one account
+    same_id(store, a, b)
     li.start(store, a)
     li.mark_sent(store, a, 1)
     with pytest.raises(ValueError, match="Already contacted on LinkedIn by .* on \\d{4}-\\d\\d-\\d\\d from "):
@@ -77,7 +84,8 @@ def test_second_lead_refused_everywhere_in_one_account(rig):
 
 def test_queue_hides_duplicates_and_counts_them(rig):
     store, a, b = rig["store"], rig["a"], rig["b"]
-    put(store, a, "w1"); put(store, b, "w2")
+    put(store, a, "w1"); put(store, b, "w1")
+    same_id(store, a, b)
     li.start(store, a)
     li.mark_sent(store, a, 1)
     q = li.queue(store)
@@ -87,7 +95,8 @@ def test_queue_hides_duplicates_and_counts_them(rig):
 
 def test_held_by_a_linkedin_account_blocks_the_sibling_before_any_send(rig):
     c, store, a, b, h = rig["c"], rig["store"], rig["a"], rig["b"], rig["h"]
-    put(store, a, "main"); put(store, b, "w4")
+    put(store, a, "main"); put(store, b, "main")
+    same_id(store, a, b, account="li-a")
     li.start(store, a)
     store.update_lead(a, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "account": "li-a"}})
     with pytest.raises(ValueError, match="Already being handled on LinkedIn"):
@@ -96,13 +105,16 @@ def test_held_by_a_linkedin_account_blocks_the_sibling_before_any_send(rig):
     store.update_lead(a, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "account": ""}})
     store.update_lead(b, lambda l: {k: v for k, v in l.items() if k != "linkedin_dup_of"} | {"linkedin_seq": {"started_at": "2026-01-01T00:00:00+00:00", "done": [], "status": "waiting_to_connect"}})
     assert c.post(f"/api/extension/leads/{a}/claim", headers={**h, "X-LinkedIn-Account": "li-a"}).status_code == 200
-    assert c.post(f"/api/extension/leads/{b}/claim", headers=h).status_code == 409
+    store.update_lead(b, lambda l: {k: v for k, v in l.items() if k != "linkedin_account"})
+    assert c.post(f"/api/extension/leads/{b}/claim", headers={**h, "X-LinkedIn-Account": "li-a"}).status_code == 409   # same ID: refused
+    assert c.post(f"/api/extension/leads/{b}/claim", headers=h).status_code == 200                                   # li-b: a different ID may
 
 
 def test_daily_auto_start_skips_duplicates(rig):
     from app import linkedin_accounts as accts
     store, a, b = rig["store"], rig["a"], rig["b"]
-    put(store, a, "w1"); put(store, b, "w2")
+    put(store, a, "w1"); put(store, b, "w1")
+    same_id(store, a, b, account="li-b")
     store.update("settings", lambda s: {**s, "linkedin_auto_start": True})
     li.start(store, a)
     li.mark_sent(store, a, 1)
@@ -114,12 +126,13 @@ def test_daily_auto_start_skips_duplicates(rig):
 
 def test_two_unsent_leads_cannot_both_start_in_one_batch(rig):
     store, a, b = rig["store"], rig["a"], rig["b"]
+    same_id(store, a, b)
     li.start(store, a)
     with pytest.raises(ValueError):
         li.start(store, b)
 
 
-def test_different_client_accounts_do_not_block_each_other(rig):
+def test_different_workspaces_never_block_or_see_each_other(rig):
     store, a, b = rig["store"], rig["a"], rig["b"]
     put(store, a, "w1"); put(store, b, "w3")                      # acctx vs accty
     li.start(store, a)
@@ -127,3 +140,33 @@ def test_different_client_accounts_do_not_block_each_other(rig):
     assert dupes.duplicate_of(store, lead(store, b)) is None
     assert li.start(store, b)["lead"]["linkedin_seq"]["status"] == "waiting_to_connect"
     assert "linkedin_dup_of" not in lead(store, b)
+
+
+def test_a_different_linkedin_id_may_contact_the_same_person(rig):
+    store, a, b = rig["store"], rig["a"], rig["b"]
+    put(store, a, "w1"); put(store, b, "w1")
+    same_id(store, a, account="li-a"); same_id(store, b, account="li-b")
+    li.start(store, a)
+    li.mark_sent(store, a, 1)
+    assert dupes.duplicate_of(store, lead(store, b)) is None
+    assert li.start(store, b)["lead"]["linkedin_seq"]["status"] == "waiting_to_connect"
+    # the same ID is still refused
+    same_id(store, b, account="li-a")
+    assert dupes.duplicate_of(store, lead(store, b), "li-a") is not None
+
+
+def test_contacts_panel_lists_the_workspace_team_only(rig):
+    c, store, a, b, m = rig["c"], rig["store"], rig["a"], rig["b"], rig["m"]
+    put(store, a, "w1"); put(store, b, "w1")
+    other = [l for l in store.read("leads") if l["id"] == m][0]
+    store.update_lead(m, lambda l: {**l, "workspace": "w3", "linkedin_url": "https://www.linkedin.com/in/ravi-kumar"})   # same person, other workspace
+    same_id(store, a, account="li-a"); same_id(store, b, account="li-b")
+    li.start(store, a)
+    store.update_lead(a, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "enrolled_by": "Priya"}})
+    li.mark_sent(store, a, 1)
+    rows = c.get(f"/api/leads/{b}/linkedin/contacts").json()["contacts"]
+    assert {r["lead_id"] for r in rows} == {a, b} or {r["lead_id"] for r in rows} == {a}
+    first = next(r for r in rows if r["lead_id"] == a)
+    assert first["user"] == "Priya" and first["linkedin_account"] == "li-a" and "waiting" in first["status"] and first["workspace"] == "W1"
+    assert m not in {r["lead_id"] for r in rows}                         # the other workspace's lead never shows
+    assert [r["lead_id"] for r in c.get(f"/api/leads/{m}/linkedin/contacts").json()["contacts"]] == [m]
