@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { istLabel } from "../time.js";
 import { api, canWrite } from "../api.js";
+import { AssignDialog, ShareDialog, SplitDialog, canHandOut } from "./ListAssign.jsx";
 import { ErrorState } from "../states.jsx";
 import { stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
@@ -148,43 +149,79 @@ function ListDetail({ id, onChanged, onClose }) {
   );
 }
 
+const DIALOGS = { assign: AssignDialog, split: SplitDialog, share: ShareDialog };
+function ListDialog({ dialog, onClose, onDone }) {
+  const D = DIALOGS[dialog.kind];
+  return D ? <D list={dialog.list} onClose={onClose} onDone={onDone} /> : null;
+}
+
 export default function Lists() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
   const [open, setOpen] = useHashParam("list");          // #lists?list=<id>
   const confirm = useConfirm();
+  const [view, setView] = useState("all");          // admins: all | unassigned
+  const [who, setWho] = useState("");               // assignee filter
+  const [dialog, setDialog] = useState(null);       // { kind: assign | split | share, list }
+  const admin = canHandOut();
   const load = () => api.lists().then(setRows).catch((e) => setError(e.message));
   useEffect(() => { load(); }, []);
   const remove = async (id) => {
     if (!(await confirm({ message: "Delete this list? The leads stay; only the list goes.", confirmLabel: "Delete", danger: true }))) return;
     await api.deleteList(id); if (String(open) === String(id)) setOpen(null); load();
   };
+  const pool = (rows || []).filter((r) => !r.assigned_to);
+  const assignees = [...new Set((rows || []).map((r) => r.assigned_to).filter(Boolean))].sort();
+  const shownRows = (rows || []).filter((r) => (view !== "unassigned" || !r.assigned_to) && (!who || (who === "__pool" ? !r.assigned_to : r.assigned_to === who)));
   return (
     <>
       <div className="row" style={{ justifyContent: "space-between" }}>
-        <h2>Lists</h2>
+        <h2>{admin ? "Lists" : "My lists"}</h2>
         <DownloadButton path={exportPath("lists")} label="Download lists" title="Every list with its numbers: open, reply and accept rates" testId="download-lists" />
       </div>
       <p className="sub">Pick the companies or leads you want, save them as a list, then start email or LinkedIn outreach for that list only. Each list keeps its own journey.</p>
       {error && <ErrorState message="Lists could not load." detail={error} onRetry={load} />}
       <EnrichedBanner onDone={load} />
+      {admin && rows && (
+        <div className="toolbar" style={{ marginBottom: 10 }}>
+          <div className="tabs" role="tablist" aria-label="Which lists">
+            <button role="tab" aria-selected={view === "all"} className={view === "all" ? "on" : ""} onClick={() => setView("all")} data-testid="lists-all">All lists</button>
+            <button role="tab" aria-selected={view === "unassigned"} className={view === "unassigned" ? "on" : ""} onClick={() => setView("unassigned")} data-testid="lists-unassigned">Unassigned ({pool.length})</button>
+          </div>
+          <select aria-label="Filter by assignee" value={who} onChange={(e) => setWho(e.target.value)}>
+            <option value="">Everyone</option>
+            <option value="__pool">Admin pool</option>
+            {assignees.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+      )}
       <div className="grid g2">
         {canWrite() && <CompanyPicker onCreated={(r) => { load(); setOpen(r.id); }} />}
         <div className="card table-card" style={{ padding: 0, minWidth: 0 }}>
+          {rows && rows.length > 0 && shownRows.length === 0 && <p className="empty">{view === "unassigned" ? "Every list has an owner." : "No list matches."}</p>}
           {rows && rows.length === 0 && <p className="empty">{canWrite() ? "No lists yet. Choose companies on the left, or select leads on the Leads page and press “Save as list”." : "No lists yet."}</p>}
-          {rows && rows.length > 0 && (
+          {rows && shownRows.length > 0 && (
             <div className="table-scroll"><table>
-              <thead><tr><th>List</th><th>Leads</th><th>Email</th><th>LinkedIn</th><th /></tr></thead>
+              <thead><tr><th>List</th>{admin && <th>Assigned to</th>}<th>Leads</th><th>Email</th><th>LinkedIn</th><th /></tr></thead>
               <tbody>
-                {rows.map((r) => (
+                {shownRows.map((r) => (
                   <tr key={r.id}>
                     <td><button className="linkish" onClick={() => setOpen(r.id)}><b>{r.name}</b></button><br /><small>{r.created_by} · {when(r.created_at)}</small></td>
+                    {admin && <td data-testid="list-assignee">{r.assigned_to || <small className="sub">Admin pool{r.unassigned_age_days != null ? ` · ${r.unassigned_age_days} day${r.unassigned_age_days === 1 ? "" : "s"} waiting` : ""}</small>}
+                      {(r.shared_with || []).length > 0 && <><br /><small className="sub">Shared with {r.shared_with.length}</small></>}</td>}
                     <td>{r.stats.members}<br /><small>{r.stats.companies} cos</small></td>
                     <td><small>{r.stats.email_started} started · {r.stats.opened} opened · {r.stats.replied} replied</small>
                       <br /><small data-testid="list-email-rates"><b>{r.stats.open_rate ?? 0}%</b> open · <b>{r.stats.reply_rate ?? 0}%</b> reply</small></td>
                     <td><small>{r.stats.linkedin_started} started · {r.stats.linkedin_accepted} accepted</small>
                       <br /><small><b>{r.stats.accept_rate ?? 0}%</b> accept</small></td>
-                    <td>{canWrite() && <button className="btn ghost" onClick={() => remove(r.id)} aria-label={`Delete ${r.name}`}>Delete</button>}</td>
+                    <td><div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+                      {admin && <>
+                        <button className="btn ghost" onClick={() => setDialog({ kind: "assign", list: r })} aria-label={`Assign ${r.name}`}>Assign</button>
+                        <button className="btn ghost" onClick={() => setDialog({ kind: "split", list: r })} aria-label={`Split ${r.name}`}>Split</button>
+                        <button className="btn ghost" onClick={() => setDialog({ kind: "share", list: r })} aria-label={`Share ${r.name}`}>Share</button>
+                      </>}
+                      {canWrite() && <button className="btn ghost" onClick={() => remove(r.id)} aria-label={`Delete ${r.name}`}>Delete</button>}
+                    </div></td>
                   </tr>
                 ))}
               </tbody>
@@ -192,6 +229,7 @@ export default function Lists() {
           )}
         </div>
       </div>
+      {dialog && admin && <ListDialog dialog={dialog} onClose={() => setDialog(null)} onDone={load} />}
       {open && <ListDetail id={open} onChanged={load} onClose={() => setOpen(null)} />}
     </>
   );

@@ -16,6 +16,7 @@ import Connections from "./setup/Connections.jsx";
 import OwnPassword from "./setup/OwnPassword.jsx";
 import Team from "./setup/Team.jsx";
 import Workspaces from "./setup/Workspaces.jsx";
+import Assignment from "./setup/Assignment.jsx";
 import Accounts from "./setup/Accounts.jsx";
 import AccountActivity from "./setup/AccountActivity.jsx";
 import AccountUsage from "./setup/AccountUsage.jsx";
@@ -38,6 +39,7 @@ const GROUPS = [
     ["accounts", "Accounts", OWNER, "One account per client company: its workspaces, logins, limits and sending identity."],
     ["workspaces", "Workspaces", ADMINS, "One workspace per client keeps their leads, lists and numbers apart."],
     ["members", "Team members", ADMINS, "Who can sign in, what each role may do and which workspaces they see."],
+    ["assignment", "Assignment", ADMINS, "Who owns new leads: teams, rules, the first-touch clock and the switch that limits people to their own leads."],
     ["security", "Security", ADMINS, "Two-step login for the team and the history of every sign-in."],
     ["audit", "Audit", OWNER, "Who changed what and when, with a tamper check."],
     ["activity", "Account activity", ["client-admin"], "Everything changed in your company's account, including the platform team's actions."],
@@ -131,6 +133,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
           {section === "activity" && <AccountActivity />}
           {section === "usage" && <AccountUsage />}
           {section === "workspaces" && <Workspaces owner={role === "owner"} />}
+          {section === "assignment" && <Assignment />}
           {section === "members" && <Team workspaceAdmin={role === "admin"} />}
           {section === "scoring" && <ScoringCard />}
           {section === "industry" && <IndustrySetup />}

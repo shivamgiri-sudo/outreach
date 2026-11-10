@@ -17,6 +17,7 @@ import { SALES_STATUSES, salesStageOf } from "../salesStage.js";
 import { LinkedInCell, LinkedInStageFilter, liStageMatches } from "./LeadLinkedInStage.jsx";
 import HelpLink from "../components/HelpLink.jsx";
 import Abbr, { Stage } from "../components/Abbr.jsx";
+import { FirstTouchTimer, isWaiting } from "./LeadFirstTouch.jsx";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
 const SHEET_SOURCES = { "Team sheet — Leads tab": "leads", "Team sheet — Demo Shared tab": "demo", "Team sheet — Decision Makers tab": "decision_makers" };
@@ -131,6 +132,7 @@ export default function Leads({ go }) {
   const [hasFilter, setHasFilter] = useState([]);
   const [liStage, setLiStage] = useState("");
   const [salesStage, setSalesStage] = useState("");
+  const [waitingOnly, setWaitingOnly] = useState(false);
   const [customFilter, setCustomFilter] = useState({});
   const { fields: customFields } = useLeadFields();
   const tableFields = customFields.filter((f) => f.show_in_table);
@@ -247,8 +249,8 @@ export default function Leads({ go }) {
     .catch((e) => setMessage(e.message));
 
   const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, hasFilter)
-    && customMatches(l, customFilter, customFields) && liStageMatches(l, liStage) && (!salesStage || salesStageOf(l) === salesStage)).sort(SORTS[sort]),
-    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter, liStage, salesStage]);
+    && customMatches(l, customFilter, customFields) && liStageMatches(l, liStage) && (!salesStage || salesStageOf(l) === salesStage) && (!waitingOnly || isWaiting(l))).sort(SORTS[sort]),
+    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter, liStage, salesStage, waitingOnly]);
   const allTags = useMemo(() => [...new Set(leads.flatMap((l) => l.tags || []).map(String))].sort((a, b) => a.localeCompare(b)), [leads]);
   const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, has: hasFilter, li_stage: liStage, sort };
   const applyView = (f) => {
@@ -259,7 +261,7 @@ export default function Leads({ go }) {
   const [pageSize, setPageSize] = useState(50);
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const safePage = Math.min(page, pages - 1);
-  useEffect(() => { setPage(0); }, [query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, pageSize, customFilter, hasFilter, liStage]);
+  useEffect(() => { setPage(0); }, [query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, pageSize, customFilter, hasFilter, liStage, waitingOnly]);
   const visible = shown.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const togglePick = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const allPicked = shown.length > 0 && shown.every((l) => picked.includes(l.id));
@@ -267,8 +269,8 @@ export default function Leads({ go }) {
   const [spaces, setSpaces] = useState([]);
   useEffect(() => { api.workspaces().then(setSpaces).catch(() => {}); }, []);
 
-  const filtered = Boolean(query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter || customOn || hasFilter.length || liStage);
-  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); setHasFilter([]); setLiStage(""); setSalesStage(""); };
+  const filtered = Boolean(waitingOnly || query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter || customOn || hasFilter.length || liStage);
+  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); setHasFilter([]); setLiStage(""); setSalesStage(""); setWaitingOnly(false); };
 
   const header = (key, label) => (
     <th aria-sort={sort === key ? (key === "score" ? "descending" : "ascending") : "none"}>
@@ -386,6 +388,9 @@ export default function Leads({ go }) {
             <option value="">All tags</option>
             {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>}
+          <button type="button" className={`btn ghost${waitingOnly ? " on" : ""}`} aria-pressed={waitingOnly} onClick={() => setWaitingOnly(!waitingOnly)} data-testid="waiting-first-touch">
+            Waiting for first touch ({leads.filter(isWaiting).length})
+          </button>
           <LinkedInStageFilter value={liStage} onChange={setLiStage} />
           <CustomFilters fields={customFields} value={customFilter} onChange={setCustomFilter} />
           <label className="row" style={{ margin: 0 }}><input type="checkbox" checked={inboundOnly} onChange={(e) => setInboundOnly(e.target.checked)} /> Inbound only</label>
@@ -393,7 +398,7 @@ export default function Leads({ go }) {
           <span className="sub" style={{ margin: 0 }}>Showing {shown.length} of {leads.length}</span>
           <span className="dl-group">
             <DownloadButton path={exportPath("leads")} label="Download all" title="Every lead as a CSV that opens in Excel" testId="download-leads-all" />
-            {filtered && <DownloadButton path={exportPath("leads", { q: query.trim(), stage, band, source: srcFilter.join(","), inbound: inboundOnly ? "1" : "", tag: tagFilter })} body={onlyIds || ownerFilter || customOn || hasFilter.length || liStage ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
+            {filtered && <DownloadButton path={exportPath("leads", { q: query.trim(), stage, band, source: srcFilter.join(","), inbound: inboundOnly ? "1" : "", tag: tagFilter })} body={onlyIds || ownerFilter || customOn || hasFilter.length || liStage || waitingOnly ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
               title="Only the leads that match the search and filters" testId="download-leads-shown" />}
           </span>
         </div>
@@ -413,7 +418,7 @@ export default function Leads({ go }) {
             <thead><tr>
               {canWrite() && <th><label className="pick-hit"><input type="checkbox" aria-label="Select all shown" checked={allPicked}
                 onChange={() => setPicked(allPicked ? [] : shown.map((l) => l.id))} /></label></th>}
-              {header("company", "Company")}<th>Contact</th>{header("stage", "Stage")}<th>Sales stage</th>{header("score", "Score")}<th>Owner</th><th>Tags</th>{tableFields.map((f) => <th key={f.key}>{f.label}</th>)}<th>Source</th>{header("activity", "Last activity")}{header("due", "Next task due")}<th>LinkedIn</th><th>Next step</th>
+              {header("company", "Company")}<th>Contact</th>{header("stage", "Stage")}<th>Sales stage</th>{header("score", "Score")}<th>Owner</th>{waitingOnly && <th>First touch</th>}<th>Tags</th>{tableFields.map((f) => <th key={f.key}>{f.label}</th>)}<th>Source</th>{header("activity", "Last activity")}{header("due", "Next task due")}<th>LinkedIn</th><th>Next step</th>
             </tr></thead>
             <tbody>
               {visible.map((l) => (
@@ -427,6 +432,7 @@ export default function Leads({ go }) {
                   <td data-label="Sales stage" data-testid="sales-stage-cell"><Stage status={salesStageOf(l)} full /></td>
                   <td data-label="Score"><span className={`pill ${l.band}`}>{l.score} · {l.band}</span></td>
                   <td data-label="Owner">{l.owner || <small className="sub">—</small>}</td>
+                  {waitingOnly && <td data-label="First touch"><FirstTouchTimer lead={l} /></td>}
                   <td data-label="Tags">{(l.tags || []).length ? (l.tags || []).map((t) => <span key={t} className="pill rec" style={{ margin: "0 4px 2px 0" }}>{t}</span>) : <small className="sub">—</small>}</td>
                   {tableFields.map((f) => <td key={f.key} data-label={f.label}>{showValue(f, l.custom?.[f.key]) || <small className="sub">—</small>}</td>)}
                   <td data-label="Source" title={attributionText(l.attribution) || undefined}>
