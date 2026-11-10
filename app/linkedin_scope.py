@@ -164,3 +164,39 @@ def _email(store, address: str, title: str, text: str, account_id: str = "") -> 
     except Exception as exc:
         result = {"status": "failed", "error": str(exc)[:200]}
     _log_transactional(store, address, subject, text, "internal", None, result)
+
+
+# ---------------------------------------------------------------- whose LinkedIn profile is whose
+def sees_everyone(user: Optional[dict]) -> bool:
+    """Owners (and so super admins) see every LinkedIn profile. A client company's admin sees all of its own company's;
+    in Mas Callnet's own team (shared account) everyone else sees only their own profile."""
+    user = user or {"role": "owner"}
+    return user.get("role") == "owner" or (user.get("role") == "admin" and accounts.of_user(user) != accounts.MCN)
+
+
+def slot_is_mine(slot: dict, user: Optional[dict]) -> bool:
+    """A LinkedIn connection (office-computer slot) belongs to the person who added it."""
+    if sees_everyone(user):
+        return True
+    sub, who = str(user.get("sub") or ""), {str(user.get("name") or "").strip().lower(), str(user.get("email") or "").strip().lower()} - {""}
+    if slot.get("created_sub"):
+        return slot["created_sub"] == sub
+    return str(slot.get("created_by") or "").strip().lower() in who
+
+
+def my_slugs(store, user: Optional[dict]) -> Optional[set]:
+    """The LinkedIn account names a person may see: those of connections they added plus the account set as their default
+    ("Send from" owner default). None = all (owners)."""
+    if sees_everyone(user):
+        return None
+    from . import linkedin_accounts as accts, linkedin_cloud as cloud
+    states, mine = cloud._states(store), set()
+    for slot in cloud.slots(store, accounts.of_user(user)):
+        slug = (states.get(slot["id"]) or {}).get("account", "")
+        if slug and slot_is_mine(slot, user):
+            mine.add(slug)
+    names = {str(user.get("name") or "").strip().lower(), str(user.get("email") or "").strip().lower()} - {""}
+    for name, slug in accts.owner_defaults(store.read("settings")).items():
+        if name.strip().lower() in names:
+            mine.add(slug)
+    return mine

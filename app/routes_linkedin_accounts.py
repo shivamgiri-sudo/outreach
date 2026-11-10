@@ -34,9 +34,13 @@ def make_router(store) -> APIRouter:
         LinkedIn accounts working for it (app/linkedin_scope.py); the owner defaults are Mas Callnet's own."""
         from . import accounts as client_accounts
         user = user_of(request)
+        from . import linkedin_scope
+        mine = linkedin_scope.my_slugs(store, user) if user else None        # None: an owner sees every profile
+        keep = (lambda rows: rows) if mine is None else (lambda rows: [r for r in rows if r["account"] in mine])
         if client_accounts.is_client(user):
-            return {"accounts": accts.known(store, client_accounts.of_user(user)), "owner_defaults": {}}
-        return {"accounts": accts.known(store, client_accounts.current()), "owner_defaults": accts.owner_defaults(store.read("settings"))}
+            return {"accounts": keep(accts.known(store, client_accounts.of_user(user))), "owner_defaults": {}}
+        return {"accounts": keep(accts.known(store, client_accounts.current())),
+                "owner_defaults": accts.owner_defaults(store.read("settings"))}
 
     @router.put("/api/linkedin/owner-accounts")
     def owner_accounts(body: OwnerDefaultsBody, request: Request):

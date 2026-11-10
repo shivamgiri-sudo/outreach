@@ -64,7 +64,10 @@ def make_router(store, data_file, jobs: cloud.CloudJobs = None) -> APIRouter:
             if not s:
                 raise LookupError
             if request is not None:
-                scope.ensure_mine(manager(request), cloud.account_of(s))
+                user = manager(request)
+                scope.ensure_mine(user, cloud.account_of(s))
+                if not scope.slot_is_mine(s, user):
+                    raise LookupError
         except LookupError:
             raise HTTPException(404, "No such cloud account.") from None
         return s
@@ -75,6 +78,10 @@ def make_router(store, data_file, jobs: cloud.CloudJobs = None) -> APIRouter:
         out = cloud.describe(store, base, jobs, acct)
         for row in out["slots"]:
             row["account_name"] = scope.name_of(store, row["account_id"])
+        user = actor(request)
+        if not scope.sees_everyone(user):          # a connection is its adder's: other people's profiles are not listed
+            by_id = {s["id"]: s for s in cloud.slots(store, acct)}
+            out["slots"] = [r for r in out["slots"] if scope.slot_is_mine(by_id.get(r["id"]) or {}, user)]
         out["account_id"] = acct
         out["is_owner"] = actor(request).get("role") == "owner"
         return out

@@ -58,6 +58,10 @@ def make_router(store, notify_sender=None) -> APIRouter:
                 names.setdefault(row["account_id"], scope.name_of(store, row["account_id"]))
                 row["account_name"] = names[row["account_id"]]
         out["account_name"] = scope.name_of(store, owner) if owner else "All accounts"
+        mine = scope.my_slugs(store, user)
+        if mine is not None:                         # not an owner: only the LinkedIn profiles that are theirs
+            out["accounts"] = [a for a in out["accounts"] if a["account"] in mine]
+            out["log"] = [r for r in out["log"] if not r.get("account") or r["account"] in mine]
         out["can_manage"] = scope.may_manage(user)
         out["is_owner"] = user.get("role") == "owner"
         if not out["can_manage"]:                    # callers and viewers: the status only

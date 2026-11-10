@@ -41,3 +41,15 @@ def test_alert_when_people_wait_and_the_agent_is_gone(rig):
     assert watch.tick(store, NOW)["offline"] == 1 and "not running" in _bell(store)[-1]["title"]
     assert watch.tick(store, NOW + timedelta(hours=1))["offline"] == 0                # repeats only every 6 hours
     assert watch.tick(store, NOW + timedelta(hours=7))["offline"] == 1
+
+
+def test_a_team_member_sees_only_their_own_linkedin_profile(rig):
+    from app import linkedin_scope as scope
+    c, owner, store = rig
+    shivam = {"sub": "user:shivam", "name": "Shivam", "email": "s@x.in", "role": "owner"}
+    rajesh = {"sub": "user:rajesh", "name": "Rajesh", "email": "r@x.in", "role": "admin"}
+    mine = {"id": "a1", "created_sub": "user:rajesh", "created_by": "Rajesh"}
+    theirs = {"id": "b1", "created_sub": "user:shivam", "created_by": "Shivam"}
+    assert scope.sees_everyone(shivam) and scope.slot_is_mine(theirs, shivam) and scope.my_slugs(store, shivam) is None
+    assert scope.slot_is_mine(mine, rajesh) and not scope.slot_is_mine(theirs, rajesh)
+    assert not scope.sees_everyone(rajesh)                               # an admin inside the shared Mas Callnet account
