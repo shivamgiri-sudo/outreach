@@ -26,7 +26,7 @@ def make_router(store) -> APIRouter:
             return JSONResponse(mcp_server._error(None, -32700, "Parse error"), status_code=400)
         if isinstance(body, list):                      # batches are not supported: one request per call keeps it simple
             return JSONResponse(mcp_server._error(None, -32600, "Send one request at a time"), status_code=400)
-        reply = mcp_server.handle(store, body)
+        reply = mcp_server.handle(store, body, getattr(request.state, "user", None))
         return Response(status_code=202) if reply is None else JSONResponse(reply)
 
     return router

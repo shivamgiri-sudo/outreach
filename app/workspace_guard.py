@@ -82,6 +82,10 @@ LIMITED_OK = {
     ("GET", "/api/funnel"), ("GET", "/api/funnel/drill"), ("GET", "/api/funnel/settings"),      # sales funnel: leads in scope only
     ("PUT", "/api/funnel/settings"), ("POST", "/api/funnel/recalculate"),                      # owners / the workspace's admins (routes_auth)
     ("GET", "/api/reports/sla"), ("GET", "/api/reports/daily"), ("GET", "/api/reports/daily.csv"), ("POST", "/api/reports/email"),
+    # lead ownership: lists assigned / split / shared, the switch and its migration report (admins of the workspace; the routes check)
+    ("PUT", "/api/lists/{list_id}/assign"), ("POST", "/api/lists/{list_id}/split"), ("PUT", "/api/lists/{list_id}/share"),
+    ("GET", "/api/ownership-mode"), ("PUT", "/api/ownership-mode"), ("GET", "/api/ownership/report"), ("POST", "/api/ownership/migrate"),
+    ("POST", "/api/ownership/fix-owners"),
     ("POST", "/api/import/preview"), ("POST", "/api/import/excel"), ("POST", "/api/import/commit"), ("GET", "/api/import/history"), ("POST", "/api/import/{import_id}/undo"),
 }
 # The LinkedIn agent program's calls, for a pairing / slot token of a client account only (never a web login): its own

@@ -7,10 +7,10 @@ functions as the single-lead buttons, so every consent, suppression and cap chec
 import uuid
 from typing import Optional
 
-from . import linkedin_seq
+from . import lead_access, linkedin_seq
 from . import workspaces
 from .lead_model import event, now_iso
-from .routes_outreach import EnrollRefused, enroll_lead
+from .routes_outreach import EnrollRefused, OwnershipRefused, enroll_lead
 
 MAX_LIST_LEADS = 5000
 MAX_LOG = 200
@@ -24,9 +24,10 @@ def ready_for_email(lead: dict) -> bool:
     return bool(lead.get("email")) and not lead.get("sequence") and lead.get("stage") not in ("unsubscribed", "disqualified", "customer", "advocate", "not_now")
 
 
-def resolve(store, lead_ids=None, companies=None, enriched=False) -> list:
-    """Lead ids from explicit ids, company names (case-insensitive, whole name), and/or every enriched lead."""
-    leads = workspaces.filter_rows(store.read("leads"))
+def resolve(store, lead_ids=None, companies=None, enriched=False, user=None) -> list:
+    """Lead ids from explicit ids, company names (case-insensitive, whole name), and/or every enriched lead.
+    With ownership on, only leads `user` may see (app/lead_access.py)."""
+    leads = lead_access.visible_leads(store, user, workspaces.filter_rows(store.read("leads")))
     wanted = set(lead_ids or [])
     names = {c.strip().lower() for c in (companies or []) if c and c.strip()}
     out = []
@@ -40,9 +41,12 @@ def _log(entry: str, by: str) -> dict:
     return {"at": now_iso(), "by": by, "text": entry}
 
 
-def create(store, name: str, lead_ids: list, by: str, how: str = "") -> dict:
+def create(store, name: str, lead_ids: list, by: str, how: str = "", assigned_to: str = "", workspace: str = "") -> dict:
+    """`assigned_to` is a login's name ('' = the admin pool); see app/list_assign.py."""
     row = {"id": uuid.uuid4().hex[:10], "name": name.strip()[:80] or "Untitled list", "lead_ids": list(dict.fromkeys(lead_ids)),
-           "created_by": by, "created_at": now_iso(), "workspace": workspaces.for_new_lead(), "log": [_log(f"Created with {len(set(lead_ids))} leads{(' (' + how + ')') if how else ''}", by)]}
+           "created_by": by, "created_at": now_iso(), "workspace": workspace or workspaces.for_new_lead(),
+           "assigned_to": assigned_to, "shared_with": [], "assigned_at": now_iso() if assigned_to else "", "assigned_by": by if assigned_to else "",
+           "log": [_log(f"Created with {len(set(lead_ids))} leads{(' (' + how + ')') if how else ''}", by)]}
     store.update("lists", lambda rows: [*rows, row])
     return row
 
@@ -114,30 +118,38 @@ def _rate(part: int, whole: int) -> float:
     return round(100 * part / whole, 1) if whole else 0.0
 
 
-def start_email(store, list_id: str, by: str, only: Optional[list] = None) -> dict:
+def start_email(store, list_id: str, by: str, only: Optional[list] = None, user: Optional[dict] = None) -> dict:
+    """`user` (the signed-in login) may only start leads it owns once the workspace's ownership switch is on."""
     row = get(store, list_id)
     if row is None:
         raise LookupError("List not found")
     ids = [i for i in row["lead_ids"] if not only or i in set(only)]
-    done, refused = 0, {}
+    done, refused, owner_refused = 0, {}, 0
     for lid in ids:
         try:
             enroll_lead(store, lid, note=f"Enrolled in email sequence by {by} (list {row['name']})", by=by, via="bulk action",
-                        detail=f"list {row['name']}")
+                        detail=f"list {row['name']}", user=user)
             done += 1
         except (EnrollRefused, LookupError) as exc:
+            owner_refused += isinstance(exc, OwnershipRefused)
             refused[str(exc)] = refused.get(str(exc), 0) + 1
     _change(store, list_id, lambda r: {**r, "log": [*r["log"], _log(f"Started the email sequence for {done} of {len(ids)}", by)][-MAX_LOG:]})
-    return {"started": done, "asked": len(ids), "refused": [{"reason": k, "count": v} for k, v in refused.items()]}
+    return {"started": done, "asked": len(ids), "owner_refused": owner_refused, "refused": [{"reason": k, "count": v} for k, v in refused.items()]}
 
 
-def start_linkedin(store, list_id: str, by: str, only: Optional[list] = None) -> dict:
+def start_linkedin(store, list_id: str, by: str, only: Optional[list] = None, user: Optional[dict] = None) -> dict:
     row = get(store, list_id)
     if row is None:
         raise LookupError("List not found")
     ids = [i for i in row["lead_ids"] if not only or i in set(only)]
-    done, looking, refused = 0, 0, {}
+    done, looking, refused, owner_refused = 0, 0, {}, 0
+    by_id = {l["id"]: l for l in store.read("leads")}
     for lid in ids:
+        no = lead_access.refusal(store, user, by_id[lid]) if lid in by_id else ""
+        if no:
+            owner_refused += 1
+            refused[no] = refused.get(no, 0) + 1
+            continue
         try:
             result = linkedin_seq.start(store, lid, find=True)
             if result.get("lookup"):                 # no profile link: its profile is looked up first (app/linkedin_finder.py)
@@ -148,4 +160,4 @@ def start_linkedin(store, list_id: str, by: str, only: Optional[list] = None) ->
         except (ValueError, LookupError) as exc:
             refused[str(exc)] = refused.get(str(exc), 0) + 1
     _change(store, list_id, lambda r: {**r, "log": [*r["log"], _log(f"Started LinkedIn outreach for {done} of {len(ids)}" + (f", {looking} being looked up" if looking else ""), by)][-MAX_LOG:]})
-    return {"started": done, "looking_up": looking, "asked": len(ids), "refused": [{"reason": k, "count": v} for k, v in refused.items()]}
+    return {"started": done, "looking_up": looking, "asked": len(ids), "owner_refused": owner_refused, "refused": [{"reason": k, "count": v} for k, v in refused.items()]}

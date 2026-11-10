@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from html import escape
 from urllib.parse import quote, urlparse
 
+from . import lead_access
 from .auth import PRIVATE_SETTINGS
 from .brand import get_brand
 from .growth_core import public_base_url
@@ -128,8 +129,12 @@ class EnrollRefused(ValueError):
     """The lead may not be put into the email sequence; the message says why in plain words."""
 
 
+class OwnershipRefused(EnrollRefused):
+    """The lead belongs to someone else (lead ownership is on for its workspace; app/lead_access.py)."""
+
+
 def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence", sequence_id: str = "default", by: str = "",
-                by_email: str = "", via: str = "by hand", **detail) -> dict:
+                by_email: str = "", via: str = "by hand", user: Optional[dict] = None, **detail) -> dict:
     """Start one lead's email sequence. The only way in: the Enrol button, bulk enrol and campaigns all use it.
 
     Refuses leads without an email, leads that may not be emailed (unsubscribed, disqualified, not now, customers),
@@ -142,10 +147,14 @@ def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence", s
     sequence (app/ws_templates.py), else main's, else the built-in 6-email sequence.
 
     `by` / `by_email` / `via` record who started it and how (app/provenance.py); an empty `by` means the System.
+    `user` is the signed-in person starting it (None = the System, e.g. a campaign): with lead ownership on, they may
+    only start leads they own, admins any lead of their workspace (OwnershipRefused).
     """
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None:
         raise LookupError("Lead not found")
+    if user is not None and (no := lead_access.refusal(store, user, lead)):
+        raise OwnershipRefused(no)
     from .sequence_library import DEFAULT_ID, get_sequence
     from . import workspaces, ws_templates
     lead_ws = workspaces.ws_of(lead)
@@ -383,9 +392,11 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
         who = person_of(getattr(request.state, "user", None))
         try:
             return present(enroll_lead(store, lead_id, sequence_id=(body.sequence_id if body else "") or "default",
-                                       by=who["name"], by_email=who["email"], via="by hand"))
+                                       by=who["name"], by_email=who["email"], via="by hand", user=getattr(request.state, "user", None)))
         except LookupError:
             raise HTTPException(404, "Lead not found")
+        except OwnershipRefused as exc:
+            raise HTTPException(409, str(exc))
         except EnrollRefused as exc:
             raise HTTPException(400, str(exc))
 

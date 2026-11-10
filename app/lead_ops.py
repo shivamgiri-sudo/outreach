@@ -215,12 +215,13 @@ def _log_delete(lead: dict, actor: dict) -> dict:
             "company": lead.get("company") or ""}
 
 
-def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool = False, enroll=None) -> dict:
+def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool = False, enroll=None, user: Optional[dict] = None) -> dict:
     """Apply one action to many leads. Returns {action, asked, ok, failed, results: [{id, ok, reason}], reasons}.
 
     Stage, owner, tags and do-not-contact are applied in one atomic save on the latest copy of the leads. Leads
     outside the caller's workspace count as not found. `enroll(store, lead_id, note)` starts one lead's email
-    sequence (routes_outreach.enroll_lead); its refusal message is the reason.
+    sequence (routes_outreach.enroll_lead); its refusal message is the reason. `user` is the signed-in login: with lead
+    ownership on, a member can only enrol (or otherwise change) leads they own, and sees others as "not found".
     """
     if action not in BULK_ACTIONS:
         raise LeadOpRefused(f"Unknown action. Use one of: {', '.join(BULK_ACTIONS)}.")
@@ -240,7 +241,8 @@ def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool
         value = clean_tag(value)
         if not value:
             raise LeadOpRefused("Write a tag.")
-    visible = {l["id"] for l in store.read("leads") if workspaces_mod.visible(l)}
+    from . import lead_access
+    visible = {l["id"] for l in store.read("leads") if workspaces_mod.visible(l) and (action == "enroll" or lead_access.can_see(store, user, l))}   # enrol says whose lead it is
     reasons = {i: "not found" for i in ids if i not in visible}
     wanted = [i for i in ids if i in visible]
     done, gone = [], []
@@ -249,7 +251,7 @@ def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool
         for lead_id in wanted:
             try:
                 enroll(store, lead_id, f"Enrolled in email sequence (bulk, by {who})", by=who, by_email=actor.get("email") or "",
-                       via="bulk action")
+                       via="bulk action", user=user)
             except LookupError:
                 reasons[lead_id] = "not found"
             except ValueError as exc:          # EnrollRefused

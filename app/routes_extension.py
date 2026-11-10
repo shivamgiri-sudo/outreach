@@ -111,18 +111,22 @@ def make_router(store) -> APIRouter:
     def match(request: Request, profile_url: str = Query("", max_length=2000), name: str = Query("", max_length=200), company: str = Query("", max_length=200)):
         from . import workspaces
         lead = ext.find_lead(store, profile_url, name, company)
-        return ext.describe(store, lead, account_of(request)) if lead and workspaces.visible(lead) else ext.no_match()
+        from . import lead_access
+        seen = lead and workspaces.visible(lead) and lead_access.can_see(store, getattr(request.state, "user", None), lead)   # ownership: not someone else's lead
+        return ext.describe(store, lead, account_of(request)) if seen else ext.no_match()
 
     @router.get("/api/extension/queue")
     def queue(request: Request):
         account, owner = account_of(request), owner_of(request)
         ctl = agent_mod.control(store, account=account, owner=owner)
         if ctl["active_now"]:                       # daily auto-start: only while the agent is really working
-            started = accts.auto_start_for(store, account, ctl["connections_left_today"], owner=owner)   # this account's or unassigned people
+            started = accts.auto_start_for(store, account, ctl["connections_left_today"], owner=owner,        # this account's or unassigned people
+                                           user=getattr(request.state, "user", None))                           # ...of the person who paired it, if ownership is on
             if started:
                 names = ", ".join(s.get("name") or s.get("company") or "?" for s in started[:8]) + (" …" if len(started) > 8 else "")
                 agent_mod.note(store, "auto_start", f"Started the LinkedIn sequence for {len(started)} people: {names}", account, owner=owner)
-        return ext.queue(store, account)
+        from . import lead_access
+        return lead_access.filter_queue(store, getattr(request.state, "user", None), ext.queue(store, account))
 
     @router.get("/api/extension/lookup/next")
     def lookup_next(request: Request):
@@ -145,6 +149,8 @@ def make_router(store) -> APIRouter:
         from . import workspaces
         if not workspaces.visible(lead):
             raise HTTPException(404, "Lead not found")
+        from . import lead_access
+        lead_access.check_http(store, request, lead)      # a found profile starts the sequence: only for a lead this person may send to
         ctl = agent_mod.control(store, account=account, owner=owner)
         if not ctl["active_now"]:                      # paused / switched off / killed while it was reading the page
             raise HTTPException(409, ctl["why_not"] or "The agent may not act right now.")
@@ -170,6 +176,8 @@ def make_router(store) -> APIRouter:
         """Before an agent touches a person: the lead becomes this account's (atomically), unless another account has it."""
         account = account_of(request)
         lead = lead_or_404(lead_id)
+        from . import lead_access
+        lead_access.check_http(store, request, lead)      # lead ownership: never claim someone else's lead
         from . import linkedin_guard
         settings = store.read("settings")
         holder = accts.assigned(lead, settings) if account else ""
@@ -217,6 +225,8 @@ def make_router(store) -> APIRouter:
 
     @router.post("/api/extension/leads/{lead_id}/sent")
     def sent(lead_id: str, body: SentBody, request: Request):
+        from . import lead_access
+        lead_access.check_http(store, request, lead_or_404(lead_id))
         info = ext.describe(store, lead_or_404(lead_id), account_of(request))
         if not info["can_send"]:
             refuse(info)

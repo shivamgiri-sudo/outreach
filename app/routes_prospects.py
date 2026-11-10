@@ -248,7 +248,7 @@ def make_router(store, transports=None) -> APIRouter:
             for lid in lead_ids:
                 try:
                     enroll_lead(store, lid, note=f"Enrolled from prospect search by {by}", by=by, via="bulk action",
-                                detail="prospect search")
+                                detail="prospect search", user=getattr(request.state, "user", None))
                     started += 1
                 except (EnrollRefused, LookupError) as exc:
                     refused[str(exc)] = refused.get(str(exc), 0) + 1

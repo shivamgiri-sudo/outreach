@@ -270,9 +270,15 @@ def make_router(store, email_sender, transport=None, resolver=None, ai_transport
         who = person_of(getattr(request.state, "user", None))
         enrolled, refused = [], []
         in_scope = set(workspaces.only_visible_ids(store, [str(i) for i in body.lead_ids]))
+        from . import lead_access
+        by_id = {l["id"]: l for l in store.read("leads")} if lead_access.any_on(store) else {}
         for lead_id in dict.fromkeys(str(i) for i in body.lead_ids):
             if lead_id not in in_scope:
                 refused.append({"lead_id": lead_id, "reason": "Lead not found"})
+                continue
+            target = by_id.get(lead_id)
+            if target is not None and (no := lead_access.refusal(store, getattr(request.state, "user", None), target)):
+                refused.append({"lead_id": lead_id, "reason": no})          # lead ownership: only admins (or the owner) start a flow for it
                 continue
             try:
                 enrolled.append(enroll(store, flow, lead_id, now, by=who["name"], by_email=who["email"], via="by hand")["lead_id"])

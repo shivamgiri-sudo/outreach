@@ -18,6 +18,7 @@ from .activities import caller_name
 from .lead_model import now_iso
 from .providers import provider_status
 from .reminders import notify
+from . import lead_access
 from .routes_outreach import EnrollRefused, enroll_lead
 from .sources import registry as source_registry, runner as source_runner, waterfall as source_waterfall
 from .sequences import IST, in_business_hours
@@ -234,9 +235,15 @@ def _enrol(store, campaign: dict, ids: list, report: dict) -> None:
             pipe.add_error(report, "sequence", f"{len(ids) - len(kept)} qualified leads were left out: their company is not in this campaign's chosen companies")
         ids = kept
     sequence_id = campaign["rules"].get("sequence_id") or "default"
+    by_id = {l["id"]: l for l in store.read("leads")} if lead_access.any_on(store) else {}
     for lead_id in ids:
+        mine = by_id.get(lead_id)
+        if mine is not None and not lead_access.system_ok(store, mine):       # lead ownership on: a campaign starts owned leads only
+            refused[lead_access.NO_OWNER] = refused.get(lead_access.NO_OWNER, 0) + 1
+            continue
         try:
-            enroll_lead(store, lead_id, note=f"Enrolled in email sequence by campaign {campaign['name']}", sequence_id=sequence_id,
+            enroll_lead(store, lead_id, note=f"Enrolled in email sequence by campaign {campaign['name']}"
+                        + (lead_access.system_note(store, mine) if mine else ""), sequence_id=sequence_id,
                         via="campaign auto-enrol", campaign_id=campaign.get("id"), detail=f"campaign {campaign['name']}")
             report["enrolled"] += 1
         except (EnrollRefused, LookupError) as exc:

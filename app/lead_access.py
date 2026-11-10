@@ -8,6 +8,7 @@ from typing import Optional
 
 from . import workspaces
 
+NO_OWNER = "This lead has no owner yet, so automation does not message it. An admin assigns it first."
 KEY = "ownership_mode"          # settings[KEY] = {workspace_id: True}
 
 
@@ -92,14 +93,33 @@ def check_http(store, request, lead: dict) -> None:
 
 def run_refusal(store, run: Optional[dict], lead: dict) -> str:
     """A flow run started by a named person keeps that person's rights; one started by the system (a trigger) is the
-    admins' own automation. '' when allowed."""
+    admins' own automation but needs the lead to have an owner (replies go to the owner). '' when allowed."""
     if not ownership_on(store, workspaces.ws_of(lead)):
         return ""
     email = str((run or {}).get("enrolled_by_email") or "").strip().lower()
     if not email:
-        return ""
+        return "" if system_ok(store, lead) else NO_OWNER
     from . import auth
     user = auth.find_user(store, email)
     if user is None:
         return "The person who started this flow is no longer a login, so it may not message this person."
     return refusal(store, user, lead)
+
+
+def may_start(store, user: Optional[dict], lead: dict) -> bool:
+    """For a start made by `user`, or by the system when user is None (then only leads that have an owner, once on)."""
+    return can_send(store, user, lead) if user is not None else system_ok(store, lead)
+
+
+def filter_queue(store, user: Optional[dict], queue: dict) -> dict:
+    """Drop work-list rows (due / suggestions / waiting, each with a lead_id) of leads `user` may not send to."""
+    if not any_on(store) or user is None:
+        return queue
+    by_id = {l["id"]: l for l in store.read("leads")}
+    ok = lambda row: row.get("lead_id") not in by_id or can_send(store, user, by_id[row["lead_id"]])
+    return {**queue, **{k: [r for r in queue[k] if ok(r)] for k in ("due", "suggestions", "waiting_for_acceptance") if isinstance(queue.get(k), list)}}
+
+
+def system_note(store, lead: dict) -> str:
+    """' (by system for <owner>)' on what a flow sent for an owned lead, once ownership is on; else ''."""
+    return f" (by system for {lead['owner']})" if lead.get("owner") and ownership_on(store, workspaces.ws_of(lead)) else ""

@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import audit, linkedin_bridge, linkedin_config, linkedin_seq as li, opener_lab, provenance, ws_templates as wst
+from . import audit, lead_access, linkedin_bridge, linkedin_config, linkedin_seq as li, opener_lab, provenance, ws_templates as wst
 
 
 class SentBody(BaseModel):
@@ -95,8 +95,8 @@ def make_router(store) -> APIRouter:
             raise HTTPException(400, str(exc))
 
     @router.get("/api/linkedin/queue")
-    def queue():
-        return li.queue(store)
+    def queue(request: Request):
+        return lead_access.filter_queue(store, getattr(request.state, "user", None), li.queue(store))
 
     def ws_view(request: Request, wanted: Optional[str] = None) -> tuple:
         """(workspace, settings as that workspace sees them) for the LinkedIn templates shown / saved."""
@@ -199,6 +199,7 @@ def make_router(store) -> APIRouter:
 
     @router.post("/api/leads/{lead_id}/linkedin/start")
     def start(lead_id: str, request: Request):
+        lead_access.check_http(store, request, lead_or_404(lead_id))
         out = call(lambda st, lid: li.start(st, lid, find=True), lead_id)
         who = provenance.person_of(getattr(request.state, "user", None))
         out["lead"] = provenance.stamp_linkedin_start(store, lead_id, who["name"], who["email"], "by hand") or out["lead"]
@@ -217,6 +218,7 @@ def make_router(store) -> APIRouter:
     def find(lead_id: str, body: FindBody, request: Request):
         """A person settles a profile lookup: pick one of the people found, paste the link, or skip."""
         from . import linkedin_finder
+        lead_access.check_http(store, request, lead_or_404(lead_id))
         who = provenance.person_of(getattr(request.state, "user", None))
         out = call(lambda st, lid: linkedin_finder.person_choice(st, lid, body.action, body.url, who), lead_id)
         lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
@@ -227,6 +229,7 @@ def make_router(store) -> APIRouter:
     @router.post("/api/leads/{lead_id}/linkedin/sent")
     def sent(lead_id: str, body: SentBody, request: Request):
         lead = lead_or_404(lead_id)
+        lead_access.check_http(store, request, lead)
         origin = provenance.build(store, "linkedin_by_hand", True, lead, provenance.person_of(getattr(request.state, "user", None)),
                                   {"step": f"LinkedIn step {body.step}"}, provenance.linkedin_enrolment(lead), "linkedin",
                                   hours=provenance.HOURS_PERSON)

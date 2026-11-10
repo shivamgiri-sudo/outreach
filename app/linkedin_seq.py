@@ -407,14 +407,17 @@ def queue(store, now: Optional[datetime] = None) -> dict:
             "owner": _owner(store, account_id=account)}
 
 
-def auto_start(store, max_new: int, now: Optional[datetime] = None) -> list:
+def auto_start(store, max_new: int, now: Optional[datetime] = None, user: Optional[dict] = None) -> list:
     """Daily auto-start (settings linkedin_auto_start): put the suggested people on the sequence, never more than the
-    daily limit (counting everyone started today, by hand or not) or `max_new` (what the account may still send today)."""
+    daily limit (counting everyone started today, by hand or not) or `max_new` (what the account may still send today).
+    With lead ownership on (app/lead_access.py) only leads `user` may send to are started (no user: leads with an owner)."""
+    from . import lead_access
     now = now or now_utc()
     if not store.read("settings").get("linkedin_auto_start") or max_new <= 0:
         return []
     started = []
-    for s in queue(store, now)["suggestions"][:max_new]:
+    by_id = {l["id"]: l for l in store.read("leads")} if lead_access.any_on(store) else {}
+    for s in [s for s in queue(store, now)["suggestions"] if s["lead_id"] not in by_id or lead_access.may_start(store, user, by_id[s["lead_id"]])][:max_new]:
         try:
             start(store, s["lead_id"], now, auto=True)
             started.append(s)

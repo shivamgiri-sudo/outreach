@@ -54,11 +54,11 @@ def _limit(args: dict, default: int = 20) -> int:
         raise ToolError("limit must be a whole number")
 
 
-def call_tool(store, name: str, args: dict):
+def call_tool(store, name: str, args: dict, user: Optional[dict] = None):
     if not isinstance(args, dict):
         raise ToolError("arguments must be an object")
-    from . import workspaces
-    leads = workspaces.filter_rows(store.read("leads"))          # a limited login's token sees only its workspaces
+    from . import lead_access, workspaces
+    leads = lead_access.visible_leads(store, user, workspaces.filter_rows(store.read("leads")))   # a limited login's token sees only its workspaces; with lead ownership on, only its own leads
     if name == "search_leads":
         words = str(args.get("query") or "").lower().split()
         stage = str(args.get("stage") or "")
@@ -108,7 +108,7 @@ def _error(rid, code: int, message: str) -> dict:
     return {"jsonrpc": "2.0", "id": rid, "error": {"code": code, "message": message}}
 
 
-def handle(store, req) -> Optional[dict]:
+def handle(store, req, user: Optional[dict] = None) -> Optional[dict]:
     """One JSON-RPC request -> its response, or None for a notification (no answer is sent)."""
     if not isinstance(req, dict) or req.get("jsonrpc") != "2.0" or not isinstance(req.get("method"), str):
         return _error(None, -32600, "Invalid request")
@@ -127,7 +127,7 @@ def handle(store, req) -> Optional[dict]:
         if not isinstance(params, dict) or not isinstance(params.get("name"), str):
             return _error(rid, -32602, "tools/call needs a tool name")
         try:
-            result = call_tool(store, params["name"], params.get("arguments") or {})
+            result = call_tool(store, params["name"], params.get("arguments") or {}, user)
             return {"jsonrpc": "2.0", "id": rid, "result": {"content": [{"type": "text", "text": json.dumps(result, default=str)}]}}
         except ToolError as exc:
             return {"jsonrpc": "2.0", "id": rid, "result": {"isError": True, "content": [{"type": "text", "text": str(exc)}]}}

@@ -49,9 +49,10 @@ from .routes_today import make_router as make_today_router
 from .routes_providers import make_router as make_providers_router
 from .routes_activities import make_router as make_activities_router
 from .routes_linkedin import make_router as make_linkedin_router
-from . import linkedin_stages
+from . import lead_access, linkedin_stages
 from .routes_linkedin_accounts import make_router as make_linkedin_accounts_router
 from .routes_lists import make_router as make_lists_router
+from .routes_assignment import make_router as make_assignment_router
 from .routes_companies import make_router as make_companies_router
 from .routes_prospects import make_router as make_prospects_router
 from .routes_analytics import make_router as make_analytics_router
@@ -360,13 +361,14 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         }
 
     @app.get("/api/leads")
-    def list_leads():
-        return linkedin_stages.list_extras(store, with_list_extras(store, sorted((_present(lead) for lead in workspaces_mod.filter_rows(store.read("leads"))), key=lambda x: -x["score"])))
+    def list_leads(request: Request):
+        seen = lead_access.visible_leads(store, getattr(request.state, "user", None), workspaces_mod.filter_rows(store.read("leads")))   # ownership on: a member sees own leads
+        return linkedin_stages.list_extras(store, with_list_extras(store, sorted((_present(lead) for lead in seen), key=lambda x: -x["score"])))
 
     @app.get("/api/leads/{lead_id}")
-    def get_lead(lead_id: str):
+    def get_lead(lead_id: str, request: Request):
         leads, i = find(lead_id)
-        if not workspaces_mod.visible(leads[i]):
+        if not workspaces_mod.visible(leads[i]) or not lead_access.can_see(store, getattr(request.state, "user", None), leads[i]):
             raise HTTPException(404, "Lead not found")
         return _present(leads[i])
 
@@ -594,6 +596,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_linkedin_router(store))
     app.include_router(make_linkedin_accounts_router(store))
     app.include_router(make_lists_router(store, _present))
+    app.include_router(make_assignment_router(store))
     app.include_router(make_companies_router(store))
     app.include_router(make_workspaces_router(store))
     from .routes_accounts import make_router as make_accounts_router

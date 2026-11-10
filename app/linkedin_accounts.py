@@ -14,7 +14,7 @@ Every change of assignment is written to the lead's timeline and to the audit tr
 from datetime import datetime
 from typing import Optional
 
-from . import audit, linkedin_agent as agent, linkedin_seq as li, workspaces
+from . import audit, lead_access, linkedin_agent as agent, linkedin_seq as li, workspaces
 from .activities import iso, now_utc
 
 FIELD = "linkedin_account"
@@ -171,10 +171,11 @@ def save_owner_defaults(store, mapping: dict, user) -> dict:
     return clean
 
 
-def auto_start_for(store, account: str, max_new: int, now: Optional[datetime] = None, owner: str = "mcn") -> list:
+def auto_start_for(store, account: str, max_new: int, now: Optional[datetime] = None, owner: str = "mcn", user: Optional[dict] = None) -> list:
     """Daily auto-start for one polling account: start leads assigned to it (first) or unassigned, never more than
     the daily limit for this account (counting its people started today) or `max_new` (what it may still send today).
-    A lead started for an account is taken by it, so the next account to poll starts other people."""
+    A lead started for an account is taken by it, so the next account to poll starts other people. With lead ownership on
+    (app/lead_access.py) only leads `user` may send to are started (no user: leads that have an owner)."""
     now = now or now_utc()
     settings = store.read("settings")
     cfg = agent.config(store, agent.owner_of_slug(store, account, owner))       # the client account's own switch and limit
@@ -191,7 +192,7 @@ def auto_start_for(store, account: str, max_new: int, now: Optional[datetime] = 
     from . import linkedin_dupes
     dupes = linkedin_dupes.Index(store)                                         # a person already contacted through another lead is skipped
     pool = [l for l in leads if not l.get("linkedin_seq") and not dupes.of(l) and li.has_profile_link(l) and l.get("stage") not in NOT_STARTABLE
-            and not l.get("do_not_contact") and may_take(l, account, settings) and workspaces.visible(l)]
+            and not l.get("do_not_contact") and may_take(l, account, settings) and workspaces.visible(l) and lead_access.may_start(store, user, l)]
     pool.sort(key=lambda l: (assigned(l, settings) != account if account else False, -(l.get("open_roles") or 0)))
     started = []
     for lead in pool:

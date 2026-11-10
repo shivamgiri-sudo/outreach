@@ -110,6 +110,9 @@ ADMIN_WRITES = {
     ("PUT", "/api/account/whatsapp"), ("DELETE", "/api/account/whatsapp"), ("PUT", "/api/account/alerts"),
     # the sales funnel's SLA, stalled days and monthly targets, and the stage-date back-fill (the routes refuse callers)
     ("PUT", "/api/funnel/settings"), ("POST", "/api/funnel/recalculate"),
+    # lead ownership (app/routes_assignment.py): assigning lists, the switch, the migration; the routes check the caller is an admin of the workspace
+    ("PUT", "/api/lists/{list_id}/assign"), ("POST", "/api/lists/{list_id}/split"), ("PUT", "/api/lists/{list_id}/share"),
+    ("PUT", "/api/ownership-mode"), ("POST", "/api/ownership/migrate"), ("POST", "/api/ownership/fix-owners"),
 }
 # LinkedIn agent per client account (app/linkedin_scope.py): an account's admins run their own account's agent, slots and
 # office computer (the routes cut to the admin's account, 404 for another's); callers / viewers only read its status.

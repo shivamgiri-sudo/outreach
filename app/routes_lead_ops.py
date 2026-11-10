@@ -86,7 +86,7 @@ def make_router(store, present) -> APIRouter:
     @router.post("/api/leads/bulk")
     def bulk(body: BulkBody, request: Request):
         try:
-            return lead_ops.run_bulk(store, body.lead_ids, body.action, body.value, actor(request), body.force, enroll_lead)
+            return lead_ops.run_bulk(store, body.lead_ids, body.action, body.value, actor(request), body.force, enroll_lead, getattr(request.state, "user", None))
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc
         except lead_ops.LeadOpRefused as exc:

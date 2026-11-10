@@ -17,7 +17,7 @@ import re
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
 
-from . import linkedin_seq, provenance, sequence_runner, sequences
+from . import lead_access, linkedin_seq, provenance, sequence_runner, sequences
 from .activities import add_task, caller_name, next_call_slot, on_became_interested, update_task
 from .channels.http import request
 from .channels.netguard import check_public_url
@@ -260,6 +260,8 @@ def _owner_or_caller(store, name) -> str:
 # ---------------------------------------------------------------- email
 def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
     """One flow email through the cold-email engine's rules. Defers (no claim) while a cap or hour rule says wait."""
+    if (no := lead_access.run_refusal(store, run, lead)):      # lead ownership: the person who started this flow may not message this lead
+        return refused(no)
     cfg = get_settings(store)
     live = bool(cfg["live_sending"]) and bool(email_ready(store))
     from . import account_sending
@@ -347,7 +349,7 @@ def do_email(store, flow, run, node, lead, now, ctx, claim, release) -> dict:
         return defer(now + RETRY_AFTER, f"send failed ({message.get('error', 'unknown error')}); retrying in an hour")
     ctx.emails_sent += 1
     label = "sent" if live else "practice only, not sent"
-    event = {"at": iso(now), "kind": "flow", "text": f"Flow {flow['name']}: email “{message['subject']}” — {label}",
+    event = {"at": iso(now), "kind": "flow", "text": f"Flow {flow['name']}: email “{message['subject']}” — {label}{lead_access.system_note(store, lead)}",
              **({"ai_drafted": True} if message.get("ai_drafted") else {})}
     if message.get("ai_drafted"):
         from . import ai_marks
@@ -371,6 +373,8 @@ def do_whatsapp(store, flow, node, lead, now, ctx) -> dict:
     template = (node.get("config") or {}).get("template")
     try:
         run = _run_of(store, flow, lead)
+        if (no := lead_access.run_refusal(store, run, lead)):
+            return refused(f"WhatsApp not sent: {no}")
         saved = send_whatsapp_message(store, lead["id"], template, "", now, ctx.base_url, ctx.transport, origin={
             "trigger": "whatsapp_auto", "rule": provenance.flow_rule(flow, node, run), "enrolment": provenance.enrolment_from(run)})
     except WhatsAppError as exc:
@@ -381,6 +385,8 @@ def do_whatsapp(store, flow, node, lead, now, ctx) -> dict:
 
 
 def do_sms(store, flow, node, lead, now, ctx) -> dict:
+    if (no := lead_access.run_refusal(store, _run_of(store, flow, lead), lead)):
+        return refused(f"SMS not sent: {no}")
     if not has_consent_for(lead, "sms"):
         return refused("SMS not sent: no recorded SMS consent (a yes for call, email or WhatsApp does not cover SMS).")
     if not lead.get("phone"):
@@ -406,12 +412,14 @@ def do_sms(store, flow, node, lead, now, ctx) -> dict:
 def do_linkedin(store, flow, node, lead, now, ctx) -> dict:
     c = node.get("config") or {}
     if c.get("mode", "task") == "start_sequence":
+        if (no := lead_access.run_refusal(store, _run_of(store, flow, lead), lead)):
+            return refused(f"LinkedIn sequence not started: {no}")
         try:
             linkedin_seq.start(store, lead["id"], now)
             provenance.stamp_linkedin_start(store, lead["id"], provenance.SYSTEM, "", "flow trigger", f"flow {flow.get('name')}")
         except (ValueError, LookupError) as exc:
             return refused(f"LinkedIn sequence not started: {exc}")
-        return ok("LinkedIn sequence started (step 1 task for the person who sends it)")
+        return ok("LinkedIn sequence started (step 1 task for the person who sends it)" + lead_access.system_note(store, lead))
     text, missing = text_for(store, lead, c.get("message", ""), ctx.base_url, now)
     if missing:
         return refused(f"LinkedIn task not created: details missing ({', '.join(missing)})")
