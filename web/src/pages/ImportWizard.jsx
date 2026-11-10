@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { istLabel } from "../time.js";
+import ImportConflicts from "./ImportConflicts.jsx";
 import { api, canWrite, EXCEL_ACCEPT, readLeadFile } from "../api.js";
 import { sourceLabel, sourceOptions, useSourceRegistry } from "../labels.js";
 import Abbr from "../components/Abbr.jsx";
@@ -280,6 +281,7 @@ export default function ImportWizard({ onClose, onDone }) {
             {result.summary.conflicts > 0 && ` ${result.summary.conflicts} different value(s) are waiting for you under Data hygiene.`}
             {result.summary.rejected + result.summary.skipped > 0 && ` ${result.summary.rejected + result.summary.skipped} row(s) were left out.`}
           </p>
+          <ImportConflicts importId={result.import_id} />
           {undone ? (
             <div className="tip">
               Undone: removed {undone.removed} lead(s).{undone.kept.length > 0 && ` Kept ${undone.kept.length}: ${undone.kept.map((k) => `${k.company || k.lead_id} (${k.reason})`).join("; ")}.`} {undone.note}

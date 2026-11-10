@@ -16,6 +16,7 @@ import LeadStage from "./LeadStage.jsx";
 import LeadSales from "./LeadSales.jsx";
 import { EditDetails, InlineForm, LeadOrigin, PrivacyActions, SIGNAL_LABELS, linkedinDrafts, replyMeaning, sequenceStatus } from "./LeadDrawerParts.jsx";
 import LeadAssign from "./LeadAssign.jsx";
+import { LeadAssignedBy } from "./LeadFirstTouch.jsx";
 import LinkedInAccountPick from "./LinkedInAccountPick.jsx";
 import LinkedInFinder from "./LinkedInFinder.jsx";
 import LinkedInContacts from "./LinkedInContacts.jsx";
@@ -147,6 +148,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
   const outreach = (
     <>
       {/* SLOT: outreach panels (SequencePicker …) — one line each */}
+      <LeadAssignedBy lead={lead} />
       <h3>Email sequence</h3>
       {lead.sequence ? (
         <div><p className="sub">{sequenceStatus(lead.sequence)}</p>
