@@ -3,11 +3,11 @@ import csv
 import io
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
-from . import account_limits as account_limits_mod
+from . import account_limits as account_limits_mod, upload_owner
 from .apollo import match_person
 from .http_util import post_json
 from .enrich import find_public_contacts, needs, pick_best_email
@@ -33,7 +33,7 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
     router = APIRouter()
 
     @router.post("/api/leads/import-sheet")
-    def import_sheet(body: SheetBody):
+    def import_sheet(body: SheetBody, request: Request):
         if body.tab not in ("leads", "demo", "decision_makers"):
             raise HTTPException(400, "tab must be 'leads', 'demo' or 'decision_makers'")
         rows = read_rows(body.csv)
@@ -41,7 +41,13 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
             return attach_people(decision_makers(rows))
         incoming = demo_leads(rows) if body.tab == "demo" else sheet_leads(rows)
         account_limits_mod.check_current(store, "imports_per_day", len(incoming))        # the account's daily imports limit
+        user = getattr(request.state, "user", None)
+        member = upload_owner.is_member(user)
+        if member:
+            upload_owner.check_caps(store, user, len(incoming))
+        own = upload_owner.Ownership(upload_owner.user_name(user), "sheet import") if member else None
         stats = {"created": 0, "duplicates": 0, "merged": 0}
+        placed, owned_elsewhere = [], []
         erased = set(store.read("suppressed_hashes"))
         blocked = set(store.read("suppressed"))
 
@@ -52,18 +58,36 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
                     stats["suppressed"] = stats.get("suppressed", 0) + 1     # erased or do-not-contact: never imported again
                 elif lead["dedupe_key"] in seen:
                     stats["duplicates"] += 1
+                    twin = next((l for l in leads if l["dedupe_key"] == lead["dedupe_key"]), None)
+                    if own and twin is not None:
+                        if own.conflict(twin):
+                            owned_elsewhere.append({"lead_id": twin["id"], "owner": twin["owner"]})
+                        else:
+                            placed.append(twin["id"])
                 elif (target := contactless_match(leads, lead)) is not None:
+                    if own and own.conflict(leads[target]):
+                        owned_elsewhere.append({"lead_id": leads[target]["id"], "owner": leads[target]["owner"]})
+                        continue
                     leads[target] = merge_contact(leads[target], lead)
+                    if own:
+                        leads[target] = own.stamp(leads[target])
+                        placed.append(leads[target]["id"])
                     seen.add(lead["dedupe_key"])
                     stats["merged"] += 1
                 else:
                     seen.add(lead["dedupe_key"])
-                    leads.append(lead)
+                    leads.append(own.stamp(lead) if own else lead)
+                    if own:
+                        placed.append(lead["id"])
                     stats["created"] += 1
             return leads
         store.update("leads", merge_in)
         created, duplicates, merged = stats["created"], stats["duplicates"], stats["merged"]
         extra = {"suppressed": stats["suppressed"]} if stats.get("suppressed") else {}
+        if member:
+            row = upload_owner.finish_upload(store, own.uploader, "Sheet import " + now_iso()[:10], list(dict.fromkeys(placed)),
+                                             "sheet import", blocked)
+            extra.update(list_id=(row or {}).get("id"), owned_by_other=owned_elsewhere)
         return {"created": created, "duplicates": duplicates, "merged": merged, "rows": len(rows), **extra}
 
     def attach_people(people: list) -> dict:

@@ -292,7 +292,7 @@ SAMPLE_FIELDS = ("company", "contact_name", "title", "seniority", "department", 
 
 def run_import(leads: list, table: list, columns: list, source: str, suppressed: set, options: dict,
                import_id: str = "", today: Optional[date] = None, at: Optional[str] = None, custom_fields: Optional[list] = None,
-               same_account=None) -> dict:
+               same_account=None, ownership=None) -> dict:
     """Dedupe and merge `table` rows into `leads` (changed in place). Returns what happened to every row.
     `same_account(lead)` says whether a lead is in the account the rows go into (app/accounts.py): leads of other
     accounts are invisible here (another client company may hold the same contact); None = one account."""
@@ -307,7 +307,7 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
     created, touched = {}, {}
     blocked_aliases = {email_alias_key(e) for e in suppressed}
     out = {k: [] for k in ("created_ids", "merged_ids", "merges", "duplicates", "unchanged", "rejected", "skipped",
-                           "warnings", "sample", "source_opt_outs")}
+                           "warnings", "sample", "source_opt_outs", *(("conflicts",) if ownership else ()))}
     counts = Counter()
 
     for n, row in table:
@@ -362,7 +362,7 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
                 out["skipped"].append({"row": n, "reason": ELSEWHERE, "values": row})  # nothing about the other lead is shown
             action = "skipped"
         if action is None:
-            action = _place(leads, index, rec, n, source, import_id, at, created, touched, out, warn)
+            action = _place(leads, index, rec, n, source, import_id, at, created, touched, out, warn, ownership)
         counts[action] += 1
         if len(out["sample"]) < SAMPLE_ROWS:
             out["sample"].append({"row": n, "action": action, **{f: rec.get(f) for f in SAMPLE_FIELDS}})
@@ -373,6 +373,7 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
         "contacts_added": sum(1 for m in out["merges"] + out["duplicates"] if m.get("added_contact")),
         "fields_filled": sum(len(m["filled"]) for m in out["merges"]),
         "warnings": dict(Counter(w["kind"] for w in out["warnings"])),
+        **({"owned_by_other": len(out["conflicts"])} if ownership else {}),
     }
     return out
 
@@ -385,10 +386,11 @@ def _same_person(hit) -> bool:
     return hit is not None and hit[1] != "company"
 
 
-def _place(leads, index, rec, n, source, import_id, at, created, touched, out, warn) -> str:
+def _place(leads, index, rec, n, source, import_id, at, created, touched, out, warn, ownership=None) -> str:
     hit = index.match(rec)
     if hit is None:
-        leads.append(lead_from_record(rec, source, import_id, at, index.keys, warn))
+        new = lead_from_record(rec, source, import_id, at, index.keys, warn)
+        leads.append(ownership.stamp(new, at) if ownership else new)
         i = len(leads) - 1
         index.add(i)
         created[i] = n
@@ -396,6 +398,9 @@ def _place(leads, index, rec, n, source, import_id, at, created, touched, out, w
         return "create"
     i, who, reason = hit
     before = leads[i]
+    if ownership and (owner := ownership.conflict(before)):        # somebody else's lead: skip, report, never merge
+        out["conflicts"].append({"row": n, "lead_id": before["id"], "owner": owner})
+        return "conflict"
     merged, info = merge_record(before, rec, who, source, import_id, at, index.keys)
     extra = {k: v for k, v in (rec.get("custom") or {}).items() if (merged.get("custom") or {}).get(k) in (None, "")}
     if extra:                                  # custom values fill gaps only; a value already on the lead is kept
@@ -409,6 +414,9 @@ def _place(leads, index, rec, n, source, import_id, at, created, touched, out, w
     if notes:
         merged = {**merged, "timeline": [*merged["timeline"], *[event("note", t) for t in notes]]}
         info["changed"] = True
+    if ownership and not merged.get("owner"):                  # an unowned lead the uploader hits becomes theirs
+        merged = ownership.stamp(merged, at)
+        info = {**info, "changed": True}
     first_row = created.get(i) or touched.get(i)
     entry = {"row": n, "lead_id": before["id"], "company": before.get("company") or merged.get("company"),
              "matched_by": reason, "filled": info["filled"], "conflicts": info["conflicts"],
@@ -455,7 +463,7 @@ def fingerprint(lead: dict) -> str:
 
 def trim_lists(result: dict) -> dict:
     """Keep responses small: long lists are cut (rejected and skipped rows are kept for the download)."""
-    return {k: (v[:LIST_CAP] if isinstance(v, list) and k in ("merges", "duplicates", "unchanged", "warnings") else v)
+    return {k: (v[:LIST_CAP] if isinstance(v, list) and k in ("merges", "duplicates", "unchanged", "warnings", "conflicts") else v)
             for k, v in result.items()}
 
 
