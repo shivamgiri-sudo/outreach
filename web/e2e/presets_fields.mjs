@@ -114,7 +114,7 @@ async function run(width) {
   await page.screenshot({ path: `${S}/preview-${width}.png` });
 
   // 7. LinkedIn page: step editor with the preset's steps and the 300 limit
-  await page.goto(`${BASE}/#linkedin`);
+  await page.goto(`${BASE}/#linkedin?tab=messages`);
   await page.waitForSelector("[data-testid=li-sequence-editor]");
   await page.click("[data-testid=li-sequence-editor] > summary");
   await page.waitForSelector("[data-testid=li-step-1] [data-testid=li-preview]");

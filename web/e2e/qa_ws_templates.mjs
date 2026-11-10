@@ -120,6 +120,8 @@ await step("Workspace admin opens LinkedIn: only its lead, no owner-only parts, 
   const text = await p.locator("main").innerText();
   if (/Rohit|Sharma/.test(text)) throw new Error("admin sees a main lead on the LinkedIn page");
   if (/LinkedIn agent|Cloud accounts|Office runner/i.test(text.split("To send today")[0]) && /Switch on the agent/i.test(text)) throw new Error("owner-only agent controls shown");
+  const msgTab = p.getByRole("tab", { name: "Messages", exact: true });                  // the LinkedIn page's tabs
+  if (await msgTab.count()) await msgTab.click();
   await p.getByTestId("li-sequence-editor").locator("summary").click();
   await p.getByTestId("li-copy").click();
   await p.getByText("Copied into your workspace.").waitFor();

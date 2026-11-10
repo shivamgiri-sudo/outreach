@@ -134,6 +134,8 @@ async function width(browser, w, h, full) {
   const openLinkedIn = async () => {
     if (w < 700 && await page.getByRole("button", { name: /menu/i }).count()) await page.getByRole("button", { name: /menu/i }).first().click().catch(() => {});
     await nav("LinkedIn outreach");
+    const agentTab = page.getByRole("tab", { name: "Agent & accounts", exact: true });     // the LinkedIn page's tabs
+    if (await agentTab.count()) await agentTab.click();
     await page.getByTestId("office-runner").waitFor();
   };
   const waitState = (label, re, ms = 90000) => until(async () => re.test(await slotState(label)) && slotState(label), ms, `${label}: ${re}`);

@@ -38,7 +38,8 @@ async function startApi() {
   // a leftover server on the port would answer the health check and the journey would run against its old data
   if (await fetch(`${E2E_API}/api/auth/status`).then(() => true, () => false)) throw new Error(`something already answers on ${E2E_API}; stop it first`);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outreach-journey-"));
-  const env = { ...process.env, OUTREACH_ADMIN_PASSWORD: PASSWORD, OUTREACH_DATA_FILE: path.join(dir, "store.json"),
+  // OUTREACH_ADMIN_LOGIN=1: signing in with OUTREACH_ADMIN_PASSWORD is off unless it is set (README, local e2e rigs).
+  const env = { ...process.env, OUTREACH_ADMIN_PASSWORD: PASSWORD, OUTREACH_ADMIN_LOGIN: "1", OUTREACH_DATA_FILE: path.join(dir, "store.json"),
     OUTREACH_IGNORE_BUSINESS_HOURS: "1" };
   for (const k of ["OUTREACH_AUTORUN", "OUTREACH_TEST_MODE", "OUTREACH_SECRET_KEY", "OUTREACH_BASE_URL"]) delete env[k];
   const port = new URL(E2E_API).port;
@@ -448,7 +449,7 @@ async function journey(browser, [size, width, height]) {
   // ======================= LinkedIn =======================
   await step("LinkedIn queue: start, copy, mark sent, accepted (sent by hand)", async () => {
     await nav("LinkedIn outreach");
-    await see("LinkedIn doesn't allow automation");
+    await see("one action at a time");
     const suggestion = page.locator(".task-list li", { hasText: "Arjun Mehra" });
     await suggestion.getByRole("button", { name: "Start LinkedIn sequence" }).click();
     await see("Added. Step 1 is in today's list.");

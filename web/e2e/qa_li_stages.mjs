@@ -17,7 +17,7 @@ const errors = [];
 p.on("response", (r) => { if (r.url().includes("/api/") && r.status() >= 400) errors.push(`${r.status()} ${r.url().replace(UI, "")}`); });
 p.on("pageerror", (e) => errors.push(`pageerror ${e.message}`));
 const nav = async (label) => { await p.locator("nav.side").getByRole("button", { name: label, exact: true }).click(); await p.waitForTimeout(900); };
-const toLinkedIn = async () => { await p.evaluate(() => { location.hash = "#linkedin"; }); await p.waitForTimeout(1500); };
+const toLinkedIn = async (tab = "stages") => { await p.evaluate((t) => { location.hash = `#linkedin?tab=${t}`; }, tab); await p.waitForTimeout(1500); };
 async function step(name, fn) {
   try { await fn(); results.push([true, name]); } catch (e) { results.push([false, `${name} — ${e.message.split("\n")[0]}`]); }
 }
@@ -42,8 +42,10 @@ await step("Stage board counts them as not contacted", async () => {
   if (!/not contacted/i.test(text)) throw new Error(text.slice(0, 300));
 });
 await step("After starting one, it moves to the next stage and the list opens", async () => {
+  await toLinkedIn("today");
   await p.getByRole("button", { name: "Start LinkedIn sequence" }).first().click();
   await p.waitForTimeout(1500);
+  await toLinkedIn("stages");
   await p.reload(); await p.locator("main").waitFor(); await p.waitForTimeout(1500);
   const board = p.getByTestId("li-stage-board");
   const row = board.locator("tr", { hasText: /queued|waiting to connect|request/i }).first();

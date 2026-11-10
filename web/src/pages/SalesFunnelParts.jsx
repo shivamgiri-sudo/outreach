@@ -40,11 +40,12 @@ export function FunnelHealth({ data, onDrill }) {
   return (
     <section aria-labelledby="sf-h-health">
       <h3 id="sf-h-health">Funnel health</h3>
-      <div className="grid g2">
+      <div className="sf-health-grid">
         <div className="card">
           <h4>Funnel (leads created in the range)</h4>
           <FunnelChart stages={data.funnel} onPick={(k) => onDrill(k, "Leads in this funnel stage")} />
-          <p className="sub">Each bar is every lead that reached that stage by the To date. The % is of the stage before.</p>
+          <p className="sub">Each band is every lead that reached that stage by the To date; click one to see the leads. Between bands: the share of the stage
+            before that moved on, and how many dropped. On the right: the share of all inquiries.</p>
         </div>
         <div className="card table-card-inner">
           <h4>Stage conversion</h4>

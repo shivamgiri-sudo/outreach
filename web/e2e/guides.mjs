@@ -103,9 +103,12 @@ async function setupAndApp(page, size) {
   await allButtons(page, "[data-testid=workspaces-guide], [data-testid=users-guide]", `${size} team`);
   await go(page, "setup?tab=backup");
   await allButtons(page, "[data-testid=backup-guide]", `${size} backup`);
-  await go(page, "linkedin");
+  // The LinkedIn page's tabs: the agent guide is under "Agent & accounts", the Chrome assistant under "Settings & tools".
+  await go(page, "linkedin?tab=agent");
+  await allButtons(page, "[data-testid=agent-guide]", `${size} linkedin agent`);
+  await go(page, "linkedin?tab=settings");
   await page.getByTestId("chrome-assistant").locator("summary").click();
-  await allButtons(page, "[data-testid=agent-guide], [data-testid=extension-guide]", `${size} linkedin`);
+  await allButtons(page, "[data-testid=extension-guide]", `${size} linkedin`);
   await go(page, "sources");
   await allButtons(page, "[data-testid^=source-guide-]", `${size} data sources`);
   await go(page, "help");

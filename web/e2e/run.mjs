@@ -35,6 +35,11 @@ const answerDialog = async (value) => {
   await box.getByTestId("dialog-ok").click();
   await box.waitFor({ state: "detached" });
 };
+// The LinkedIn page has tabs (Today, Stages, Agent & accounts, Messages, Settings & tools): open one if this build has them.
+const liTab = async (name) => {
+  const t = page.getByRole("tablist", { name: "LinkedIn sections" }).getByRole("tab", { name, exact: true });
+  if (await t.count()) { await t.click(); await page.waitForTimeout(400); }
+};
 const text = (t) => page.getByText(t, { exact: false }).first();
 const expectText = async (t, timeout = 5000) => text(t).waitFor({ timeout });
 const closeDrawer = async () => {
@@ -790,7 +795,9 @@ await step("Reminders bell opens and lists reminders", async () => {
 
 await step("LinkedIn: queue page explains the rules and saves settings", async () => {
   await nav("LinkedIn outreach");
+  await liTab("Agent & accounts");
   await expectText("LinkedIn does not allow automation");
+  await liTab("Settings & tools");
   await page.getByText("LinkedIn settings").click();
   await page.getByLabel("Case-study link (step 4 is skipped until a real link is set)").fill("https://bookmyinterview.ai/case-study");
   await page.locator("details", { hasText: "LinkedIn settings" }).getByRole("button", { name: "Save" }).click();
@@ -1054,6 +1061,7 @@ await step("Flow builder: on a phone the flow opens as a list of steps with no s
 await step("LinkedIn: Chrome assistant pairing token is created, shown once, works only for the extension routes, and can be revoked", async () => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await nav("LinkedIn outreach");
+  await liTab("Settings & tools");
   const card = page.getByTestId("chrome-assistant");
   await card.locator("summary").click();
   await card.getByLabel("Name for this computer").fill("E2E laptop");
@@ -1070,6 +1078,7 @@ await step("LinkedIn: Chrome assistant pairing token is created, shown once, wor
   await card.getByRole("button", { name: "I have copied it" }).click();
   await nav("Leads");
   await nav("LinkedIn outreach");
+  await liTab("Settings & tools");
   await page.getByTestId("chrome-assistant").locator("summary").click();
   if (await page.getByText(token).count()) throw new Error("the raw token is still on the page after it was dismissed");
   const row = page.getByTestId("pair-row").filter({ hasText: "E2E laptop" });
@@ -1118,6 +1127,7 @@ await step("Find & enrich: Run now shows progress, then a report that names what
 });
 await step("LinkedIn tool: the export button downloads a CSV with the tool's columns; the results import reports what it could not match", async () => {
   await nav("LinkedIn outreach");
+  await liTab("Settings & tools");
   await page.getByText("Automating LinkedIn is against LinkedIn's terms").waitFor();
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Export list for a LinkedIn tool" }).click()]);
   if (!/^outreach-linkedin-tool-\d{4}-\d{2}-\d{2}\.csv$/.test(download.suggestedFilename())) throw new Error(`file name: ${download.suggestedFilename()}`);

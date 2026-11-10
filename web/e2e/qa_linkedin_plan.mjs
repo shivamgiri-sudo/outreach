@@ -19,7 +19,7 @@ const nav = async (label) => { await p.locator("nav.side").getByRole("button", {
 async function step(name, fn) {
   try { await fn(); results.push([true, name]); } catch (e) { results.push([false, `${name} — ${e.message.split("\n")[0]}`]); }
 }
-const toLinkedIn = async () => { await p.evaluate(() => { location.hash = "#linkedin"; }); await p.waitForTimeout(1500); };
+const toLinkedIn = async (tab = "today") => { await p.evaluate((t) => { location.hash = `#linkedin?tab=${t}`; }, tab); await p.waitForTimeout(1500); };
 const settingsBox = () => p.locator("summary", { hasText: "LinkedIn settings" }).locator("xpath=ancestor::details[1]");
 
 await step("Sign in and import a lead with a LinkedIn link", async () => {
@@ -36,7 +36,7 @@ await step("Sign in and import a lead with a LinkedIn link", async () => {
   await p.getByText("Added 1").waitFor();
 });
 await step("Owner switches on daily auto-start and it stays on", async () => {
-  await toLinkedIn();
+  await toLinkedIn("settings");
   await p.locator("summary", { hasText: "LinkedIn settings" }).click();
   await settingsBox().getByTestId("li-auto-start").check();
   await settingsBox().getByRole("button", { name: "Save" }).click();
@@ -46,6 +46,7 @@ await step("Owner switches on daily auto-start and it stays on", async () => {
   if (!(await settingsBox().getByTestId("li-auto-start").isChecked())) throw new Error("auto-start not saved");
 });
 await step("Start the LinkedIn sequence for the suggested person", async () => {
+  await toLinkedIn("today");
   await p.getByRole("button", { name: "Start LinkedIn sequence" }).first().click();
   await p.getByText(/Rohit|Sharma Logistics/).first().waitFor();
   await p.waitForTimeout(1000);

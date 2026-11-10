@@ -5,6 +5,7 @@ import LinkedInCloud from "./LinkedInCloud.jsx";
 import LinkedInAgent from "./LinkedInAgentBox.jsx";
 import LinkedInStageBoard from "./LinkedInStageBoard.jsx";
 import LinkedInFinder from "./LinkedInFinder.jsx";
+import LinkedInStatus, { useAgentStatus, whenItSends } from "./LinkedInStatus.jsx";
 import { copyText } from "../clipboard.js";
 import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
@@ -198,42 +199,98 @@ function ConnectionNotes({ onMessage }) {
   );
 }
 
+// A button whose action talks to the server: it shows that it is working and cannot be pressed twice meanwhile.
+function ActButton({ run, children, className = "btn ghost", testId }) {
+  const [busy, setBusy] = useState(false);
+  const click = async () => { setBusy(true); try { await run(); } finally { setBusy(false); } };
+  return <button type="button" className={className} disabled={busy} aria-busy={busy} data-testid={testId} onClick={click}>{busy ? "Working…" : children}</button>;
+}
+
+// Messages appear at the bottom of the screen, wherever the button was, and go away by themselves.
+function Toast({ message, onClose }) {
+  useEffect(() => {
+    if (!message) return undefined;
+    const t = setTimeout(onClose, Math.min(20000, 6000 + message.length * 40));
+    return () => clearTimeout(t);
+  }, [message]);
+  if (!message) return null;
+  return (
+    <div className="tip toast" role="status" aria-live="polite" data-testid="li-toast">
+      <span>{message}</span>
+      <button type="button" className="toast-x" aria-label="Close message" onClick={onClose}>×</button>
+    </div>
+  );
+}
+
+const TABS = [["today", "Today"], ["stages", "Stages"], ["agent", "Agent & accounts"], ["messages", "Messages"], ["settings", "Settings & tools"]];
+function tabFromHash() {
+  const m = /[?&]tab=([a-z]+)/.exec(window.location.hash);
+  return m && TABS.some(([id]) => id === m[1]) ? m[1] : "today";
+}
+
 export default function LinkedInQueue() {
   const [q, setQ] = useState(null);
   const [cfg, setCfg] = useState({ linkedin_daily_connections: 12, linkedin_owner: "", case_study_url: "", linkedin_auto_start: false });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [helper, setHelper] = useState(null);
+  const [tab, setTab] = useState(tabFromHash);
   const [acctTick, setAcctTick] = useState(0);         // the owner changed the LinkedIn account filter: the cloud box reloads
+  const [agent, loadAgent, agentError] = useAgentStatus();
   const limited = isLimitedLogin();      // a workspace login: its own leads and templates; account, agent and tool settings stay with owners
   const load = () => { setError(""); api.linkedinQueue().then(setQ).catch((e) => setError(e.message)); if (!limited) api.linkedinSettings().then(setCfg).catch(() => {}); };
   useEffect(() => { load(); }, []);
-  const act = async (fn, done) => { try { await fn(); setMessage(done); load(); } catch (e) { setMessage(e.message); } };
+  useEffect(() => {
+    const onHash = () => setTab(tabFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  const pick = (id) => {
+    setTab(id);
+    window.history.replaceState(null, "", `#linkedin?tab=${id}`);
+  };
+  const act = async (fn, done) => { try { await fn(); setMessage(typeof done === "function" ? await done() : done); load(); loadAgent(); } catch (e) { setMessage(e.message); } };
+  // After a start: say when the agent will actually send it (fresh status, so the wait is right).
+  const started = () => async () => `Added. Step 1 is in today's list. ${whenItSends(await api.linkedinAgent().catch(() => null))}`;
+  const visibleTabs = TABS.filter(([id]) => id !== "settings" || !limited || canWrite());
 
   return (
     <>
       <h2>LinkedIn outreach <HelpLink chapter="linkedin" label="LinkedIn outreach" /></h2>
-      <p className="sub">Send by hand from this list, or switch on the LinkedIn agent below to have the server (cloud agent) or your own computer do the sending for you (LinkedIn does not allow
-        automation, so keep the numbers low). This page gives the day's list with every message already written. Mark each one sent and the next step is scheduled. Messages only start after
-        they accept the connection, and any reply stops the sequence.</p>
+      <p className="sub">Today's list has every message already written. The LinkedIn agent sends one action at a time, with a fixed gap, inside working hours,
+        so a person you start is contacted at the agent's next turn, not at once. Messages only start after they accept, and any reply stops the sequence.</p>
+      <div className="tabs scroll" role="tablist" aria-label="LinkedIn sections">
+        {visibleTabs.map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => pick(id)}>{label}</button>
+        ))}
+      </div>
       {error && <ErrorState message="The LinkedIn queue could not load." detail={error} onRetry={load} />}
-      {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
-      <LinkedInStageBoard onMessage={setMessage} />
-      {(isOwner() || isWorkspaceAdmin()) && <LinkedInCloud key={`cloud-${acctTick}`} onMessage={setMessage} />}
-      {!limited && <ToolBridge onDone={load} />}
-      <LinkedInAgent onMessage={setMessage} onAccount={() => setAcctTick((n) => n + 1)} />
-      <LinkedInSequenceEditor onMessage={setMessage} />
-      <ConnectionNotes onMessage={setMessage} />
-      {!limited && <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />}
-      {canWrite() && <ChromeAssistant onMessage={setMessage} />}
-      {q && !q.case_study_set && <p className="sub">Step 4 (case study) is skipped until you add a real case-study link in the settings above.</p>}
+      <Toast message={message} onClose={() => setMessage("")} />
+      {tab === "stages" && <LinkedInStageBoard onMessage={setMessage} />}
+      {tab === "agent" && <>
+        {(isOwner() || isWorkspaceAdmin()) && <LinkedInCloud key={`cloud-${acctTick}`} onMessage={setMessage} />}
+        <LinkedInAgent onMessage={(m) => { setMessage(m); loadAgent(); }} onAccount={() => { setAcctTick((n) => n + 1); loadAgent(); }} />
+      </>}
+      {tab === "messages" && <>
+        <LinkedInSequenceEditor onMessage={setMessage} />
+        <ConnectionNotes onMessage={setMessage} />
+      </>}
+      {tab === "settings" && <>
+        {!limited && <Settings cfg={cfg} onSave={(body) => act(() => api.saveLinkedinSettings(body), "Settings saved.")} />}
+        {!limited && <ToolBridge onDone={load} />}
+        {canWrite() && <ChromeAssistant onMessage={setMessage} />}
+      </>}
+      {tab === "today" && <>
+      <LinkedInStatus st={agent} error={agentError} onOpenAgent={() => pick("agent")} />
+      {q && !q.case_study_set && <p className="sub">Step 4 (case study) is skipped until you add a real case-study link in Settings &amp; tools.</p>}
 
       <div className="row dl-head">
-        <h3>To send today {q && <span className="pill">{q.due.length}</span>}</h3>
+        <h3>Waiting to be sent {q && <span className="pill">{q.due.length}</span>}</h3>
         {!limited && <DownloadButton path={exportPath("linkedin_queue")} label="Download today's list" testId="download-linkedin"
           title="Messages to send, people waiting to accept and suggestions, with the ready-to-paste text" />}
       </div>
       {q && q.due.length === 0 && <p className="empty">Nothing due. Start some people from the suggestions below.</p>}
+      {q && q.due.length > 0 && <p className="sub">The agent works through this list by itself, oldest first. You can also send one by hand: copy the message, send it on LinkedIn, then press Mark sent.</p>}
       {q && q.due.map((d) => (
         <div className="card" key={d.task_id} style={{ marginBottom: 10 }}>
           <div className="row" style={{ justifyContent: "space-between" }}>
@@ -245,8 +302,8 @@ export default function LinkedInQueue() {
             <button className="btn ghost" onClick={() => copyText(d.message).then(() => setMessage("Message copied. Paste it on LinkedIn."))}>Copy message</button>
             {/^https?:\/\//i.test(d.linkedin_url || "") && <a className="btn ghost" href={d.linkedin_url} target="_blank" rel="noopener noreferrer">Open profile</a>}
             {canWrite() && <>
-              <button className="btn" onClick={() => act(() => api.linkedinSent(d.lead_id, d.step), `Step ${d.step} marked sent.`)}>Mark sent</button>
-              <button className="btn ghost" onClick={() => act(() => api.linkedinReplied(d.lead_id, ""), "Stopped. A task to answer them was added.")}>They replied</button>
+              <ActButton className="btn" run={() => act(() => api.linkedinSent(d.lead_id, d.step), `Step ${d.step} marked sent.`)}>Mark sent</ActButton>
+              <ActButton run={() => act(() => api.linkedinReplied(d.lead_id, ""), "Stopped. A task to answer them was added.")}>They replied</ActButton>
               <button className="btn ghost" onClick={() => setHelper(helper === d.lead_id ? null : d.lead_id)}>Reply helper</button>
             </>}
           </div>
@@ -270,8 +327,8 @@ export default function LinkedInQueue() {
           <li key={w.lead_id}><div><b>{w.name}</b> · {w.company}</div>
             <div className="sub">Request sent {w.since ? istLabel(w.since) : ""}</div>
             {canWrite() && <div className="row">
-              <button className="btn" onClick={() => act(() => api.linkedinAccepted(w.lead_id), "Accepted. The first message is scheduled.")}>They accepted</button>
-              <button className="btn ghost" onClick={() => act(() => api.linkedinStop(w.lead_id), "Stopped.")}>Stop</button>
+              <ActButton className="btn" run={() => act(() => api.linkedinAccepted(w.lead_id), "Accepted. The first message is scheduled.")}>They accepted</ActButton>
+              <ActButton run={() => act(() => api.linkedinStop(w.lead_id), "Stopped.")}>Stop</ActButton>
             </div>}</li>))}
         </ul>
       )}
@@ -282,9 +339,10 @@ export default function LinkedInQueue() {
         <ul className="task-list">{q?.suggestions.map((s) => (
           <li key={s.lead_id}><div><b>{s.name || "Contact"}</b> · {s.company}{s.title ? ` · ${s.title}` : ""}</div>
             <div className="sub">Angle: {PERSONA[s.persona] || s.persona}</div>
-            {canWrite() && <div className="row"><button className="btn ghost" onClick={() => act(() => api.linkedinStart(s.lead_id), "Added. Step 1 is in today's list.")}>Start LinkedIn sequence</button></div>}</li>))}
+            {canWrite() && <div className="row"><ActButton run={() => act(() => api.linkedinStart(s.lead_id), started())}>Start LinkedIn sequence</ActButton></div>}</li>))}
         </ul>
       )}
+      </>}
     </>
   );
 }

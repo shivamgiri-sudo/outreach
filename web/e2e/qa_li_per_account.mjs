@@ -34,7 +34,7 @@ async function signIn(p, email, password) {
   await later.waitFor({ timeout: 6000 }).then(async () => { await later.click(); await later.waitFor({ state: "detached", timeout: 20000 }); }, () => {});
 }
 const nav = async (p, label) => { await p.locator("nav.side").getByRole("button", { name: label, exact: true }).click(); await p.waitForTimeout(900); };
-const toLinkedIn = async (p) => { await p.evaluate(() => { location.hash = "#linkedin"; }); await p.waitForTimeout(1800); };
+const toLinkedIn = async (p) => { await p.evaluate(() => { location.hash = "#linkedin?tab=agent"; }); await p.waitForTimeout(1800); };
 async function step(name, fn) {
   try { await fn(); results.push([true, name]); } catch (e) { results.push([false, `${name} — ${e.message.split("\n")[0]}`]); }
 }

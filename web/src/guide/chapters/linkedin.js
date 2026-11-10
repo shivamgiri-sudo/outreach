@@ -4,8 +4,19 @@ export default {
   summary: "A daily list of LinkedIn connection requests and messages that are already written, plus the steps, notes and settings behind them.",
   blocks: [
     ["p", "{{menu:LinkedIn outreach}} gives you the day's list of LinkedIn actions with every message already written. Send each one by hand and mark it sent, and the next step is scheduled. Or switch on the [[LinkedIn agent]] so the portal does the sending for you (see [LinkedIn agent, accounts and safety](#help/linkedin-agent)). Messages only start after the person accepts your [[Connection request|connection request]], and any reply stops the sequence."],
-    ["img", "linkedin", "The LinkedIn outreach page with the stage board, the LinkedIn agent box and the To send today list"],
+    ["img", "linkedin", "The LinkedIn outreach page: the tabs, the agent status strip and the list of people waiting to be sent"],
     ["warn", "LinkedIn does not allow automation and can restrict accounts that use it, even at low volume. Keep the numbers low and use an account you can afford to lose. The portal never hides what the agent does."],
+    ["h", "The tabs"],
+    ["table", { head: ["Tab", "What is on it"], rows: [
+      ["Today", "The agent status strip (what the agent is doing and when it sends next), people waiting to be sent, profiles being looked up, people waiting to accept and today's suggestions."],
+      ["Stages", "The stage board: every lead with a LinkedIn link by stage and by LinkedIn account."],
+      ["Agent & accounts", "The LinkedIn accounts, the office computer and the LinkedIn agent box (switch, limits, working hours)."],
+      ["Messages", "Steps & personas and Connection notes A / B."],
+      ["Settings & tools", "LinkedIn settings, Use a LinkedIn tool and the Chrome assistant."],
+    ] }],
+    ["p", "Messages about what you just did appear at the bottom of the screen and go away by themselves."],
+    ["h", "When does the agent send?"],
+    ["p", "Not at once. The agent does one action at a time with a fixed gap (6 minutes unless the owner changes it), only inside working hours (9:00 to 18:00 India time, Monday to Friday unless changed) and within the daily and weekly limits. A person you start joins the end of the list. The strip at the top of **Today** says what the agent is doing: working (with the time to its next action), switched off, not running on the office computer, outside working hours or out of today's limits. Until it says it is working, nothing goes out on LinkedIn."],
     ["h", "Who can use it"],
     ["table", { head: ["Part of the page", "Who"], rows: [
       ["Today's list, waiting list, suggestions, stage board", "Everyone can read. Owners, admins and callers can mark things. Viewers cannot."],
@@ -17,7 +28,7 @@ export default {
     ] }],
     ["h", "Send today's list by hand"],
     ["steps", [
-      "Scroll to **To send today**. Each card shows the person, company, step number, the persona (their kind of role) and the message.",
+      "Open **Today** and find **Waiting to be sent**. The agent works through this list by itself, oldest first. To send one yourself: each card shows the person, company, step number, the persona (their kind of role) and the message.",
       "Click **Open profile** to open their LinkedIn page. Click **Copy message** and paste it into LinkedIn.",
       "Send it on LinkedIn, then come back and click **Mark sent**. The next step is scheduled.",
       "If they replied, click **They replied**. The sequence stops and a task to answer them is added.",
@@ -29,9 +40,9 @@ export default {
     ["h", "Finding their LinkedIn profile"],
     ["p", "If you start LinkedIn for someone who has a name and a company but no LinkedIn link, they are not refused. They appear under **Finding their LinkedIn profile** and the agent searches LinkedIn once for the name and company (a few a day, one at a time). The sequence starts by itself only when exactly one profile has the exact name and its headline mentions the company. Otherwise you see the people it found, click **This is them** on the right one, or use **Search on LinkedIn** and paste the link. The owner can switch **Find profiles automatically** off in the agent limits."],
     ["h", "Suggested people to connect with today"],
-    ["p", "Leads that have a LinkedIn profile link and have not been contacted. The heading shows how many were started today out of the daily limit. Click **Start LinkedIn sequence** and step 1 appears in today's list. If the list is empty, either the day's limit is reached or no lead has a profile link yet."],
+    ["p", "Leads that have a LinkedIn profile link and have not been contacted. The heading shows how many were started today out of the daily limit. Click **Start LinkedIn sequence** and step 1 appears in today's list; the message at the bottom says when the agent will send it. You can also start one person from the lead panel: **Outreach** tab, **Start LinkedIn outreach** (and **Stop LinkedIn outreach** later). If the list is empty, either the day's limit is reached or no lead has a profile link yet."],
     ["h", "LinkedIn stages (the board)"],
-    ["p", "The board at the top counts every lead with a LinkedIn link by stage, with a column for each LinkedIn account and a **Next due** time. Click a stage row to see the people in it, with company, person, account, owner, last step and next due. Owners and admins can **Download CSV** of that list."],
+    ["p", "The board on the **Stages** tab counts every lead with a LinkedIn link by stage, with a column for each LinkedIn account and a **Next due** time. Click a stage row to see the people in it, with company, person, account, owner, last step and next due. Owners and admins can **Download CSV** of that list."],
     ["table", { head: ["Stage", "Meaning"], rows: [
       ["Has LinkedIn link, not contacted", "Nothing sent yet."],
       ["Request queued", "Waiting for its turn to connect."],

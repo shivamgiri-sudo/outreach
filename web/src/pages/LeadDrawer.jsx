@@ -20,6 +20,7 @@ import { LeadAssignedBy } from "./LeadFirstTouch.jsx";
 import LinkedInAccountPick from "./LinkedInAccountPick.jsx";
 import LinkedInFinder from "./LinkedInFinder.jsx";
 import LinkedInContacts from "./LinkedInContacts.jsx";
+import LinkedInStartStop from "./LinkedInStartStop.jsx";
 import { LeadCustomData } from "./LeadCustomFields.jsx";
 import PhoneTag, { isLandline } from "./PhoneTag.jsx";
 import { LeadAuditPack, LeadConsent } from "./LeadAudit.jsx";
@@ -211,13 +212,14 @@ export default function LeadDrawer({ id, ids, onClose }) {
       <h3>LinkedIn</h3>
       <p className="sub">{lead.linkedin_seq
         ? `On the LinkedIn sequence: ${String(lead.linkedin_seq.status || "").replace(/_/g, " ")}${(lead.linkedin_seq.done || []).length ? `, steps done ${lead.linkedin_seq.done.join(", ")}` : ""}${lead.linkedin_seq.variant ? `, note ${lead.linkedin_seq.variant}` : ""}${lead.linkedin_seq.account ? `, handled by ${lead.linkedin_seq.account}` : ""}. The LinkedIn agent or a person sends each step from the LinkedIn page.`
-        : "Not on the LinkedIn sequence. Start it from Leads (select, then Start LinkedIn outreach), or copy a draft below and send it yourself."}
+        : "Not on the LinkedIn sequence yet. Press Start LinkedIn outreach below, or copy a draft and send it yourself."}
         {/^https?:\/\//i.test(lead.linkedin_url || "") && <> <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer">Open profile</a></>}
         {lead.linkedin_profile?.open_profile && <span className="pill" style={{ marginLeft: 6 }}>Open Profile</span>}</p>
       {!lead.linkedin_seq && lead.linkedin_dup_of && <p className="sub" style={{ color: "#b45309" }} data-testid="linkedin-dup">
         {lead.linkedin_dup_reason || "This person was already contacted on LinkedIn through another lead."} It will not be contacted again.</p>}
       {!lead.linkedin_seq && lead.linkedin_lookup && ["queued", "ambiguous", "not_found", "manual"].includes(lead.linkedin_lookup.status) && !lead.linkedin_lookup.skipped_by
         && <LinkedInFinder row={{ lead_id: lead.id, name: lead.contact_name, company: lead.company, ...lead.linkedin_lookup }} onChanged={load} onMessage={say} />}
+      <LinkedInStartStop lead={lead} onLead={setLead} say={say} />
       <LinkedInContacts lead={lead} />
       <LinkedInAccountPick lead={lead} onChanged={load} />
       {linkedinDrafts(lead).map(([title, text]) => (
