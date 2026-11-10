@@ -170,6 +170,9 @@ class Store:
             for lead in leads:
                 if lead["id"] == lead_id:
                     changed = change(json.loads(json.dumps(lead)))
+                    if changed is not None:
+                        from .first_touch import stamp      # owner's first touch stops the speed-to-lead clock
+                        changed = stamp(lead, changed)
                     lead = changed if changed is not None else lead
                     result["lead"] = lead
                 out.append(lead)
