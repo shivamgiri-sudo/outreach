@@ -6,7 +6,8 @@ import { Modal } from "./common.jsx";
 
 export const LIMIT_LABEL = { seats: "Logins", workspaces: "Workspaces", daily_sends: "Emails a day", imports_per_day: "Imports a day",
   enrich_credits: "Lookup credits", ai_credits: "AI credits", linkedin_daily_connections_max: "LinkedIn requests a day (max)",
-  linkedin_weekly_connections_max: "LinkedIn requests a week (max)", linkedin_daily_messages_max: "LinkedIn messages a day (max)" };
+  linkedin_weekly_connections_max: "LinkedIn requests a week (max)", linkedin_daily_messages_max: "LinkedIn messages a day (max)",
+  linkedin_lookups_per_day_max: "LinkedIn profile lookups a day (max)" };
 export const changed = () => window.dispatchEvent(new Event("accounts-changed"));
 
 function Field({ id, label, children, hint }) {

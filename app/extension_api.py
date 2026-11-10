@@ -28,6 +28,8 @@ SETTINGS_KEY = "extension_tokens"
 ALLOWED = (                             # (method, path regex) an extension token may call; nothing else
     ("GET", re.compile(r"^/api/extension/match$")),
     ("GET", re.compile(r"^/api/extension/queue$")),
+    ("GET", re.compile(r"^/api/extension/lookup/next$")),             # the next lead whose LinkedIn profile is to be found
+    ("POST", re.compile(r"^/api/extension/leads/[^/]+/lookup-result$")),
     ("POST", re.compile(r"^/api/extension/inbox$")),                 # the agent read the LinkedIn messaging list
     ("POST", re.compile(r"^/api/extension/leads/[^/]+/(sent|accepted|replied|profile|claim)$")),
     ("POST", re.compile(r"^/api/extension/save-profile$")),           # the rep pressed "Save to portal" on one profile

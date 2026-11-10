@@ -27,6 +27,11 @@ class ResultsBody(BaseModel):
     csv: str = Field(max_length=linkedin_bridge.MAX_RESULT_CHARS)
 
 
+class FindBody(BaseModel):
+    action: str = Field(pattern="^(pick|link|skip)$")
+    url: str = Field(default="", max_length=500)
+
+
 class NoteBody(BaseModel):
     text: str = Field(default="", max_length=600)
 
@@ -194,10 +199,21 @@ def make_router(store) -> APIRouter:
 
     @router.post("/api/leads/{lead_id}/linkedin/start")
     def start(lead_id: str, request: Request):
-        out = call(li.start, lead_id)
+        out = call(lambda st, lid: li.start(st, lid, find=True), lead_id)
         who = provenance.person_of(getattr(request.state, "user", None))
         out["lead"] = provenance.stamp_linkedin_start(store, lead_id, who["name"], who["email"], "by hand") or out["lead"]
         return out
+
+    @router.post("/api/leads/{lead_id}/linkedin/find")
+    def find(lead_id: str, body: FindBody, request: Request):
+        """A person settles a profile lookup: pick one of the people found, paste the link, or skip."""
+        from . import linkedin_finder
+        who = provenance.person_of(getattr(request.state, "user", None))
+        out = call(lambda st, lid: linkedin_finder.person_choice(st, lid, body.action, body.url, who), lead_id)
+        lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+        if body.action != "skip" and lead:
+            lead = provenance.stamp_linkedin_start(store, lead_id, who["name"], who["email"], "by hand") or lead
+        return {**out, "lead": lead}
 
     @router.post("/api/leads/{lead_id}/linkedin/sent")
     def sent(lead_id: str, body: SentBody, request: Request):

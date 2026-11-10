@@ -23,7 +23,7 @@ PENDING_OK = {
     ("GET", "/api/platform/status"), ("GET", "/api/signup/pending"), ("GET", "/api/brand/public"), ("GET", "/api/brand/logo"),
 }
 # Work handed out to LinkedIn agents / office runners, and starting sequences, while all sending is stopped.
-STOP_BLOCKED = re.compile(r"^/api/(extension/(queue|agent|agent/event|cloud/.*|leads/[^/]+/claim)|linkedin-runner/slots"
+STOP_BLOCKED = re.compile(r"^/api/(extension/(queue|lookup/next|agent|agent/event|cloud/.*|leads/[^/]+/(claim|lookup-result))|linkedin-runner/slots"
                           r"|leads/[^/]+/linkedin/start|lists/[^/]+/start-(linkedin|email)|linkedin/assign|sequences/run"
                           r"|leads/[^/]+/(enroll|email-now|whatsapp))$")
 

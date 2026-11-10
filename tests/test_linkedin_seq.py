@@ -37,7 +37,10 @@ def test_personalisation_and_note_limit():
 
 def test_start_needs_a_profile_link_and_never_restarts(tmp_path):
     c, lid = make(tmp_path, linkedin="")
-    assert c.post(f"/api/leads/{lid}/linkedin/start").status_code == 400
+    r = c.post(f"/api/leads/{lid}/linkedin/start")                       # a name and a company: its profile is looked up (app/linkedin_finder.py)
+    assert r.status_code == 200 and r.json()["lookup"] == "queued" and r.json()["task"] is None and not li_tasks(c, lid)
+    c.app.state.store.update_lead(lid, lambda l: {**l, "linkedin_lookup": None, "contact_name": ""})
+    assert c.post(f"/api/leads/{lid}/linkedin/start").status_code == 400      # no name: refused with the reason
     c.app.state.store.update_lead(lid, lambda l: {**l, "linkedin_url": "javascript:alert(1)"})
     assert c.post(f"/api/leads/{lid}/linkedin/start").status_code == 400
     c2, lid2 = make(tmp_path / "b")

@@ -123,12 +123,15 @@ export default function LinkedInAgent({ onMessage, onAccount }) {
             onChange={num("weekly_connections")} data-testid="li-weekly-connections" /><Ceiling max={ceil.weekly_connections} /></label>
           <label>Messages per day<input type="number" min="0" max={Math.min(100, ceil.daily_messages ?? 100)} value={form.daily_messages}
             onChange={num("daily_messages")} data-testid="li-daily-messages" /><Ceiling max={ceil.daily_messages} /></label>
+          <label>Profile lookups per day (people with no LinkedIn link)<input type="number" min="0" max={Math.min(40, ceil.lookups_per_day ?? 40)} value={form.lookups_per_day ?? 15}
+            onChange={num("lookups_per_day")} data-testid="li-lookups-per-day" /><Ceiling max={ceil.lookups_per_day} /></label>
           <label>Minutes between two actions<input type="number" min="3" max="60" value={form.gap_minutes} onChange={num("gap_minutes")} /></label>
           <label>Start hour (India time)<input type="number" min="0" max="23" value={form.start_hour} onChange={num("start_hour")} /></label>
           <label>End hour (India time)<input type="number" min="1" max="24" value={form.end_hour} onChange={num("end_hour")} /></label>
         </div>
         <label className="check-row"><input type="checkbox" checked={form.weekdays_only} onChange={(e) => setForm({ ...form, weekdays_only: e.target.checked })} /> Monday to Friday only</label>
         <label className="check-row"><input type="checkbox" checked={!!form.connect_without_note} onChange={(e) => setForm({ ...form, connect_without_note: e.target.checked })} /> When LinkedIn will not allow a note (free accounts get only a few a month), send the connection request without one</label>
+        <label className="check-row"><input type="checkbox" data-testid="li-find-profiles" checked={form.find_profiles !== false} onChange={(e) => setForm({ ...form, find_profiles: e.target.checked })} /> Find profiles automatically: when someone has no LinkedIn link, search LinkedIn once for their name and company, and start only if exactly one profile matches (otherwise a person picks)</label>
         <label className="check-row"><input type="checkbox" checked={!!form.check_replies} onChange={(e) => setForm({ ...form, check_replies: e.target.checked })} /> Check the LinkedIn messages for replies</label>
         {st.account_id !== "mcn" && <label className="check-row"><input type="checkbox" checked={!!form.auto_start} onChange={(e) => setForm({ ...form, auto_start: e.target.checked })} /> Start the sequence automatically each working day for people with a LinkedIn link, up to the daily limit</label>}
         <button className="btn" style={{ marginTop: 8 }} data-testid="li-save-limits" onClick={() => save({ ...form, enabled: undefined,

@@ -26,6 +26,8 @@ export default {
     ["p", "A card with an **Open Profile** tag means this person is a Premium member who accepts messages from anyone, so you can message without connecting first. See [[Open Profile]]."],
     ["h", "Waiting for them to accept"],
     ["p", "People whose request is out. When you see on LinkedIn that they accepted, click **They accepted** and the first message is scheduled. Click **Stop** to drop them. The agent can also notice acceptances by itself."],
+    ["h", "Finding their LinkedIn profile"],
+    ["p", "If you start LinkedIn for someone who has a name and a company but no LinkedIn link, they are not refused. They appear under **Finding their LinkedIn profile** and the agent searches LinkedIn once for the name and company (a few a day, one at a time). The sequence starts by itself only when exactly one profile has the exact name and its headline mentions the company. Otherwise you see the people it found, click **This is them** on the right one, or use **Search on LinkedIn** and paste the link. The owner can switch **Find profiles automatically** off in the agent limits."],
     ["h", "Suggested people to connect with today"],
     ["p", "Leads that have a LinkedIn profile link and have not been contacted. The heading shows how many were started today out of the daily limit. Click **Start LinkedIn sequence** and step 1 appears in today's list. If the list is empty, either the day's limit is reached or no lead has a profile link yet."],
     ["h", "LinkedIn stages (the board)"],

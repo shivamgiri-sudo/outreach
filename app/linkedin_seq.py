@@ -216,13 +216,18 @@ def has_profile_link(lead: dict) -> bool:
     return bool(re.match(r"^https?://([a-z]+\.)?linkedin\.com/", lead.get("linkedin_url") or "", re.I))
 
 
-def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = False) -> dict:
-    """Put a lead on the LinkedIn sequence (needs a LinkedIn profile link; never restarts)."""
+def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = False, find: bool = False) -> dict:
+    """Put a lead on the LinkedIn sequence (needs a LinkedIn profile link; never restarts). With `find` (a person pressed
+    Start), a lead with a name and company but no link goes on the profile lookup list instead (app/linkedin_finder.py):
+    the result then has lookup="queued" and no task yet."""
     now = now or now_utc()
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None:
         raise LookupError("Lead not found")
     if not has_profile_link(lead):
+        if find:
+            from . import linkedin_finder
+            return linkedin_finder.queue_lookup(store, lead, now)
         raise ValueError("Add the person's LinkedIn profile link first.")
     if lead.get("stage") in ("unsubscribed", "disqualified"):
         raise ValueError(f"Lead is {lead['stage']}; no LinkedIn outreach.")
@@ -378,7 +383,9 @@ def queue(store, now: Optional[datetime] = None) -> dict:
     waiting = [{"lead_id": l["id"], "company": l.get("company"), "name": l.get("contact_name"), "linkedin_url": l.get("linkedin_url"),
                 "since": l["linkedin_seq"].get("last_sent_at")}
                for l in leads.values() if (l.get("linkedin_seq") or {}).get("status") == "waiting_for_acceptance"]
+    from . import linkedin_finder
     return {"due": sorted(due, key=lambda d: d["due_at"] or ""), "suggestions": suggestions, "waiting_for_acceptance": waiting,
+            "finding": linkedin_finder.waiting(leads.values()),
             "started_today": started_today, "daily_limit": limit, "case_study_set": bool(settings.get("case_study_url")),
             "owner": _owner(store, account_id=account)}
 

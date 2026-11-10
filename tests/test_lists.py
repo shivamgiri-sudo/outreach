@@ -25,7 +25,11 @@ def test_linkedin_needs_profile_and_reports_refusals(tmp_path):
     patch_lead(c, a["id"], linkedin_url="https://www.linkedin.com/in/ravi")
     lid = c.post("/api/lists", json={"name": "LI", "lead_ids": [a["id"], b["id"]]}).json()["id"]
     out = c.post(f"/api/lists/{lid}/start-linkedin").json()
-    assert out["started"] == 1 and out["refused"][0]["count"] == 1 and "LinkedIn profile" in out["refused"][0]["reason"]
+    assert out["started"] == 1 and out["looking_up"] == 1 and out["refused"] == []      # no link but a name and company: its profile is looked up
+    assert lead(c, "Beta")["linkedin_lookup"]["status"] == "queued" and not lead(c, "Beta").get("linkedin_seq")
+    patch_lead(c, b["id"], linkedin_lookup=None, contact_name="")
+    out = c.post(f"/api/lists/{lid}/start-linkedin").json()
+    assert out["started"] == 0 and out["looking_up"] == 0 and any("full name" in r["reason"] for r in out["refused"])
     assert lead(c, "Acme")["linkedin_seq"]
     # subset start
     assert c.post(f"/api/lists/{lid}/start-email", json={"lead_ids": [b["id"]]}).json()["started"] == 1

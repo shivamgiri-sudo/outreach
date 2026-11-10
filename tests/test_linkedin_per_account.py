@@ -61,7 +61,7 @@ def test_admin_of_b_manages_only_b_linkedin_accounts_slots_and_settings(rig):
     agent.heartbeat(store, account="bravo-li", name="Bravo LI", owner=b)               # B's
     st = c.get("/api/linkedin-agent", headers=bearer(rig["hb"])).json()
     assert st["account_id"] == b and st["can_manage"] and [a["account"] for a in st["accounts"]] == ["bravo-li"]
-    assert st["ceilings"] == {"daily_connections": 5, "weekly_connections": 30, "daily_messages": 10}
+    assert st["ceilings"] == {"daily_connections": 5, "weekly_connections": 30, "daily_messages": 10, "lookups_per_day": None}
     # B's settings are B's own: the global (mcn) config does not move
     r = c.put("/api/linkedin-agent", json={"enabled": True, "start_hour": 8, "gap_minutes": 9}, headers=bearer(rig["hb"]))
     assert r.status_code == 200, r.text
