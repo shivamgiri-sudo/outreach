@@ -4,6 +4,7 @@ import { Empty, ErrorState } from "../states.jsx";
 import { istDayLabel, istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import Abbr from "../components/Abbr.jsx";
 
 const STATUS_TONE = { scheduled: "ok", cancelled: "", done: "warm" };
 
@@ -29,7 +30,7 @@ export default function Meetings({ go }) {
     <>
       <h2>Meetings</h2>
       <p className="sub">
-        Upcoming demos and calls, in IST. {active ? <>Booking through <b>{active.title}</b>.</> : "No calendar connected yet."} Book one from a lead's panel.
+        Upcoming demos and calls, in <Abbr term="IST">IST</Abbr>. {active ? <>Booking through <b>{active.title}</b>.</> : "No calendar connected yet."} Book one from a lead's panel.
       </p>
       {!active && (
         <div className="tip" style={{ marginBottom: 16 }}>

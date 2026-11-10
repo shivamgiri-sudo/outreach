@@ -1,0 +1,38 @@
+export default {
+  id: "dashboard", title: "Dashboard", group: "Menu pages", order: 20, kind: "page", menu: "Dashboard",
+  summary: "A one-screen picture of your pipeline: today's list, key numbers, the funnel, reminders and where your leads come from.",
+  blocks: [
+    ["p", "Open {{menu:Dashboard}} when you want to know where everything stands. It shows what to do today and counts of leads, without any set-up."],
+    ["h", "Who can use it"],
+    ["p", "Everyone. Callers and viewers see the same page. Owners see all workspaces together unless they pick one in the workspace picker. Buttons that add data (**Add leads**) are hidden for viewers, and the **Find & enrich leads** run can only be previewed or started by an owner."],
+    ["img", "dashboard", "The Dashboard with the Today list, four key number tiles, the funnel and the Where leads come from table"],
+    ["h", "What you see, top to bottom"],
+    ["ul", [
+      "**Add leads** goes to {{menu:Leads}}. **Go-live checklist** goes to {{menu:Setup}}.",
+      "**Find & enrich leads**: one click that searches for HR, talent and founder contacts at new companies, and fills in emails and phones for leads you already have. See below.",
+      "A blue note \"X of Y connections are set up\" appears until Setup is complete. Click **See the go-live checklist**.",
+      "**Today**: the most important things for today, each with a button (**Open call desk**, **Open lead**, **Open tasks**, **Done**).",
+      "Four tiles: **Total leads**, **Hot leads (score 70+)**, **Said yes** and **Customers**.",
+    ]],
+    ["h", "Numbers for a period"],
+    ["p", "Under the tiles, the **Period** bar picks **Last 7 days**, **Last 30 days**, **Last 90 days** or **Custom** (pick a From and To day, then **Apply**; at most 731 days). Four tiles follow: **New leads**, **Emails sent**, **Replied** and **Meetings**, each compared with the period just before it. Days are India days ([[IST]]). Your choice is remembered in this browser. **See all numbers in Analytics** opens [Analytics](#help/analytics)."],
+    ["h", "Funnel, reminders and sources"],
+    ["ul", [
+      "**Funnel**: a bar for each stage with the number of leads. For a deeper view with conversion and speed, use [Sales funnel](#help/funnel).",
+      "**Reminders**: hot leads waiting right now. Click a company name to open the lead.",
+      "**Where leads come from**: one row per source with **Leads**, **New (7 days)**, **Hot** and **Customers**. A green **Inbound** tag means people came to you (a form or ad). The top right shows how many were captured today and in the last 7 days. If it is empty, click **Connect lead capture**.",
+    ]],
+    ["h", "Find & enrich leads"],
+    ["steps", [
+      "Click **Find & enrich leads** (the card, or the button near the top).",
+      "Choose what it should do: **Find new decision makers**, **Fill in contacts for leads I already have**, or **Both**.",
+      "The row of pills shows which services are connected (Apollo, Hunter, Firecrawl, Google Places, company websites). Not connected ones are marked.",
+      "Add **Cities** and **Job titles to look for**: type and press Enter, or click an example.",
+      "Set the limits: **Most new leads** (0 to 100), **Most existing leads to check** (0 to 100), and **Credit limit** (0 to 500). The run stops at the credit limit.",
+      "Owners click **Preview** first. It saves nothing and shows what would happen. Then click **Run now**. You can close the window; the run keeps going.",
+      "When it is done, click **Open these leads**, or start the email sequence for the qualified ones.",
+    ]],
+    ["warn", "A preview may search with Apollo or Google Places, which can use paid credits. Nothing is emailed from this window. Emails still follow the Outbox rules, including practice mode."],
+    ["p", "Related: [My day](#help/myday), [Leads](#help/leads), [Data sources](#help/sources), [Connections](#help/setup-connections)."],
+  ],
+};

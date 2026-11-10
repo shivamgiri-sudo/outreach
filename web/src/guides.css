@@ -30,7 +30,7 @@
 .help-cats button[aria-pressed="true"] { background: var(--brand); color: #fff; border-color: var(--brand); }
 .help-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .help-card { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.help-card h4 { margin: 0; font-size: 15px; }
+.help-card h5 { margin: 0; font-size: 15px; }
 .help-card p { margin: 0; }
 .help-card .btn { align-self: flex-start; margin-top: auto; }
 .guide-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }

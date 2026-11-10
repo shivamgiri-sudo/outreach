@@ -1,0 +1,52 @@
+// Recipe: import a sheet or Excel file that has the sales-team columns.
+export default {
+  id: "recipe-import-sheet", title: "Import a sheet or Excel file with sales columns", group: "How-to recipes", order: 10, kind: "recipe",
+  roles: ["owner", "admin", "caller"],
+  summary: "Load a [[CSV]] or Excel file of leads, including the sales-team columns such as Lead Status and MQL Date, check it first, then import or undo.",
+  blocks: [
+    ["h", "Before you start"],
+    ["ul", [
+      "You need a login that can make changes: owner, admin or caller. Viewers cannot import.",
+      "Your file can be .csv, .xlsx or .xls. You can also paste rows straight from Excel or Google Sheets. The first row must be the column names.",
+      "At most 20000 rows in one import. An Excel file can be up to 15 MB. If your account has a daily imports limit, a bigger import is refused (see [Troubleshooting](#help/faq)).",
+    ]],
+    ["h", "Columns the app reads for the sales funnel"],
+    ["p", "Use these column names. Capital letters, spaces and brackets do not matter."],
+    ["table", { head: ["Column", "What goes in it"], rows: [
+      ["Company, Email", "Who the lead is. Email is the strongest way the app recognises a lead it already has."],
+      ["Lead Status", "A sales stage such as Inquiry / Raw Lead, Marketing Qualified Lead (MQL), Sales Qualified Lead (SQL), Discovery Meeting Held, Proposal Submitted, Closed Won, Closed Lost or Recycled / Nurture. Short forms such as MQL, SQL, Won or Lost also work."],
+      ["Created Date, MQL Date, SAL Date, SQL Date, Meeting Held Date, Proposal Date, Negotiation Date, Closed Date, Recycled Date", "Dates in India time ([[IST]]). Write them as 2026/11/05 or 05/11/2026, with an optional time such as 14:30."],
+      ["Lost Stage, Lost Reason", "For lost deals. Lost Reason should be one of Price, No Budget, Chose Competitor, No Response, Not ICP, Timing or Other. Anything else is saved as Other."],
+      ["Est. Monthly Value, Closed Monthly Value, Contract Tenure (Months)", "Numbers in rupees and months."],
+      ["Lead Owner, Lead Source, Industry, Service Line", "Plain text."],
+      ["Lead Score (Fit), Engagement", "Fit is A, B or C. Engagement is Hot, Warm or Cold."],
+      ["Remarks", "Saved as a note on the lead."],
+    ] }],
+    ["h", "Steps"],
+    ["steps", [
+      "Open {{menu:Leads}} and click **Import leads**. (**Quick paste** is the short version with no preview. Use **Import leads** for this recipe.)",
+      "Under **Add your list**, click the file box and choose your file. If an Excel file has several sheets, choose one under **Sheet to import**. Or paste the rows into the box below.",
+      "Under **Where did this list come from?** pick the source, or leave **Work it out from the columns**. Click **Next: check the columns**.",
+      "On **Check the columns**, read the table. Each of your columns shows where it **Goes to** and a match label: **Sure**, **Likely** or **A guess**. Fix any wrong one with the drop-down. Choose **Don't import** for columns you do not want.",
+      "Leave **Remember these choices for the next file like this** ticked if you will use the same layout again. Click **Next: dry run**.",
+      "The **Dry run** step saves nothing. It shows how many are **new leads**, how many **existing leads get new details**, **duplicates inside this file**, **already here, nothing new** and **left out**. Open **Left out** to see why each row was refused, and click **Download left-out rows (CSV)** to fix them in your sheet.",
+      "If you want, tick **Leave out shared inboxes (info@, hr@…)** or **Leave out personal addresses (Gmail, Yahoo…)**. The numbers update.",
+      "When the numbers look right, click the **Import** button (it reads, for example, **Import: 40 new, 5 updated**).",
+    ]],
+    ["h", "What the app does with duplicates"],
+    ["ul", [
+      "It matches on email first, then phone, then company website and person, then a very similar company name in the same city.",
+      "A matched row never overwrites. It only fills empty fields. If your file has a different value from the one already saved, the app keeps the old one and keeps yours for review under {{menu:Data hygiene}}.",
+      "For sales columns, stage dates already on the lead are kept. A new Lead Status is applied only if the stage rules allow it (for example, Proposal Submitted needs a Meeting Held Date). If the rules refuse, the lead stays as it is and a note says why. See [update a lead through the sales stages](#help/recipe-update-stage).",
+      "A row that is on the do-not-contact list is skipped.",
+    ]],
+    ["h", "How to know it worked"],
+    ["ul", [
+      "Step 4 shows **Done.** with how many new and existing leads were changed, and how many rows were left out.",
+      "Open {{menu:Leads}} and search for one company from your file. Open it and check its **Sales stage** panel.",
+      "Under **Recent imports** on the first step you see the time and the counts.",
+    ]],
+    ["warn", "**Undo this import** removes only the leads this import created, and only those nobody has touched. A lead that was contacted, changed or merged since is kept. Details added to leads you already had stay in place."],
+    ["tip", "Test with 5 rows first. Dates that cannot be read are left out with a warning, so check the **Things we fixed or noticed** list on the dry run."],
+  ],
+};

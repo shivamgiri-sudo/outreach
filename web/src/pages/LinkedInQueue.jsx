@@ -9,6 +9,7 @@ import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import { GuideButton } from "../GuidePanel.jsx";
+import HelpLink from "../components/HelpLink.jsx";
 
 const PERSONA = { ceo_founder: "CEO / Founder", chro: "CHRO / HR Director", ta_head: "Head of TA", recruitment_head: "Recruitment Head",
   business_head: "Business Head", general: "General" };
@@ -210,7 +211,7 @@ export default function LinkedInQueue() {
 
   return (
     <>
-      <h2>LinkedIn outreach</h2>
+      <h2>LinkedIn outreach <HelpLink chapter="linkedin" label="LinkedIn outreach" /></h2>
       <p className="sub">Send by hand from this list, or switch on the LinkedIn agent below to have the server (cloud agent) or your own computer do the sending for you (LinkedIn does not allow
         automation, so keep the numbers low). This page gives the day's list with every message already written. Mark each one sent and the next step is scheduled. Messages only start after
         they accept the connection, and any reply stops the sequence.</p>

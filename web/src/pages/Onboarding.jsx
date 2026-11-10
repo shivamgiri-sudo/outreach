@@ -6,6 +6,7 @@ import { api } from "../api.js";
 import { setBrand } from "../brand.js";
 import { useModalFocus } from "../DrawerShell.jsx";
 import { LogoPicker, pickFields } from "./BrandSettings.jsx";
+import Abbr from "../components/Abbr.jsx";
 
 const STEPS = [
   ["business", "Your business"], ["offer", "What you sell"], ["industry", "Industry"], ["email", "Connect email"],
@@ -152,7 +153,7 @@ export default function Onboarding({ onClose, go }) {
               <p className="sub">Send from a separate look-alike domain (for example mail.yourcompany.com) so your main email stays safe.</p>
               <ol className="steps">
                 <li>Buy the look-alike domain and add it to your email provider.</li>
-                <li>Add the SPF, DKIM and DMARC records they show you.</li>
+                <li>Add the <Abbr term="SPF">SPF</Abbr>, <Abbr term="DKIM">DKIM</Abbr> and <Abbr term="DMARC">DMARC</Abbr> records they show you.</li>
                 <li>Open Integrations → Email and follow the guided steps, then send yourself a test.</li>
               </ol>
               <button type="button" className="btn ghost" onClick={() => leave("integrations")}>Open Integrations</button>
@@ -160,7 +161,7 @@ export default function Onboarding({ onClose, go }) {
           )}
           {step === "leads" && (
             <>
-              <p className="sub">Upload a CSV or Excel sheet; the importer matches your columns and removes duplicates.</p>
+              <p className="sub">Upload a <Abbr term="CSV">CSV</Abbr> or Excel sheet; the importer matches your columns and removes duplicates.</p>
               <button type="button" className="btn ghost" onClick={() => leave("leads")}>Open the importer</button>
             </>
           )}

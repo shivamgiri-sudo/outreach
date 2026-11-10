@@ -15,6 +15,8 @@ import { CustomFilters, customMatches, showValue, useLeadFields } from "./LeadCu
 import PhoneTag from "./PhoneTag.jsx";
 import { SALES_STATUSES, salesStageOf } from "../salesStage.js";
 import { LinkedInCell, LinkedInStageFilter, liStageMatches } from "./LeadLinkedInStage.jsx";
+import HelpLink from "../components/HelpLink.jsx";
+import Abbr, { Stage } from "../components/Abbr.jsx";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
 const SHEET_SOURCES = { "Team sheet — Leads tab": "leads", "Team sheet — Demo Shared tab": "demo", "Team sheet — Decision Makers tab": "decision_makers" };
@@ -277,7 +279,7 @@ export default function Leads({ go }) {
   return (
     <>
       <div className="row" style={{ justifyContent: "space-between" }}>
-        <div><h2>Leads</h2><p className="sub">Sorted by buying-signal score. Click a lead to see what to say.</p></div>
+        <div><h2>Leads <HelpLink chapter="leads" label="Leads" /></h2><p className="sub">Sorted by buying-signal score. Click a lead to see what to say.</p></div>
         {canWrite() && <div className="row">
           <button className="btn ghost" onClick={() => setShowScrape(!showScrape)}>Find contacts on a website</button>
           <button className="btn ghost" onClick={() => setShowJobs(!showJobs)}>Read job pages</button>
@@ -422,7 +424,7 @@ export default function Leads({ go }) {
                   <td data-label="Company"><button className="linkish" onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{l.company || l.domain || l.contact_name}</b></button>{l.is_test && <span className="pill warn" style={{ marginLeft: 6 }}>Test</span>}</td>
                   <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small><PhoneTag lead={l} /></td>
                   <td data-label="Stage">{stageLabel(l.stage)}{l.do_not_contact && <span className="pill warn" style={{ marginLeft: 6 }} title="On the do-not-contact list: never emailed, called or messaged">Do not contact</span>}</td>
-                  <td data-label="Sales stage" data-testid="sales-stage-cell">{salesStageOf(l)}</td>
+                  <td data-label="Sales stage" data-testid="sales-stage-cell"><Stage status={salesStageOf(l)} full /></td>
                   <td data-label="Score"><span className={`pill ${l.band}`}>{l.score} · {l.band}</span></td>
                   <td data-label="Owner">{l.owner || <small className="sub">—</small>}</td>
                   <td data-label="Tags">{(l.tags || []).length ? (l.tags || []).map((t) => <span key={t} className="pill rec" style={{ margin: "0 4px 2px 0" }}>{t}</span>) : <small className="sub">—</small>}</td>

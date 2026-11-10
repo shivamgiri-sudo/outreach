@@ -3,6 +3,7 @@ import { api, isOwner } from "../api.js";
 import { istLabel } from "../time.js";
 import { useConfirm } from "../Dialog.jsx";
 import SuperAdminSecurity from "./SuperAdminSecurity.jsx";
+import Abbr from "../components/Abbr.jsx";
 
 // Setup > Security. Owners: the "require two-step login" switch, who has it on (with a reset), and every login's
 // history. Workspace admins: the history of their own workspaces' logins only (the server filters it too).
@@ -61,7 +62,7 @@ function LoginHistory() {
   return (
     <div data-testid="login-history">
       <h3 style={{ margin: "0 0 4px" }}>Login history</h3>
-      <p className="sub" style={{ margin: 0 }}>Every sign-in attempt, sign-out and password reset (times in IST). Five failed sign-ins in a row for one login within 15 minutes alert the owners.</p>
+      <p className="sub" style={{ margin: 0 }}>Every sign-in attempt, sign-out and password reset (times in <Abbr term="IST">IST</Abbr>). Five failed sign-ins in a row for one login within 15 minutes alert the owners.</p>
       <div className="card" style={{ margin: "10px 0", padding: 12 }}>
         <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
           <select aria-label="Person" value={f.person} onChange={(e) => set("person", e.target.value)} style={{ width: "auto" }}>
@@ -82,7 +83,7 @@ function LoginHistory() {
       <div className="card table-card" style={{ padding: 0 }}>
         {!data ? <p className="empty">Loading…</p> : data.items.length === 0 ? <p className="empty">Nothing recorded for these filters.</p> : (
           <div className="table-scroll"><table data-testid="login-table">
-            <thead><tr><th>When (IST)</th><th>Login</th><th>Event</th><th>Result</th><th>Two-step</th><th>Address</th><th>Browser</th></tr></thead>
+            <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>Login</th><th>Event</th><th>Result</th><th>Two-step</th><th>Address</th><th>Browser</th></tr></thead>
             <tbody>{data.items.map((r) => {
               const [tone, label] = RESULTS[r.result] || ["", r.result];
               return (

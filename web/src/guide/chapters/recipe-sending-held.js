@@ -1,0 +1,40 @@
+// Recipe: why an email is held, and what to do.
+export default {
+  id: "recipe-sending-held", title: "What to do when sending is held", group: "How-to recipes", order: 130, kind: "recipe",
+  summary: "Every reason the app does not send an email, the exact words it shows, and the fix for each.",
+  blocks: [
+    ["h", "Before you start"],
+    ["p", "Open {{menu:Outbox & sending}}. The card at the top tells you the current state. Most fixes need an owner. If you are not an owner, show the message to your owner or your Mas Callnet contact."],
+    ["h", "Step 1: find the reason"],
+    ["steps", [
+      "On {{menu:Outbox & sending}}, read the top card. It says **Practice mode: nothing leaves the app** or **Real sending is ON**. If a pause is active it also says **Sending is paused.** with a reason.",
+      "If a single lead is stuck, open the lead ({{menu:Leads}}) and read its email sequence line. A line that starts with **Waiting:** gives the reason for that lead.",
+      "Find the message below and follow the fix.",
+    ]],
+    ["h", "Reasons for the whole workspace"],
+    ["table", { head: ["What you see", "What it means and what to do"], rows: [
+      ["Practice mode: nothing leaves the app", "This is the safe default. Emails are only rehearsed and show as **practice**. To send for real, see [run a first email sequence safely](#help/recipe-first-sequence)."],
+      ["Before you can switch on real sending (a list)", "The **Switch on…** button stays greyed out until each item is done: a public https web address under Setup, the cold-email sending domain connected under {{menu:Integrations}}, your company name, and a postal address or a website and contact email for the email footer."],
+      ["Sending is stopped for every account by the platform admin.", "Mas Callnet has used its stop-all-sending switch. The text may end with a reason. Nothing goes out for any account until Mas Callnet turns it off. Contact them."],
+      ["Nothing sent: outside business hours (Mon–Fri 9–18 IST)", "Sequences send only on weekdays between 9am and 6pm India time ([[IST]]). They carry on in the next window. Nothing to fix."],
+      ["Sending is paused: (a reason)", "Your email provider refused messages, or too many emails bounced or drew spam complaints. If a restart time is shown, sending restarts by itself. Otherwise an owner clicks **Resume sending now** after checking the list. See [handle a bounce](#help/recipe-bounce)."],
+      ["Sending is held for this account: connect your sending domain or ask the platform admin to grant one.", "A client company has no sending domain of its own and has not been granted Mas Callnet's. Connect it under {{menu:Integrations}}, or ask Mas Callnet."],
+      ["Sending is held: this account is (a status)", "The account is not active, for example it is suspended. Contact Mas Callnet."],
+      ["Your account reached its daily sending limit of N; ask the platform admin to raise it.", "The account used up today's limit for emails and WhatsApp messages. It resets on the next India-time day. Ask Mas Callnet to raise it, or wait."],
+      ["Max emails per day, and the warm-up", "Real sending never goes above the **Max emails per day** box. A new sending address is also eased in: 10 a day for the first week, 20 in the second, 35 in the third, then your chosen number. Each run sends only a few emails, and only one email per company per day. Steps for a lead are at least two days apart."],
+    ] }],
+    ["h", "Reasons for one lead"],
+    ["table", { head: ["What you see on the lead", "What to do"], rows: [
+      ["Waiting: a detail needed by the email is missing", "The email uses a detail the lead does not have, shown after the colon in curly brackets. Fill in that field on the lead, or fill your Brand settings, or remove it from the email."],
+      ["Waiting: the email address failed a mailbox check", "The address does not exist. Fix the address or leave the lead."],
+      ["Waiting: ideal-customer score N is below M", "The **Ideal customer gate** card on {{menu:Hiring engine}} has **Hold back leads below it** ticked. The lead is held, never deleted. Lower **Lowest score allowed** or untick the box."],
+      ["Waiting: the domain (name) does not exist, or has no mail server", "The part after the @ is misspelt or cannot receive email. Correct the address."],
+      ["Waiting: the sequence this lead was started on no longer exists", "Start the lead on another sequence."],
+      ["Stopped (replied / unsubscribed / an email could not be sent)", "A reply or unsubscribe stops the sequence by design. After three failed sends the lead stops; an owner can use **Resume them** on Outbox & sending."],
+      ["Needs a check: the app stopped mid-send", "Look in your email provider's log before anything else is sent, so nobody gets the same email twice."],
+      ["This address may not be emailed (unsubscribed, bounced, erased or on the do-not-contact list).", "This also shows when you send a one-off email. Do not try to get around it. The person must not be emailed."],
+    ] }],
+    ["warn", "Never switch on **Send for real** just to clear a held email. Fix the reason first. Do not resume sending after a bounce pause until you have checked the list that caused it."],
+    ["tip", "A lead in a warm stage (interested, WhatsApp active, call done, trial) stops getting cold emails on purpose, because a person is now talking to them."],
+  ],
+};

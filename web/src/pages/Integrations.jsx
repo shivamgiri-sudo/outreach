@@ -6,6 +6,7 @@ import { CopyRow, StatusPill } from "./integrations/Fields.jsx";
 import Wizard, { guideKeys } from "./integrations/Wizard.jsx";
 import { GuideButton } from "../GuidePanel.jsx";
 import LeadCapture from "./integrations/LeadCapture.jsx";
+import Abbr from "../components/Abbr.jsx";
 
 const EXTRA_TABS = [["capture", "Lead capture"], ["custom", "Custom"], ["webhooks", "Webhook addresses"]];
 const OAUTH_ERRORS = {
@@ -74,7 +75,7 @@ function ChannelIntro({ channel, onLive, go }) {
         <p className="sub">Real email sending is switched on separately: <button className="linkish" onClick={() => go?.("outbox")}>Outbox → Send for real</button>.</p>
       )}
       {channel.id === "calendar" && (
-        <p className="sub">Times are shown in IST. <button className="linkish" onClick={() => go?.("meetings")}>See upcoming meetings</button></p>
+        <p className="sub">Times are shown in <Abbr term="IST">IST</Abbr>. <button className="linkish" onClick={() => go?.("meetings")}>See upcoming meetings</button></p>
       )}
     </div>
   );
@@ -147,7 +148,7 @@ export default function Integrations({ go }) {
 
       {tab === "custom" && (
         <>
-          <p className="sub">Use these when your provider is not in the list: describe its API once (address, headers, body with placeholders) and test it here.</p>
+          <p className="sub">Use these when your provider is not in the list: describe its <Abbr term="API">API</Abbr> once (address, headers, body with placeholders) and test it here.</p>
           {hub.map((c) => {
             const customs = c.providers.filter((p) => p.custom);
             return customs.length ? (

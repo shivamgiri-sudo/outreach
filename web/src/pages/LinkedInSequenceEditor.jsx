@@ -4,6 +4,7 @@
 // the steps they started with when the shape of the sequence changes.
 import { useEffect, useState } from "react";
 import { apiRequest, isOwner } from "../api.js";
+import Abbr from "../components/Abbr.jsx";
 
 const LIMIT = 300;
 
@@ -122,7 +123,7 @@ export default function LinkedInSequenceEditor({ onMessage }) {
       ))}
       {!readOnly && steps.length < 10 && <button type="button" className="btn ghost" onClick={addStep}>Add a message</button>}
 
-      <h4>Connection note B (A/B test)</h4>
+      <h4>Connection note B (<Abbr term="A/B test">A/B test</Abbr>)</h4>
       <textarea aria-label="Connection note B" rows={3} value={noteB} maxLength={600} disabled={readOnly} onChange={(e) => setNoteB(e.target.value)} style={{ width: "100%" }} />
       <Preview text={noteB} kind="connect" title={sampleTitle} workspace={data.workspace} />
 

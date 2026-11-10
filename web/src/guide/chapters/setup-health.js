@@ -1,0 +1,32 @@
+export default {
+  id: "setup-health", title: "System health", group: "Setup", order: 140, kind: "setup", menu: "System health", roles: ["owner"], masOnly: true,
+  summary: "A live check of background jobs, sending, the send queue, backups, the LinkedIn agent and the database.",
+  blocks: [
+    ["p", "Open {{menu:System health}} in {{menu:Setup}} to see whether everything is running. The page shows when it was checked. Click **Check again** for a fresh look."],
+    ["h", "Who can use it"],
+    ["p", "Owners only."],
+    ["h", "Read the result"],
+    ["p", "A box at the top says **Everything looks fine.** or **Needs a look:** followed by the problems found. Below is a table. A small label on a row says **OK** or **Check**."],
+    ["table", { head: ["Row", "What it tells you"], rows: [
+      ["Background timer, Last sequence run, Reminders, Flow steps, Lead capture sync", "When each background job last ran and whether it succeeded. A job marked late has not run when expected."],
+      ["Reply mailbox check (IMAP)", "When the app last looked for new replies. 'never' means reply capture is not set up."],
+      ["Sending", "Whether real sending or practice mode is on, whether a sending domain is connected, who last switched it, whether sending is paused (with the reason), and any errors from the email provider in the last 24 hours."],
+      ["Send queue", "Leads in an active sequence, interrupted sends, sends stopped after failures, and emails waiting in the outbox."],
+      ["Backups", "When the latest automatic backup was made and how many copies exist."],
+      ["LinkedIn agent", "Whether it is switched on and whether each connected account is online or offline, with when it was last seen."],
+      ["Database", "The kind of storage, and whether saved keys are encrypted."],
+      ["Version", "The version of the app that is running. Useful to quote when you report a problem."],
+    ] }],
+    ["h", "What to do"],
+    ["ul", [
+      "A background job marked late or with failures in a row: click **Check again**. If it stays, tell your technical team and quote the row and time.",
+      "Sending paused with a reason: read the reason. For a bounce or complaint hold, see [Why sending is held](#help/recipe-sending-held).",
+      "Interrupted sends or sends stopped after failures: check the email provider in [Connections](#help/setup-connections).",
+      "LinkedIn account offline: open the LinkedIn computer or Chrome assistant again. See [LinkedIn outreach](#help/linkedin).",
+      "Saved keys not encrypted: ask your technical team to set the server key. Until then, treat the server as holding keys in plain form.",
+    ]],
+    ["tip", "Check this page first when something seems stuck: sends not going out, replies not showing, or a LinkedIn account quiet for days."],
+    ["h", "Related"],
+    ["ul", ["[Backup & restore](#help/setup-backup)", "[Outbox & sending](#help/outbox)", "[Go-live checklist](#help/setup-checklist)"]],
+  ],
+};

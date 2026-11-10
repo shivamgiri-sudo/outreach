@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ops } from "../opsApi.js";
 import { istLabel } from "../time.js";
+import Abbr from "../components/Abbr.jsx";
 
 const ORIGIN_PILL = { automatic: "", manual: "ok", unknown: "warn" };
 const STATUS_LABEL = { dry_run: "practice", provider_error: "provider problem" };
@@ -43,7 +44,7 @@ export function InternalEmails() {
       <div className="card" style={{ padding: 0, overflowX: "auto" }}>
         {!data ? !error && <p className="empty">Loading…</p> : data.items.length === 0 ? <p className="empty">No internal emails yet.</p> : (
           <table data-testid="internal-table">
-            <thead><tr><th>When (IST)</th><th>To</th><th>Kind</th><th>Subject</th><th>Why</th><th>Status</th></tr></thead>
+            <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>To</th><th>Kind</th><th>Subject</th><th>Why</th><th>Status</th></tr></thead>
             <tbody>{data.items.map((m) => (
               <tr key={m.id || `${m.at}-${m.to}`}>
                 <td data-label="When">{istLabel(m.at)}</td>

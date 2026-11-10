@@ -1,6 +1,7 @@
 // Dependency-free SVG / CSS charts for the sales funnel page. They keep the same elements between refreshes, so a new
 // number only moves a bar (CSS transition) instead of redrawing the chart.
-import { inrShort, pct as pctText, STAGE_COLORS, statusShort } from "./salesFormat.js";
+import { inrShort, pct as pctText, STAGE_COLORS } from "./salesFormat.js";
+import { Stage } from "./components/Abbr.jsx";
 
 // The 8-stage funnel: one bar per stage, widths follow the counts; the conversion from the stage before sits beside it.
 export function FunnelChart({ stages, onPick }) {
@@ -9,7 +10,7 @@ export function FunnelChart({ stages, onPick }) {
     <div className="sf-funnel" data-testid="sf-funnel" role="list">
       {stages.map((s, i) => (
         <div key={s.key} className="sf-funnel-row" role="listitem">
-          <span className="sf-funnel-label">{statusShort(s.label)}</span>
+          <span className="sf-funnel-label"><Stage status={s.label} full /></span>
           <button type="button" className="sf-funnel-bar" onClick={() => onPick(s.drill)} disabled={!s.count} data-testid={`sf-stage-${s.key}`}
                   aria-label={`${s.label}: ${s.count} leads${i ? `, ${pctText(s.conv)} of the stage before` : ""}. Show the leads.`}>
             <span className="sf-funnel-fill" style={{ width: `${Math.max(s.count ? 3 : 0, (s.count / max) * 100)}%`, background: STAGE_COLORS[i] }} />
@@ -74,7 +75,7 @@ export function PairBars({ rows, onPick }) {
       {rows.map((r, i) => (
         <button type="button" key={r.key} className="sf-pair" onClick={() => onPick(r.drill)} disabled={!r.count}
                 aria-label={`${r.label}: ${r.count} open leads, ${inrShort(r.value)}, weighted ${inrShort(r.weighted)}`}>
-          <span className="sf-pair-label">{statusShort(r.label)} <small>({r.count})</small></span>
+          <span className="sf-pair-label"><Stage status={r.label} full plain /> <small>({r.count})</small></span>
           <span className="sf-pair-bars">
             <span className="sf-pair-fill" style={{ width: `${(r.value / max) * 100}%`, background: STAGE_COLORS[i] }} />
             <span className="sf-pair-fill weighted" style={{ width: `${(r.weighted / max) * 100}%` }} />

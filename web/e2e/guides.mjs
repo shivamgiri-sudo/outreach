@@ -109,6 +109,7 @@ async function setupAndApp(page, size) {
   await go(page, "sources");
   await allButtons(page, "[data-testid^=source-guide-]", `${size} data sources`);
   await go(page, "help");
+  await page.getByTestId("help-tab-setup").click();
   await page.getByTestId("help-search").fill("gmail app password");
   const first = page.locator("[data-testid^=help-card-]").first();
   await openGuide(page, first.getByRole("button", { name: /Open guide/ }), `${size} help search`);

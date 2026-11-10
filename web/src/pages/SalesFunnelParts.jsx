@@ -1,6 +1,7 @@
 // Sales funnel page, groups A–C: the tiles, the funnel and its leakage, speed and discipline.
 import { FunnelChart, Gauge } from "../salesCharts.jsx";
-import { changeText, days, hours, inr, inrShort, num, pct, statusShort } from "../salesFormat.js";
+import { changeText, days, hours, inr, inrShort, num, pct } from "../salesFormat.js";
+import Abbr, { Stage } from "../components/Abbr.jsx";
 
 export function Tile({ label, value, change, previous, money, drill, onDrill, id }) {
   const c = changeText(change);
@@ -51,7 +52,7 @@ export function FunnelHealth({ data, onDrill }) {
             <thead><tr><th>From → to</th><th style={{ textAlign: "right" }}>Count</th><th style={{ textAlign: "right" }}>Rate</th></tr></thead>
             <tbody>
               {data.conversions.map((c) => (
-                <tr key={c.to}><td>{statusShort(c.from)} → {statusShort(c.to.replace(" (overall)", ""))}{c.to.includes("overall") && <small className="sub-inline"> overall</small>}</td>
+                <tr key={c.to}><td><Stage status={c.from} full /> → <Stage status={c.to.replace(" (overall)", "")} full />{c.to.includes("overall") && <small className="sub-inline"> overall</small>}</td>
                   <td style={{ textAlign: "right" }}>{num(c.fromCount)} → {num(c.toCount)}</td><td style={{ textAlign: "right" }}><b>{pct(c.rate)}</b></td></tr>
               ))}
             </tbody>
@@ -69,7 +70,7 @@ export function FunnelHealth({ data, onDrill }) {
               <thead><tr><th>Lost at stage</th>{reasons.map((r) => <th key={r} style={{ textAlign: "right" }}>{r}</th>)}</tr></thead>
               <tbody>
                 {Object.keys(rows).map((stage) => (
-                  <tr key={stage}><td>{statusShort(stage)}</td>
+                  <tr key={stage}><td><Stage status={stage} full /></td>
                     {reasons.map((r) => {
                       const c = cell(stage, r);
                       return <td key={r} style={{ textAlign: "right" }}>{c ? <button type="button" className="linkish" onClick={() => onDrill(c.drill, `Lost at ${statusShort(stage)}: ${r}`)}>{c.count}</button> : "—"}</td>;
@@ -91,7 +92,7 @@ export function SpeedDiscipline({ data, onDrill }) {
       <h3 id="sf-h-speed">Speed and discipline</h3>
       <div className="grid g3">
         <div className="card" data-testid="sf-speed">
-          <h4>Speed to lead</h4>
+          <h4><Abbr term="Speed to lead">Speed to lead</Abbr></h4>
           <div className="sf-pair-nums"><div><b>{hours(sp.avgHours)}</b><small>average</small></div><div><b>{hours(sp.medianHours)}</b><small>median</small></div></div>
           <p className="sub">Created to first human contact. {sp.measured} lead{sp.measured === 1 ? "" : "s"} measured.</p>
           {sp.byOwner.length > 0 && (
@@ -100,19 +101,19 @@ export function SpeedDiscipline({ data, onDrill }) {
           )}
         </div>
         <div className="card">
-          <h4>SLA compliance</h4>
+          <h4><Abbr term="SLA">SLA</Abbr> compliance</h4>
           <Gauge value={sla.pct} caption={`First response within ${sla.hours} h: ${sla.within} of ${sla.measured}`} />
         </div>
         <div className="card" data-testid="sf-stalled">
           <div className="row" style={{ justifyContent: "space-between" }}>
-            <h4 style={{ margin: 0 }}>Stalled leads</h4>
+            <h4 style={{ margin: 0 }}><Abbr term="Stalled lead">Stalled leads</Abbr></h4>
             <button type="button" className="linkish" disabled={!st.total} onClick={() => onDrill(st.drill, "Stalled leads")} data-testid="sf-stalled-total">{st.total} stalled</button>
           </div>
           <p className="sub">Open, no activity for more than the configured days; biggest value first.</p>
           {st.rows.length === 0 ? <p className="empty">Nothing is stalled.</p> : (
             <div style={{ maxHeight: 260, overflow: "auto" }}>
               <table><tbody>{st.rows.slice(0, 50).map((r) => (
-                <tr key={r.id}><td><a href={`#leads?lead=${encodeURIComponent(r.id)}`}>{r.company || r.id}</a><br /><small className="sub-inline">{r.owner || "—"} · {statusShort(r.stage)}</small></td>
+                <tr key={r.id}><td><a href={`#leads?lead=${encodeURIComponent(r.id)}`}>{r.company || r.id}</a><br /><small className="sub-inline">{r.owner || "—"} · <Stage status={r.stage} /></small></td>
                   <td style={{ textAlign: "right" }}>{inr(r.value)}<br /><small className="sub-inline">{days(r.daysIdle)} idle</small></td></tr>
               ))}</tbody></table>
             </div>

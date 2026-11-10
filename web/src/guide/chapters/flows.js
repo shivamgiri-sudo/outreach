@@ -1,0 +1,56 @@
+// Page chapter: Flow builder.
+export default {
+  id: "flows", title: "Flow builder", group: "Menu pages", order: 190, kind: "page", menu: "Flow builder",
+  summary: "Draw a multi-step journey for leads: a trigger, checks, waits and messages across email, WhatsApp, SMS, LinkedIn, calls and meetings.",
+  blocks: [
+    ["p", "{{menu:Flow builder}} lets you draw a [[Flow|flow]] on a canvas. A flow starts with a **trigger**, then goes through **logic** steps (checks and waits) and **actions** (messages and tasks). Every message still follows the portal's rules: consent before WhatsApp, [[Practice mode|practice mode]], daily caps, business hours and the do-not-contact list. For one simple \"when X, do Y\", use [Simple rules](#help/workflows) instead."],
+    ["img", "flows", "The Flow builder canvas with connected steps and the settings panel on the right"],
+    ["h", "Who can use it"],
+    ["ul", [
+      "Owners can create, edit, run and delete any flow.",
+      "A workspace admin can do this for flows in their own workspace.",
+      "Everyone else, including callers and viewers, can open a flow and see it, but it is view only.",
+    ]],
+    ["h", "The flow list"],
+    ["p", "The table shows each flow's name and number of steps, its **Status** (Draft, Active or Paused), **Starts when**, **Active leads** and when it was last edited. Click **Open** to edit or **Delete** to remove it (leads still inside are stopped)."],
+    ["steps", [
+      "Click **New from template** to start from a ready flow, then **Use this template**. The cold-email template matches today's sequence.",
+      "Or click **Blank flow**. Or **Import a flow** to load a flow file saved earlier with Export.",
+      "Owners with several workspaces first pick the **Workspace** the flow belongs to.",
+    ]],
+    ["h", "Build a flow"],
+    ["steps", [
+      "Click **Add step**. Pick a trigger first. Click a step in the picker, or drag it onto the canvas.",
+      "To add the next step, click the + under a step. Or drag from the dot under one step onto another to connect them.",
+      "Click a step to set it up in the panel on the right. Give it a clear title.",
+      "Use **Validate** to find problems. Steps with a problem turn red.",
+      "Click **Save**, then **Activate** when you are ready. **Pause** stops new work; leads stay where they are until you activate again.",
+    ]],
+    ["tip", "Tools on the bar: **Undo**, **Redo**, **Auto-layout**, **List view** (a plain list instead of a drawing, easier on a phone or with a keyboard) and **Export**. If you leave with unsaved changes the page asks first."],
+    ["h", "The steps you can use"],
+    ["table", { head: ["Group", "Steps"], rows: [
+      ["Triggers", "Added by hand; New lead added; They reply; Stage changes; Meeting booked; Product activity; No reply for some days; On a schedule; Webhook received."],
+      ["Logic", "If / else; A/B split; Wait; Wait for a reply; Repeat; Switch."],
+      ["Actions", "Send email; Send WhatsApp; Send SMS; LinkedIn task; Call task; Meeting link; Set stage; Add tag; Notify a person; Webhook; Stop; Ask Claude; Set fields; HTTP request."],
+      ["Notes", "Sticky note: a comment for your team. It never runs."],
+    ] }],
+    ["h", "Things worth knowing"],
+    ["ul", [
+      "**Send email** goes through the email engine: practice mode, daily cap, [[Warm-up|warm-up]], one email per company a day, Monday to Friday 9 to 18 [[IST]].",
+      "**Send WhatsApp** and **Send SMS** only work with recorded consent. SMS must match your [[DLT]] template. Until WhatsApp or SMS is connected and switched on, they run as practice.",
+      "**LinkedIn task** does not send by itself: a person sends the message by hand.",
+      "**Call task** creates a task for the caller, due at the next call slot.",
+      "**Wait** can run until business hours. **Wait for a reply** waits up to a number of days; each kind of reply goes down its own path and no reply goes down \"no reply\".",
+      "A [[Webhook]] step posts basic lead details to a public https address. **HTTP request** never calls private or internal addresses.",
+    ]],
+    ["h", "Settings, test and run"],
+    ["ul", [
+      "With no step selected, the right panel shows **Flow settings**: a description and **Stop for a lead as soon as they reply**. This is recommended for cold flows.",
+      "**Simulate on a lead**: choose a lead and click **Run simulation** to see what each step would do, without sending anything.",
+      "**Enrol leads**: pick leads and click Enrol. The flow must be active.",
+      "**Leads in this flow** lists each lead and its status with a **Stop** button.",
+    ]],
+    ["warn", "Test with **Simulate on a lead** and in practice mode before you activate. A flow that is Active acts on real leads."],
+    ["p", "A single lead's flows are also shown in its panel, where you can start one by hand. Related: [Simple rules](#help/workflows), [Sequences & templates](#help/templates), [Outbox & sending](#help/outbox), [Replies](#help/replies)."],
+  ],
+};

@@ -1,0 +1,30 @@
+export default {
+  id: "setup-industry", title: "Industry & fields", group: "Setup", order: 30, kind: "setup", menu: "Industry & fields", roles: ["owner"], masOnly: true,
+  summary: "Start from ready-made words for your kind of business and add the custom fields your team fills on each lead.",
+  blocks: [
+    ["p", "Open {{menu:Industry & fields}} in {{menu:Setup}}. It has two cards: **Industry preset** and **Custom lead fields**."],
+    ["h", "Who can use it"],
+    ["p", "Owners only. Nobody else can apply a preset or change the fields."],
+    ["h", "Industry preset"],
+    ["p", "A preset gives you a head start written for one kind of business. It adds an email sequence, LinkedIn steps and personas, a call script, snippets, ideal-customer hints, the label for the lead's number field, stage names and two starter flows. The claims come from your [Brand & offer](#help/setup-brand) details, so nothing is promised that you did not write."],
+    ["steps", [
+      "Click a preset card. Cards marked **built in** come with the app; **applied** marks the one in use. Below the cards you see how many emails, LinkedIn steps, personas and snippets it has.",
+      "Tick **Replace what I have already changed (LinkedIn steps, call script, snippets, scoring)** only if you want the preset to overwrite your edits.",
+      "Click **Apply preset**.",
+      "Read the green result. It lists what was added or replaced and what was kept because you had changed it.",
+    ]],
+    ["tip", "The new email sequence appears under {{menu:Sequences & templates}}. Your default sequence is not touched."],
+    ["h", "Custom lead fields"],
+    ["p", "Add the details your industry cares about, such as budget, property type, seats or course. A field can be edited on the lead, shown as a column and a filter on {{menu:Leads}}, filled from an imported column with the same name, exported, used in flows, and written into a message."],
+    ["steps", [
+      "Click **Add a field**. You can add up to 40.",
+      "Type a **Name**. The **Key** is made from the name; change it only if you need to. Keys use lower-case letters.",
+      "Choose a **Type**: Text, Number, Date, Choice list, Web link, Phone or Email. For a Choice list, type the choices separated by commas.",
+      "Tick **Column** to show it in the leads table and **Filter** to filter by it.",
+      "Click **Save fields**.",
+    ]],
+    ["p", "Click **Remove** on a row to drop a field. Removing it hides it; check with your owner before removing a field that is used in templates."],
+    ["h", "Related"],
+    ["ul", ["[Leads](#help/leads)", "[Import a sheet](#help/recipe-import-sheet)", "[Sequences & templates](#help/templates)"]],
+  ],
+};

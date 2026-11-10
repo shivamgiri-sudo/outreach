@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { istLabel } from "../time.js";
 import { api, canWrite, EXCEL_ACCEPT, readLeadFile } from "../api.js";
 import { sourceLabel, sourceOptions, useSourceRegistry } from "../labels.js";
+import Abbr from "../components/Abbr.jsx";
 
 // Four steps: add the list, check the columns, dry run (nothing saved), import (with undo).
 const STEPS = ["Add your list", "Check the columns", "Dry run", "Done"];
@@ -224,7 +225,7 @@ export default function ImportWizard({ onClose, onDone }) {
             Any export works: Apollo, Sales Navigator, Lusha, ZoomInfo, Hunter, job boards, IndiaMART, Google Maps, the team sheet or your own columns.
             Duplicates are found and merged; nothing is saved until the last step.
           </p>
-          <label htmlFor="import-file">Upload a CSV or Excel file (.csv, .xlsx, .xls)</label>
+          <label htmlFor="import-file">Upload a <Abbr term="CSV">CSV</Abbr> or Excel file (.csv, .xlsx, .xls)</label>
           <input id="import-file" type="file" accept={`${EXCEL_ACCEPT},.tsv,.txt`} onChange={(e) => readFile(e.target.files[0])} />
           {fileName && <small className="sub-inline" data-testid="import-loaded">Loaded {fileName}{sheets ? ` · sheet "${sheets.sheet}" · ${sheets.rows} rows` : ""}</small>}
           {sheets && sheets.sheets.length > 1 && (

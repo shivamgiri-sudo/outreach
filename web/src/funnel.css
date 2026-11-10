@@ -18,7 +18,7 @@
 section[aria-labelledby^="sf-h-"] { margin: 26px 0 0; }
 section[aria-labelledby^="sf-h-"] > h3 { margin: 0 0 12px; font-size: 18px; }
 .sf-funnel { display: grid; gap: 8px; }
-.sf-funnel-row { display: grid; grid-template-columns: 78px minmax(0, 1fr) 54px; gap: 10px; align-items: center; }
+.sf-funnel-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 54px; gap: 10px; align-items: center; }
 .sf-funnel-label { font-weight: 600; font-size: 13px; }
 .sf-funnel-bar { position: relative; display: block; height: 30px; padding: 0; border: 0; border-radius: 8px; background: var(--bg); cursor: pointer; text-align: left; }
 .sf-funnel-bar:disabled { cursor: default; }
@@ -26,7 +26,7 @@ section[aria-labelledby^="sf-h-"] > h3 { margin: 0 0 12px; font-size: 18px; }
 .sf-funnel-bar b { position: relative; padding-left: 10px; line-height: 30px; color: var(--ink); mix-blend-mode: normal; text-shadow: 0 0 3px var(--panel), 0 0 3px var(--panel); }
 .sf-funnel-conv { text-align: right; color: var(--muted); font-weight: 700; }
 .sf-pairs { display: grid; gap: 8px; }
-.sf-pair { display: grid; grid-template-columns: 112px minmax(0, 1fr) 120px; gap: 10px; align-items: center; border: 0; background: none; padding: 4px 0; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.sf-pair { display: grid; grid-template-columns: 150px minmax(0, 1fr) 120px; gap: 10px; align-items: center; border: 0; background: none; padding: 4px 0; cursor: pointer; text-align: left; font: inherit; color: inherit; }
 .sf-pair:disabled { cursor: default; opacity: .75; }
 .sf-pair-bars { position: relative; height: 22px; background: var(--bg); border-radius: 6px; overflow: hidden; }
 .sf-pair-fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; transition: width .5s ease; opacity: .45; }
@@ -45,8 +45,8 @@ section[aria-labelledby^="sf-h-"] > h3 { margin: 0 0 12px; font-size: 18px; }
 .table-card-inner table { margin-top: 4px; }
 @media (max-width: 760px) {
   .sf-tile b { font-size: 22px; }
-  .sf-funnel-row { grid-template-columns: 62px minmax(0, 1fr) 46px; }
-  .sf-pair { grid-template-columns: 90px minmax(0, 1fr); } .sf-pair-num { grid-column: 1 / -1; text-align: left; grid-auto-flow: column; justify-content: space-between; }
+  .sf-funnel-row { grid-template-columns: 112px minmax(0, 1fr) 46px; }
+  .sf-pair { grid-template-columns: 112px minmax(0, 1fr); } .sf-pair-num { grid-column: 1 / -1; text-align: left; grid-auto-flow: column; justify-content: space-between; }
   .sf-controls input[type="date"] { width: 100%; }
   [data-testid="sales-funnel"] .card { padding: 14px; }
 }

@@ -4,6 +4,7 @@ import { apiRequest as request } from "../api.js";
 import { rangeQuery } from "../opsApi.js";
 import { ErrorState } from "../states.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
+import Abbr from "../components/Abbr.jsx";
 
 // Response times: how fast new leads get a first attempt and replies get an answer, against the targets, with the
 // leads that are waiting right now. Owners set the targets and who gets alerts, and can switch email tracking off.
@@ -49,7 +50,7 @@ function Waiting({ title, rows, unit, onOpen, testid }) {
       <h3 style={{ margin: "14px 16px 6px" }}>{title} ({rows.length})</h3>
       {rows.length === 0 ? <p className="empty">Nobody is waiting. Well done.</p> : (
         <div className="table-scroll"><table data-testid={testid}>
-          <thead><tr><th>Lead</th><th>Owner</th><th>Since (IST)</th><th>Waiting</th>{unit === "reply" && <th>Their reply</th>}</tr></thead>
+          <thead><tr><th>Lead</th><th>Owner</th><th>Since (<Abbr term="IST">IST</Abbr>)</th><th>Waiting</th>{unit === "reply" && <th>Their reply</th>}</tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={`${r.lead_id}-${r.since}`}><td><button className="link" onClick={() => onOpen(r.lead_id)}>{r.company || "—"}</button></td><td>{r.owner}</td>
               <td>{ago(r.since)}</td><td><b>{hrs(r.hours)}</b></td>{unit === "reply" && <td><small>{r.reply}</small></td>}</tr>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { setToken } from "../api.js";
 import { platform } from "../platformApi.js";
+import Abbr from "../components/Abbr.jsx";
 
 const tokenIn = (kind) => {
   const m = new RegExp(`^#/?${kind}\\?token=([A-Za-z0-9_.-]{10,400})`).exec(window.location.hash || "");
@@ -53,6 +54,7 @@ export function OidcButtons({ intent = "login" }) {
           {intent === "signup" ? "Sign up" : "Sign in"} with {p.title}
         </button>
       ))}
+      <small className="sub">This is single sign-on (<Abbr term="SSO">SSO</Abbr>), built on <Abbr term="OIDC">OIDC</Abbr>: we never see your Google or Microsoft password.</small>
       {error && <p className="login-error" role="alert">{error}</p>}
     </div>
   );

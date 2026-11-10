@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { isOwner, isWorkspaceAdmin } from "../api.js";
 import { sales } from "../salesApi.js";
 import { inr } from "../salesFormat.js";
+import Abbr from "../components/Abbr.jsx";
 
 export default function SalesSettings({ owners, onSaved }) {
   const editable = isOwner() || isWorkspaceAdmin();
@@ -27,7 +28,7 @@ export default function SalesSettings({ owners, onSaved }) {
         <summary><b id="sf-h-set">Funnel settings</b> <small className="sub-inline">SLA {s.sla_hours} h · stalled after {s.stalled_days} days · {s.targets.length} target row{s.targets.length === 1 ? "" : "s"}</small></summary>
         <form onSubmit={save} className="inline-form" aria-label="Sales funnel settings">
           <div className="row">
-            <label>First-response SLA (hours)<input type="number" min="1" max="720" value={s.sla_hours} disabled={!editable} onChange={(e) => setS({ ...s, sla_hours: e.target.value })} /></label>
+            <label>First-response <Abbr term="SLA">SLA</Abbr> (hours)<input type="number" min="1" max="720" value={s.sla_hours} disabled={!editable} onChange={(e) => setS({ ...s, sla_hours: e.target.value })} /></label>
             <label>Stalled after (days without activity)<input type="number" min="1" max="365" value={s.stalled_days} disabled={!editable} onChange={(e) => setS({ ...s, stalled_days: e.target.value })} /></label>
           </div>
           <b>Monthly targets (₹ of new monthly value, by owner)</b>
