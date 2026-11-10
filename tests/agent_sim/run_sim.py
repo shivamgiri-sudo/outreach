@@ -364,6 +364,58 @@ check("S19 Bravo's agent token never sees or claims Mas Callnet's lead", code19 
 check("S19 Bravo's agent invites its own lead, and its LinkedIn account is Bravo's", "connect-91" in from_z
       and agent.owner_of_slug(store, "acct-z") == bravo["id"] and seq(mcn19).get("account") in (None, ""), str(from_z))
 
+# ---------------------------------------------------------------- S20: a lead without a link: the profile is looked up, the server decides
+def add_nolink(name, company):
+    csv = f"company,contact_name,title,email,website\n{company},{name},Head of Talent,{name.replace(' ', '.')}@{company.lower()}.test,https://{company.lower()}.test\n"
+    http("POST", "/api/leads/import", {"csv": csv, "source": "sim"}, owner)
+    lid = next(l for l in store.read("leads") if l["company"] == company)["id"]
+    code, body = http("POST", f"/api/leads/{lid}/linkedin/start", token=owner)
+    return lid, code, body
+
+
+def lead_of(lid):
+    return next(l for l in store.read("leads") if l["id"] == lid)
+
+
+login_profile(PROFILE_A, "acct-a")
+agent.save_config(store, {"enabled": True, "start_hour": 0, "end_hour": 24, "weekdays_only": False, "check_replies": False,
+                          "lookups_per_day": 15, "find_profiles": True})
+store.update("settings", lambda s: {**s, "linkedin_daily_connections": 40})
+store.update("tasks", lambda rows: [{**t, "status": "done", "done": True} if t.get("kind") == "linkedin" and t.get("lead_id") != "x" else t for t in rows])
+f1, c1, b1 = add_nolink("Find One", "Findco")
+f2, c2, b2 = add_nolink("Find Two", "Twoco")
+f0, c0, b0 = add_nolink("Find Zero", "Zeroco")
+check("S20 Start on leads without a link puts them on the lookup list", c1 == c2 == c0 == 200 and b1.get("lookup") == "queued"
+      and all(lead_of(i)["linkedin_lookup"]["status"] == "queued" for i in (f1, f2, f0)), str((c1, b1)))
+searches0 = len(http("GET", "/__state", base=FAKE)[1]["searches"])
+code, out = run_agent(PROFILE_A, "--once"); skip_gap()
+st = http("GET", "/__state", base=FAKE)[1]
+check("S20 one cycle looks up ONE lead (one search page opened)", len(st["searches"]) - searches0 == 1 and "profile search for" in out, out[-300:])
+for _ in range(4):                          # the other lookups, and the connect request for the person found (one action per run)
+    run_agent(PROFILE_A, "--once"); skip_gap()
+check("S20 exactly one exact name with the company in the headline: link saved with provenance, sequence started",
+      lead_of(f1).get("linkedin_url") == "https://www.linkedin.com/in/find-one-1" and lead_of(f1)["linkedin_lookup"]["status"] == "found"
+      and bool(lead_of(f1).get("linkedin_seq")) and any("matched name and company" in e["text"] and e.get("origin", {}).get("trigger") == "linkedin_agent"
+                                                       for e in lead_of(f1)["timeline"]), str(lead_of(f1)["linkedin_lookup"]))
+check("S20 two people with the same name: nothing picked, both kept for a person",
+      lead_of(f2)["linkedin_lookup"]["status"] == "ambiguous" and not lead_of(f2).get("linkedin_url") and not lead_of(f2).get("linkedin_seq")
+      and len(lead_of(f2)["linkedin_lookup"]["candidates"]) == 2, str(lead_of(f2)["linkedin_lookup"]))
+check("S20 nobody found: not_found with a prefilled search link and no sequence",
+      lead_of(f0)["linkedin_lookup"]["status"] == "not_found" and "keywords=Find+Zero+Zeroco" in lead_of(f0)["linkedin_lookup"]["search_url"]
+      and not lead_of(f0).get("linkedin_seq"))
+check("S20 each lookup is logged and counted for today", len([r for r in agent.log_rows(store) if r["kind"] == "lookup"]) == 3 and all(r.get("lead_id") in (f1, f2, f0) for r in agent.log_rows(store) if r["kind"] == "lookup"), str(agent.log_rows(store)[-4:]))
+new_actions = [r for r in agent.log_rows(store)[-30:] if r["kind"] in ("connect", "message") and r.get("lead_id") in (f1, f2, f0)]
+check("S20 only the person found got a connection request; a lookup itself sends nothing", {r["lead_id"] for r in new_actions} <= {f1} and len(new_actions) <= 1, str(new_actions))
+code, body = http("POST", f"/api/leads/{f2}/linkedin/find", {"action": "pick", "url": "https://www.linkedin.com/in/find-two-2"}, owner)
+check("S20 one click picks a candidate and starts the sequence", code == 200 and lead_of(f2).get("linkedin_url", "").endswith("/find-two-2") and bool(lead_of(f2).get("linkedin_seq")), str(body)[:200])
+run_until_idle(PROFILE_A)
+inv = [i for i in http("GET", "/__state", base=FAKE)[1]["invites"] if i["to"] in ("find-one-1", "find-two-2")]
+check("S20 the designed connect note then goes out for the found profile", any(i["to"] == "find-one-1" and i["note"].startswith("Hi Find,") for i in inv), str(inv))
+agent.save_config(store, {"find_profiles": False})
+f3, c3, b3 = add_nolink("Find Three", "Threeco")
+check("S20 switch off: old refusal, nothing queued", c3 == 400 and "LinkedIn profile link first" in str(b3) and not lead_of(f3).get("linkedin_lookup"), str(b3))
+agent.save_config(store, {"find_profiles": True})
+
 # ---------------------------------------------------------------- done
 fake.terminate()
 server.should_exit = True

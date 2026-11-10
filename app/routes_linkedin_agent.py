@@ -24,6 +24,8 @@ class ConfigBody(BaseModel):
     check_replies: Optional[bool] = None
     daily_connections: Optional[int] = None
     auto_start: Optional[bool] = None
+    find_profiles: Optional[bool] = None
+    lookups_per_day: Optional[int] = None
     resume_account: Optional[str] = None
     merge_from: Optional[str] = None
     merge_into: Optional[str] = None

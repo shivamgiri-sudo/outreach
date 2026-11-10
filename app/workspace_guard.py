@@ -86,7 +86,7 @@ LIMITED_OK = {
 }
 # The LinkedIn agent program's calls, for a pairing / slot token of a client account only (never a web login): its own
 # account's leads only (the token's workspaces; app/linkedin_scope.py).
-AGENT_TOKEN_OK = {("GET", "/api/extension/agent"), ("POST", "/api/extension/agent/event"), ("POST", "/api/extension/inbox"),
+AGENT_TOKEN_OK = {("GET", "/api/extension/agent"), ("GET", "/api/extension/lookup/next"), ("POST", "/api/extension/agent/event"), ("POST", "/api/extension/inbox"),
                   ("GET", "/api/extension/cloud/login-job"), ("GET", "/api/extension/cloud/code"), ("POST", "/api/extension/cloud/state")}
 # Client logins (another company's account, app/accounts.py) are also refused these: copying Mas Callnet's own
 # LinkedIn steps into their workspace.

@@ -74,7 +74,8 @@ export default function LeadBulkBar({ picked, pageIds, owners, spaces, onDone, o
     try {
       const list = await api.createList({ name: `LinkedIn ${new Date().toISOString().slice(0, 10)} (${picked.length})`, lead_ids: picked });
       const r = await api.listStartLinkedIn(list.id);
-      onDone(`Started LinkedIn outreach for ${r.started} of ${r.asked}.${r.refused.length ? " Left out: " + r.refused.map((x) => `${x.count} (${x.reason})`).join("; ") : ""}`, true);
+      const refused = r.refused.reduce((n, x) => n + x.count, 0);
+      onDone(`LinkedIn outreach: ${r.started} started, ${r.looking_up || 0} are being looked up (their LinkedIn profile is searched first), ${refused} refused${refused ? " (" + r.refused.map((x) => `${x.count}: ${x.reason}`).join("; ") + ")" : ""}.`, true);
     } catch (e) { onDone(e.message, false); }
     setBusy("");
   };

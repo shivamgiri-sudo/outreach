@@ -4,6 +4,7 @@ import LinkedInSequenceEditor from "./LinkedInSequenceEditor.jsx";
 import LinkedInCloud from "./LinkedInCloud.jsx";
 import LinkedInAgent from "./LinkedInAgentBox.jsx";
 import LinkedInStageBoard from "./LinkedInStageBoard.jsx";
+import LinkedInFinder from "./LinkedInFinder.jsx";
 import { copyText } from "../clipboard.js";
 import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
@@ -252,6 +253,16 @@ export default function LinkedInQueue() {
           {helper === d.lead_id && <BranchHelper leadId={d.lead_id} onMessage={setMessage} />}
         </div>
       ))}
+
+      {q && (q.finding || []).length > 0 && <>
+        <h3>Finding their LinkedIn profile <span className="pill">{q.finding.length}</span></h3>
+        <p className="sub">These people had no LinkedIn link. The agent searches for one person at a time and starts the sequence only when exactly one profile matches the name and the company.</p>
+        {q.finding.map((f) => (
+          <div className="card" key={f.lead_id} style={{ marginBottom: 10 }} data-testid="li-finding-row">
+            <b>{f.name || "Contact"} · {f.company}</b>
+            <LinkedInFinder row={f} onChanged={load} onMessage={setMessage} />
+          </div>))}
+      </>}
 
       <h3>Waiting for them to accept {q && <span className="pill">{q.waiting_for_acceptance.length}</span>}</h3>
       {q && q.waiting_for_acceptance.length === 0 ? <p className="sub">Nobody waiting.</p> : (

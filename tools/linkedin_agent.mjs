@@ -345,6 +345,50 @@ async function reportProfile(page, leadId, state, name) {
   if (open) log("Open Profile: can be messaged without connecting");
 }
 
+// Profile lookup for a lead that has no LinkedIn link. ONE lead per cycle, only when the portal says may_lookup (switch,
+// hours, pause, platform stop, the gap shared with every other action, and the daily lookups number). It opens the people
+// search for "<name> <company>" ONCE and reads only the visible cards of that first page (no scrolling, no next page, no
+// clicking into profiles). The portal decides which card, if any, is the person; nothing is accepted here.
+const NOISE = /^([^\w]*(1st|2nd|3rd\+?)|[^\p{L}\p{N}]+|connect|message|follow|pending|view .*profile|status is .*|mutual connection.*)$/i;
+function readCards(page) {
+  return page.evaluate((noise) => {
+    const rx = new RegExp(noise, "iu"), out = [], seen = new Set();
+    for (const a of document.querySelectorAll('main a[href*="/in/"]')) {
+      const m = (a.getAttribute("href") || "").match(/\/in\/([^/?#]+)/);
+      const box = a.closest("li");
+      if (!m || !box || seen.has(m[1]) || !a.getClientRects().length) continue;
+      seen.add(m[1]);
+      // The link holds the name twice (a visible copy and a screen-reader copy): take the visible one, else collapse the repeat.
+      const shown = (a.querySelector('[aria-hidden="true"]') || {}).textContent || a.innerText || "";
+      const nm = shown.replace(/\s+/g, " ").trim().replace(/^(.{2,}?) \1$/, "$1").replace(/^(.{2,}?)\1$/, "$1");
+      const lines = nm ? [nm] : [];
+      for (const raw of box.innerText.split("\n")) {
+        if (nm && raw.replace(/\s+/g, " ").trim().replace(/\s*[•·].*$/, "").replace(/^(.{2,}?)\s?\1$/, "$1") === nm) continue;
+        const t = raw.replace(/\s*[•·]\s*(1st|2nd|3rd\+?)\s*$/i, "").trim();
+        if (t && !rx.test(t) && lines[lines.length - 1] !== t) lines.push(t);
+      }
+      out.push({ name: lines[0] || "", headline: lines[1] || "", location: lines[2] || "", url: new URL(a.getAttribute("href"), location.href).pathname.replace(/^/, "https://www.linkedin.com") });
+      if (out.length >= 10) break;
+    }
+    return out;
+  }, NOISE.source);
+}
+async function lookupStep(page, ctl) {
+  if (DRY || !ctl.may_lookup) return null;
+  const { lead } = await api("/api/extension/lookup/next");
+  if (!lead) return null;
+  await page.goto(LINKEDIN + "/search/results/people/?keywords=" + encodeURIComponent(`${lead.name} ${lead.company}`.trim()), { waitUntil: "domcontentloaded" });
+  await sleep(SETTLE);
+  await checkTrouble(page);
+  let cards = [], error = "";
+  try { cards = await readCards(page); } catch (e) { error = `could not read the search page (${String(e.message || e).split("\n")[0].slice(0, 100)})`; }
+  try {
+    const out = await api(`/api/extension/leads/${lead.lead_id}/lookup-result`, "POST", { cards, error });
+    log(`profile search for ${lead.name}: ${cards.length} people on the first page -> ${out.status}`);
+  } catch (e) { log("could not report the search:", e.message); }
+  return { acted: "lookup" };
+}
+
 async function oneCycle(page, state) {
   if (ME.account && Date.now() - ME.checkedAt > 30 * 60 * 1000) await whoAmI(page);   // someone may have switched accounts in the window
   const ctl = await api("/api/extension/agent");
@@ -419,6 +463,8 @@ async function oneCycle(page, state) {
     log(`${kind === "connect" ? "connection request" : "message"} sent: ${item.name}`);
     return { acted: kind };
   }
+  const looked = await lookupStep(page, ctl);
+  if (looked) return looked;
   return { idle: "nothing due that is allowed right now" };
 }
 

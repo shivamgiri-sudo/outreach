@@ -32,6 +32,18 @@ class InboxBody(BaseModel):
     items: list[InboxItem] = Field(default=[], max_length=60)
 
 
+class Card(BaseModel):
+    name: str = Field(default="", max_length=200)
+    headline: str = Field(default="", max_length=400)
+    location: str = Field(default="", max_length=200)
+    url: str = Field(default="", max_length=500)
+
+
+class LookupBody(BaseModel):
+    cards: list[Card] = Field(default=[], max_length=25)
+    error: str = Field(default="", max_length=300)
+
+
 class SaveProfileBody(BaseModel):
     profile_url: str = Field(max_length=2000)
     name: str = Field(max_length=extension_save.NAME_MAX)
@@ -111,6 +123,38 @@ def make_router(store) -> APIRouter:
                 names = ", ".join(s.get("name") or s.get("company") or "?" for s in started[:8]) + (" …" if len(started) > 8 else "")
                 agent_mod.note(store, "auto_start", f"Started the LinkedIn sequence for {len(started)} people: {names}", account, owner=owner)
         return ext.queue(store, account)
+
+    @router.get("/api/extension/lookup/next")
+    def lookup_next(request: Request):
+        """ONE lead whose LinkedIn profile is to be looked up, only while the agent may act and has lookups left today
+        (switch, hours, pause, platform stop, gap and the daily lookup number are all decided by agent.control)."""
+        from . import linkedin_finder
+        account, owner = account_of(request), owner_of(request)
+        ctl = agent_mod.control(store, account=account, owner=owner)
+        if not ctl["may_lookup"]:
+            return {"lead": None, "why": ctl["why_not"] or "no lookups left right now"}
+        return {"lead": linkedin_finder.next_for(store, account) or None}
+
+    @router.post("/api/extension/leads/{lead_id}/lookup-result")
+    def lookup_result(lead_id: str, body: LookupBody, request: Request):
+        """The first page of people-search cards for a lead. The portal decides (app/linkedin_finder.py); a profile is
+        accepted only on an exact name plus the company in the headline, and the sequence then starts."""
+        from . import linkedin_finder
+        account, owner = account_of(request), owner_of(request)
+        lead = lead_or_404(lead_id)
+        from . import workspaces
+        if not workspaces.visible(lead):
+            raise HTTPException(404, "Lead not found")
+        ctl = agent_mod.control(store, account=account, owner=owner)
+        if not ctl["active_now"]:                      # paused / switched off / killed while it was reading the page
+            raise HTTPException(409, ctl["why_not"] or "The agent may not act right now.")
+        try:
+            out = linkedin_finder.apply_result(store, lead_id, [c.model_dump() for c in body.cards], account, body.error.strip())
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from None
+        agent_mod.record(store, {"kind": "lookup", "lead_id": lead_id, "account": account,
+                                 "note": f"profile search for {lead.get('contact_name') or '?'}: {out['status']}"}, owner=owner)
+        return out
 
     @router.post("/api/extension/inbox")
     def inbox(body: InboxBody, request: Request):

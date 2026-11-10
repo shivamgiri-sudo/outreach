@@ -17,6 +17,7 @@ import LeadSales from "./LeadSales.jsx";
 import { EditDetails, InlineForm, LeadOrigin, PrivacyActions, SIGNAL_LABELS, linkedinDrafts, replyMeaning, sequenceStatus } from "./LeadDrawerParts.jsx";
 import LeadAssign from "./LeadAssign.jsx";
 import LinkedInAccountPick from "./LinkedInAccountPick.jsx";
+import LinkedInFinder from "./LinkedInFinder.jsx";
 import { LeadCustomData } from "./LeadCustomFields.jsx";
 import PhoneTag, { isLandline } from "./PhoneTag.jsx";
 import { LeadAuditPack, LeadConsent } from "./LeadAudit.jsx";
@@ -212,6 +213,8 @@ export default function LeadDrawer({ id, ids, onClose }) {
         {lead.linkedin_profile?.open_profile && <span className="pill" style={{ marginLeft: 6 }}>Open Profile</span>}</p>
       {!lead.linkedin_seq && lead.linkedin_dup_of && <p className="sub" style={{ color: "#b45309" }} data-testid="linkedin-dup">
         {lead.linkedin_dup_reason || "This person was already contacted on LinkedIn through another lead."} It will not be contacted again.</p>}
+      {!lead.linkedin_seq && lead.linkedin_lookup && ["queued", "ambiguous", "not_found", "manual"].includes(lead.linkedin_lookup.status) && !lead.linkedin_lookup.skipped_by
+        && <LinkedInFinder row={{ lead_id: lead.id, name: lead.contact_name, company: lead.company, ...lead.linkedin_lookup }} onChanged={load} onMessage={say} />}
       <LinkedInAccountPick lead={lead} onChanged={load} />
       {linkedinDrafts(lead).map(([title, text]) => (
         <div className="tip" key={title} style={{ marginBottom: 8 }}>

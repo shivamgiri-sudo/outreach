@@ -13,7 +13,7 @@ Settings:
   the "mcn" account keeps the old global settings["linkedin_agent"]; any other account has
   settings["linkedin_agent_by_account"][account_id] with the same keys plus daily_connections and auto_start.
   Caps are clamped (server side) to the account's ceilings: accounts limits linkedin_daily_connections_max,
-  linkedin_weekly_connections_max, linkedin_daily_messages_max (set by an owner; blank = no ceiling).
+  linkedin_weekly_connections_max, linkedin_daily_messages_max, linkedin_lookups_per_day_max (set by an owner; blank = no ceiling).
   settings["linkedin_agent_kill"] {on, at, by}: the owner's platform-wide stop. While on, no account's agent acts.
 """
 from typing import Optional
@@ -23,7 +23,7 @@ from .activities import iso, now_utc
 
 BY_ACCOUNT, KILL = "linkedin_agent_by_account", "linkedin_agent_kill"
 CEILINGS = {"daily_connections": "linkedin_daily_connections_max", "weekly_connections": "linkedin_weekly_connections_max",
-            "daily_messages": "linkedin_daily_messages_max"}
+            "daily_messages": "linkedin_daily_messages_max", "lookups_per_day": "linkedin_lookups_per_day_max"}
 KILL_WHY = "the platform admin stopped every LinkedIn agent"
 
 

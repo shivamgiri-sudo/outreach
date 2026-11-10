@@ -4,6 +4,9 @@
 //   first-*    1st-degree, Message button         open-*     2nd-degree + Message (Open Profile)
 //   checkpoint-* redirects to a security check    limit-*    weekly invitation limit after Connect
 //   nonote-*   Connect dialog without "Add a note"
+//   find-*     the people search (/search/results/people/?keywords=..) answers by the name searched: "Find One" -> 1 card
+//              (at the company), "Find Two" -> 2 cards with the same name, "Find Zero" -> none. Slugs end in -N so the
+//              profile name is the slug without it.
 //   short-*    free account: the note box takes at most 200 characters (maxlength)
 //   upsell-*   "Add a note" + "Send without a note"; Add a note opens a Premium offer with no text box (note limit)
 // GET /__state shows every invite and message; POST /__accept?slug=..&acct=.. makes a pending invite accepted;
@@ -13,10 +16,10 @@ import http from "node:http";
 // argv: "8797:acct-a,8796:acct-b" — each port is one browser "logged in" as that account (cookies do not survive a
 // headless profile restart on localhost). POST /__as?acct=x on a port switches it (empty = logged out).
 const PORTS = Object.fromEntries(String(process.argv[2] || "8797:acct-a").split(",").map((p) => p.split(":")).map(([port, a]) => [Number(port), a || ""]));
-const state = { invites: [], messages: [], accepted: {}, replies: [] };
+const state = { invites: [], messages: [], accepted: {}, replies: [], searches: [] };
 const names = { "acct-a": "Asha Account", "acct-b": "Bala Account", "acct-c": "Chitra Account" };
 const cookie = (req) => Object.fromEntries((req.headers.cookie || "").split(/;\s*/).filter(Boolean).map((c) => c.split("=")));
-const page = (body, title = "LinkedIn") => `<!doctype html><html><head><title>${title}</title></head><body>${body}</body></html>`;
+const page = (body, title = "LinkedIn") => `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body>${body}</body></html>`;
 const send = (res, code, html, headers = {}) => { res.writeHead(code, { "Content-Type": "text/html", ...headers }); res.end(html); };
 const pretty = (slug) => slug.replace(/-\d+$/, "").split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
 
@@ -42,7 +45,7 @@ function inbox(acct) {
 
 function profile(acct, slug) {
   const kind = slug.split("-")[0];
-  const name = kind[0].toUpperCase() + kind.slice(1) + " Lead";      // the same name the driver gives the lead
+  const name = kind === "find" ? pretty(slug) : kind[0].toUpperCase() + kind.slice(1) + " Lead";      // the same name the driver gives the lead
   const accepted = state.accepted[`${acct}|${slug}`];
   const pending = kind === "pending" || state.invites.some((i) => i.from === acct && i.to === slug) && !accepted;
   const degree = kind === "first" || accepted ? "1st" : "2nd";
@@ -93,6 +96,16 @@ if (m) m.onclick = () => {
 </script>`, name);
 }
 
+function search(url) {
+  const q = (url.searchParams.get("keywords") || "").toLowerCase();
+  const card = (slug, name, headline) => `<li><a href="/in/${slug}?miniProfileUrn=x"><span aria-hidden="true">${name}</span><span class="visually-hidden">${name}</span></a>
+    <div>${name}</div><div>• 2nd</div><div>${headline}</div><div>Pune, India</div><button>Connect</button></li>`;
+  const co = q.split(" ").slice(2).join(" ");
+  const rows = q.startsWith("find one") ? [card("find-one-1", "Find One", `Head of Talent at ${co}`)]
+    : q.startsWith("find two") ? [card("find-two-1", "Find Two", `Head of Talent at ${co}`), card("find-two-2", "Find Two", "Analyst at Somewhere Else")] : [];
+  return page(`<main><h1>Search</h1><ul>${rows.join("")}</ul><aside><ul><li><a href="/in/kamal-other">Kamal Other</a></li></ul></aside></main>`, "Search");
+}
+
 const handler = (PORT) => async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   if (url.pathname === "/__as") { PORTS[PORT] = url.searchParams.get("acct") || ""; return send(res, 200, "ok"); }
@@ -101,7 +114,7 @@ const handler = (PORT) => async (req, res) => {
   for await (const chunk of req) body += chunk;
   const json = () => { try { return JSON.parse(body || "{}"); } catch { return {}; } };
   if (url.pathname === "/__state") { res.writeHead(200, { "Content-Type": "application/json" }); return res.end(JSON.stringify(state)); }
-  if (url.pathname === "/__reset") { Object.assign(state, { invites: [], messages: [], accepted: {}, replies: [] }); return send(res, 200, "ok"); }
+  if (url.pathname === "/__reset") { Object.assign(state, { invites: [], messages: [], accepted: {}, replies: [], searches: [] }); return send(res, 200, "ok"); }
   if (url.pathname === "/__reply") { state.replies.push({ acct: url.searchParams.get("acct"), slug: url.searchParams.get("slug"), text: url.searchParams.get("text") || "", at: Date.now() }); return send(res, 200, "ok"); }
   if (url.pathname === "/__accept") { state.accepted[`${url.searchParams.get("acct")}|${url.searchParams.get("slug")}`] = true; return send(res, 200, "ok"); }
   if (url.pathname === "/__invite") { state.invites.push({ from: acct, ...json(), at: Date.now() }); return send(res, 200, "ok"); }
@@ -113,6 +126,7 @@ const handler = (PORT) => async (req, res) => {
   if (url.pathname === "/login") return send(res, 200, page("<main><h1>Sign in</h1></main>"));
   if (!acct) return send(res, 302, "", { Location: "/login" });
   if (url.pathname.startsWith("/checkpoint")) return send(res, 200, page("<main><h1>Let's do a quick security check</h1></main>"));
+  if (url.pathname.startsWith("/search/results/people")) { state.searches.push(url.searchParams.get("keywords")); return send(res, 200, search(url)); }
   if (url.pathname === "/messaging/" || url.pathname === "/messaging") return send(res, 200, inbox(acct));
   if (url.pathname === "/feed/") return send(res, 200, page(`<main><h1>Feed</h1><p>Welcome ${names[acct] || acct}</p></main>`));
   if (url.pathname === "/in/me/" || url.pathname === "/in/me") return send(res, 302, "", { Location: `/in/${acct}/` });

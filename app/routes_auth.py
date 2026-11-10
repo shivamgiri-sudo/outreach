@@ -63,7 +63,8 @@ CALLER_WRITES = {
     ("POST", "/api/extension/inbox"), ("POST", "/api/extension/agent/event"), ("POST", "/api/extension/cloud/state"),
     ("POST", "/api/extension/leads/{lead_id}/sent"), ("POST", "/api/extension/leads/{lead_id}/accepted"),
     ("POST", "/api/extension/leads/{lead_id}/replied"), ("POST", "/api/extension/leads/{lead_id}/profile"),
-    ("POST", "/api/extension/leads/{lead_id}/claim"), ("POST", "/api/linkedin-runner/heartbeat"), ("POST", "/api/mcp"),
+    ("POST", "/api/extension/leads/{lead_id}/claim"), ("POST", "/api/extension/leads/{lead_id}/lookup-result"),
+    ("POST", "/api/leads/{lead_id}/linkedin/find"), ("POST", "/api/linkedin-runner/heartbeat"), ("POST", "/api/mcp"),
     # leads: add, import, edit, work
     ("PUT", "/api/leads/{lead_id}/sales"),          # the sales stage of a lead (the rules are checked in app/sales_service.py)
     ("POST", "/api/leads/import"), ("POST", "/api/leads/import-sheet"), ("POST", "/api/leads/bulk"), ("PATCH", "/api/leads/{lead_id}"),

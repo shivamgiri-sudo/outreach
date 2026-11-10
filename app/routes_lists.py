@@ -103,7 +103,7 @@ def make_router(store, present) -> APIRouter:
         row = found(list_id)
         result = lists.start_linkedin(store, list_id, who(request), body.lead_ids)
         audit.record(store, getattr(request.state, "user", None), "bulk.list_linkedin", row["name"],
-                     f"started {result.get('started', 0)} of {result.get('asked', 0)}")
+                     f"started {result.get('started', 0)} of {result.get('asked', 0)}, {result.get('looking_up', 0)} being looked up")
         return result
 
     return router

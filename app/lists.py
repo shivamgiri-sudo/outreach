@@ -136,13 +136,16 @@ def start_linkedin(store, list_id: str, by: str, only: Optional[list] = None) ->
     if row is None:
         raise LookupError("List not found")
     ids = [i for i in row["lead_ids"] if not only or i in set(only)]
-    done, refused = 0, {}
+    done, looking, refused = 0, 0, {}
     for lid in ids:
         try:
-            linkedin_seq.start(store, lid)
+            result = linkedin_seq.start(store, lid, find=True)
+            if result.get("lookup"):                 # no profile link: its profile is looked up first (app/linkedin_finder.py)
+                looking += 1
+                continue
             store.update_lead(lid, lambda l: {**l, "timeline": [*l["timeline"], {**event("linkedin", f"LinkedIn outreach started by {by} (list {row['name']})"), "by": by}]})
             done += 1
         except (ValueError, LookupError) as exc:
             refused[str(exc)] = refused.get(str(exc), 0) + 1
-    _change(store, list_id, lambda r: {**r, "log": [*r["log"], _log(f"Started LinkedIn outreach for {done} of {len(ids)}", by)][-MAX_LOG:]})
-    return {"started": done, "asked": len(ids), "refused": [{"reason": k, "count": v} for k, v in refused.items()]}
+    _change(store, list_id, lambda r: {**r, "log": [*r["log"], _log(f"Started LinkedIn outreach for {done} of {len(ids)}" + (f", {looking} being looked up" if looking else ""), by)][-MAX_LOG:]})
+    return {"started": done, "looking_up": looking, "asked": len(ids), "refused": [{"reason": k, "count": v} for k, v in refused.items()]}

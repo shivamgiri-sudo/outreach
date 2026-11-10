@@ -48,12 +48,14 @@ SETTINGS_SEEN_BY = "linkedin_agent_seen_by_account"
 MAX_LOG = 400
 DEFAULTS = {"enabled": False, "weekly_connections": 80, "daily_messages": 25, "start_hour": 9, "end_hour": 18,
             "weekdays_only": True, "gap_minutes": 6, "check_replies": True,
-            "connect_without_note": False}     # free accounts run out of connection notes each month
+            "connect_without_note": False,     # free accounts run out of connection notes each month
+            "find_profiles": True,             # a lead without a LinkedIn link gets its profile looked up (app/linkedin_finder.py)
+            "lookups_per_day": 15}
 CLIENT_DEFAULTS = {"daily_connections": li.DEFAULT_DAILY_CONNECTIONS, "auto_start": False}   # mcn: the LinkedIn settings
-BOOLS = ("enabled", "weekdays_only", "check_replies", "connect_without_note", "auto_start")
-LIMITS = {"daily_connections": (1, 40), "weekly_connections": (1, 100), "daily_messages": (0, 100), "start_hour": (0, 23), "end_hour": (1, 24), "gap_minutes": (3, 60)}
-ACTION_KINDS = ("connect", "message")
-KINDS = ("connect", "message", "accepted", "replied", "error", "paused", "started", "auto_start")
+BOOLS = ("enabled", "weekdays_only", "check_replies", "connect_without_note", "auto_start", "find_profiles")
+LIMITS = {"daily_connections": (1, 40), "weekly_connections": (1, 100), "daily_messages": (0, 100), "lookups_per_day": (0, 40), "start_hour": (0, 23), "end_hour": (1, 24), "gap_minutes": (3, 60)}
+ACTION_KINDS = ("connect", "message", "lookup")     # a profile lookup shares the gap between actions
+KINDS = ("connect", "message", "lookup", "accepted", "replied", "error", "paused", "started", "auto_start")
 
 
 def config(store, owner: str = MCN, clamped: bool = True) -> dict:
@@ -116,6 +118,7 @@ def counts(store, now: datetime, account: str = "", owner: str = MCN) -> dict:
     rows = _mine(log_rows(store), account, owner)
     today, week = _day_start(now), _day_start(now) - timedelta(days=now.astimezone(IST).weekday())
     return {"connect_today": _count(rows, "connect", today), "message_today": _count(rows, "message", today),
+            "lookup_today": _count(rows, "lookup", today),
             "connect_week": _count(rows, "connect", week)}
 
 
@@ -145,6 +148,7 @@ def control(store, now: Optional[datetime] = None, account: str = "", owner: Opt
     c = counts(store, now, account, owner)
     left_connect = max(0, min(cfg["daily_connections"] - c["connect_today"], cfg["weekly_connections"] - c["connect_week"]))
     left_message = max(0, cfg["daily_messages"] - c["message_today"])
+    left_lookup = max(0, cfg["lookups_per_day"] - c["lookup_today"])
     last = _last_action_at(rows)
     wait = max(0, int(cfg["gap_minutes"] * 60 - (now - last).total_seconds())) if last else 0
     hold = paused(store).get(account) if account else None
@@ -154,6 +158,7 @@ def control(store, now: Optional[datetime] = None, account: str = "", owner: Opt
     active = cfg["enabled"] and in_hours and not hold and not killed
     return {"enabled": cfg["enabled"], "active_now": active, "why_not": why, "wait_seconds": wait,
             "may_connect": active and left_connect > 0 and wait == 0, "may_message": active and left_message > 0 and wait == 0,
+            "may_lookup": active and cfg["find_profiles"] and left_lookup > 0 and wait == 0, "lookups_left_today": left_lookup,
             "connections_left_today": left_connect, "messages_left_today": left_message, "check_replies": cfg["check_replies"], "allow_no_note": cfg["connect_without_note"],
             "gap_minutes": cfg["gap_minutes"], "counts": c, "account": account, "killed": bool(killed)}
 
