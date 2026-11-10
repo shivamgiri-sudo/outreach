@@ -228,6 +228,11 @@ def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = Fals
         raise ValueError(f"Lead is {lead['stage']}; no LinkedIn outreach.")
     if lead.get("linkedin_seq"):
         raise ValueError("This lead is already on the LinkedIn sequence; it is never restarted.")
+    from . import linkedin_dupes
+    dup = linkedin_dupes.duplicate_of(store, lead)          # the same person is contacted once per client account
+    if dup:
+        linkedin_dupes.mark(store, lead_id, dup)
+        raise ValueError(dup["reason"])
     settings = lead_settings(store.read("settings"), lead)
     from .linkedin_config import current
     cfg = current(settings)
@@ -235,7 +240,7 @@ def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = Fals
              "variant": pick_variant(lead_id), "steps_version": cfg.get("version", 1), **({"auto_started": True} if auto else {})}
     text = "Started LinkedIn sequence automatically (daily auto-start)" if auto else "Started LinkedIn sequence"
     saved = store.update_lead(lead_id, lambda l: None if l.get("linkedin_seq") else {
-        **l, "linkedin_seq": state, "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin", "text": text, **({"auto": True} if auto else {})}]})
+        **{k: v for k, v in l.items() if k not in ("linkedin_dup_of", "linkedin_dup_reason")}, "linkedin_seq": state, "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin", "text": text, **({"auto": True} if auto else {})}]})
     task = _schedule(store, saved, cfg["steps"][0], now, settings)
     return {"lead": saved, "task": task}
 
@@ -289,6 +294,8 @@ def mark_accepted(store, lead_id: str, now: Optional[datetime] = None) -> dict:
     saved = store.update_lead(lead_id, lambda l: {**l, "linkedin_seq": state,
                                                   "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin", "text": "Connection accepted"}]})
     _close_linkedin_tasks(store, lead_id, "Connection accepted")
+    from . import linkedin_dupes
+    linkedin_dupes.mirror(store, lead_id, "Connection accepted")
     nxt = _next_step(state, settings)
     task = _schedule(store, saved, nxt, now + timedelta(days=nxt["days"]), settings) if nxt else None
     return {"lead": saved, "next_task": task}
@@ -302,6 +309,8 @@ def mark_replied(store, lead_id: str, text: str = "", now: Optional[datetime] = 
     if lead is None:
         raise LookupError("Lead not found")
     _close_linkedin_tasks(store, lead_id, "They replied")
+    from . import linkedin_dupes
+    linkedin_dupes.mirror(store, lead_id, "They replied on LinkedIn")
     store.update_lead(lead_id, lambda l: {**l, "linkedin_seq": {**(l.get("linkedin_seq") or {}), "status": "stopped", "stopped": "replied",
                                                                 "replied_at": iso(now)}})
     result = apply_reply(store, lead_id, text or "(replied on LinkedIn)", "linkedin", None, source="linkedin") if text else None
@@ -343,6 +352,9 @@ def queue(store, now: Optional[datetime] = None) -> dict:
     settings = store.read("settings")
     every = store.read("leads")
     leads = {l["id"]: l for l in workspaces.filter_rows(every)}
+    from . import linkedin_dupes
+    dupes = linkedin_dupes.Index(store, every)
+    skipped = set()
     due = []
     for t in store.read("tasks"):
         if t.get("kind") != "linkedin" or t.get("status", "open") != "open":
@@ -352,6 +364,9 @@ def queue(store, now: Optional[datetime] = None) -> dict:
             continue                       # a task of a lead outside this workspace
         if lead.get("stage") in CLOSED:
             continue                       # unsubscribed (e.g. by the email link) or disqualified: never contacted
+        if lead and dupes.of(lead):
+            skipped.add(lead["id"])
+            continue                       # the same person was already contacted through another lead
         if t.get("due_at") and datetime.fromisoformat(t["due_at"]) > now + timedelta(hours=12):
             continue
         step_n = int(re.search(r"step (\d+)", t.get("title", "")).group(1)) if re.search(r"step (\d+)", t.get("title", "")) else None
@@ -370,8 +385,10 @@ def queue(store, now: Optional[datetime] = None) -> dict:
         limit = int(linkedin_agent.config(store, account)["daily_connections"])          # clamped to the account's ceiling
     suggestions = []
     if started_today < limit:
-        ranked = sorted((l for l in leads.values() if not l.get("linkedin_seq") and has_profile_link(l)
-                         and l.get("stage") not in ("unsubscribed", "disqualified", "customer", "advocate")),
+        fresh = [l for l in leads.values() if not l.get("linkedin_seq") and has_profile_link(l)
+                 and l.get("stage") not in ("unsubscribed", "disqualified", "customer", "advocate")]
+        skipped |= {l["id"] for l in fresh if dupes.of(l)}
+        ranked = sorted((l for l in fresh if l["id"] not in skipped),
                         key=lambda l: -(l.get("open_roles") or 0))
         suggestions = [{"lead_id": l["id"], "company": l.get("company"), "name": l.get("contact_name"), "title": l.get("title"),
                         "persona": persona(l.get("title", ""), lead_settings(settings, l))[0]} for l in ranked[: limit - started_today]]
@@ -379,7 +396,7 @@ def queue(store, now: Optional[datetime] = None) -> dict:
                 "since": l["linkedin_seq"].get("last_sent_at")}
                for l in leads.values() if (l.get("linkedin_seq") or {}).get("status") == "waiting_for_acceptance"]
     return {"due": sorted(due, key=lambda d: d["due_at"] or ""), "suggestions": suggestions, "waiting_for_acceptance": waiting,
-            "started_today": started_today, "daily_limit": limit, "case_study_set": bool(settings.get("case_study_url")),
+            "skipped_duplicates": len(skipped), "started_today": started_today, "daily_limit": limit, "case_study_set": bool(settings.get("case_study_url")),
             "owner": _owner(store, account_id=account)}
 
 

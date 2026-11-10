@@ -266,6 +266,7 @@ export default function LinkedInQueue() {
       )}
 
       <h3>Suggested people to connect with today {q && <span className="sub">({q.started_today} of {q.daily_limit} started today)</span>}</h3>
+      {q && q.skipped_duplicates > 0 && <p className="sub" data-testid="linkedin-skipped">{q.skipped_duplicates} skipped as already contacted (the same LinkedIn person is on another lead).</p>}
       {q && q.suggestions.length === 0 ? <p className="sub">No suggestions: either today's limit is reached or no lead has a LinkedIn profile link yet.</p> : (
         <ul className="task-list">{q?.suggestions.map((s) => (
           <li key={s.lead_id}><div><b>{s.name || "Contact"}</b> · {s.company}{s.title ? ` · ${s.title}` : ""}</div>

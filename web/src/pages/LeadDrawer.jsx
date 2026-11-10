@@ -210,6 +210,8 @@ export default function LeadDrawer({ id, ids, onClose }) {
         : "Not on the LinkedIn sequence. Start it from Leads (select, then Start LinkedIn outreach), or copy a draft below and send it yourself."}
         {/^https?:\/\//i.test(lead.linkedin_url || "") && <> <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer">Open profile</a></>}
         {lead.linkedin_profile?.open_profile && <span className="pill" style={{ marginLeft: 6 }}>Open Profile</span>}</p>
+      {!lead.linkedin_seq && lead.linkedin_dup_of && <p className="sub" style={{ color: "#b45309" }} data-testid="linkedin-dup">
+        {lead.linkedin_dup_reason || "This person was already contacted on LinkedIn through another lead."} It will not be contacted again.</p>}
       <LinkedInAccountPick lead={lead} onChanged={load} />
       {linkedinDrafts(lead).map(([title, text]) => (
         <div className="tip" key={title} style={{ marginBottom: 8 }}>

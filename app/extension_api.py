@@ -213,6 +213,11 @@ def describe(store, lead: dict, account: str = "") -> dict:
         out["reason"] = f"This person is {lead['stage']}; no LinkedIn outreach."
         out["actions"] = ["replied"] if seq else []
         return out
+    from . import linkedin_dupes
+    dup = linkedin_dupes.duplicate_of(store, lead)
+    if dup:                                        # the same person was already contacted through another lead
+        out.update(reason=dup["reason"], duplicate=dup)
+        return out
     if not seq:
         out["reason"] = "Not on the LinkedIn sequence yet. Start it from the LinkedIn page in the app."
         return out
@@ -287,4 +292,4 @@ def queue(store, account: str = "") -> dict:
     if account and waiting:
         linkedin_guard.stamp_checked(store, [w["lead_id"] for w in waiting])
     due = [d for d in due if not linkedin_guard.held_until(leads.get(d["lead_id"]) or {})]   # held after failed tries
-    return {"due": due, "waiting_for_acceptance": waiting, "owner": q["owner"]}
+    return {"due": due, "waiting_for_acceptance": waiting, "owner": q["owner"], "skipped_duplicates": q.get("skipped_duplicates", 0)}

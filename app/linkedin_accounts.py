@@ -188,7 +188,9 @@ def auto_start_for(store, account: str, max_new: int, now: Optional[datetime] = 
     room = min(max_new, limit - started_today)
     if room <= 0:
         return []
-    pool = [l for l in leads if not l.get("linkedin_seq") and li.has_profile_link(l) and l.get("stage") not in NOT_STARTABLE
+    from . import linkedin_dupes
+    dupes = linkedin_dupes.Index(store)                                         # a person already contacted through another lead is skipped
+    pool = [l for l in leads if not l.get("linkedin_seq") and not dupes.of(l) and li.has_profile_link(l) and l.get("stage") not in NOT_STARTABLE
             and not l.get("do_not_contact") and may_take(l, account, settings) and workspaces.visible(l)]
     pool.sort(key=lambda l: (assigned(l, settings) != account if account else False, -(l.get("open_roles") or 0)))
     started = []
