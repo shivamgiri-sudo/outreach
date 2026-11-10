@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { copyText } from "../clipboard.js";
+import Abbr from "../components/Abbr.jsx";
 
 // Two-step login for the signed-in person (Setup > My password), plus the pieces the sign-in page reuses when the
 // owner requires it. The key is shown as a QR code (drawn by our server), as text and as an otpauth:// link; no outside QR
@@ -14,7 +15,7 @@ export function SecretPanel({ secret, uri, qr }) {
     <div className="two-step-secret" data-testid="two-step-secret">
       <ol className="steps" style={{ margin: "6px 0" }}>
         <li>Open an authenticator app on your phone (Google Authenticator, Microsoft Authenticator, Authy or 1Password).</li>
-        <li>Tap <b>+</b>, then <b>Scan a QR code</b>{qr ? " and scan this code" : ""}. Can't scan? Choose <b>Enter a setup key</b> and type the key below (time based, 6 digits).</li>
+        <li>Tap <b>+</b>, then <b>Scan a <Abbr term="QR">QR</Abbr> code</b>{qr ? " and scan this code" : ""}. Can't scan? Choose <b>Enter a setup key</b> and type the key below (time based, 6 digits).</li>
       </ol>
       {qr && <img src={qr} width={200} height={200} data-testid="two-step-qr"
         alt="QR code for your authenticator app. If you cannot scan it, type the setup key shown below."
@@ -65,9 +66,9 @@ export default function TwoStepCard() {
   return (
     <div className="card inline-form" style={{ maxWidth: 560, marginTop: 16 }} data-testid="two-step-card">
       <div className="row" style={{ justifyContent: "space-between" }}>
-        <b>Two-step login</b><span className={`pill ${st.on ? "ok" : ""}`}>{st.on ? "On" : "Off"}</span>
+        <b>Two-step login (<Abbr term="2FA">2FA</Abbr>)</b><span className={`pill ${st.on ? "ok" : ""}`}>{st.on ? "On" : "Off"}</span>
       </div>
-      <p className="sub" style={{ margin: "2px 0 8px" }}>After your password, the app also asks for a 6-digit code from your phone, so a stolen password alone cannot get in.
+      <p className="sub" style={{ margin: "2px 0 8px" }}>After your password, the app also asks for a 6-digit code from your phone (a <Abbr term="TOTP">TOTP</Abbr> code), so a stolen password alone cannot get in.
         {st.required && " The owner requires it for every login."}</p>
       <RecoveryCodes codes={codes} />
       {!st.on && !setup && <button className="btn" type="button" onClick={() => run(() => api.twoStepStart().then(setSetup))}>Set up two-step login</button>}

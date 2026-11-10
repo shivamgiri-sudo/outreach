@@ -1,0 +1,63 @@
+// Reports page: daily report, by person, activity log, response times, email and CSV.
+export default {
+  id: "reports", title: "Reports", group: "Menu pages", order: 260, kind: "page", menu: "Reports",
+  summary: "What was done each day and by whom, the full activity log, how fast leads and replies are answered, and a way to email or download it all.",
+  blocks: [
+    ["p", "Open {{menu:Reports}} to see the work your team did: calls, emails, replies, meetings and more. Every number comes from the activity log on the same page. All times are India Standard Time ([[IST]])."],
+    ["img", "reports", "The Reports page showing the period picker, ten total tiles and the Daily report tab with the day-by-day table"],
+    ["h", "Who can use it"],
+    ["ul", [
+      "Everyone (owner, admin, caller, viewer) can read the report and click **Email me this report** to get it in their own inbox.",
+      "Only owners and admins can download the activity log as a [[CSV]] file and send the report to other people.",
+      "Only owners can change the response-time targets.",
+      "You only see leads in the workspaces your login can see.",
+    ]],
+    ["h", "Choose what to look at"],
+    ["steps", [
+      "Pick a period in the **Period** box: **Last 7 days**, **Last 30 days**, **Last 90 days**, or **Custom** with two dates and **Apply**. The same period is used on [Analytics](#help/analytics).",
+      "Use **Person** to look at one team member, or leave it on **Everyone**.",
+      "The ten tiles at the top add up the period: Leads added, Calls, Calls connected, Interested, Not interested, Follow-ups, Emails sent, WhatsApp sent, Replies received and Meetings.",
+      "Click one of the four tabs under the tiles.",
+    ]],
+    ["h", "The four tabs"],
+    ["table", { head: ["Tab", "What it shows"], rows: [
+      ["Daily report", "A chart of calls, connected calls, emails and interested leads per day, and a table with one row per day. Columns include Leads added, Calls, Calls connected, Interested, Follow-ups, Emails sent, Emails opened, Links clicked, WhatsApp sent, LinkedIn steps, Replies received, Meetings and Tasks done."],
+      ["By person", "Actions per person as a bar chart and a table. Click a name to jump to that person's activity log."],
+      ["Activity log", "One line per action: when, who, which lead, what was done, the outcome, the exact phone number, email address or LinkedIn profile used, and notes. Use **Show** to filter by type, such as Calls, Emails sent or Stage changes. Click a company to open the lead."],
+      ["Response times", "How fast new leads get a first attempt and replies get an answer. See below."],
+    ] }],
+    ["tip", "The activity log shows the newest rows on screen and tells you when there are more. Download the CSV to get every row."],
+    ["h", "Response times"],
+    ["p", "This tab compares your team with two targets: how soon a new lead should get a first attempt, and how soon a reply should be answered. The default targets are 24 hours and 4 hours, counted in clock hours (nights and weekends included). The word \"Typical\" means the median, the middle value."],
+    ["ul", [
+      "Six tiles: typical time to first attempt, first attempts on time, typical time to answer a reply, replies answered on time, leads with no attempt past target, and replies waiting past target.",
+      "**Replies waiting for an answer** and **New leads with no attempt yet** list the leads that need action now, with how long they have waited. Click a company to open it.",
+      "A table by owner shows each person's typical times and how many leads or replies they have waiting.",
+      "Owners and managers get one alert per lead when a target is missed.",
+    ]],
+    ["p", "Owners also see a **Targets, alerts and tracking** box at the bottom of this tab."],
+    ["steps", [
+      "Change **First attempt within (hours)** and **Answer a reply within (hours)**. The smallest value is 0.25 hours.",
+      "In **Also alert these people...** type names separated by commas to alert managers about yes replies, meetings and missed targets.",
+      "Tick or untick **Send alerts by email too** (alerts always show on the bell) and **Track email opens and link clicks**.",
+      "Click **Save**.",
+    ]],
+    ["h", "Email a report"],
+    ["steps", [
+      "Set the period, person and filters you want.",
+      "Owners and admins can type other addresses in **Also send to**, separated by commas (up to 20). Everyone else sends only to themselves.",
+      "Click **Email me this report**.",
+      "Read the message next to the button. If it says the report was ready but not delivered, no sending mailbox is connected yet; the **Email preview** box shows what would have been sent.",
+    ]],
+    ["p", "The email has the numbers, a short explanation, per-day and per-person tables, the activity log attached as a CSV file, and a download link. The link works for 7 days and gives exactly the leads you were allowed to see. If your login has no email address, the page asks you to add one first."],
+    ["h", "Download the activity log"],
+    ["p", "Owners and admins click **Download activity log (CSV)**. The file follows the period, **Person** and **Show** filters you chose. Each download is recorded in the audit log."],
+    ["warn", "The CSV contains phone numbers and email addresses of leads. Share it only with people who need it, and delete copies you no longer need."],
+    ["h", "Related"],
+    ["ul", [
+      "[Analytics](#help/analytics) for rates and trends.",
+      "[Export your data](#help/recipe-export-data) for other downloads.",
+      "[Audit trail](#help/recipe-audit-trail) to see who downloaded what.",
+    ]],
+  ],
+};

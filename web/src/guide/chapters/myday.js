@@ -1,0 +1,42 @@
+export default {
+  id: "myday", title: "My day", group: "Menu pages", order: 10, kind: "page", menu: "My day",
+  summary: "Your own to-do list for today: call-backs, replies, calls, tasks, hot leads and meetings, with your daily targets.",
+  blocks: [
+    ["p", "{{menu:My day}} is the first page you see after signing in. It shows only what needs you today, with one-click buttons, so you do not have to hunt through other pages. The date and your name are at the top."],
+    ["h", "Who can use it"],
+    ["p", "Everyone. Callers and viewers see their own list. A viewer can open leads and dial, but the buttons that change data (**Write email**, **WhatsApp**, **Done**, **Tomorrow**, **Change targets**) are hidden."],
+    ["img", "myday", "The My day page with daily target bars and the sections Call-backs due, Replies to handle and Calls due"],
+    ["h", "The two buttons at the top"],
+    ["ul", [
+      "**Start calling** opens the {{menu:Call desk}}. The number in brackets is how many call-backs, calls and hot leads are waiting.",
+      "**Replies** opens {{menu:Replies}}. The number in brackets is how many replies wait for you.",
+    ]],
+    ["h", "Daily targets"],
+    ["p", "Below the buttons, progress bars show what you did today against your target for **Calls**, **Connects**, **Emails**, **LinkedIn** and **WhatsApp**. A bar turns green when you reach the target. Only measures with a target or some activity today are shown. The line under the bars shows your totals for this week."],
+    ["steps", [
+      "Click **Change targets** (you need a role that can make changes).",
+      "Type a number for each measure. 0 means no target.",
+      "Owners also pick **Save for**: **Just me** or **The whole team (default for everyone)**.",
+      "Click **Save targets**.",
+    ]],
+    ["p", "If the line ends with \"(team targets)\", you have no personal targets yet and see the team default."],
+    ["h", "The six lists"],
+    ["table", { head: ["Section", "What is in it"], rows: [
+      ["Call-backs due", "People who asked to be called back. Overdue ones are marked \"was due\"."],
+      ["Replies to handle", "Replies from leads that nobody has answered yet, with the first words of the message."],
+      ["Calls due", "Call tasks that are due."],
+      ["My tasks due", "Your follow-up tasks due today. **Done** completes it; **Tomorrow** snoozes it for a day. If nothing is due the section tells you how many are later."],
+      ["Hot leads to call", "Leads with a high score and a phone number that are waiting for a call. The score appears beside the name."],
+      ["Meetings today", "Your meetings with the time. **Join** opens the meeting link when there is one."],
+    ] }],
+    ["p", "Each row suggests the next best action and why. Use the buttons on the row:"],
+    ["ul", [
+      "**Call** dials the number on your phone or computer.",
+      "**Write email** and **WhatsApp** open the lead with the right tab ready.",
+      "**Call desk** takes you to the call desk, where the script is shown.",
+      "**Open** opens the full lead record. See [Lead drawer](#help/leads-drawer).",
+    ]],
+    ["tip", "Close a lead after working it. When you do, the page refreshes and finished items disappear."],
+    ["p", "Times on this page are in India time ([[IST]]). Related: [Tasks and follow-ups](#help/tasks), [Call desk](#help/calls), [Replies](#help/replies)."],
+  ],
+};

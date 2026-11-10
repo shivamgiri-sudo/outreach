@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ops } from "../opsApi.js";
 import { istLabel } from "../time.js";
 import DownloadButton from "../DownloadButton.jsx";
+import Abbr from "../components/Abbr.jsx";
 
 // Owner only: who did what and when (stage moves, Send for real, bulk actions, erasures, logins, workspaces, settings).
 const EMPTY = { action: "", by: "", q: "", from: "", to: "" };
@@ -49,7 +50,7 @@ export default function AuditLog() {
     <div data-testid="audit-log">
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
         <div><h3 style={{ margin: 0 }}>Audit log</h3>
-          <p className="sub" style={{ margin: "4px 0 0" }}>Who did what, and when (IST). Settings changes show old → new values; secrets are shown as (hidden). Rows are hash-chained so edits and deletions show up in the check.</p></div>
+          <p className="sub" style={{ margin: "4px 0 0" }}>Who did what, and when (<Abbr term="IST">IST</Abbr>). Settings changes show old → new values; secrets are shown as (hidden). Rows are hash-chained so edits and deletions show up in the check.</p></div>
         <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
           <ChainCheck />
           <DownloadButton path={ops.auditCsvPath(f)} label="Download CSV" filename="audit-log.csv" testId="download-audit" />
@@ -75,7 +76,7 @@ export default function AuditLog() {
       <div className="card table-card" style={{ padding: 0 }}>
         {!data ? <p className="empty">Loading…</p> : data.items.length === 0 ? <p className="empty">Nothing recorded for these filters.</p> : (
           <div className="table-scroll"><table data-testid="audit-table">
-            <thead><tr><th>When (IST)</th><th>Who</th><th>Action</th><th>What</th><th>Detail</th></tr></thead>
+            <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>Who</th><th>Action</th><th>What</th><th>Detail</th></tr></thead>
             <tbody>{data.items.map((r, i) => (
               <tr key={`${r.at}-${i}`}>
                 <td data-label="When"><small>{istLabel(r.at)}</small></td>

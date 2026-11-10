@@ -1,0 +1,13 @@
+/* <Abbr> tooltip. Colours come from the app tokens, so light and dark themes both work. */
+.abbr-wrap { display: inline; }
+.abbr { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; border: 0; }
+.abbr:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 3px; }
+.abbr-tip { position: fixed; z-index: 400; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box;
+  padding: 10px 12px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .22); font-size: 13px; font-weight: 400; line-height: 1.45; text-transform: none;
+  letter-spacing: 0; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.abbr-tip b { color: var(--brand); font-weight: 700; }
+.abbr-tip a { align-self: flex-start; color: var(--brand); font-weight: 600; min-height: 24px; }
+@media (max-width: 760px) { .abbr-tip a { min-height: 32px; display: inline-flex; align-items: center; } }
+@media (prefers-reduced-motion: no-preference) { .abbr-tip { animation: abbr-in .12s ease-out; } }
+@keyframes abbr-in { from { opacity: 0; } to { opacity: 1; } }

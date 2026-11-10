@@ -8,6 +8,7 @@ import SalesDrill from "./SalesDrill.jsx";
 import SalesSettings from "./SalesSettings.jsx";
 import { FunnelHealth, SpeedDiscipline, StatusStrip, Tiles } from "./SalesFunnelParts.jsx";
 import { AttributionPeople, ClosedRevenue, PipelineForecast } from "./SalesFunnelMore.jsx";
+import HelpLink from "../components/HelpLink.jsx";
 import "../funnel.css";
 
 const POLL_MS = 60000;
@@ -93,7 +94,7 @@ export default function SalesFunnel() {
   const snapshotIds = ["inquiries", "mqls", "sqls", "opps", "won", "value"];
   return (
     <div data-testid="sales-funnel">
-      <h2 style={{ marginBottom: 4 }}>Sales funnel</h2>
+      <h2 style={{ marginBottom: 4 }}>Sales funnel <HelpLink chapter="funnel" label="Sales funnel" /></h2>
       <p className="sub">Leads by how far they got, from first inquiry to a signed deal. Counts are for leads created in the range; revenue is by the date the deal closed.</p>
       <Controls f={f} setF={setF} data={data} today={today} error={error && data ? error : ""} />
       {!data && error && <ErrorState message="The sales funnel could not load." detail={error} onRetry={() => load(true)} />}

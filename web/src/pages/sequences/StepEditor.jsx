@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { PLACEHOLDERS, humanDay, lintStep } from "./lint.js";
 import { useLeadFields } from "../LeadCustomFields.jsx";
+import Abbr from "../../components/Abbr.jsx";
 
 const MAX_VARIANTS = 3;
 const NEXT_NAMES = ["B", "C", "D"];
@@ -61,7 +62,7 @@ export default function StepEditor({ step, index, prev, readOnly, onChange, onRe
         </div>
       )}
       <details open={variants.length > 0}>
-        <summary>A/B test ({variants.length ? `${variants.length + 1} versions` : "off"}){step.winner ? ` · winner: ${step.winner}` : ""}</summary>
+        <summary><Abbr term="A/B test">A/B test</Abbr> ({variants.length ? `${variants.length + 1} versions` : "off"}){step.winner ? ` · winner: ${step.winner}` : ""}</summary>
         <p className="sub">Leads are split evenly between A and the variants (fixed per lead). Leave a variant field empty to keep A's text.</p>
         {variants.map((v, i) => (
           <div key={i} className="inline-form">

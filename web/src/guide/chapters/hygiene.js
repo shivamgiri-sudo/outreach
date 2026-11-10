@@ -1,0 +1,33 @@
+export default {
+  id: "hygiene", title: "Data hygiene", group: "Menu pages", order: 310, kind: "page", menu: "Data hygiene",
+  summary: "Find missing details, duplicate leads and conflicting values across all your lead sources, and fix them in one place.",
+  blocks: [
+    ["p", "{{menu:Data hygiene}} keeps the lead list clean. A clean list means fewer wasted emails and calls, and no two people contacting the same company by mistake. The page title says: find gaps, duplicates and differing values across every source."],
+    ["h", "Who can use it"],
+    ["ul", [
+      "Owners, and callers and viewers who are not limited to particular workspaces, can open the page and read it.",
+      "Only **owners** can merge duplicates, resolve a conflict, tidy existing leads or restore landlines. Others see the numbers and the groups but not the action buttons.",
+      "Logins limited to a workspace, and admins, do not see this page in the menu.",
+    ]],
+    ["h", "Overview"],
+    ["p", "The top card, **Overview of N leads**, shows twelve counts: no email, no phone, no decision maker, no website, invalid emails, shared inboxes (info@, hr@), personal emails, on do-not-contact list, numbers outside India, no activity in a set number of days, groups of duplicates and values to check. Use it to decide what to fix first."],
+    ["h", "Merge duplicates"],
+    ["p", "The **Duplicates** card shows groups of leads that look like the same company or person. Each group has orange tags saying why they match."],
+    ["steps", [
+      "Compare the cards side by side: person, email, phone, website, stage, source, history and extra people.",
+      "The lead tagged **Suggested to keep** is usually the one with the most history.",
+      "On the lead you want to keep, click **Keep this one, merge the others in**.",
+      "Read the confirmation. The others are removed; their history, people, phones and messages move to the kept lead. The strictest status (unsubscribed, disqualified) is kept.",
+      "Click **Merge**.",
+    ]],
+    ["tip", "Click **Download duplicates** to get every group in a file, one row per lead, with the reason they match. **Show more** reveals more groups, 20 at a time."],
+    ["warn", "A merge cannot be undone. Check the two cards carefully before you confirm."],
+    ["h", "Different values to check"],
+    ["p", "When an import brings a different value for a field that is already filled, the old value is kept and the new one waits here. Each line says: the company, the field, what it is now, and what the source says. Owners choose **Keep current** or **Use new**."],
+    ["h", "Standardise existing leads"],
+    ["p", "Applies the same clean-up an import does to leads saved earlier: names, company names, titles, phones (with +91), website domains, city, state and country. Emails, stages and consent are never changed. Click **Preview the clean-up** to see before and after for each lead, then **Apply to N lead(s)** or **Cancel**."],
+    ["h", "Restore landlines (owners)"],
+    ["p", "A one-off repair for landline numbers that lost their area code. It shows a plan first, and you confirm before it changes anything."],
+    ["p", "Related: [Importing leads](#help/leads-import), [Leads](#help/leads)."],
+  ],
+};

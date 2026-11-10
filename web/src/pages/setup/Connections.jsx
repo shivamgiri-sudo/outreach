@@ -7,6 +7,7 @@ import { FieldHint, GuideButton, useTouched } from "../../GuidePanel.jsx";
 import { fieldHelp, useGuides } from "../../guides.js";
 import { useBrand } from "../../brand.js";
 import Icon from "../../icons.jsx";
+import Abbr from "../../components/Abbr.jsx";
 
 const STATUS = { configured: ["ok", "Connected"], incomplete: ["warn", "Missing details"], not_configured: ["", "Not set up"] };
 const NO_FILL = { "data-lpignore": "true", "data-1p-ignore": "true", "data-bwignore": "true", "data-form-type": "other" };
@@ -160,7 +161,7 @@ function Basics({ onSaved }) {
         <div className="split-2">
           <div className="field"><label htmlFor="privacy-url">Privacy notice link (optional)</label>
             <input id="privacy-url" name="privacy-notice-url" type="url" autoComplete="off" value={cfg.privacy_url || ""} placeholder="https://yourcompany.com/privacy" onChange={(e) => setCfg({ ...cfg, privacy_url: e.target.value })} />
-            <p className="hint">Added to the footer of every email (India's DPDP Act asks for a clear notice).</p></div>
+            <p className="hint">Added to the footer of every email (India's <Abbr term="DPDP">DPDP</Abbr> Act asks for a clear notice).</p></div>
           <div className="field"><label htmlFor="retention">Review cold leads after (days)</label>
             <input id="retention" name="cold-review-days" type="number" min={30} max={3650} value={cfg.retention_days_cold || 365}
               onChange={(e) => setCfg({ ...cfg, retention_days_cold: e.target.value })} />

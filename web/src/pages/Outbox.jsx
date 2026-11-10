@@ -6,6 +6,8 @@ import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import LiveSendingSwitch from "./LiveSendingSwitch.jsx";
 import OutboxTable from "./OutboxTable.jsx";
 import { InternalEmails } from "./SendWhy.jsx";
+import HelpLink from "../components/HelpLink.jsx";
+import Abbr from "../components/Abbr.jsx";
 
 function Downloads() {
   return (
@@ -106,7 +108,7 @@ export default function Outbox({ go }) {
 
   return (
     <>
-      <h2>Outbox & sending</h2>
+      <h2>Outbox & sending <HelpLink chapter="outbox" label="Outbox and sending" /></h2>
       <p className="sub">Emails stay in practice mode until a sending domain is connected AND "Send for real" is switched on. Practice runs never use up a lead's real first email.</p>
       {loadError && <ErrorState message="The outbox could not load." detail={loadError} onRetry={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
@@ -152,7 +154,7 @@ export default function Outbox({ go }) {
           )}
         </div>
       )}
-      <p className="sub">Sends only Mon–Fri, 9am–6pm IST, one step per lead. Any reply stops the sequence for that lead.</p>
+      <p className="sub">Sends only Mon–Fri, 9am–6pm <Abbr term="IST">IST</Abbr>, one step per lead. Any reply stops the sequence for that lead.</p>
       {seesInternal && (
         <div className="tabs" role="tablist" aria-label="Outbox lists" style={{ marginBottom: 10 }}>
           <button role="tab" aria-selected={tab === "emails"} className={tab === "emails" ? "on" : ""} onClick={() => setTab("emails")}>Emails to leads</button>

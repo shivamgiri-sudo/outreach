@@ -6,6 +6,8 @@ import PeriodPicker, { DeltaTile, usePeriod } from "../PeriodPicker.jsx";
 import Intelligence from "./Intelligence.jsx";
 import Insights from "./Insights.jsx";
 import Pipeline from "./Pipeline.jsx";
+import HelpLink from "../components/HelpLink.jsx";
+import Abbr from "../components/Abbr.jsx";
 
 // One page for the numbers: Pipeline (where every lead stands), Overview, Funnel, Channels (was Intelligence), Sources (was Insights) and Team, all for one period.
 const TABS = [["pipeline", "Pipeline"], ["overview", "Overview"], ["funnel", "Funnel"], ["channels", "Channels"], ["sources", "Sources"], ["team", "Team"]];
@@ -136,8 +138,8 @@ export default function Analytics() {
   };
   return (
     <>
-      <h2>Analytics</h2>
-      <p className="sub">What is working, for the period you pick. All days and times are India Standard Time.</p>
+      <h2>Analytics <HelpLink chapter="analytics" label="Analytics" /></h2>
+      <p className="sub">What is working, for the period you pick. All days and times are India Standard Time (<Abbr term="IST">IST</Abbr>).</p>
       <PeriodPicker value={period} onChange={setPeriod} range={data?.range} />
       <div className="tabs scroll" role="tablist" aria-label="Analytics sections">
         {TABS.map(([id, label]) => (

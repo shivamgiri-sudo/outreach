@@ -1,6 +1,7 @@
 // Sales funnel page, groups D–F: pipeline and forecast, attribution and people, closed revenue.
 import { ColumnChart, PairBars } from "../salesCharts.jsx";
-import { days, inr, inrShort, num, pct, statusShort } from "../salesFormat.js";
+import { days, inr, inrShort, num, pct } from "../salesFormat.js";
+import Abbr, { Stage } from "../components/Abbr.jsx";
 import { Tiles } from "./SalesFunnelParts.jsx";
 
 const R = { textAlign: "right" };
@@ -22,13 +23,13 @@ export function PipelineForecast({ data, onDrill }) {
         </div>
         <div className="grid" style={{ gap: 16 }}>
           <div className="card" data-testid="sf-coverage">
-            <h4>Pipeline coverage</h4>
+            <h4><Abbr term="Pipeline coverage">Pipeline coverage</Abbr></h4>
             <div className="sf-pair-nums"><div><b>{cov.ratio === null ? "—" : `${cov.ratio}×`}</b><small>pipeline ÷ target</small></div>
               <div><b>{inrShort(cov.pipeline)}</b><small>open pipeline</small></div><div><b>{cov.target ? inrShort(cov.target) : "—"}</b><small>target for these months</small></div></div>
             {!cov.target && <p className="sub">No target set for these months. Owners and workspace admins set monthly targets under Funnel settings below.</p>}
           </div>
           <div className="card" data-testid="sf-velocity">
-            <h4>Sales velocity</h4>
+            <h4><Abbr term="Sales velocity">Sales velocity</Abbr></h4>
             <div className="sf-pair-nums"><div><b>{v.perDay === null ? "—" : `${inrShort(v.perDay)}/day`}</b><small>expected revenue per day</small></div>
               <div><button type="button" className="linkish" disabled={!v.openOpportunities} onClick={() => onDrill(v.drill, "Open opportunities")}><b>{v.openOpportunities}</b></button><small>open opportunities</small></div>
               <div><b>{pct(v.winRate)}</b><small>win rate</small></div><div><b>{v.avgWonValue === null ? "—" : inrShort(v.avgWonValue)}</b><small>avg deal / month</small></div>
@@ -58,7 +59,7 @@ export function AttributionPeople({ data, onDrill }) {
         <h4>Source-wise funnel</h4>
         {data.sources.length === 0 ? <p className="empty">No leads in this range.</p> : (
           <div className="table-card" style={{ overflowX: "auto" }}>
-            <table><thead><tr><th>Source</th>{data.funnel.map((s) => <th key={s.key} style={R}>{statusShort(s.label)}</th>)}<th style={R}>To SQL</th><th style={R}>To Won</th><th style={R}>Won value</th></tr></thead>
+            <table><thead><tr><th>Source</th>{data.funnel.map((s) => <th key={s.key} style={R}><Stage status={s.label} /></th>)}<th style={R}>To <Abbr term="SQL">SQL</Abbr></th><th style={R}>To Won</th><th style={R}>Won value</th></tr></thead>
               <tbody>{data.sources.map((r) => (
                 <tr key={r.source}><td><button type="button" className="linkish" onClick={() => onDrill(r.drill, `Source: ${r.source}`)}>{r.source}</button></td>
                   {r.counts.map((c, i) => <td key={i} style={R}>{c}</td>)}<td style={R}>{pct(r.toSql)}</td><td style={R}>{pct(r.toWon)}</td><td style={R}>{inrShort(r.wonValue)}</td></tr>
@@ -125,7 +126,7 @@ export function ClosedRevenue({ data, onDrill }) {
   return (
     <section aria-labelledby="sf-h-rev">
       <h3 id="sf-h-rev">Closed revenue</h3>
-      <p className="sub">By the Closed Date (when the deal was won), not when the lead was created.</p>
+      <p className="sub">By the Closed Date (when the deal was won), not when the lead was created. <Abbr term="TCV">TCV</Abbr> is Total Contract Value: the monthly value times the months of the contract.</p>
       <Tiles tiles={rev.tiles} onDrill={onDrill} ids={["monthly", "tcv", "deals", "avg"]} testPrefix="-revenue" />
       <div className="card" style={{ marginTop: 16 }}>
         <h4>Closed monthly value by month</h4>

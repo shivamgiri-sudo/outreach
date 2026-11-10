@@ -4,6 +4,7 @@ import { api } from "../api.js";
 import { SEQUENCE_STOPPED, sourceLabel, useSourceRegistry } from "../labels.js";
 import { istLabel } from "../time.js";
 import { getBrand } from "../brand.js";
+import Abbr from "../components/Abbr.jsx";
 
 export const SIGNAL_LABELS = {
   hiring_volume: ["Hiring volume", 30], hiring_pain: ["Hiring pain", 25], fit: ["Fit", 15],
@@ -151,7 +152,7 @@ export function PrivacyActions({ lead, onErased }) {
   };
   return (
     <section data-testid="privacy-actions">
-      <h3>Their data (DPDP)</h3>
+      <h3>Their data (<Abbr term="DPDP">DPDP</Abbr>)</h3>
       <div className="row">
         <button className="btn ghost" onClick={exportData}>Download their data</button>
         {!confirming && <button className="btn ghost danger" onClick={() => setConfirming(true)}>Erase their data…</button>}

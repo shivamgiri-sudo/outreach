@@ -4,6 +4,7 @@ import { ops } from "../opsApi.js";
 import { istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import { OriginPill, WhyList } from "./SendWhy.jsx";
+import Abbr from "../components/Abbr.jsx";
 
 const STATUS_PILL = { sent: "ok", delivered: "ok", dry_run: "", failed: "warn", provider_error: "warn" };
 const STATUS_LABEL = { dry_run: "practice", provider_error: "provider problem" };
@@ -100,7 +101,7 @@ export default function OutboxTable({ refreshKey }) {
           <p className="empty">{any ? "No emails match these filters." : "Nothing queued yet. Start a sequence from a lead, then click Run."}</p>
         ) : (
           <table data-testid="outbox-table">
-            <thead><tr><th>When (IST)</th><th>To</th><th>Step</th><th>Subject</th><th>Sent by</th><th>Status</th><th /></tr></thead>
+            <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>To</th><th>Step</th><th>Subject</th><th>Sent by</th><th>Status</th><th /></tr></thead>
             <tbody>{data.items.map((m) => (
               <Fragment key={m.key}>
               <tr className="click" onClick={() => m.lead_id && setLead(m.lead_id)} title={m.lead_id ? "Open the lead" : ""}>

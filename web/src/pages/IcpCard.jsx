@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
+import Abbr from "../components/Abbr.jsx";
 
 export default function IcpCard() {
   const [icp, setIcp] = useState(null);
@@ -31,7 +32,7 @@ export default function IcpCard() {
   const p = icp.preview || {};
   return (
     <section className="card" style={{ marginBottom: 14 }} aria-label="Ideal customer">
-      <h3 style={{ marginTop: 0 }}>Ideal customer gate</h3>
+      <h3 style={{ marginTop: 0 }}>Ideal customer gate (<Abbr term="ICP">ICP</Abbr>)</h3>
       <p className="sub">Describe who you want in plain words. The AI scores each lead 0–100 against it (and says why). With the gate on, leads below your lowest score are held back from e-mail sequences, not deleted. Without AI scores the gate uses each lead's own score.</p>
       <label htmlFor="icp-text">Who is your ideal customer?
         <textarea id="icp-text" rows={3} maxLength={1500} value={text} onChange={(e) => setText(e.target.value)}

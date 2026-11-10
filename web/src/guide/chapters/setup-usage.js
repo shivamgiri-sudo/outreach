@@ -1,0 +1,36 @@
+export default {
+  id: "setup-usage", title: "Usage & limits", group: "Setup", order: 110, kind: "setup", menu: "Usage & limits", roles: ["admin"], clientOnly: true,
+  summary: "For client companies: see how much of each limit you have used, connect your own WhatsApp provider and choose who hears about your leads.",
+  blocks: [
+    ["p", "Open {{menu:Usage & limits}} in {{menu:Setup}}. It has three cards: Usage and limits, Your WhatsApp provider, and Alerts and links."],
+    ["h", "Who can use it"],
+    ["p", "Account admins of a client company only."],
+    ["h", "Usage and limits"],
+    ["p", "A table shows what you use against each limit the platform admin set for your account. Limits cover things like logins, workspaces, emails a day, imports a day, lookup credits, AI credits and LinkedIn actions."],
+    ["table", { head: ["Column", "Meaning"], rows: [
+      ["What", "The item and its period: today, this month or now."],
+      ["Used, Limit", "How much you have used, and your limit. **Unlimited** means no limit."],
+      ["Status", "A percentage used. It turns to a warning as you get close, and shows **Limit reached** when full."],
+    ] }],
+    ["warn", "When a limit is reached, that kind of work stops and the screen shows a message. You cannot raise a limit yourself. Ask your Mas Callnet contact. A note at the top of the card appears if sending is on hold."],
+    ["h", "Your WhatsApp provider"],
+    ["p", "The card says whether WhatsApp is connected, using the platform's WhatsApp, or not connected."],
+    ["steps", [
+      "Choose a **Provider**.",
+      "Fill the fields that appear. A star marks the required ones. Keys are hidden after you save them. Leave a saved key as it is to keep it.",
+      "Click **Save provider**. It starts in practice mode, meaning nothing is really sent.",
+      "When ready, click **Send for real**. Click **Back to practice** to switch back.",
+      "Click **Remove** to disconnect the provider.",
+    ]],
+    ["h", "Alerts and links"],
+    ["p", "Replies, yes answers and response-time digests for your leads go to your own team only."],
+    ["steps", [
+      "In **Managers**, type the names of your logins, separated by commas. Managers also hear about yes answers and meetings.",
+      "Optional: type a **Public address for links in emails**, such as https://crm.yourcompany.com.",
+      "Tick **Also email alerts** if you want email as well as the bell.",
+      "Click **Save**.",
+    ]],
+    ["h", "Related"],
+    ["ul", ["[Account activity](#help/setup-activity)", "[Team members](#help/setup-members)", "[Outbox & sending](#help/outbox)"]],
+  ],
+};

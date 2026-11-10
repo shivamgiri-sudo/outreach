@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { canWrite } from "../api.js";
 import { sales } from "../salesApi.js";
 import { inr, statusShort } from "../salesFormat.js";
+import Abbr, { Stage } from "../components/Abbr.jsx";
+import HelpLink from "../components/HelpLink.jsx";
 import { istLabel } from "../time.js";
 import "../funnel.css";
 
@@ -38,8 +40,8 @@ export default function LeadSales({ lead, onChanged }) {
   const writable = canWrite();
   return (
     <section className="ls-panel" aria-labelledby="ls-title" data-testid="lead-sales">
-      <h3 id="ls-title">Sales stage <span className="pill rec" data-testid="lead-sales-status">{statusShort(d.status)}</span></h3>
-      <p className="sub" style={{ margin: "0 0 8px" }}>Where this deal stands in the sales funnel; the outreach stage above is unchanged. Probability {d.prob}%{d.tcv ? ` · Total contract value ${inr(d.tcv)}` : ""}.</p>
+      <h3 id="ls-title">Sales stage <span className="pill rec" data-testid="lead-sales-status"><Stage status={d.status} /></span> <HelpLink chapter="funnel" topic="update-stage" label="Sales stage" /></h3>
+      <p className="sub" style={{ margin: "0 0 8px" }}>Where this deal stands in the sales funnel; the outreach stage above is unchanged. Probability {d.prob}%{d.tcv ? <> · Total contract value (<Abbr term="TCV">TCV</Abbr>) {inr(d.tcv)}</> : ""}. Stages: <Abbr term="MQL">MQL</Abbr>, <Abbr term="SAL">SAL</Abbr>, <Abbr term="SQL">SQL</Abbr>.</p>
       <form onSubmit={save} aria-label="Sales stage">
         <div className="ls-grid">
           <label>Status
@@ -68,7 +70,7 @@ export default function LeadSales({ lead, onChanged }) {
       {d.history.length > 0 && (
         <details style={{ marginTop: 8 }}>
           <summary>History ({d.history.length})</summary>
-          <ul className="ls-history" data-testid="lead-sales-history">{d.history.map((h, i) => <li key={i}>{istLabel(h.at)}: {statusShort(h.from)} → <b>{statusShort(h.to)}</b> by {h.by || "—"}</li>)}</ul>
+          <ul className="ls-history" data-testid="lead-sales-history">{d.history.map((h, i) => <li key={i}>{istLabel(h.at)}: <Stage status={h.from} full /> → <b><Stage status={h.to} full /></b> by {h.by || "—"}</li>)}</ul>
         </details>
       )}
     </section>

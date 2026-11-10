@@ -20,6 +20,7 @@ import Accounts from "./setup/Accounts.jsx";
 import AccountActivity from "./setup/AccountActivity.jsx";
 import AccountUsage from "./setup/AccountUsage.jsx";
 import { isClient } from "../api.js";
+import HelpLink from "../components/HelpLink.jsx";
 import "../setup.css";
 
 const OWNER = ["owner"];
@@ -114,7 +115,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
         </div>
         <div className="setup-body">
           <header className="setup-head">
-            <p className="setup-kicker">{group}</p>
+            <p className="setup-kicker">{group} <HelpLink chapter={`setup-${section}`} label={title} /></p>
             <h2 data-testid="setup-section-title">{title}</h2>
             <p className="setup-desc">{description}</p>
             {summary && <p className="setup-summary" data-testid="setup-summary"><b>{done} of {items.length}</b> connected. Everything works without these; connect each one when you are ready.</p>}

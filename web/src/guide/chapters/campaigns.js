@@ -1,0 +1,35 @@
+export default {
+  id: "campaigns", title: "Campaigns", group: "Menu pages", order: 90, kind: "page", menu: "Campaigns",
+  summary: "A campaign finds companies that are hiring, fills in their contacts, checks the emails and, if you allow it, starts the email sequence for you.",
+  blocks: [
+    ["p", "A campaign is a saved search plus rules. For example: \"BPOs in Pune hiring customer support staff\". Each time it runs, it finds new companies, fills in missing contacts, checks who is ready for email, and tells the caller what it did."],
+    ["h", "Who can use it"],
+    ["ul", [
+      "**Owners** create, edit, run, pause and delete campaigns.",
+      "Callers and viewers who are not limited to particular workspaces can open the page and read each campaign's results, but see no buttons to change anything.",
+      "Admins and logins limited to a workspace do not see the page in the menu.",
+    ]],
+    ["img", "campaigns", "The Campaigns page with campaign cards showing status, last run and outcome numbers"],
+    ["h", "The list"],
+    ["p", "Each card shows the campaign name, a status tag, the last run (\"Last run ...: N new, N enrolled\"), a line of outcome numbers, and the target (industries, cities and roles). Click **Open** for the details. If you have none yet, owners see **New campaign**."],
+    ["h", "Create a campaign"],
+    ["p", "Click **New campaign**. A four-step wizard opens. You can jump between steps from the strip at the top. Preview first: nothing is saved to your leads until you run it for real."],
+    ["steps", [
+      "**1. Who to target**. Type a **Campaign name**. Add **Industries**, **Cities**, **Roles they hire for** and **Keywords** (type and press Enter, or click an example). Tick the **Company size (employees)** bands you want.",
+      "**2. Sources**. Pick where to look. Only lawful sources are used: provider accounts you connected with your own keys, and companies' own careers pages. Job boards and LinkedIn are never read. You can add **Careers page links** (one per line) or paste a page's HTML, pick **More sources (free ones first)**, set **Most results per paid search, per run** (1 to 100), and add **Leads you already imported**.",
+      "**3. Enrichment and rules**. Under **Fill in missing contacts** tick **Company website** (free), **Hunter**, **Firecrawl** or **Apollo email lookup** and set **Most credits to spend per run** (0 to 5000). Under **Who is ready for email** set **Lowest score** (0 to 100 in steps of 5), **Only business emails** and **Skip shared mailboxes**, **Most new leads per run** (1 to 200), and **Who gets the update after each run**.",
+      "Tick **Start the email sequence automatically for qualifying leads** only if you want emails to start by themselves. Then pick **Which email sequence**, and optionally **Only email these companies**.",
+      "**4. Review and run**. Check the summary. Click **Run now (preview)** to see what it would do, or **Run for real**, or **Save without running**. You need at least one source from step 2.",
+    ]],
+    ["warn", "A preview searches the sources, and paid ones can use credits, but it saves nothing and does not look up missing emails."],
+    ["tip", "Sending is still controlled by the Outbox: practice mode until Send for real is on, daily caps and warm-up, one email per company a day, Monday to Friday 09:00 to 18:00 [[IST]], and unsubscribes are never emailed. See [Outbox and sending](#help/outbox)."],
+    ["h", "Open a campaign"],
+    ["ul", [
+      "Owner buttons: **Run now (preview)**, **Run for real**, **Pause daily runs** or **Run every weekday automatically** (once a day, Monday to Friday, 09:00 to 18:00 IST), **Edit** and **Delete** (the leads stay in your lead list).",
+      "**Outcomes**: eight tiles: Leads, Emails sent, Opened, Replied, Interested, Meetings, Customers and Unsubscribed, with rates.",
+      "**Leads from this campaign**: search, filter by stage and outreach state (In the sequence, Not started, Ready for email, Replied), and sort. The **Ready for email?** column says **Yes**, **Started** or why not. **Download leads** saves a file (owners).",
+      "**Runs**: every run with what it found, how many are ready, how many were enrolled and any problems. **Download run report** saves them.",
+    ]],
+    ["p", "Related: [Dashboard](#help/dashboard), [Sequences and templates](#help/templates), [Data sources](#help/sources), [Connections](#help/setup-connections)."],
+  ],
+};
