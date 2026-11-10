@@ -137,7 +137,7 @@ def make_router(store) -> APIRouter:
         ctl = agent_mod.control(store, account=account, owner=owner)
         if not ctl["may_lookup"]:
             return {"lead": None, "why": ctl["why_not"] or "no lookups left right now"}
-        return {"lead": linkedin_finder.next_for(store, account) or None}
+        return {"lead": linkedin_finder.next_for(store, account, user=getattr(request.state, 'user', None)) or None}
 
     @router.post("/api/extension/leads/{lead_id}/lookup-result")
     def lookup_result(lead_id: str, body: LookupBody, request: Request):

@@ -141,7 +141,7 @@ def queue_lookup(store, lead: dict, now: Optional[datetime] = None) -> dict:
     return {"lead": saved, "task": None, "lookup": "queued"}
 
 
-def next_for(store, account: str, now: Optional[datetime] = None) -> dict:
+def next_for(store, account: str, now: Optional[datetime] = None, user: Optional[dict] = None) -> dict:
     """The oldest queued lead this agent may look up ({} when none). Marked as handed out so it is not given twice."""
     from . import extension_api as ext
     from . import workspaces
@@ -154,6 +154,10 @@ def next_for(store, account: str, now: Optional[datetime] = None) -> dict:
             continue
         if account and ext.owner_of(l, settings) not in ("", account):
             continue
+        if user is not None:                       # ownership: never offer a lead this person may not send to
+            from . import lead_access
+            if not lead_access.can_send(store, user, l):
+                continue
         if look.get("handed_at") and datetime.fromisoformat(look["handed_at"]) > now - HAND_OUT_HOLD:
             continue
         rows.append(l)

@@ -181,6 +181,7 @@ def _reassign(store, lead: dict, cfg: dict, now: datetime) -> None:
     lead_ops.set_owner(store, lead["id"], new, "system", "no first touch in time")
     due = add_working_minutes(now, int(cfg["alert_minutes"]), cfg.get("hours"))
     store.update_lead(lead["id"], lambda l: {**l, "reassigns": int(l.get("reassigns") or 0) + 1, "first_touch_tried": [*tried, new],
+                                             "reassign_log": [*(l.get("reassign_log") or []), {"from": old, "to": new, "at": now.isoformat(timespec="seconds")}],
                                              "first_touch_started": now.isoformat(timespec="seconds"), "first_touch_due_at": due.isoformat(timespec="seconds"),
                                              "first_touch_alerted": False})
     text = f"{_name(lead)} had no first touch from {old}, so it moved to {new}."
