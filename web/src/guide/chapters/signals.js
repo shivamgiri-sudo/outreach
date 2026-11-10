@@ -1,5 +1,7 @@
 export default {
   id: "signals", title: "Buying signals", group: "Menu pages", order: 300, kind: "page", menu: "Buying signals",
+  // Workspace admins and client logins cannot open this page (web/src/App.jsx LIMITED_PAGES), so its chapter is hidden from them.
+  roles: ["owner", "caller", "viewer"], masOnly: true,
   summary: "Watch keywords, competitors and companies for fresh public news such as hiring drives or new centres, and turn the good ones into leads.",
   blocks: [
     ["p", "A [[Buying signal|buying signal]] is a sign that a company may need what you sell. {{menu:Buying signals}} reads public news for words you choose. You decide which company becomes a lead. It only reads the public news feed, never LinkedIn."],

@@ -1,5 +1,7 @@
 export default {
   id: "growth", title: "Free experience", group: "Menu pages", order: 100, kind: "page", menu: "Free experience",
+  // Workspace admins and client logins cannot open this page (web/src/App.jsx LIMITED_PAGES), so its chapter is hidden from them.
+  roles: ["owner", "caller", "viewer"], masOnly: true,
   summary: "Offer employers a capped free taste of the product, track whether they reach a result, and talk about paying only afterwards.",
   blocks: [
     ["p", "{{menu:Free experience}} is where you set the free offer and watch how employers use it. The idea: let them try first, give a real but limited taste, see if they get a result, and only then talk about paying."],

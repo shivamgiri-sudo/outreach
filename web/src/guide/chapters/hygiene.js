@@ -1,5 +1,7 @@
 export default {
   id: "hygiene", title: "Data hygiene", group: "Menu pages", order: 310, kind: "page", menu: "Data hygiene",
+  // Workspace admins and client logins cannot open this page (web/src/App.jsx LIMITED_PAGES), so its chapter is hidden from them.
+  roles: ["owner", "caller", "viewer"], masOnly: true,
   summary: "Find missing details, duplicate leads and conflicting values across all your lead sources, and fix them in one place.",
   blocks: [
     ["p", "{{menu:Data hygiene}} keeps the lead list clean. A clean list means fewer wasted emails and calls, and no two people contacting the same company by mistake. The page title says: find gaps, duplicates and differing values across every source."],

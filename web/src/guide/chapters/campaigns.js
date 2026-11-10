@@ -1,5 +1,7 @@
 export default {
   id: "campaigns", title: "Campaigns", group: "Menu pages", order: 90, kind: "page", menu: "Campaigns",
+  // Workspace admins and client logins cannot open this page (web/src/App.jsx LIMITED_PAGES), so its chapter is hidden from them.
+  roles: ["owner", "caller", "viewer"], masOnly: true,
   summary: "A campaign finds companies that are hiring, fills in their contacts, checks the emails and, if you allow it, starts the email sequence for you.",
   blocks: [
     ["p", "A campaign is a saved search plus rules. For example: \"BPOs in Pune hiring customer support staff\". Each time it runs, it finds new companies, fills in missing contacts, checks who is ready for email, and tells the caller what it did."],

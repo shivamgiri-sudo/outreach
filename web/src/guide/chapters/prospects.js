@@ -1,5 +1,7 @@
 export default {
   id: "prospects", title: "Prospect search", group: "Menu pages", order: 30, kind: "page", menu: "Prospect search",
+  // Workspace admins and client logins cannot open this page (web/src/App.jsx LIMITED_PAGES), so its chapter is hidden from them.
+  roles: ["owner", "caller", "viewer"], masOnly: true,
   summary: "Search the people and companies your portal has collected, filter them, and add the ones you want to your leads.",
   blocks: [
     ["p", "{{menu:Prospect search}} is your own database of people and companies, like a small version of Apollo. You filter it, pick people, and add them to {{menu:Leads}} so you can contact them."],

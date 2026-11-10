@@ -1,5 +1,7 @@
 export default {
   id: "sources", title: "Data sources", group: "Menu pages", order: 290, kind: "page", menu: "Data sources",
+  // Workspace admins and client logins cannot open this page (web/src/App.jsx LIMITED_PAGES), so its chapter is hidden from them.
+  roles: ["owner", "caller", "viewer"], masOnly: true,
   summary: "Test several contact-finding services on the same leads, see which finds the most emails and phones for the least cost, and keep the best.",
   blocks: [
     ["p", "{{menu:Data sources}} helps you choose between services that find emails and phone numbers. Instead of guessing, you give each service the same leads and compare the results side by side. Only public business contacts are used, and every value keeps a note of where it came from."],
