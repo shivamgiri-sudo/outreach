@@ -53,6 +53,7 @@ from . import lead_access, linkedin_stages
 from .routes_linkedin_accounts import make_router as make_linkedin_accounts_router
 from .routes_lists import make_router as make_lists_router
 from .routes_assignment import make_router as make_assignment_router
+from .routes_assignment_rules import make_router as make_assignment_rules_router
 from .routes_companies import make_router as make_companies_router
 from .routes_prospects import make_router as make_prospects_router
 from .routes_analytics import make_router as make_analytics_router
@@ -597,6 +598,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_linkedin_accounts_router(store))
     app.include_router(make_lists_router(store, _present))
     app.include_router(make_assignment_router(store))
+    app.include_router(make_assignment_rules_router(store))
     app.include_router(make_companies_router(store))
     app.include_router(make_workspaces_router(store))
     from .routes_accounts import make_router as make_accounts_router

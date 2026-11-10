@@ -231,6 +231,8 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
         log(store, connector, "error", error=reason, platform_ids=ids, is_test=is_test)
         return {"outcome": "error", "http": 422, "error": reason}
     lead_id = result["lead_id"]
+    if result["kind"] == "new" and not is_test:
+        _assign_owner(store, lead_id)
     for ch in result["channels"]:
         proof = f"{label}: {detail or connector.get('name', '')}"[:200]
         text = f"Messaged us first on WhatsApp ({proof})" if ch == "whatsapp" and whatsapp_first else f"Submitted {proof}"
@@ -248,6 +250,18 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
     return {"outcome": result["kind"], "http": 200, "lead_id": lead_id, "new": result["kind"] == "new",
             "merged": result["kind"] == "merged", "matched_by": result.get("matched_by"), "consent": result["channels"],
             "task_id": (task or {}).get("id"), "flow": flow, "is_test": is_test}
+
+
+def _assign_owner(store, lead_id: str) -> None:
+    """A new captured lead (form, Meta, sheet sync) has no human uploader: the assignment rules pick its owner (off by default)."""
+    try:
+        from . import assignment
+        lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+        if lead is not None:
+            assignment.assign_new(store, lead)
+    except Exception:                      # assignment must never lose a captured lead
+        import logging
+        logging.getLogger(__name__).exception("assignment failed for %s", lead_id)
 
 
 def _sales(lead: dict, incoming: dict, is_new: bool, sid: str, at: str) -> None:

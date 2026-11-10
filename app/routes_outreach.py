@@ -538,7 +538,10 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
                      for email in usable]
             from . import account_limits
             account_limits.check_current(store, "imports_per_day", len([lead for lead in built if lead]))
-            added = len(store.add_leads([lead for lead in built if lead]))
+            made = store.add_leads([lead for lead in built if lead])
+            from .assignment import assign_new_many
+            assign_new_many(store, made)
+            added = len(made)
         return {**found, "added": added, "not_for_outreach": len(found["emails"]) - len(usable)}
 
     return router

@@ -113,6 +113,7 @@ ADMIN_WRITES = {
     # lead ownership (app/routes_assignment.py): assigning lists, the switch, the migration; the routes check the caller is an admin of the workspace
     ("PUT", "/api/lists/{list_id}/assign"), ("POST", "/api/lists/{list_id}/split"), ("PUT", "/api/lists/{list_id}/share"),
     ("PUT", "/api/ownership-mode"), ("POST", "/api/ownership/migrate"), ("POST", "/api/ownership/fix-owners"),
+    ("PUT", "/api/assignment"), ("POST", "/api/assignment/run-unowned"),      # lead assignment rules (the routes refuse callers)
 }
 # LinkedIn agent per client account (app/linkedin_scope.py): an account's admins run their own account's agent, slots and
 # office computer (the routes cut to the admin's account, 404 for another's); callers / viewers only read its status.

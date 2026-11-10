@@ -275,6 +275,16 @@ def _save_run(store, campaign_id: str, report: dict) -> None:
     _change(store, campaign_id, fn)
 
 
+def _assign_added(store, added: list) -> None:
+    """Find-leads runs create leads with no human uploader: the assignment rules pick owners (off by default)."""
+    try:
+        from .assignment import assign_new_many
+        assign_new_many(store, added)
+    except Exception:                      # assignment must never fail a discovery run
+        import logging
+        logging.getLogger(__name__).exception("assignment failed after a campaign run")
+
+
 def run_campaign(store, campaign_id: str, transports: dict, dry_run: bool = False, now: Optional[datetime] = None,
                  trigger: str = "manual", notify_sender=None) -> dict:
     """Run the pipeline once. Raises LookupError (no such campaign) or CampaignBusy (a run is in progress)."""
@@ -309,6 +319,7 @@ def run_campaign(store, campaign_id: str, transports: dict, dry_run: bool = Fals
             report["finished_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
             return report
         added = store.add_leads(plan["add"])
+        _assign_added(store, added)
         report["new"] = len(added)
         report["duplicates"] += len(plan["add"]) - len(added)        # taken by another import in the meantime
         report["merged"] = sum(pipe.merge_into_existing(store, lead_id, cand, campaign) for lead_id, cand in plan["merge"])
