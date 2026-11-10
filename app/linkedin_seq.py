@@ -20,12 +20,14 @@ from .sequences import clean_first_name
 
 DEFAULT_DAILY_CONNECTIONS = 12
 NOTE_LIMIT = 300                    # LinkedIn connection notes are limited to 300 characters
+FREE_NOTE_LIMIT = 200               # free LinkedIn accounts take a shorter note than paid ones
+SHORT_CONNECT = ("Hi {first_name}, came across your profile and noticed your work building and scaling teams. "
+                 "Always interesting to connect with people in talent and leadership. Thought I'd reach out.")
 CLOSED = ("unsubscribed", "disqualified")
 
 STEPS = [
     {"n": 1, "kind": "connect", "after": "start", "days": 0, "purpose": "Connection request (no pitch)",
-     "text": "Hi {first_name}, came across your profile and noticed your involvement in business leadership and talent "
-             "development. Always interesting to connect with people who are building and scaling teams. Thought I'd reach out."},
+     "text": SHORT_CONNECT},
     {"n": 2, "kind": "message", "after": "accepted", "days": 0, "purpose": "Vacant roles delaying business plans",
      "text": "Thanks for connecting, {first_name}.\n\nSomething I've been thinking about lately: How often do business plans get "
              "held back simply because the right people aren't available when they're needed?\n\nCritical positions remaining open "
@@ -162,6 +164,13 @@ def render(step: dict, lead: dict, settings: dict) -> str:
     if step["kind"] == "connect" and len(text) > NOTE_LIMIT:
         text = text[: NOTE_LIMIT - 1].rsplit(" ", 1)[0] + "…"
     return text
+
+
+def render_short(lead: dict, settings: dict) -> str:
+    """The built-in note of 200 characters or fewer, for a box that cannot take the longer note."""
+    first = clean_first_name(lead.get("contact_name")) or "there"
+    from .linkedin_config import fill
+    return fill(SHORT_CONNECT, lead, settings, first, "")
 
 
 def render_branch(key: str, lead: dict, settings: dict, **values) -> str:

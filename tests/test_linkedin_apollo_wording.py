@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 from app import linkedin_seq as li
 from app.main import create_app
 
-APOLLO_CONNECT = ("Hi Asha, came across your profile and noticed your involvement in business leadership and talent development. "
-                  "Always interesting to connect with people who are building and scaling teams. Thought I'd reach out.")
+APOLLO_CONNECT = ("Hi Asha, came across your profile and noticed your work building and scaling teams. "
+                  "Always interesting to connect with people in talent and leadership. Thought I'd reach out.")
 APOLLO_FIRST_MESSAGE = ("Thanks for connecting, Asha.\n\nSomething I've been thinking about lately: How often do business plans get "
                         "held back simply because the right people aren't available when they're needed?\n\nCritical positions "
                         "remaining open for weeks can put considerable pressure on existing teams and business timelines.\n\n"
@@ -46,3 +46,12 @@ def test_queue_shows_current_wording_for_a_step_queued_earlier(tmp_path):
     store.update("tasks", lambda rows: [{**t, "text": "old wording"} if t.get("kind") == "linkedin" else t for t in rows])
     item = li.queue(store, datetime.now(timezone.utc) + timedelta(minutes=1))["due"][0]
     assert item["message"] == APOLLO_CONNECT
+
+
+def test_default_connect_note_fits_a_free_account():
+    from app import linkedin_seq as li
+    from app.linkedin_config import stand_in_length
+    assert stand_in_length(li.STEPS[0]["text"]) <= li.FREE_NOTE_LIMIT
+    assert stand_in_length(li.SHORT_CONNECT) <= li.FREE_NOTE_LIMIT
+    short = li.render_short({"contact_name": "Priya Sharma", "company": "Acme"}, {})
+    assert short.startswith("Hi Priya,") and len(short) <= li.FREE_NOTE_LIMIT

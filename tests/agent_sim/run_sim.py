@@ -221,6 +221,16 @@ check("S7 without a note allowed, nothing is sent and it says why", not any(i["t
 run_agent(PROFILE_A, "--once", "--allow-no-note"); skip_gap()
 check("S7 with --allow-no-note it sends without a note", any(i["to"] == "nonote-1" and i["note"] == "" for i in fake_state()["invites"]))
 
+# ---------------------------------------------------------------- S7b: the note box takes 200 characters
+LONG = "Hi {first_name}, " + "I have been following the way your team hires and wanted to share an idea. " * 3 + "Thought I'd reach out."
+store.update("settings", lambda s: {**s, "linkedin_connect_variants": {"A": LONG, "B": LONG}})
+sh = add_lead("short-1", "ShortBoxCo")
+store.update_lead(sh, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "account": "acct-a", "variant": "A"}})
+run_agent(PROFILE_A, "--once"); skip_gap()
+sent = [i for i in fake_state()["invites"] if i["to"] == "short-1"]
+check("S7b a 200-character box gets the short note, whole", len(sent) == 1 and 0 < len(sent[0]["note"]) <= 200 and sent[0]["note"].endswith("reach out."), str(sent))
+store.update("settings", lambda s: {k: v for k, v in s.items() if k != "linkedin_connect_variants"})
+
 # ---------------------------------------------------------------- S8: someone logs the window in to another account
 x = add_lead("connect-9", "SwitchCo")
 login_profile(PROFILE_A, "acct-c")

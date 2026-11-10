@@ -250,6 +250,8 @@ def describe(store, lead: dict, account: str = "") -> dict:
     out["can_send"] = True
     out["actions"] = ["sent", "replied"]
     out["message"] = {"step": nxt["n"], "kind": nxt["kind"], "purpose": nxt["purpose"], "text": li.render(nxt, lead, settings)}
+    if nxt["kind"] == "connect":
+        out["message"]["short_text"] = li.render_short(lead, settings)
     return out
 
 

@@ -212,7 +212,7 @@ async function inviteDialog(page) {
 // Connect with the note first. When LinkedIn will not take a note (free accounts: a few a month) it either disables
 // "Add a note" or answers it with a Premium offer and no text box; then, only if "send without a note" is allowed,
 // the request is sent bare. Every wait is bounded, so one person can never hold the agent.
-async function doConnect(page, lead, note, retried = false) {
+async function doConnect(page, lead, note, retried = false, shortNote = "") {
   if (!tokens(lead.name).length) return { done: false, why: "the lead has no name, so the right Connect button cannot be told apart" };
   if (await isPending(page, lead.name)) return { done: true, already: "pending" };
   if ((await degreeOf(page)) === "1st") return { done: true, already: "connected" };
@@ -239,9 +239,21 @@ async function doConnect(page, lead, note, retried = false) {
       if (retried) return { done: false, why: "LinkedIn would not take a note and the request could not be sent without one" };
       await page.reload({ waitUntil: "domcontentloaded" }); await sleep(SETTLE);
       log("LinkedIn will not take a note this month: sending without one");
-      return doConnect(page, lead, note, true);
+      return doConnect(page, lead, note, true, shortNote);
     }
-    await box.fill(note, { timeout: 5000 }).catch(() => {});
+    // The box's real limit (free accounts: 200). Use the short note when the long one does not fit; never cut a sentence.
+    const limit = await box.getAttribute("maxlength").then((v) => parseInt(v, 10) || 0).catch(() => 0);
+    let text = note;
+    if (limit && text.length > limit) {
+      if (shortNote && shortNote.length <= limit) { text = shortNote; log(`the box takes ${limit} characters: sending the short note`); }
+      else if (allowBare && !retried) {
+        await closeDialogs(page); await page.reload({ waitUntil: "domcontentloaded" }); await sleep(SETTLE);
+        log(`the box takes ${limit} characters and no note fits: sending without one`);
+        notesBlockedUntil = Date.now() + 24 * 3600 * 1000;
+        return doConnect(page, lead, note, true, shortNote);
+      } else { await closeDialogs(page); return { done: false, why: `LinkedIn takes only ${limit} characters in the note and no saved note is that short; nothing was sent` }; }
+    }
+    await box.fill(text, { timeout: 5000 }).catch(() => {});
     await sleep(300);
     const send = page.getByRole("dialog").getByRole("button", { name: /^send( invitation| now)?$/i }).first();
     if (!(await tap(send))) { await closeDialogs(page); return { done: false, why: "the Send button in the invitation box could not be pressed; nothing was sent" }; }
@@ -375,7 +387,7 @@ async function oneCycle(page, state) {
     if ((state.failed[item.lead_id] || 0) >= 2) continue;          // failed twice today: leave them, never loop on one person
     let result;
     try {
-      result = kind === "connect" ? await doConnect(page, item, info.message.text) : await doMessage(page, item, info.message.text);
+      result = kind === "connect" ? await doConnect(page, item, info.message.text, false, info.message.short_text || "") : await doMessage(page, item, info.message.text);
     } catch (e) {
       if (e instanceof Fatal) throw e;                               // checkpoint / login / weekly limit: stop as before
       result = { done: false, why: `the page did not behave as expected (${String(e.message || e).split("\n")[0].slice(0, 120)}); nothing more was clicked` };

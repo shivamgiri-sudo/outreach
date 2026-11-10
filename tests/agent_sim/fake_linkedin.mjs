@@ -4,6 +4,7 @@
 //   first-*    1st-degree, Message button         open-*     2nd-degree + Message (Open Profile)
 //   checkpoint-* redirects to a security check    limit-*    weekly invitation limit after Connect
 //   nonote-*   Connect dialog without "Add a note"
+//   short-*    free account: the note box takes at most 200 characters (maxlength)
 //   upsell-*   "Add a note" + "Send without a note"; Add a note opens a Premium offer with no text box (note limit)
 // GET /__state shows every invite and message; POST /__accept?slug=..&acct=.. makes a pending invite accepted;
 // POST /__reply?slug=..&acct=..&text=.. is the person answering (seen in the chat window and on /messaging/).
@@ -73,7 +74,7 @@ if (c) c.onclick = () => {
   if (add) add.onclick = ${kind === "upsell" ? `() => { const u = document.createElement("div"); u.setAttribute("role", "dialog");
     u.innerHTML = "<h2>Personalize your invitation with Premium</h2><button>Try Premium for free</button>"; document.body.appendChild(u);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll("[role=dialog]").forEach((x) => x.remove()); }); }`
-    : `() => { const t = document.createElement("textarea"); d.insertBefore(t, d.lastChild); }`};
+    : `() => { const t = document.createElement("textarea"); ${kind === "short" ? `t.maxLength = 200;` : ""} d.insertBefore(t, d.lastChild); }`};
   [...d.querySelectorAll("button")].filter((b) => /^Send/.test(b.textContent)).forEach((b) => b.onclick = async () => {
     const t = d.querySelector("textarea"); await post("/__invite", { to: ${JSON.stringify(slug)}, note: t ? t.value : "" }); d.remove(); location.reload(); });
 };
