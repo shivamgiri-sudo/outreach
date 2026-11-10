@@ -23,7 +23,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from . import account_limits, audit, lists, prospect_db as P, prospect_ingest as ingest, prospect_search as S, prospect_waterfall as W
+from . import account_limits, audit, lists, upload_owner, prospect_db as P, prospect_ingest as ingest, prospect_search as S, prospect_waterfall as W
 from . import prospect_fields as F
 from . import prospect_unsuppress as U
 from .hygiene import csv_safe
@@ -233,7 +233,15 @@ def make_router(store, transports=None) -> APIRouter:
         account_limits.check_current(store, "imports_per_day", len(ids))              # the account's daily imports limit
         out = add_to_leads(store, ids, by)
         lead_ids = [r["lead_id"] for r in out["added"] + out["existing"]]
-        if lead_ids and (body.list_id or body.list_name.strip()):
+        user = getattr(request.state, "user", None)
+        if lead_ids and upload_owner.is_member(user):          # a member owns what they add and gets a list assigned to them
+            upload_owner.check_caps(store, user, len(lead_ids))
+            res = upload_owner.upload_for_user(store, user, lead_ids, body.list_name.strip() or f"Prospects {now_iso()[:10]}",
+                                               "prospect search")
+            out["ownership"] = {"owned": res["owned"], "conflicts": res["conflicts"]}
+            out["list_id"] = res["list_id"]
+            lead_ids = [i for i in lead_ids if i not in {c["lead_id"] for c in res["conflicts"]}]
+        elif lead_ids and (body.list_id or body.list_name.strip()):
             if body.list_id:
                 row = lists.get(store, body.list_id)
                 if row is None or not filter_rows([row]):

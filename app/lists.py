@@ -40,9 +40,10 @@ def _log(entry: str, by: str) -> dict:
     return {"at": now_iso(), "by": by, "text": entry}
 
 
-def create(store, name: str, lead_ids: list, by: str, how: str = "") -> dict:
+def create(store, name: str, lead_ids: list, by: str, how: str = "", assigned_to: str = "") -> dict:
     row = {"id": uuid.uuid4().hex[:10], "name": name.strip()[:80] or "Untitled list", "lead_ids": list(dict.fromkeys(lead_ids)),
-           "created_by": by, "created_at": now_iso(), "workspace": workspaces.for_new_lead(), "log": [_log(f"Created with {len(set(lead_ids))} leads{(' (' + how + ')') if how else ''}", by)]}
+           "created_by": by, "created_at": now_iso(), "workspace": workspaces.for_new_lead(),
+           "assigned_to": assigned_to, "shared_with": [], "assigned_at": now_iso() if assigned_to else "", "assigned_by": by if assigned_to else "", "log": [_log(f"Created with {len(set(lead_ids))} leads{(' (' + how + ')') if how else ''}", by)]}
     store.update("lists", lambda rows: [*rows, row])
     return row
 

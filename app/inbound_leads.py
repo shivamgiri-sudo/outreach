@@ -231,6 +231,12 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
         log(store, connector, "error", error=reason, platform_ids=ids, is_test=is_test)
         return {"outcome": "error", "http": 422, "error": reason}
     lead_id = result["lead_id"]
+    if result["kind"] == "new" and not is_test:                     # no human uploader: the assignment rules pick the owner
+        try:
+            from .upload_owner import assign_connector_lead
+            assign_connector_lead(store, lead_id)
+        except Exception:                                           # assignment must never lose a captured lead
+            pass
     for ch in result["channels"]:
         proof = f"{label}: {detail or connector.get('name', '')}"[:200]
         text = f"Messaged us first on WhatsApp ({proof})" if ch == "whatsapp" and whatsapp_first else f"Submitted {proof}"

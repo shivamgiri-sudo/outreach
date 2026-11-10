@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from . import account_limits, accounts, workspaces
-from . import audit, landline_restore, lead_fields
+from . import audit, landline_restore, lead_fields, lists, upload_owner
 from .header_map import FIELDS, detect_format, loose_header, map_columns
 from .hygiene_report import apply_standardise, report, standardise_changes
 from .lead_import import fingerprint, read_table, run_import, trim_lists
@@ -47,6 +47,10 @@ class ImportBody(BaseModel):
     mapping: dict = {}
     options: ImportOptions = ImportOptions()
     remember_mapping: bool = True
+    assign_to: str = Field(default="", max_length=80)               # admin: give the whole file to one person
+    split_between: list = Field(default=[], max_length=50)           # admin: split the file between people
+    mode: str = Field(default="even", pattern="^(even|count)$")
+    counts: list = []
 
 
 class MergeBody(BaseModel):
@@ -130,17 +134,22 @@ def make_router(store) -> APIRouter:
         return out
 
     @router.post("/api/import/preview")
-    def preview(body: ImportBody):
+    def preview(body: ImportBody, request: Request):
         """Dry run: what would happen, with nothing saved."""
         ctx = prepare(body)
+        user = getattr(request.state, "user", None)
+        own = upload_owner.Ownership(upload_owner.user_name(user), ctx["source"]) if upload_owner.is_member(user) else None
         result = run_import(store.read("leads"), ctx["table"], ctx["columns"], ctx["source"],
                             _not_again(store, ctx["table"]), ctx["options"], custom_fields=ctx["custom_fields"],
-                            same_account=accounts.same_account_as_new(store))
+                            same_account=accounts.same_account_as_new(store), ownership=own)
         return {**answer(ctx, result), "dry_run": True}
 
     @router.post("/api/import/commit")
-    def commit(body: ImportBody):
+    def commit(body: ImportBody, request: Request):
         ctx = prepare(body)
+        user = getattr(request.state, "user", None)
+        slices = upload_owner.plan(store, user, body, len(ctx["table"]))             # None = no ownership change
+        upload_owner.check_caps(store, user, len(ctx["table"]), len([s for s in slices or [] if s["end"] > s["start"]]) or 1)
         account_limits.check_current(store, "imports_per_day", len(ctx["table"]))       # the account's daily imports limit
         import_id = uuid.uuid4().hex[:10]
         suppressed = _not_again(store, ctx["table"])
@@ -148,8 +157,21 @@ def make_router(store) -> APIRouter:
         same = accounts.same_account_as_new(store)
 
         def apply(leads: list) -> list:
-            holder["result"] = run_import(leads, ctx["table"], ctx["columns"], ctx["source"], suppressed, ctx["options"],
-                                          import_id=import_id, custom_fields=ctx["custom_fields"], same_account=same)
+            def one(table, own):
+                return run_import(leads, table, ctx["columns"], ctx["source"], suppressed, ctx["options"], import_id=import_id,
+                                  custom_fields=ctx["custom_fields"], same_account=same, ownership=own)
+            if slices is None:
+                holder["result"] = one(ctx["table"], None)
+            else:
+                parts, holder["groups"] = [], []
+                for sl in slices:
+                    if sl["end"] <= sl["start"]:
+                        continue
+                    part = one(ctx["table"][sl["start"]:sl["end"]], upload_owner.Ownership(sl["owner"], ctx["source"]))
+                    parts.append(part)
+                    placed = [*part["created_ids"], *(e["lead_id"] for k in ("merges", "unchanged", "duplicates") for e in part[k])]
+                    holder["groups"].append((sl["owner"], list(dict.fromkeys(placed))))
+                holder["result"] = upload_owner.merge_results(parts) if parts else one([], None)
             created = set(holder["result"]["created_ids"])
             holder["fingerprints"] = {lead["id"]: fingerprint(lead) for lead in leads if lead["id"] in created}
             return leads
@@ -162,9 +184,17 @@ def make_router(store) -> APIRouter:
             for lead in store.read("leads"):
                 if lead.get("email") in outs:
                     record_consent(store, lead["id"], "withdrawn", "email", "", f"opt-out in the imported file ({ctx['source']})", "import")
+        made = []
+        for owner, ids in holder.get("groups") or []:                    # one list per owner, named after the file
+            name = ctx["source"] if len(holder["groups"]) == 1 else f"{ctx['source']} - {owner}"
+            row = upload_owner.finish_upload(store, owner, name, ids, f"import {import_id}", suppressed,
+                                             by=upload_owner.user_name(user))
+            if row:
+                made.append(row["id"])
         entry = {"id": import_id, "at": now_iso(), "source": ctx["source"], "format": ctx["format"]["name"],
                  "summary": result["summary"], "created": holder["fingerprints"], "merged_ids": result["merged_ids"],
-                 "workspace": workspaces.for_new_lead()}
+                 "workspace": workspaces.for_new_lead(), "by": upload_owner.user_name(user), "lists": made,
+                 "conflicts": (result.get("conflicts") or [])[:upload_owner.MAX_CONFLICTS]}
         _collection(store, "imports")
         store.update("imports", lambda rows: [*rows, entry][-HISTORY_KEPT:])
         if body.remember_mapping:
@@ -172,7 +202,17 @@ def make_router(store) -> APIRouter:
             store.update("settings", lambda s: {**s, "import_mappings": {**(s.get("import_mappings") or {}),
                                                                          ctx["format"]["key"]: mapping}})
         return {**answer(ctx, result), "dry_run": False, "import_id": import_id,
-                "created_ids": result["created_ids"], "merged_ids": result["merged_ids"]}
+                "created_ids": result["created_ids"], "merged_ids": result["merged_ids"], "list_ids": made}
+
+    @router.get("/api/imports/{import_id}/conflicts")
+    def conflicts(import_id: str, request: Request):
+        """Rows skipped because the lead already belongs to someone else. Admin: every import of the workspace; a member: own imports."""
+        user = getattr(request.state, "user", None)
+        entry = next((r for r in _collection(store, "imports") if r["id"] == import_id), None)
+        if entry is None or not workspaces.visible(entry) or (not upload_owner.is_admin(user) and entry.get("by") != upload_owner.user_name(user)):
+            raise HTTPException(404, "Import not found")
+        rows = entry.get("conflicts") or []
+        return {"import_id": import_id, "source": entry.get("source"), "count": len(rows), "conflicts": rows}
 
     @router.get("/api/import/history")
     def history():

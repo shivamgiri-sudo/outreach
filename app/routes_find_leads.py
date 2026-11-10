@@ -1,8 +1,8 @@
 """Find & enrich leads: start a run, see its progress, and the estimate shown before a real run."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from . import find_leads as fl
+from . import find_leads as fl, upload_owner
 
 
 class FindBody(BaseModel):
@@ -39,9 +39,14 @@ def make_router(store, transports: dict, notify_sender=None) -> APIRouter:
         return {"active": fl.summary(active) if active else None, "runs": runs}
 
     @router.post("/api/find-leads")
-    def start(body: FindBody):
+    def start(body: FindBody, request: Request):
+        p = params(body)
+        user = getattr(request.state, "user", None)
+        if upload_owner.is_member(user) and not p.get("dry_run"):
+            upload_owner.check_caps(store, user, body.max_new)
+            p["uploader"] = upload_owner.user_name(user)         # a member owns what the run finds and gets a list
         try:
-            return runner.start(params(body))
+            return runner.start(p)
         except fl.Busy as exc:
             raise HTTPException(409, str(exc)) from None
 

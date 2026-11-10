@@ -275,6 +275,13 @@ class Runner:
         report["lead_ids"] = list(dict.fromkeys(report["lead_ids"]))[:campaigns.MAX_LEAD_IDS]
         if not dry:
             report["qualified_ids"] = _qualified_ids(self.store, report["lead_ids"])
+            if params.get("uploader") and report["lead_ids"]:
+                from . import upload_owner
+                me = params["uploader"]
+                claimed = upload_owner.claim_leads(self.store, report["lead_ids"], me, "Find leads")
+                row = upload_owner.finish_upload(self.store, me, "Find leads " + _now_text()[:10], claimed["mine"], "find leads",
+                                                 set(self.store.read("suppressed")))
+                report.update(list_id=(row or {}).get("id"), owned_by_other=claimed["conflicts"])
         with self._guard:
             run = self._live[run_id]
             report["errors"] = list(run["errors"])
