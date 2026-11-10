@@ -18,7 +18,8 @@ MINUTES = 15
 MAX_PER_HOUR = 3
 KEY = "magic_links"
 ROLES = ("caller", "viewer")
-GENERIC = f"If that address has a login that can use email links, a sign-in link is on its way. It works for {MINUTES} minutes."
+GENERIC = (f"If that address has a login that can use email links, a sign-in link is on its way. It works for {MINUTES} minutes. "
+           "Owners, admins and super admins never get one: they sign in with their password and authenticator code.")
 
 
 def _hash(token: str) -> str:
@@ -51,7 +52,28 @@ def request_link(store, email: str, base_url: str, send, now: Optional[datetime]
     result = send_mail(store, send, user["email"], "Your sign-in link",
                        f"Hello {user.get('name') or user['email']},\n\nSign in with this link (it works for {MINUTES} minutes and only once):\n"
                        f"{link}\n\nIf you did not ask for it, ignore this email.", "magic_link", has_link=True)
-    return {"message": GENERIC, "status": result.get("status", "dry_run")}
+    status = result.get("status", "dry_run")
+    if status != "sent":
+        _tell_admins(store, user["email"], status, result.get("error", ""))
+    return {"message": GENERIC, "status": status}
+
+
+def _tell_admins(store, email: str, status: str, error: str) -> None:
+    """A sign-in link that could not be sent (no mail service connected, or the provider refused): tell the super admins,
+    at most once an hour, so the person who never got the email is not the only one who knows. Never raises."""
+    try:
+        from . import super_admin
+        from .reminders import notify
+        recent = datetime.now(timezone.utc) - timedelta(hours=1)
+        if any(n.get("kind") == "alert:magic_link_failed" and datetime.fromisoformat(n["at"]) > recent for n in store.read("notifications")[-200:]):
+            return
+        why = "no email service is connected for portal mail" if status == "dry_run" else f"the mail provider said: {error or status}"
+        for who in sorted(super_admin.super_admins()):
+            notify(store, who, "Sign-in link could not be sent",
+                   f"A sign-in link for {email} was not delivered: {why}. Connect or fix the sending domain under Setup, then ask them to try again.",
+                   kind="alert:magic_link_failed")
+    except Exception as exc:
+        print(f"magic link admin alert failed: {exc}")
 
 
 def use_link(store, token: str, now: Optional[datetime] = None) -> dict:

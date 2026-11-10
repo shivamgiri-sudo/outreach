@@ -289,3 +289,16 @@ def test_public_signup_is_closed_until_a_super_admin_opens_it(tmp_path, monkeypa
     assert c.put("/api/console/signup-open", json={"on": False}, headers=hs).json() == {"signup_open": False}
     assert c.post("/api/signup", json={**raw, "email": "other@deltafreight.example"}).status_code == 403
     assert any(r.get("action") == "platform.signup" for r in c.app.state.store.read("audit"))
+
+
+def test_failed_magic_link_send_alerts_super_admins_once_an_hour(tmp_path, monkeypatch):
+    from app import magic_link
+    c, ha, hs, outbox = make(tmp_path, monkeypatch)
+    c.post("/api/users", json={"email": "cal@mcn.example", "role": "caller", "password": "long-password-1", "all_workspaces": True}, headers=ha)
+    store = c.app.state.store
+    boom = lambda message: {"status": "failed", "error": "provider down"}
+    for _ in range(2):
+        assert magic_link.request_link(store, "cal@mcn.example", "http://x", boom)["status"] == "failed"
+    alerts = [n for n in store.read("notifications") if n.get("kind") == "alert:magic_link_failed"]
+    assert len(alerts) == 1 and alerts[0]["to"] == SUPER and "provider down" in alerts[0]["text"] and "cal@mcn.example" in alerts[0]["text"]
+    assert "Owners, admins and super admins never get one" in magic_link.GENERIC
