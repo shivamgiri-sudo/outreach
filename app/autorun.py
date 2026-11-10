@@ -53,6 +53,11 @@ def reminder_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
         linkedin_watch.tick(store, now)             # hourly LinkedIn agent summary + "agent not running" alert
     except Exception as exc:
         print(f"linkedin watch failed: {exc}")
+    try:
+        from . import first_touch
+        first_touch.tick(store, now)                # speed-to-lead: alert, then move late first touches
+    except Exception as exc:
+        print(f"first touch failed: {exc}")
     return {**run_reminders(store, now, sender, BASE_URL), "digest": bool(run_digest(store, now, sender))}
 
 
