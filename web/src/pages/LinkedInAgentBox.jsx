@@ -134,10 +134,21 @@ export default function LinkedInAgent({ onMessage, onAccount }) {
         <button className="btn" style={{ marginTop: 8 }} data-testid="li-save-limits" onClick={() => save({ ...form, enabled: undefined,
           ...(st.account_id === "mcn" ? { daily_connections: undefined, auto_start: undefined } : {}) }, "Limits saved.")}>Save limits</button>
       </details>}
+      {st.today && st.account_id != null && (
+        <div className="card" data-testid="li-today" style={{ margin: "10px 0" }}>
+          <b>Today</b> {st.today.online ? <span className="pill ok">agent online</span>
+            : <span className="pill err" data-testid="li-offline">agent NOT running{st.today.last_seen ? ` — last seen ${istLabel(st.today.last_seen)}` : " — never seen"}</span>}
+          <div className="sub" style={{ marginTop: 4 }}>
+            {st.today.queued} waiting to be sent · {st.today.connect} connection requests sent · {st.today.message} messages sent ·{" "}
+            <b>{st.today.confirmed}</b> confirmed on LinkedIn{st.today.unconfirmed > 0 && <b> · {st.today.unconfirmed} NOT confirmed</b>} ·{" "}
+            {st.today.accepted} accepted · {st.today.replied} replied · {st.today.problems} problems
+          </div>
+          {!st.today.online && st.today.queued > 0 && <div className="sub">People are waiting but nothing will be sent until the agent runs on the office computer.</div>}
+        </div>)}
       {st.log.length > 0 && (
         <details className="section" open><summary>What it did lately</summary>
           <ul className="task-list">{st.log.slice(0, 12).map((r, i) => (
-            <li key={i}><div><b>{KIND_WORDS[r.kind] || r.kind}</b>{r.note ? ` — ${r.note}` : ""}</div><div className="sub">{istLabel(r.at)}</div></li>))}
+            <li key={i}><div><b>{KIND_WORDS[r.kind] || r.kind}</b>{r.verified === true ? " ✓ confirmed" : r.verified === false ? " ⚠ not confirmed" : ""}{r.note ? ` — ${r.note}` : ""}</div><div className="sub">{istLabel(r.at)}</div></li>))}
           </ul>
         </details>
       )}

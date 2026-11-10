@@ -194,7 +194,8 @@ def record(store, event: dict, now: Optional[datetime] = None, notify_sender=Non
     account = norm_account(event.get("account"))
     owner = owner_of_slug(store, account, owner)
     row = {"at": iso(now), "kind": kind, "lead_id": str(event.get("lead_id") or "")[:40], "note": str(event.get("note") or "")[:300],
-           **({"account": account} if account else {}), **_stamp(owner)}
+           **({"account": account} if account else {}), **_stamp(owner),
+           **({"verified": bool(event["verified"])} if event.get("verified") is not None and kind in ("connect", "message") else {})}
     seen = {"at": iso(now), "state": str(event.get("state") or kind)[:40]}
     store.update("settings", lambda s: {**s, SETTINGS_LOG: [*(s.get(SETTINGS_LOG) or [])[-(MAX_LOG - 1):], row], **_seen_update(s, owner, seen),
                                         **(_slug_update(s, account, owner, seen) if account else {})})
@@ -301,4 +302,10 @@ def status(store, now: Optional[datetime] = None, owner: Optional[str] = MCN) ->
         online = (now - datetime.fromisoformat(seen["at"])).total_seconds() < 180
     return {"config": config(store, acct), "control": control(store, now, owner=acct), "online": online, "last_seen": seen.get("at"),
             "state": seen.get("state", ""), "log": list(reversed(log_rows(store, owner)[-40:])), "accounts": accounts(store, now, owner),
-            "account_id": owner, "ceilings": scope.ceilings(store, acct), "kill": scope.kill_state(settings) or None}
+            "account_id": owner, "ceilings": scope.ceilings(store, acct), "kill": scope.kill_state(settings) or None,
+            "today": _today(store, now, owner)}
+
+
+def _today(store, now: datetime, owner: Optional[str]) -> dict:
+    from . import linkedin_watch
+    return linkedin_watch.summary(store, now, owner) if owner is not None else {}

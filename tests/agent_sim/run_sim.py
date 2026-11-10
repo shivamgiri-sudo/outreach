@@ -229,6 +229,8 @@ store.update_lead(sh, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "acc
 run_agent(PROFILE_A, "--once"); skip_gap()
 sent = [i for i in fake_state()["invites"] if i["to"] == "short-1"]
 check("S7b a 200-character box gets the short note, whole", len(sent) == 1 and 0 < len(sent[0]["note"]) <= 200 and sent[0]["note"].endswith("reach out."), str(sent))
+check("S7b the agent re-read the profile and logged the request as confirmed",
+      any(r["kind"] == "connect" and r.get("verified") is True and r["lead_id"] == sh for r in agent.log_rows(store)))
 store.update("settings", lambda s: {k: v for k, v in s.items() if k != "linkedin_connect_variants"})
 
 # ---------------------------------------------------------------- S8: someone logs the window in to another account

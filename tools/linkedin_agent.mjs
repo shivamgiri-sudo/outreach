@@ -407,9 +407,15 @@ async function oneCycle(page, state) {
       await event("error", { lead_id: item.lead_id, note: `${kind} ${item.name}: ${result.why}` });
       continue;
     }
+    // Proof it went through: a connection request must now show "Pending" on the profile; a message left the box empty.
+    let verified = true;
+    if (kind === "connect" && !result.already) {
+      await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {}); await sleep(SETTLE);
+      verified = await isPending(page, item.name).catch(() => false);
+    }
     await api(`/api/extension/leads/${item.lead_id}/sent`, "POST", { step: info.message.step });
     if (result.already === "connected") await api(`/api/extension/leads/${item.lead_id}/accepted`, "POST").catch(() => {});
-    await event(kind, { lead_id: item.lead_id, note: `${kind === "connect" ? `connection request${result.bare ? " (without a note: LinkedIn's note limit)" : ""}` : "message"} to ${item.name}${result.already ? ` (${result.already})` : ""}` });
+    await event(kind, { lead_id: item.lead_id, note: `${kind === "connect" ? `connection request${result.bare ? " (without a note: LinkedIn's note limit)" : ""}` : "message"} to ${item.name}${result.already ? ` (${result.already})` : ""}${verified ? "" : " (NOT confirmed: the profile does not show Pending)"}`, verified });
     log(`${kind === "connect" ? "connection request" : "message"} sent: ${item.name}`);
     return { acted: kind };
   }

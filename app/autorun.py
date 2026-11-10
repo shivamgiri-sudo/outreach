@@ -48,6 +48,11 @@ def reminder_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
         abuse_alerts.scan(store, now)               # per-account bounce / complaint rates (auto-hold) and sending spikes
     except Exception as exc:                        # a check must never stop the reminders
         print(f"abuse scan failed: {exc}")
+    try:
+        from . import linkedin_watch
+        linkedin_watch.tick(store, now)             # hourly LinkedIn agent summary + "agent not running" alert
+    except Exception as exc:
+        print(f"linkedin watch failed: {exc}")
     return {**run_reminders(store, now, sender, BASE_URL), "digest": bool(run_digest(store, now, sender))}
 
 

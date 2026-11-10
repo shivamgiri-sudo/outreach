@@ -35,6 +35,7 @@ class EventBody(BaseModel):
     note: str = ""
     state: str = ""
     fatal: bool = False
+    verified: Optional[bool] = None
 
 
 class KillBody(BaseModel):
