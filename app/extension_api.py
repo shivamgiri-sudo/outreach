@@ -126,6 +126,7 @@ def authenticate(store, admin_password: str, raw: str) -> Optional[dict]:
                                                                  for t in s.get(SETTINGS_KEY) or []]})
     out = {"sub": sub, "email": principal.get("email", ""), "name": principal.get("name", ""), "kind": "extension",
            "token_id": row["id"], "token_label": row.get("label", ""), "role": "viewer" if principal["role"] == "viewer" else "caller", "claims": None,
+           "base_role": principal["role"],        # the person's real role: lead ownership lets an admin's tool act on the workspace (app/lead_access.py)
            # the person's workspace limits travel with the token (owners: none), so a saved lead lands where they work
            "workspaces": [] if principal["role"] == "owner" else list(principal.get("workspaces") or []),
            # and so does the account boundary (app/accounts.py): a client's token never reaches another account
