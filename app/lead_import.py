@@ -44,7 +44,6 @@ PROBLEM_TEXT = {
     "free_mail_skipped": "{v} is a personal address and was left out, as you chose.",
     "foreign_phone": "{v} is not an Indian number; it is kept as an international number.",
     "suppressed": "{v} is on the do-not-contact list, so this row is skipped.",
-    "suppressed_kept": "{v} is on the do-not-contact list: kept as a lead flagged 'suppressed' and never contacted.",
     "suppressed_extra": "{v} is on the do-not-contact list and was left out.",
     "closed_lead": "Matches a lead marked {v}; new details are added but it stays {v}.",
     "source_opt_out": "The source file says this person opted out of email ({v}), so this row is skipped.",
@@ -308,7 +307,7 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
     created, touched = {}, {}
     blocked_aliases = {email_alias_key(e) for e in suppressed}
     out = {k: [] for k in ("created_ids", "merged_ids", "merges", "duplicates", "unchanged", "rejected", "skipped",
-                           "warnings", "sample", "source_opt_outs", "suppressed_kept", *(("conflicts",) if ownership else ()))}
+                           "warnings", "sample", "source_opt_outs", *(("conflicts",) if ownership else ()))}
     counts = Counter()
 
     for n, row in table:
@@ -318,7 +317,6 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
         for kind, value in problems:
             warn(kind, value)
         action = None
-        dnc_new = ""                       # a brand-new row on the do-not-contact list: kept, flagged, never contacted
         opted_out, no_call, flagged = _source_flags(row)
         if no_call and rec["phones"]:
             warn("do_not_call", no_call)
@@ -334,11 +332,8 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
             action = "skipped"
         elif blocked and blocked[0] == rec["emails"][0]:
             warn("suppressed", blocked[0])
-            if index.match(rec) is None and not (elsewhere is not None and _same_person(elsewhere.match(rec))):
-                dnc_new = blocked[0]       # nobody holds this person yet: keep the row as a flagged lead (see below)
-            else:
-                out["skipped"].append({"row": n, "reason": PROBLEM_TEXT["suppressed"].format(v=blocked[0]), "values": row})
-                action = "skipped"
+            out["skipped"].append({"row": n, "reason": PROBLEM_TEXT["suppressed"].format(v=blocked[0]), "values": row})
+            action = "skipped"
         else:
             for email in blocked:
                 warn("suppressed_extra", email)
@@ -368,18 +363,12 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
             action = "skipped"
         if action is None:
             action = _place(leads, index, rec, n, source, import_id, at, created, touched, out, warn, ownership)
-        if dnc_new and action == "create":
-            lead = leads[-1]
-            reason = PROBLEM_TEXT["suppressed_kept"].format(v=dnc_new)
-            leads[-1] = {**lead, "suppressed": True, "sendable": False, "not_sendable_reason": "do not contact",
-                         "timeline": [*lead.get("timeline", []), event("note", reason)]}
-            out["suppressed_kept"].append({"row": n, "lead_id": lead["id"], "reason": reason, "values": row})
         counts[action] += 1
         if len(out["sample"]) < SAMPLE_ROWS:
             out["sample"].append({"row": n, "action": action, **{f: rec.get(f) for f in SAMPLE_FIELDS}})
     out["summary"] = {
         "rows": len(table), "create": counts["create"], "merge": counts["merge"], "unchanged": counts["unchanged"],
-        "duplicates_in_file": counts["duplicate"], "suppressed_kept": len(out["suppressed_kept"]), "rejected": counts["rejected"], "skipped": counts["skipped"],
+        "duplicates_in_file": counts["duplicate"], "rejected": counts["rejected"], "skipped": counts["skipped"],
         "conflicts": sum(len(m["conflicts"]) for m in out["merges"] + out["duplicates"]),
         "contacts_added": sum(1 for m in out["merges"] + out["duplicates"] if m.get("added_contact")),
         "fields_filled": sum(len(m["filled"]) for m in out["merges"]),

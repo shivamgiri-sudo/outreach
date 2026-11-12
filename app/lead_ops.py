@@ -47,11 +47,15 @@ def owner_choices(store, user: Optional[dict] = None) -> list:
         names = [m.get("name") for m in team(store)] + [u.get("name") or u.get("email") for u in auth.users(store)]
     else:
         from . import accounts
-        mine, client = (user or {}).get("email"), accounts.is_client(user)
+        from . import accounts
+        mine = (user or {}).get("email")
+        # A limited ADMIN of a Mas Callnet workspace may hand a lead to staff who work in every workspace; a limited caller/viewer
+        # and any client login learn nothing outside their own workspaces (tests: L3 security, ownership reassign).
+        wide_ok = (user or {}).get("role") in ("owner", "admin") and not accounts.is_client(user)
         names = []
         for u in auth.users(store):
-            theirs = allowed_of(u)                          # None = a login of every workspace (Mas Callnet staff only; never offered to a client)
-            if u.get("email") == mine or (theirs is None and not client and not accounts.is_client(u)) or (theirs is not None and theirs & allowed):
+            theirs = allowed_of(u)                          # None = a login of every workspace
+            if u.get("email") == mine or (theirs is None and wide_ok and not accounts.is_client(u)) or (theirs is not None and theirs & allowed):
                 names.append(u.get("name") or u.get("email"))
     seen, out = set(), []
     for n in names:

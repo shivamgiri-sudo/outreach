@@ -120,21 +120,6 @@ def test_name_matching_is_exact():
     assert not linkedin_heal.name_matches_exactly("Priya", "Priya")
 
 
-# ---- 6. suppressed new rows are kept, flagged, reported ----
-def test_suppressed_new_row_is_kept_flagged_and_listed():
-    leads = []
-    table = [(2, {"company": "Dnc Co", "contact_name": "Dan Nox", "email": "dan@dnc.example"}),
-             (3, {"company": "Ok Co", "contact_name": "Oka Yes", "email": "oka@ok.example"})]
-    cols = [{"column": c, "field": f, "confidence": 1} for c, f in (("company", "company"), ("contact_name", "contact_name"), ("email", "email"))]
-    out = run_import(leads, table, cols, "t", {"dan@dnc.example"}, {})
-    flagged = [l for l in leads if l.get("suppressed")]
-    assert len(leads) == 2 and len(flagged) == 1 and flagged[0]["sendable"] is False
-    assert out["suppressed_kept"][0]["lead_id"] == flagged[0]["id"] and out["summary"]["suppressed_kept"] == 1
-    assert "do-not-contact" in out["suppressed_kept"][0]["reason"]
-    again = run_import(leads, table[:1], cols, "t", {"dan@dnc.example"}, {})          # now it exists: skipped as before, not duplicated
-    assert len(leads) == 2 and again["skipped"]
-
-
 def test_a_do_not_contact_lead_cannot_start_a_linkedin_sequence(rig):
     store, lid = rig["store"], rig["ids"]["Priya Nair"]
     store.update_lead(lid, lambda l: {**l, "sendable": False, "not_sendable_reason": "do not contact"})
