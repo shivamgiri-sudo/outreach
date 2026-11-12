@@ -39,7 +39,7 @@ ALLOWED = (                             # (method, path regex) an extension toke
     ("POST", re.compile(r"^/api/extension/cloud/state$")),            # the routes refuse any token that is not a cloud slot's
     ("POST", re.compile(r"^/api/mcp$")),                              # Claude / MCP clients: read-only tools (see mcp_server)
 )
-GRACE = timedelta(hours=12)             # same "due" window as the web queue
+GRACE = li.GRACE                        # same "due" window as the web queue (follow-ups with a gap get none: li.grace_for)
 COMPANY_NOISE = re.compile(r"\b(pvt|private|ltd|limited|llp|inc|incorporated|co|corp|corporation|the)\b")
 
 
@@ -171,7 +171,7 @@ def _words(text: str, company: bool = False) -> str:
     return " ".join(t.split())
 
 
-def find_lead(store, profile_url: str = "", name: str = "", company: str = "", check_name: bool = True) -> Optional[dict]:
+def find_lead(store, profile_url: str = "", name: str = "", company: str = "", check_name: bool = True, allow=None) -> Optional[dict]:
     from .accounts import same_account_as_new
     ours = same_account_as_new(store)                 # never another client company's lead
     leads = [l for l in store.read("leads") if ours(l)]
@@ -186,11 +186,15 @@ def find_lead(store, profile_url: str = "", name: str = "", company: str = "", c
             if hits and not same:
                 return None                       # fail closed: the URL says one person, the page says another
             hits = same or hits
+        from . import workspaces
         hits.sort(key=lambda l: (not _live(l), l.get("created_at") or ""))
-        if len({l["id"] for l in hits}) > 1 and not _live(hits[0]):
+        seen = [l for l in hits if workspaces.visible(l) and (allow is None or allow(l))]           # a hit in another workspace must not hide the one in this one
+        if len({l["id"] for l in seen}) > 1 and not _live(seen[0]):
             return None                           # two leads share this link and none is running: never guess
+        if seen:
+            return seen[0]
         if hits:
-            return hits[0]
+            return hits[0]                        # exists, but not for this request: the caller answers "not yours"
     n, c = _words(name), _words(company, True)
     if n and c:
         hits = [l for l in leads if _words(l.get("contact_name")) == n and _words(l.get("company"), True) == c]
@@ -238,6 +242,9 @@ def describe(store, lead: dict, account: str = "") -> dict:
         out["reason"] = f"This person is {lead['stage']}; no LinkedIn outreach."
         out["actions"] = ["replied"] if seq else []
         return out
+    if lead.get("sendable") is False:
+        out["reason"] = f"This person is {lead.get('not_sendable_reason') or 'not sendable'}; no LinkedIn outreach."
+        return out
     from . import linkedin_dupes
     if lead.get("linkedin_url") and not linkedin_dupes.profile_key(lead["linkedin_url"]):
         out["reason"] = "The saved LinkedIn link is not a person profile (/in/...). Fix the link first."
@@ -280,7 +287,7 @@ def describe(store, lead: dict, account: str = "") -> dict:
     if last[:10] == iso(now)[:10]:
         out["reason"] = "Already sent today. The next step is not due yet."
         return out
-    if due and datetime.fromisoformat(due) > now + GRACE:
+    if due and datetime.fromisoformat(due) > now + li.grace_for(nxt):
         from .sequences import IST
         when = datetime.fromisoformat(due).astimezone(IST).strftime("%-d %b, %-I:%M %p IST")
         out["reason"] = f"Step {nxt['n']} is not due yet (due {when})."
@@ -327,4 +334,7 @@ def queue(store, account: str = "") -> dict:
     if account and waiting:
         linkedin_guard.stamp_checked(store, [w["lead_id"] for w in waiting])
     due = [d for d in due if not linkedin_guard.held_until(leads.get(d["lead_id"]) or {})]   # held after failed tries
-    return {"due": due, "waiting_for_acceptance": waiting, "owner": q["owner"], "skipped_duplicates": q.get("skipped_duplicates", 0)}
+    watch = [{"lead_id": l["id"], "name": l.get("contact_name") or ""} for l in leads.values()      # whose reply the agent may open a thread for
+             if account and (l.get("linkedin_seq") or {}).get("status") in ("waiting_for_acceptance", "messaging")
+             and l.get("contact_name") and l.get("stage") not in ("unsubscribed", "disqualified") and mine(l)][:200]
+    return {"due": due, "waiting_for_acceptance": waiting, "reply_watch": watch, "owner": q["owner"], "skipped_duplicates": q.get("skipped_duplicates", 0)}

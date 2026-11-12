@@ -318,5 +318,37 @@ if wanted("H14"):
     check("H14 a second agent on a profile that is in use refuses to run (exit 1, says why)", code == 1 and "already using this browser profile" in out, out[-300:])
     check("H14 ...and the person got exactly one message", len(to_("messages", "msg-15")) == 1, state()["messages"])
 
+# ---------------------------------------------------------------- H15 a saved member-id link (/in/ACoAA...) that LinkedIn redirects to the vanity address
+def aco_lead(slug, company):
+    lid = add_lead(slug, company)
+    old = f"https://www.linkedin.com/in/ACoAA{slug}"
+    def swap(l):
+        row = {**l, "linkedin_url": old}
+        return {**row, "linkedin_seq": {**l["linkedin_seq"], "target": li.target_of(row)}}
+    store.update_lead(lid, swap)
+    return lid, old
+
+
+if wanted("H15"):
+    lid, old = aco_lead("conn-heal-1", "HealCo"); park_others(lid); skip_gap()
+    _c15, _o15 = run_agent("p15", "--once"); skip_gap()
+    row = lead_of(lid)
+    check("H15 member-id link redirected to the same-named vanity page: the link is rewritten to the vanity address", row["linkedin_url"].endswith("/in/conn-heal-1"), row["linkedin_url"] + " | " + _o15[-900:].replace("\n", " ; "))
+    check("H15 ...with a timeline line saying the page name matched", any("LinkedIn link updated to" in e.get("text", "") and "page name matched" in e["text"] for e in row["timeline"]), [e.get("text") for e in row["timeline"]][-3:])
+    check("H15 ...and the sequence is still bound (not stopped or reset)", (row.get("linkedin_seq") or {}).get("status") in ("waiting_to_connect",) and not li.target_changed(row), row.get("linkedin_seq"))
+    check("H15 ...nothing was sent in the round that healed", not to_("invites", "conn-heal-1"), state()["invites"])
+    run_agent("p15", "--once"); skip_gap()
+    check("H15 ...next round the invitation goes to the right person, once", len(to_("invites", "conn-heal-1")) == 1, state()["invites"])
+
+# ---------------------------------------------------------------- H16 same, but a namesake lead already holds the vanity address: no rewrite
+if wanted("H16"):
+    lid, old = aco_lead("conn-name-1", "NameCo")
+    other = add_lead("conn-name-1", "NameTwoCo")                      # holds /in/conn-name-1 itself
+    park_others(lid); li.stop(store, other, "hostile namesake parked")
+    run_agent("p16", "--once"); skip_gap()
+    row = lead_of(lid)
+    check("H16 a namesake already holds the vanity address: the link is NOT rewritten", row["linkedin_url"] == old, row["linkedin_url"])
+    check("H16 ...and nothing is sent to either of them", not to_("invites", "conn-name-1"), state()["invites"])
+
 print("\nSUMMARY: %d checks, %d FAIL" % (len(RESULTS), sum(1 for r in RESULTS if not r[1])))
 sys.exit(1 if any(not r[1] for r in RESULTS) else 0)

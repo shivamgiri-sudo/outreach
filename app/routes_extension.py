@@ -23,6 +23,8 @@ class ProfileBody(BaseModel):
     open_profile: bool = False
     degree: str = Field(default="", max_length=4)
     dry: bool = False                          # a dry-run agent only looked: nothing is written
+    observed_url: str = Field(default="", max_length=500)      # link heal: the address the page really has (canonical / after redirect)
+    observed_name: str = Field(default="", max_length=200)     # ...and the name its h1 shows; app/linkedin_heal.py decides
 
 
 class ReplyBody(BaseModel):
@@ -118,9 +120,10 @@ def make_router(store, notify_sender=None) -> APIRouter:
     @router.get("/api/extension/match")
     def match(request: Request, profile_url: str = Query("", max_length=2000), name: str = Query("", max_length=200), company: str = Query("", max_length=200)):
         from . import workspaces
-        lead = ext.find_lead(store, profile_url, name, company)
         from . import lead_access
-        seen = lead and workspaces.visible(lead) and lead_access.can_see(store, getattr(request.state, "user", None), lead)   # ownership: not someone else's lead
+        user = getattr(request.state, "user", None)
+        lead = ext.find_lead(store, profile_url, name, company, allow=lambda l: lead_access.can_see(store, user, l))   # ownership: not someone else's lead
+        seen = lead and workspaces.visible(lead) and lead_access.can_see(store, user, lead)
         return ext.describe(store, lead, account_of(request)) if seen else ext.no_match()
 
     @router.get("/api/extension/queue")
@@ -305,6 +308,9 @@ def make_router(store, notify_sender=None) -> APIRouter:
         holder_check(lead_or_404(lead_id), request)
         if body.dry:
             return {"ok": True, "dry": True}                  # a dry run looks only: nothing is written to the lead
+        if body.observed_url:                                  # the agent saw the lead's name at another address: heal only if strictly safe
+            from . import linkedin_heal
+            return {"ok": True, **linkedin_heal.heal(store, lead_id, body.observed_url, body.observed_name)}
         degree = body.degree if body.degree in ("1st", "2nd", "3rd") else ""
         stamp = li.iso(li.now_utc())
 

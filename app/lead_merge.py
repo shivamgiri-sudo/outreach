@@ -326,6 +326,13 @@ def completeness(lead: dict) -> int:
                if lead.get(f))
 
 
+def _link_may_move(lead: dict, other: dict) -> bool:
+    """A LinkedIn link moves between two leads only for the same person: an exact (normalised) name match, or a lead
+    with no person name at all. 'Rahul S' is compatible with 'Rahul Sharma' but is not proof it is the same profile."""
+    a, b = person_key(lead.get("contact_name")), person_key(other.get("contact_name"))
+    return (not a and not lead.get("contact_name")) or (bool(a) and a == b)
+
+
 def merge_leads(keep: dict, others: list, at: str, taken: Optional[set] = None) -> dict:
     """Merge duplicate leads into `keep`: fill gaps, keep every person, phone and event, keep the strictest status."""
     lead = {**keep, "timeline": list(keep.get("timeline") or [])}
@@ -336,6 +343,12 @@ def merge_leads(keep: dict, others: list, at: str, taken: Optional[set] = None) 
         rec = {**other, "emails": other.get("emails") or ([other["email"]] if other.get("email") else []),
                "phones": other.get("phones") or ([other["phone"]] if other.get("phone") else [])}
         same_person = names_compatible(other.get("contact_name"), lead.get("contact_name"))
+        if rec.get("linkedin_url") and not _link_may_move(lead, other) and \
+                _li_key(rec["linkedin_url"]) != _li_key(lead.get("linkedin_url") or ""):
+            rec = {k: v for k, v in rec.items() if k != "linkedin_url"}       # never lend one person's profile to another
+            if not any(c["field"] == "linkedin_url" and c["incoming"] == other["linkedin_url"] for c in lead.get("merge_conflicts") or []):
+                lead["merge_conflicts"] = [*(lead.get("merge_conflicts") or []),
+                                           _new_conflict("linkedin_url", lead.get("linkedin_url") or "", other["linkedin_url"], source, "", at)]
         lead, info = merge_record(lead, rec, "primary" if same_person else "company", source, "", at, taken, touch=False)
         if info["changed"]:
             lead = {**lead, "timeline": lead["timeline"][:-1]}   # replaced by one summary event below

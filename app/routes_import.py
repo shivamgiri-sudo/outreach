@@ -194,7 +194,8 @@ def make_router(store) -> APIRouter:
         entry = {"id": import_id, "at": now_iso(), "source": ctx["source"], "format": ctx["format"]["name"],
                  "summary": result["summary"], "created": holder["fingerprints"], "merged_ids": result["merged_ids"],
                  "workspace": workspaces.for_new_lead(), "by": upload_owner.user_name(user), "lists": made,
-                 "conflicts": (result.get("conflicts") or [])[:upload_owner.MAX_CONFLICTS]}
+                 "conflicts": (result.get("conflicts") or [])[:upload_owner.MAX_CONFLICTS],
+                 "suppressed_kept": [{k: v for k, v in r.items() if k != "values"} for r in result.get("suppressed_kept") or []][:upload_owner.MAX_CONFLICTS]}
         _collection(store, "imports")
         store.update("imports", lambda rows: [*rows, entry][-HISTORY_KEPT:])
         if body.remember_mapping:

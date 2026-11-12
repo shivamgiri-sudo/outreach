@@ -7,6 +7,7 @@
 //   owndraft-*   1st degree; the chat box opens with the start of our own earlier text (set with POST /__draft?slug=..&text=..)
 //   humandraft-* 1st degree; the chat box opens with somebody's own half-written text
 //   newtab-*     1st degree; Send also opens a second tab
+//   ACoAA<kind>-*  a member-id link: LinkedIn redirects it to /in/<kind>-*/ (the vanity address, same person)
 // GET /__state lists every invite and message.
 import http from "node:http";
 
@@ -14,7 +15,7 @@ const PORTS = Object.fromEntries(String(process.argv[2] || "8942:acct-a").split(
 const state = { invites: [], messages: [], drafts: {}, tabs: 0 };
 const cap = (w) => w[0].toUpperCase() + w.slice(1);
 const nameOf = (slug) => cap(slug.split("-")[0]) + " Lead";
-const page = (body, title = "LinkedIn") => `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body>${body}</body></html>`;
+const page = (body, title = "LinkedIn", head = "") => `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>${head}</head><body>${body}</body></html>`;
 const send = (res, code, html, headers = {}) => { res.writeHead(code, { "Content-Type": "text/html", ...headers }); res.end(html); };
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const J = JSON.stringify;
@@ -59,7 +60,7 @@ if (m) m.onclick = () => {
   };
   b.append(h, list, box, s); document.body.append(b);
 };
-</script>`, nm);
+</script>`, nm, `<link rel="canonical" href="https://www.linkedin.com/in/${slug}/">`);
 }
 
 const handler = (PORT) => async (req, res) => {
@@ -77,6 +78,8 @@ const handler = (PORT) => async (req, res) => {
   if (url.pathname === "/feed/") return send(res, 200, page(`<main><h1>Feed</h1></main>`));
   if (url.pathname === "/messaging/") return send(res, 200, page(`<main><h1>Messaging</h1></main>`));
   if (url.pathname === "/in/me/" || url.pathname === "/in/me") return send(res, 302, "", { Location: `/in/${acct}/` });
+  const aco = url.pathname.match(/^\/in\/ACoAA([^/]+)\/?$/);
+  if (aco) return send(res, 302, "", { Location: `/in/${aco[1]}/` });
   const m = url.pathname.match(/^\/in\/([^/]+)\/?$/);
   if (m && m[1] === acct) return send(res, 200, page(`<main><section><h1>Asha Account</h1></section></main>`));
   if (m && /upsell$/.test(m[1])) { state.tabs++; return send(res, 200, page(`<main><section><h1>Try Premium</h1></section></main>`)); }

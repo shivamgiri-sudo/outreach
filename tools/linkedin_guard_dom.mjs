@@ -50,6 +50,20 @@ export async function identityProblem(page, lead) {
   return "";
 }
 
+// Link heal (read only, nothing is clicked): the page shows the lead's name EXACTLY but the saved link is a member id (/in/ACo...)
+// or an old slug. Returns what the page really is ({ observed_url, observed_name }) for the portal to judge, else null.
+// Needs a public (vanity) address that the page URL and its canonical <link> agree on.
+export async function linkHeal(page, lead) {
+  if (nameProblem(lead.name)) return null;
+  const h1 = await readH1(page, 3000);
+  if (!h1 || !namesLead(h1, lead.name)) return null;
+  const canon = await page.evaluate(() => (document.querySelector('link[rel="canonical"]') || {}).href || "").catch(() => "");
+  const here = slugOf(page.url()), declared = slugOf(canon), want = slugOf(lead.profile_url);
+  const slug = declared || here;
+  if (!slug || /^(acw|acoa)/i.test(slug) || (declared && here && declared !== here) || slug === want) return null;
+  return { observed_url: "https://www.linkedin.com/in/" + slug, observed_name: h1.slice(0, 200) };
+}
+
 // "· 1st" is the degree badge; a "1st" inside a name, headline or company ("Ex 1st Lieutenant", "1st Choice Staffing") is not.
 export function degreeFromText(text) {
   for (const l of String(text || "").split("\n").map((s) => s.trim()).slice(0, 60)) {

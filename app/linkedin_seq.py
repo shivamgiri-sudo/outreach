@@ -181,6 +181,17 @@ def render_branch(key: str, lead: dict, settings: dict, **values) -> str:
     return fill_brand_placeholders(BRANCHES[key], settings, braces_for_format=True).format(first_name=first, **{**defaults, **values})
 
 
+GRACE = timedelta(hours=12)         # a step 1 / first message after acceptance may be offered a little early
+
+
+def grace_for(step: Optional[dict]) -> timedelta:
+    """How early a step may be offered. A follow-up that waits N days after the previous message waits the full gap
+    (no grace); the working-hours gate stays in agent.control."""
+    if step and step.get("after") == "previous" and (step.get("days") or 0) > 0:
+        return timedelta(0)
+    return GRACE
+
+
 def _active_steps(settings: dict, steps: Optional[list] = None) -> list:
     return [s for s in (steps if steps is not None else current_steps(settings)) if not s.get("needs") or settings.get(s["needs"])]
 
@@ -233,6 +244,8 @@ def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = Fals
         raise ValueError("Add the person's LinkedIn profile link first.")
     if lead.get("stage") in ("unsubscribed", "disqualified"):
         raise ValueError(f"Lead is {lead['stage']}; no LinkedIn outreach.")
+    if lead.get("sendable") is False:
+        raise ValueError(f"Lead is {lead.get('not_sendable_reason') or 'not sendable'}; no LinkedIn outreach.")
     if lead.get("linkedin_seq"):
         raise ValueError("This lead is already on the LinkedIn sequence; it is never restarted.")
     from . import linkedin_dupes
@@ -388,14 +401,15 @@ def queue(store, now: Optional[datetime] = None) -> dict:
         lead = leads.get(t.get("lead_id")) or {}
         if not lead and workspaces.scoped():
             continue                       # a task of a lead outside this workspace
-        if lead.get("stage") in CLOSED:
-            continue                       # unsubscribed (e.g. by the email link) or disqualified: never contacted
+        if lead.get("stage") in CLOSED or lead.get("sendable") is False:
+            continue                       # unsubscribed (e.g. by the email link), disqualified or kept as do-not-contact: never contacted
         if lead and dupes.of(lead):
             skipped.add(lead["id"])
             continue                       # the same person was already contacted through another lead
-        if t.get("due_at") and datetime.fromisoformat(t["due_at"]) > now + timedelta(hours=12):
-            continue
         step_n = int(re.search(r"step (\d+)", t.get("title", "")).group(1)) if re.search(r"step (\d+)", t.get("title", "")) else None
+        cfg_step = next((s for s in lead_steps(lead, settings) if s["n"] == step_n), None) if lead else None
+        if t.get("due_at") and datetime.fromisoformat(t["due_at"]) > now + grace_for(cfg_step):
+            continue
         due.append({"task_id": t["id"], "lead_id": lead.get("id"), "company": lead.get("company"), "name": lead.get("contact_name"),
                     "title": lead.get("title"), "linkedin_url": lead.get("linkedin_url"), "open_profile": bool((lead.get("linkedin_profile") or {}).get("open_profile")), "step": step_n, "message": _fresh_text(t, lead, step_n, settings),
                     "due_at": t.get("due_at"), "persona": (lead.get("linkedin_seq") or {}).get("persona")})
@@ -412,7 +426,7 @@ def queue(store, now: Optional[datetime] = None) -> dict:
     suggestions = []
     if started_today < limit:
         fresh = [l for l in leads.values() if not l.get("linkedin_seq") and has_profile_link(l)
-                 and l.get("stage") not in ("unsubscribed", "disqualified", "customer", "advocate")]
+                 and l.get("stage") not in ("unsubscribed", "disqualified", "customer", "advocate") and l.get("sendable") is not False]
         skipped |= {l["id"] for l in fresh if dupes.of(l)}
         ranked = sorted((l for l in fresh if l["id"] not in skipped),
                         key=lambda l: -(l.get("open_roles") or 0))

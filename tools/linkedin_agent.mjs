@@ -23,8 +23,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { readInbox as readInboxList } from "./linkedin_agent_inbox.mjs";
 import { cloudLogin } from "./linkedin_cloud_login.mjs";
-import { chatWith, closeChats, degreeOf, identityProblem, labelledAll, nameProblem, norm, observe, ourCopies, readHistory, readThread, slugOf, topCard } from "./linkedin_guard_dom.mjs";
+import { chatWith, closeChats, degreeOf, identityProblem, labelledAll, linkHeal, nameProblem, norm, observe, ourCopies, readHistory, readThread, slugOf, topCard } from "./linkedin_guard_dom.mjs";
 
 let chromium;
 try { ({ chromium } = await import("playwright")); }
@@ -476,25 +477,8 @@ async function lookupStep(page, ctl) {
   return { acted: "lookup" };
 }
 
-// The messaging list (linkedin.com/messaging/): each conversation's name and last-message preview. A preview that
-// starts "You:" is ours; anything else is theirs. Group conversations (several names) are left out. When the row links to the
-// person's profile the link goes along, so the portal can tell two people of the same name apart.
-async function readInbox(page) {
-  try {
-    await page.goto(LINKEDIN + "/messaging/", { waitUntil: "domcontentloaded" }); await sleep(SETTLE);
-  } catch (e) {                         // the list did not load: try again next time, never stop the agent over a read
-    log("could not open the messaging list:", String(e.message || e).split("\n")[0]);
-    return [];
-  }
-  await checkTrouble(page);             // a login wall or security check here still stops it, as anywhere else
-  return page.evaluate(() => [...document.querySelectorAll(".msg-conversation-listitem, .msg-conversation-card")].slice(0, 40).map((li) => {
-    const name = (li.querySelector(".msg-conversation-listitem__participant-names, .msg-conversation-card__participant-names")?.textContent || "").trim();
-    const snip = (li.querySelector(".msg-conversation-card__message-snippet, .msg-conversation-listitem__message-snippet")?.textContent || "").trim();
-    const ours = /^you\s*:/i.test(snip);
-    const link = li.querySelector('a[href*="/in/"]');
-    return { name, text: snip.replace(/^[^:]{1,60}:\s*/, ""), from_them: !!name && !ours, profile_url: link ? "https://www.linkedin.com" + new URL(link.href).pathname : "" };
-  }).filter((i) => i.name && !i.name.includes(","))).catch(() => []);
-}
+// The messaging list (tools/linkedin_agent_inbox.mjs): rows from them, with the profile link when it can be read safely.
+const readInbox = (page, watching) => readInboxList(page, { linkedin: LINKEDIN, settle: SETTLE, log, checkTrouble, watching });
 
 // Open Profile: not a 1st-degree connection, yet LinkedIn shows a (free) Message button (Premium members who allow free messages).
 // Only called on a page that is confirmed to be the lead's, and never in a dry run.
@@ -507,6 +491,17 @@ async function reportProfile(page, leadId, state, name) {
   const open = !!msgBtn && !inmail && !!degree;
   await api(`/api/extension/leads/${leadId}/profile`, "POST", { open_profile: open, degree }).catch((e) => log("could not report profile:", e.message));
   if (open) log("Open Profile: can be messaged without connecting");
+}
+
+// The page shows the lead's exact name at another address (member id replaced by a vanity link, or a renamed slug): tell the portal
+// what was seen; it rewrites the lead's link only when that is provably the same person. Nothing is clicked. true = healed.
+async function healLink(page, item) {
+  if (DRY) return false;
+  const seen = await linkHeal(page, item).catch(() => null);
+  if (!seen) return false;
+  const out = await api(`/api/extension/leads/${item.lead_id}/profile`, "POST", seen).catch((e) => { log("could not report the link:", e.message); return null; });
+  if (out && out.healed) { log(`link of ${item.name} updated to ${out.url} (same person: page name matched); acted on next round`); return true; }
+  return false;
 }
 
 const POPUP = { at: 0 };                  // a second browser tab opened by the page (closed at once)
@@ -538,7 +533,8 @@ async function oneCycle(page, state) {
     try { drawn = await openProfile(page, toLocal(w.profile_url)); } catch (e) { if (e instanceof Fatal) throw e; log(`could not open ${w.name}'s profile (${String(e.message || e).split("\n")[0].slice(0, 100)}); looking again later`); continue; }
     if (!drawn) { log(`${w.name}'s profile did not finish loading; acceptance not checked this time`); state.checked[w.lead_id] = Date.now() - 5 * 3600 * 1000; continue; }
     const who = await identityProblem(page, { name: w.name, profile_url: w.profile_url });   // "1st" on somebody else's page is not their acceptance
-    if (who) { await skipNote(state, w, `acceptance not checked: ${who}`); continue; }
+    if (who) { if (/another address/.test(who) && await healLink(page, { name: w.name, lead_id: w.lead_id, profile_url: w.profile_url })) { state.checked[w.lead_id] = Date.now() - 5 * 3600 * 1000; continue; }
+      await skipNote(state, w, `acceptance not checked: ${who}`); continue; }
     if (!DRY) await reportProfile(page, w.lead_id, state, w.name);
     if ((await degreeOf(page)) === "1st" && !DRY) {
       await api(`/api/extension/leads/${w.lead_id}/accepted`, "POST");
@@ -549,7 +545,7 @@ async function oneCycle(page, state) {
   // 2. replies: read the messaging list every 20 minutes (a read, no caps), so a reply between steps is seen the same day.
   if (ctl.check_replies && !DRY && Date.now() - (state.inboxAt || 0) > 20 * 60 * 1000) {
     state.inboxAt = Date.now();
-    const items = await readInbox(page);
+    const items = await readInbox(page, queue.reply_watch || []);
     if (items.length) {
       const got = await api("/api/extension/inbox", "POST", { items }).catch((e) => { log("could not report the inbox:", e.message); return { replied: [] }; });
       for (const r of got.replied || []) log(`reply from ${r.name} (sequence stopped)`);
@@ -580,6 +576,7 @@ async function oneCycle(page, state) {
     catch (e) { if (e instanceof Fatal) throw e; await stopHere(`the profile page did not load (${String(e.message || e).split("\n")[0].slice(0, 100)}); nothing was done`); continue; }
     if (!drawn) { await stopHere("the profile page did not finish loading; nothing was done"); continue; }
     const who = await identityProblem(page, item);
+    if (who && /another address/.test(who) && await healLink(page, item)) { await skipNote(state, item, "the saved LinkedIn link was replaced by the address LinkedIn shows (same name); sent next round"); continue; }
     if (who) { await stopHere(`${who}; nothing was done`, "skip"); continue; }
     if (!DRY) await reportProfile(page, item.lead_id, state, item.name);       // a dry run writes nothing, not even the profile report
     const ctx = { clicked: false, proof: null, openProfile: !!info.open_profile };
