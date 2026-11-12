@@ -177,7 +177,7 @@ def test_no_match_for_other_sites_or_unknown_people(tmp_path):
 def test_match_by_name_and_company_fallback(tmp_path):
     c, owner, lid, other = make(tmp_path)
     p = pair(c, owner)
-    assert match(c, p["token"], profile_url="https://www.linkedin.com/in/unknown-slug", name="ravi  KUMAR", company="Acme").json()["lead_id"] == lid
+    assert match(c, p["token"], profile_url="https://www.linkedin.com/in/ACwAABunknownid", name="ravi  KUMAR", company="Acme").json()["lead_id"] == lid
     assert match(c, p["token"], name="Meera Rao", company="Globex Limited").json()["lead_id"] == other
     assert match(c, p["token"], name="Ravi Kumar").json()["matched"] is False              # name alone never matches
     assert match(c, p["token"], name="Ravi Kumar", company="Other Co").json()["matched"] is False
@@ -321,7 +321,7 @@ def test_queue_lists_due_steps_with_verified_links(tmp_path):
     q = c.get("/api/extension/queue", headers=bearer(pair(c, owner)["token"])).json()
     by = {d["lead_id"]: d for d in q["due"]}
     assert by[lid]["profile_url"] == URL and by[lid]["step"] == 1 and by[lid]["kind"] == "connect"
-    assert by[other]["profile_url"] == ""                    # a non-http(s) link is never offered
+    assert other not in by or by[other]["profile_url"] == ""      # a non-http(s) link is never offered (and a link changed after the start is not queued at all)
     assert "message" not in by[lid]
 
 

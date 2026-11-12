@@ -205,10 +205,16 @@ def pretty_name(slug: str) -> str:
     return " ".join(w.capitalize() for w in re.split(r"[-_.]+", slug) if w)
 
 
+def _person_link(raw) -> str:
+    """Only a LinkedIn person profile (/in/name) is kept as the person's link; company, search and sales links are dropped."""
+    from ..standardise import linkedin_url
+    return linkedin_url(raw, "in") if "linkedin.com" in str(raw or "").lower() else safe_http_url(raw)
+
+
 def person(source: str, email="", phone="", name="", title="", linkedin_url="", confidence=None, verified=None, source_url="") -> dict:
     mail = normalise_email(email)
     return {"email": mail or "", "phone": normalise_phone(phone) or "", "name": str(name or "").strip(), "title": str(title or "").strip(),
-            "linkedin_url": safe_http_url(linkedin_url), "confidence": confidence, "verified": verified,
+            "linkedin_url": _person_link(linkedin_url), "confidence": confidence, "verified": verified,
             "source": source, "source_url": source_url or source}
 
 

@@ -7,7 +7,7 @@ from typing import Optional
 from urllib.parse import unquote
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import linkedin_agent as agent, linkedin_scope as scope
 
@@ -26,7 +26,9 @@ class ConfigBody(BaseModel):
     auto_start: Optional[bool] = None
     find_profiles: Optional[bool] = None
     lookups_per_day: Optional[int] = None
+    days: Optional[list[int]] = None
     resume_account: Optional[str] = None
+    pause_account: Optional[str] = None
     merge_from: Optional[str] = None
     merge_into: Optional[str] = None
 
@@ -38,6 +40,14 @@ class EventBody(BaseModel):
     state: str = ""
     fatal: bool = False
     verified: Optional[bool] = None
+    step: Optional[int] = None
+    dry: bool = False
+    # what the agent saw at the moment of the action (optional; see app/linkedin_send.py)
+    observed_name: str = Field(default="", max_length=200)
+    observed_url: str = Field(default="", max_length=500)
+    chat_title: str = Field(default="", max_length=200)
+    page_title: str = Field(default="", max_length=300)
+    text_sent: str = Field(default="", max_length=2000)
 
 
 class KillBody(BaseModel):
@@ -97,11 +107,17 @@ def make_router(store, notify_sender=None) -> APIRouter:
                 agent.resume(store, body.resume_account)
                 audit.record(store, user, "linkedin_agent.resume", agent.norm_account(body.resume_account),
                              f"LinkedIn account resumed ({scope.name_of(store, owner)})", stamp)
+            if body.pause_account:
+                if not agent.resume_allowed(store, body.pause_account, owner):
+                    raise ValueError(f"No LinkedIn account {agent.norm_account(body.pause_account)} in this account.")
+                agent.pause(store, body.pause_account, f"paused by {user.get('email') or user.get('name') or 'a person'}")
+                audit.record(store, user, "linkedin_agent.pause", agent.norm_account(body.pause_account),
+                             f"LinkedIn account paused by hand ({scope.name_of(store, owner)})", stamp)
             if body.merge_from or body.merge_into:
                 agent.merge(store, body.merge_from or "", body.merge_into or "", owner)
                 audit.record(store, user, "linkedin_agent.merge", agent.norm_account(body.merge_into or ""),
                              f"{agent.norm_account(body.merge_from or '')} merged into it", stamp)
-            asked = body.model_dump(exclude={"resume_account", "merge_from", "merge_into"})
+            asked = body.model_dump(exclude={"resume_account", "pause_account", "merge_from", "merge_into"})
             after = agent.save_config(store, asked, owner)
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from None
@@ -130,6 +146,27 @@ def make_router(store, notify_sender=None) -> APIRouter:
         audit.record(store, user, "linkedin_agent.kill_on" if body.on else "linkedin_agent.kill_off", "every LinkedIn agent",
                      "platform-wide stop switched " + ("on" if body.on else "off"), {"account_id": "mcn"})
         return view(user, scope.target(store, user, request.query_params.get("account", ""), allow_all=True))
+
+    # ----- why was nothing sent to this person? (owners and admins) -----
+    @router.get("/api/linkedin-agent/lead/{lead_id}/why")
+    def why(lead_id: str, request: Request):
+        from . import lead_access, linkedin_why, workspaces
+        user = user_of(request)
+        if not scope.may_manage(user):
+            raise HTTPException(403, "Only an owner or an admin can see this.")
+        lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+        if lead is None or not workspaces.visible(lead) or not lead_access.can_see(store, user, lead):
+            raise HTTPException(404, "Lead not found")
+        return {"lead_id": lead_id, "reasons": linkedin_why.reasons(store, lead), "sends": (lead.get("linkedin_sends") or [])[-20:]}
+
+    @router.get("/api/linkedin-agent/stuck")
+    def stuck(request: Request):
+        from . import lead_access, linkedin_why, workspaces
+        user = user_of(request)
+        if not scope.may_manage(user):
+            raise HTTPException(403, "Only an owner or an admin can see this.")
+        leads = [l for l in store.read("leads") if workspaces.visible(l) and lead_access.can_see(store, user, l)]
+        return {"stuck": linkedin_why.stuck(store, leads)}
 
     # ----- the agent program (pairing token; see extension_api.ALLOWED) -----
     def agent_slug(request: Request) -> tuple:

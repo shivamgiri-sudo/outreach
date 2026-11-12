@@ -83,7 +83,7 @@ def _do_not_contact(store, lead: dict) -> str:
 
 
 def _match(store, url: str, name: str, company: str) -> Optional[dict]:
-    lead = ext.find_lead(store, url, name, company)
+    lead = ext.find_lead(store, url, name, company, check_name=False)      # the saved link is authoritative here
     if lead is None:
         return None
     theirs = ext.profile_slug(lead.get("linkedin_url", ""))

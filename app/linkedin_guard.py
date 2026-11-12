@@ -14,6 +14,7 @@ MAX_TRIES = 2
 WINDOW = timedelta(hours=24)
 CHECK_EVERY = timedelta(hours=6)
 KEY, CHECKED = "linkedin_attempts", "linkedin_checked_at"
+LEASE = timedelta(minutes=10)           # one agent window works on one person at a time (X-Agent-Instance)
 
 
 def _now() -> datetime:
@@ -69,8 +70,19 @@ def count_try(store, lead_id: str, now: Optional[datetime] = None) -> None:
     store.update_lead(lead_id, lambda l: {**l, KEY: [t.isoformat(timespec="seconds") for t in _recent(l, now)] + [now.isoformat(timespec="seconds")]})
 
 
+def lease_busy(lead: dict, instance: str, now: Optional[datetime] = None) -> bool:
+    """Another agent window (a different instance id) holds this person's lease and it is not older than LEASE."""
+    lease = lead.get("linkedin_lease") or {}
+    try:
+        age = (now or _now()) - datetime.fromisoformat(lease.get("at") or "")
+    except (TypeError, ValueError):
+        return False
+    return bool(instance) and lease.get("inst") not in (None, "", instance) and age < LEASE
+
+
 def clear(store, lead_id: str) -> None:
-    store.update_lead(lead_id, lambda l: {**l, KEY: [], "linkedin_held_logged": None} if l.get(KEY) else None)
+    """A step sent / accepted / replied: the attempts and the lease are dropped."""
+    store.update_lead(lead_id, lambda l: {**l, KEY: [], "linkedin_held_logged": None, "linkedin_lease": None} if (l.get(KEY) or l.get("linkedin_lease")) else None)
 
 
 def check_due(lead: dict, now: Optional[datetime] = None) -> bool:

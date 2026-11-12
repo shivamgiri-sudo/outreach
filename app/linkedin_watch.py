@@ -31,7 +31,10 @@ def summary(store, now: datetime, owner: Optional[str] = MCN) -> dict:
     since = agent._day_start(now)
     rows = [r for r in agent.log_rows(store, owner) if datetime.fromisoformat(r["at"]) >= since]
     sent = [r for r in rows if r.get("kind") in ("connect", "message")]
-    queued = sum(1 for l in _owner_leads(store, owner) if l["linkedin_seq"].get("status") == "waiting_to_connect")
+    due_ids = {t.get("lead_id") for t in store.read("tasks") if t.get("kind") == "linkedin" and t.get("status", "open") == "open"
+               and (not t.get("due_at") or datetime.fromisoformat(t["due_at"]) <= now)}
+    queued = sum(1 for l in _owner_leads(store, owner) if l["linkedin_seq"].get("status") == "waiting_to_connect"
+                 or (l["linkedin_seq"].get("status") == "messaging" and l["id"] in due_ids))         # a due message step waits too
     settings = store.read("settings")
     acct = owner or MCN
     seen = (settings.get(agent.SETTINGS_SEEN) or {}) if acct == MCN else ((settings.get(agent.SETTINGS_SEEN_BY) or {}).get(acct) or {})
@@ -45,7 +48,7 @@ def summary(store, now: datetime, owner: Optional[str] = MCN) -> dict:
 
 
 def _owners(store) -> list:
-    rows = store.read("settings").get("linkedin_log") or []
+    rows = store.read("settings").get(agent.SETTINGS_LOG) or []
     return sorted({r.get("account_id") or MCN for r in rows} | {MCN})
 
 
@@ -88,7 +91,9 @@ def tick(store, now: datetime) -> dict:
         seen = datetime.fromisoformat(s["last_seen"]) if s["last_seen"] else None
         gone = seen is None or now - seen > OFFLINE_AFTER
         last_off = datetime.fromisoformat(st["offline_at"]) if st.get("offline_at") else None
-        if s["queued"] and gone and (last_off is None or now - last_off >= OFFLINE_REPEAT):
+        ctl = agent.control(store, now, owner=owner)           # no alert while the owner switched it off, outside hours, or paused
+        expected_up = s["enabled"] and ctl["active_now"] and not ctl["killed"]
+        if s["queued"] and gone and expected_up and (last_off is None or now - last_off >= OFFLINE_REPEAT):
             _tell(store, owner, "LinkedIn agent is not running",
                   f"{s['queued']} people are waiting to be sent a connection request, but the LinkedIn agent has not been seen "
                   f"{'for ' + str(int((now - seen).total_seconds() // 60)) + ' minutes' if seen else 'at all'}. Nothing is sent until it runs: "

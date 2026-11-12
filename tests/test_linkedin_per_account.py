@@ -123,6 +123,8 @@ def test_queue_and_claim_never_cross_accounts(rig):
     ta = c.post("/api/extension/pair", json={"label": "mcn laptop"}, headers=bearer(rig["ho"])).json()["token"]
     hb = bearer(tb, **{"X-LinkedIn-Account": "bravo-li"})
     ha = bearer(ta, **{"X-LinkedIn-Account": "mcn-li"})
+    for owner_id in (b, "mcn"):                   # claim re-checks the switch and hours
+        agent.save_config(store, {"enabled": True, "weekdays_only": False, "start_hour": 0, "end_hour": 24, "gap_minutes": 3}, owner_id)
     assert [d["lead_id"] for d in c.get("/api/extension/queue", headers=hb).json()["due"]] == [rig["b_lead"]]
     assert [d["lead_id"] for d in c.get("/api/extension/queue", headers=ha).json()["due"]] == [rig["a_lead"]]   # even an owner's token
     assert c.post(f"/api/extension/leads/{rig['a_lead']}/claim", headers=hb).status_code == 404

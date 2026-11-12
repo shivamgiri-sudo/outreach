@@ -111,7 +111,10 @@ def test_linkedin_queue_shows_only_own(r):
 
 # ---- extension (paired Chrome assistant / LinkedIn agent)
 def pair(r, who):
-    return {"Authorization": "Bearer " + r.c.post("/api/extension/pair", json={"label": "t"}, headers=r.h[who]).json()["token"]}
+    from app import linkedin_agent
+    linkedin_agent.save_config(r.store, {"enabled": True, "weekdays_only": False, "start_hour": 0, "end_hour": 24, "gap_minutes": 3})      # claim re-checks the switch and hours and needs the LinkedIn account
+    return {"Authorization": "Bearer " + r.c.post("/api/extension/pair", json={"label": "t"}, headers=r.h[who]).json()["token"],
+            "X-LinkedIn-Account": "li-tool"}
 
 
 def test_extension_paths(r):

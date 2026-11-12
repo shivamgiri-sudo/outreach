@@ -24,7 +24,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Optional
 
-from . import linkedin_scope as scope, linkedin_seq as li
+from . import linkedin_log as log_mod, linkedin_scope as scope, linkedin_seq as li
 from .accounts import MCN
 from .activities import iso, now_utc
 from .reminders import notify
@@ -45,9 +45,10 @@ def _mine(rows: list, account: str, owner: str = MCN) -> list:
 
 
 SETTINGS_SEEN_BY = "linkedin_agent_seen_by_account"
-MAX_LOG = 400
-DEFAULTS = {"enabled": False, "weekly_connections": 80, "daily_messages": 25, "start_hour": 9, "end_hour": 18,
-            "weekdays_only": True, "gap_minutes": 6, "check_replies": True,
+MAX_LOG = log_mod.MAX_LOG
+DEFAULTS = {"enabled": False, "weekly_connections": 80, "daily_messages": 25, "start_hour": 10, "end_hour": 19,
+            "weekdays_only": False, "days": [0, 1, 2, 3, 4, 5],      # Mon-Sat 10:00-19:00 IST unless the owner saved something else
+            "gap_minutes": 6, "check_replies": True,
             "connect_without_note": False,     # free accounts run out of connection notes each month
             "find_profiles": True,             # a lead without a LinkedIn link gets its profile looked up (app/linkedin_finder.py)
             "lookups_per_day": 15}
@@ -55,7 +56,7 @@ CLIENT_DEFAULTS = {"daily_connections": li.DEFAULT_DAILY_CONNECTIONS, "auto_star
 BOOLS = ("enabled", "weekdays_only", "check_replies", "connect_without_note", "auto_start", "find_profiles")
 LIMITS = {"daily_connections": (1, 40), "weekly_connections": (1, 100), "daily_messages": (0, 100), "lookups_per_day": (0, 40), "start_hour": (0, 23), "end_hour": (1, 24), "gap_minutes": (3, 60)}
 ACTION_KINDS = ("connect", "message", "lookup")     # a profile lookup shares the gap between actions
-KINDS = ("connect", "message", "lookup", "accepted", "replied", "error", "paused", "started", "auto_start")
+KINDS = ("connect", "message", "lookup", "accepted", "replied", "error", "paused", "started", "auto_start", "skip", "dry")
 
 
 def config(store, owner: str = MCN, clamped: bool = True) -> dict:
@@ -70,6 +71,8 @@ def config(store, owner: str = MCN, clamped: bool = True) -> dict:
     else:
         saved = scope.own_config(settings, owner)
         cfg = {**DEFAULTS, **CLIENT_DEFAULTS, **{k: v for k, v in saved.items() if k in DEFAULTS or k in CLIENT_DEFAULTS}}
+    if "days" not in saved:      # saved before "days" existed: the owner's own weekdays_only choice stays exactly as it was
+        cfg["days"] = ([0, 1, 2, 3, 4] if cfg["weekdays_only"] else [0, 1, 2, 3, 4, 5, 6]) if "weekdays_only" in saved else list(DEFAULTS["days"])
     return scope.clamp(cfg, scope.ceilings(store, owner)) if clamped else cfg
 
 
@@ -81,14 +84,23 @@ def save_config(store, changes: dict, owner: str = MCN) -> dict:
     for key, value in changes.items():
         if key not in keys or value is None:
             continue
-        if key in BOOLS:
+        if key == "days":
+            days = sorted({int(d) for d in value if 0 <= int(d) <= 6})
+            if not days:
+                raise ValueError("Pick at least one working day.")
+            clean[key] = days
+        elif key in BOOLS:
             clean[key] = bool(value)
+            if key == "weekdays_only" and "days" not in changes:       # the old checkbox still works: it sets the days
+                clean["days"] = [0, 1, 2, 3, 4] if value else [0, 1, 2, 3, 4, 5, 6]
         else:
             low, high = LIMITS[key]
             number = int(value)
             if not low <= number <= high:
                 raise ValueError(f"{key.replace('_', ' ')} must be between {low} and {high}.")
             clean[key] = number
+    if "days" in clean and "weekdays_only" not in clean:
+        clean["weekdays_only"] = clean["days"] == [0, 1, 2, 3, 4]
     merged = scope.clamp({**config(store, owner, clamped=False), **clean}, scope.ceilings(store, owner))
     if merged["end_hour"] <= merged["start_hour"]:
         raise ValueError("The end hour must be after the start hour.")
@@ -116,7 +128,7 @@ def _day_start(now: datetime) -> datetime:
 
 def counts(store, now: datetime, account: str = "", owner: str = MCN) -> dict:
     rows = _mine(log_rows(store), account, owner)
-    today, week = _day_start(now), _day_start(now) - timedelta(days=now.astimezone(IST).weekday())
+    today, week = _day_start(now), _day_start(now) - timedelta(days=6)        # LinkedIn's weekly limit is rolling, not Monday to Sunday
     return {"connect_today": _count(rows, "connect", today), "message_today": _count(rows, "message", today),
             "lookup_today": _count(rows, "lookup", today),
             "connect_week": _count(rows, "connect", week)}
@@ -144,7 +156,7 @@ def control(store, now: Optional[datetime] = None, account: str = "", owner: Opt
     owner = owner_of_slug(store, account, owner or MCN)
     cfg, rows = config(store, owner), _mine(log_rows(store), account, owner)
     local = now.astimezone(IST)
-    in_hours = cfg["start_hour"] <= local.hour < cfg["end_hour"] and (not cfg["weekdays_only"] or local.weekday() < 5)
+    in_hours = cfg["start_hour"] <= local.hour < cfg["end_hour"] and local.weekday() in cfg["days"] and (not cfg["weekdays_only"] or local.weekday() < 5)
     c = counts(store, now, account, owner)
     left_connect = max(0, min(cfg["daily_connections"] - c["connect_today"], cfg["weekly_connections"] - c["connect_week"]))
     left_message = max(0, cfg["daily_messages"] - c["message_today"])
@@ -160,7 +172,14 @@ def control(store, now: Optional[datetime] = None, account: str = "", owner: Opt
             "may_connect": active and left_connect > 0 and wait == 0, "may_message": active and left_message > 0 and wait == 0,
             "may_lookup": active and cfg["find_profiles"] and left_lookup > 0 and wait == 0, "lookups_left_today": left_lookup,
             "connections_left_today": left_connect, "messages_left_today": left_message, "check_replies": cfg["check_replies"], "allow_no_note": cfg["connect_without_note"],
-            "gap_minutes": cfg["gap_minutes"], "counts": c, "account": account, "killed": bool(killed)}
+            "gap_minutes": cfg["gap_minutes"], "counts": c, "account": account, "killed": bool(killed),
+            "dry": bool(_seen_of(store.read("settings"), owner, account).get("dry")), "days": cfg["days"]}
+
+
+def _seen_of(settings: dict, owner: str, account: str = "") -> dict:
+    if account and (settings.get(SETTINGS_ACCOUNTS) or {}).get(account):
+        return settings[SETTINGS_ACCOUNTS][account]
+    return (settings.get(SETTINGS_SEEN) or {}) if (owner or MCN) == MCN else ((settings.get(SETTINGS_SEEN_BY) or {}).get(owner) or {})
 
 
 def _stamp(owner: str) -> dict:
@@ -173,7 +192,7 @@ def note(store, kind: str, text: str, account: str = "", lead_id: str = "", now:
     owner = owner_of_slug(store, norm_account(account), owner)
     row = {"at": iso(now or now_utc()), "kind": kind, "lead_id": lead_id[:40], "note": text[:300], **({"account": norm_account(account)} if account else {}),
            **_stamp(owner)}
-    store.update("settings", lambda s: {**s, SETTINGS_LOG: [*(s.get(SETTINGS_LOG) or [])[-(MAX_LOG - 1):], row]})
+    store.update("settings", lambda s: {**s, SETTINGS_LOG: log_mod.append(s.get(SETTINGS_LOG) or [], row)})
 
 
 def _seen_update(s: dict, owner: str, seen: dict) -> dict:
@@ -191,36 +210,86 @@ def _slug_update(s: dict, account: str, owner: str, change: dict) -> dict:
 
 def record(store, event: dict, now: Optional[datetime] = None, notify_sender=None, owner: str = MCN) -> dict:
     """Keep what the agent did. A fatal error switches the agent off (or pauses its LinkedIn account) and tells the owner,
-    the account's admins and the super admins."""
+    the account's admins and the super admins. A connect / message row is the ONE counted row of that send (merged with the
+    row /sent wrote); observed fields on it are checked against the lead (app/linkedin_send.py)."""
+    from . import linkedin_send as send
     now = now or now_utc()
     kind = str(event.get("kind") or "")
     if kind not in KINDS:
         raise ValueError("Unknown event kind.")
     account = norm_account(event.get("account"))
     owner = owner_of_slug(store, account, owner)
+    dry = bool(event.get("dry")) or kind == "dry" or (kind == "started" and "dry-run" in str(event.get("note") or "").lower())
     row = {"at": iso(now), "kind": kind, "lead_id": str(event.get("lead_id") or "")[:40], "note": str(event.get("note") or "")[:300],
-           **({"account": account} if account else {}), **_stamp(owner),
-           **({"verified": bool(event["verified"])} if event.get("verified") is not None and kind in ("connect", "message") else {})}
-    seen = {"at": iso(now), "state": str(event.get("state") or kind)[:40]}
-    store.update("settings", lambda s: {**s, SETTINGS_LOG: [*(s.get(SETTINGS_LOG) or [])[-(MAX_LOG - 1):], row], **_seen_update(s, owner, seen),
-                                        **(_slug_update(s, account, owner, seen) if account else {})})
+           **({"account": account} if account else {}), **_stamp(owner), **({"fatal": True} if kind == "error" and event.get("fatal") else {}),
+           **({"verified": bool(event["verified"])} if event.get("verified") is not None and kind in ("connect", "message") else {}),
+           **({"step": int(event["step"])} if str(event.get("step") or "").isdigit() else {})}
+    state = "dry" if kind == "started" and dry else str(event.get("state") or kind)[:40]
+    seen = {"at": iso(now), "state": state, **({"dry": True} if dry and kind in ("started", "dry") else {})}
+
+    def seen_fn(s):
+        keep = {} if kind == "started" else {"dry": True} if _seen_of(s, owner, account).get("dry") else {}
+        mine = {**seen, **keep}
+        return {**_seen_update(s, owner, mine), **(_slug_update(s, account, owner, mine) if account else {})}
+    if kind == "skip" and _dup_skip(store, row, now):
+        return row
+    if kind in log_mod.SEND_KINDS and row["lead_id"] and not dry:
+        proof = send.clean_proof(event)
+        lead = send.lead_by_id(store, row["lead_id"])
+        row, _ = send.record_send_row(store, lead, kind, account, owner, proof, {k: row[k] for k in ("lead_id", "note", "verified", "step") if k in row},
+                                      now, _stamp(owner), seen_fn, sender=notify_sender)
+    else:
+        store.update("settings", lambda s: {**s, SETTINGS_LOG: log_mod.append(s.get(SETTINGS_LOG) or [], row), **seen_fn(s)})
+    _after_record(store, kind, event, row, account, owner, now, notify_sender)
+    return row
+
+
+def _dup_skip(store, row: dict, now: datetime) -> bool:
+    """The same "skipped this person, because ..." line within 6 hours is kept once."""
+    since = iso(now - timedelta(hours=6))
+    return any(r.get("kind") == "skip" and r.get("lead_id") == row["lead_id"] and r.get("note") == row["note"] and r["at"] >= since
+               for r in log_rows(store)[-120:])
+
+
+def _after_record(store, kind: str, event: dict, row: dict, account: str, owner: str, now: datetime, notify_sender) -> None:
+    from . import linkedin_send as send
+    if kind in ("connect", "message") and event.get("verified") is False:
+        send.tell_owner(store, owner, "LinkedIn send NOT confirmed", f"{row.get('note') or kind} ({account or 'agent'}): LinkedIn did not confirm it. "
+                        "Open the profile or chat and check.", f"unc:{account}", timedelta(minutes=15), row.get("lead_id", ""), now, notify_sender)
+    if kind in ("connect", "message") and account:
+        send.blind_streak(store, account, owner, now, notify_sender)
     if kind == "error" and event.get("fatal") and account:
-        store.update("settings", lambda s: {**s, SETTINGS_PAUSED: {**(s.get(SETTINGS_PAUSED) or {}), account: {"at": iso(now), "note": row["note"] or "checkpoint"}}})
+        pause(store, account, row["note"] or "checkpoint", now)
         if owner == MCN:
             who = store.read("settings").get("linkedin_owner") or "Sales team"
             notify(store, who, f"LinkedIn account {account} paused", f"The LinkedIn agent for {account} stopped itself: {row['note'] or 'LinkedIn showed a checkpoint'}. "
                    "Other LinkedIn accounts keep going. Open LinkedIn as that account, sort it out, then press Resume for it on the LinkedIn page.",
                    kind="linkedin", sender=notify_sender)
         scope.alert_paused(store, owner, account, row["note"])
-        return row
-    if kind == "error" and event.get("fatal"):
+    elif kind == "error" and event.get("fatal"):
         save_config(store, {"enabled": False}, owner)
         if owner == MCN:
             who = store.read("settings").get("linkedin_owner") or "Sales team"
             notify(store, who, "LinkedIn agent paused", f"The LinkedIn agent stopped itself: {row['note'] or 'LinkedIn showed a checkpoint'}. "
                    "Open LinkedIn yourself, sort it out, then switch the agent back on.", kind="linkedin", sender=notify_sender)
         scope.alert_paused(store, owner, "", row["note"])
-    return row
+    elif kind == "error":                                   # 3 failed actions in a row: the same pause as a fatal error
+        recent = [r for r in log_rows(store, owner)[-14:] if r.get("account", "") == account and r["kind"] in ("connect", "message", "error")]
+        streak = 0
+        for r in reversed(recent):
+            if r["kind"] != "error" or r.get("fatal"):
+                break
+            streak += 1
+        if streak == 3:
+            record(store, {"kind": "error", "fatal": True, "account": account, "note": f"3 failures in a row, last: {row['note'][:120]}"},
+                   now=now, notify_sender=notify_sender, owner=owner)
+
+
+def pause(store, account: str, note: str, now: Optional[datetime] = None, **extra) -> None:
+    """Pause ONE LinkedIn account until a person presses Resume (fatal error, wrong send, or the owner's own Pause button)."""
+    account = norm_account(account)
+    row = {"at": iso(now or now_utc()), "note": note[:300], **extra}
+    store.update("settings", lambda s: {**s, SETTINGS_PAUSED: {**(s.get(SETTINGS_PAUSED) or {}), account: row}})
 
 
 def heartbeat(store, state: str = "idle", now: Optional[datetime] = None, account: str = "", name: str = "", owner: str = MCN) -> None:
@@ -229,9 +298,8 @@ def heartbeat(store, state: str = "idle", now: Optional[datetime] = None, accoun
     now = now or now_utc()
     account = norm_account(account)
     owner = owner_of_slug(store, account, owner)
-    seen = {"at": iso(now), "state": str(state)[:40]}
-
     def apply(s):
+        seen = {"at": iso(now), "state": str(state)[:40], **({"dry": True} if _seen_of(s, owner, account).get("dry") else {})}   # a dry-run agent stays dry
         out = {**s, **_seen_update(s, owner, seen)}
         if account:
             out.update(_slug_update(s, account, owner, {**seen, **({"name": name[:80]} if name else {})}))
@@ -306,7 +374,7 @@ def status(store, now: Optional[datetime] = None, owner: Optional[str] = MCN) ->
     if seen.get("at"):
         online = (now - datetime.fromisoformat(seen["at"])).total_seconds() < 180
     return {"config": config(store, acct), "control": control(store, now, owner=acct), "online": online, "last_seen": seen.get("at"),
-            "state": seen.get("state", ""), "log": list(reversed(log_rows(store, owner)[-40:])), "accounts": accounts(store, now, owner),
+            "state": "dry" if seen.get("dry") else seen.get("state", ""), "dry": bool(seen.get("dry")), "log": list(reversed(log_rows(store, owner)[-40:])), "accounts": accounts(store, now, owner),
             "account_id": owner, "ceilings": scope.ceilings(store, acct), "kill": scope.kill_state(settings) or None,
             "today": _today(store, now, owner)}
 

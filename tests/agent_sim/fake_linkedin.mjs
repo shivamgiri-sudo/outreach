@@ -38,7 +38,7 @@ function inbox(acct) {
   const slugs = [...new Set([...state.messages.filter((x) => x.from === acct).map((x) => x.to), ...state.replies.filter((x) => x.acct === acct).map((x) => x.slug)])];
   const items = slugs.map((slug) => { const c = conversation(acct, slug); const last = c[c.length - 1]; const kind = slug.split("-")[0];
     const name = kind[0].toUpperCase() + kind.slice(1) + " Lead";
-    return `<li class="msg-conversation-listitem"><h3 class="msg-conversation-listitem__participant-names">${name}</h3>
+    return `<li class="msg-conversation-listitem"><a href="/in/${slug}">profile</a><h3 class="msg-conversation-listitem__participant-names">${name}</h3>
       <p class="msg-conversation-card__message-snippet">${last.ours ? "You: " : name.split(" ")[0] + ": "}${esc(last.text)}</p></li>`; });
   items.push(`<li class="msg-conversation-listitem"><h3 class="msg-conversation-listitem__participant-names">Kamal Other, Ravi Group</h3>
     <p class="msg-conversation-card__message-snippet">Kamal: hello all</p></li>`);
@@ -93,7 +93,11 @@ const bubble = (who, to, thread, closable) => {
   const list = document.createElement("ul"); list.className = "msg-s-message-list-content"; list.innerHTML = thread;
   const box = document.createElement("div"); box.setAttribute("role", "textbox"); box.contentEditable = "true"; box.style.minHeight = "40px"; box.style.border = "1px solid #999";
   const s = document.createElement("button"); s.textContent = "Send";
-  s.onclick = async () => { await post2(to, box.innerText); box.innerText = ""; };
+  s.onclick = async () => {        // like LinkedIn: the sent message shows up in the conversation as ours
+    const t = box.innerText; await post2(to, t); box.innerText = "";
+    const li = document.createElement("li"); li.className = "msg-s-message-list__event";
+    li.innerHTML = '<div class="msg-s-event-listitem"><p class="msg-s-event-listitem__body"></p></div>'; li.querySelector("p").textContent = t; list.append(li);
+  };
   b.append(h, list, box, s); document.body.append(b); return b;
 };
 const kindNow = ${JSON.stringify(kind)};

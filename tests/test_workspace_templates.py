@@ -139,6 +139,7 @@ def test_linkedin_steps_and_notes_per_workspace(tmp_path):
     assert "W1 note" in w1_task["text"]
     main_task = c.post(f"/api/leads/{leads['Acme']['id']}/linkedin/start", headers=ho).json()["task"]
     assert "W1" not in main_task["text"] and "came across your profile" in main_task["text"]
+    assert c.post(f"/api/leads/{leads['Gamma']['id']}/linkedin/sent", json={"step": 1}, headers=ha).status_code == 200      # the request goes out first
     assert c.post(f"/api/leads/{leads['Gamma']['id']}/linkedin/accepted", headers=ha).json()["next_task"]["text"] == "W1 message for Om about hiring."
     # queue: only the workspace's leads
     due = c.get("/api/linkedin/queue", headers=ha).json()["due"]

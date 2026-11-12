@@ -11,11 +11,18 @@ class PairBody(BaseModel):
 
 class SentBody(BaseModel):
     step: int = Field(ge=1, le=7)
+    # What the agent saw at the moment of the click (all optional: an older agent sends only the step = "not verified")
+    text_sent: str = Field(default="", max_length=2000)
+    observed_name: str = Field(default="", max_length=200)
+    observed_url: str = Field(default="", max_length=500)
+    chat_title: str = Field(default="", max_length=200)
+    page_title: str = Field(default="", max_length=300)
 
 
 class ProfileBody(BaseModel):
     open_profile: bool = False
     degree: str = Field(default="", max_length=4)
+    dry: bool = False                          # a dry-run agent only looked: nothing is written
 
 
 class ReplyBody(BaseModel):
@@ -26,6 +33,7 @@ class InboxItem(BaseModel):
     name: str = Field(default="", max_length=200)
     text: str = Field(default="", max_length=2000)
     from_them: bool = False
+    profile_url: str = Field(default="", max_length=500)       # the thread's profile link: a reply is matched by it, not by name alone
 
 
 class InboxBody(BaseModel):
@@ -52,7 +60,7 @@ class SaveProfileBody(BaseModel):
     location: str = Field(default="", max_length=extension_save.FIELD_MAX)
 
 
-def make_router(store) -> APIRouter:
+def make_router(store, notify_sender=None) -> APIRouter:
     router = APIRouter()
     save_limit = extension_save.HourlyLimit()
 
@@ -173,26 +181,33 @@ def make_router(store) -> APIRouter:
 
     @router.post("/api/extension/leads/{lead_id}/claim")
     def claim(lead_id: str, request: Request):
-        """Before an agent touches a person: the lead becomes this account's (atomically), unless another account has it."""
-        account = account_of(request)
+        """The last server call before an agent touches a person. It re-checks everything that may have changed since the
+        queue was fetched (pause / switch / platform stop / lead stopped / caps and gap) and takes a lease on the lead, so two
+        agent windows on one account cannot both act. The lead becomes this account's (atomically)."""
+        account, owner = account_of(request), owner_of(request)
+        if not account:
+            raise HTTPException(409, "The agent has not told the portal which LinkedIn account it is logged in to. Nothing is claimed.")
         lead = lead_or_404(lead_id)
         from . import lead_access
         lead_access.check_http(store, request, lead)      # lead ownership: never claim someone else's lead
         from . import linkedin_guard
         settings = store.read("settings")
-        holder = accts.assigned(lead, settings) if account else ""
+        holder = accts.assigned(lead, settings)
         if holder and holder != account:                   # another account's person: say so before anything else
             raise HTTPException(409, f"Another LinkedIn account ({holder}) is handling this person.")
+        ctl = agent_mod.control(store, account=account, owner=owner)
+        if not ctl["active_now"]:                          # paused / switched off / platform stop / outside hours, pressed after the queue fetch
+            raise HTTPException(409, ctl["why_not"] or "The agent may not act right now.")
+        info = ext.describe(store, lead, account)
+        if not info["can_send"]:                           # stopped, replied, not due, duplicate, wrong link, changed name ...
+            raise HTTPException(409, info["reason"] or "Nothing is due for this person.")
+        if not (ctl["may_connect"] if info["message"]["kind"] == "connect" else ctl["may_message"]):
+            raise HTTPException(409, "A daily or weekly limit, or the gap between actions, does not allow this right now.")
         from . import linkedin_dupes
-        dup = linkedin_dupes.duplicate_of(store, lead, account)  # never the same person twice from the same LinkedIn ID
-        if dup:
-            raise HTTPException(409, dup["reason"])
         held = linkedin_guard.refusal(store, lead_id, account)
         if held:
             raise HTTPException(409, f"This person was {held}.")
-        if not account:
-            linkedin_guard.count_try(store, lead_id)
-            return {"ok": True, "account": ""}
+        instance = request.headers.get("x-agent-instance", "")[:64]
         won = {}
 
         def apply(l):
@@ -201,6 +216,9 @@ def make_router(store) -> APIRouter:
             if holder and holder != account:
                 won["other"] = holder
                 return None
+            if linkedin_guard.lease_busy(l, instance):
+                won["busy"] = True
+                return None
             if seq and not seq.get("account"):           # re-check inside the lock: a sibling may have been taken meanwhile
                 again = linkedin_dupes.Index(store).of(l, account)
                 if again:
@@ -208,11 +226,14 @@ def make_router(store) -> APIRouter:
                     return None
             if not seq:
                 return None
+            lease = {"linkedin_lease": {"inst": instance, "at": li.iso(li.now_utc())}} if instance else {}
             if seq.get("account") == account:
-                return None
-            return {**l, "linkedin_seq": {**seq, "account": account}, "timeline": [*l["timeline"], {
+                return {**l, **lease} if lease else None
+            return {**l, **lease, "linkedin_seq": {**seq, "account": account}, "timeline": [*l["timeline"], {
                 "at": li.iso(li.now_utc()), "kind": "linkedin", "text": f"LinkedIn account {account} took this person"}]}
         store.update_lead(lead_id, apply)
+        if won.get("busy"):
+            raise HTTPException(409, "Another agent window is working on this person right now.")
         if won.get("dup"):
             raise HTTPException(409, won["dup"])
         if won.get("other"):
@@ -225,18 +246,28 @@ def make_router(store) -> APIRouter:
 
     @router.post("/api/extension/leads/{lead_id}/sent")
     def sent(lead_id: str, body: SentBody, request: Request):
-        from . import lead_access
-        lead_access.check_http(store, request, lead_or_404(lead_id))
-        info = ext.describe(store, lead_or_404(lead_id), account_of(request))
+        from . import lead_access, linkedin_guard, linkedin_send as send
+        lead = lead_or_404(lead_id)
+        lead_access.check_http(store, request, lead)
+        account, owner = account_of(request), owner_of(request)
+        info = ext.describe(store, lead, account)
         if not info["can_send"]:
             refuse(info)
         if info["message"]["step"] != body.step:
             refuse(info, f"The step to send now is {info['message']['step']}, not {body.step}.")
-        from . import linkedin_guard
+        kind, expected = info["message"]["kind"], info["message"]["text"]
+        proof = send.clean_proof(body)
+        now = li.now_utc()
+        row, verdict = send.record_send_row(store, lead, kind, account, owner, proof, {"lead_id": lead_id, "step": body.step,
+                                            "note": f"{kind} step {body.step} to {lead.get('contact_name') or '?'}"}, now,
+                                            agent_mod._stamp(owner), lambda s: agent_mod._seen_update(s, owner, {"at": li.iso(now), "state": kind}),
+                                            expected, notify_sender)
+        if verdict.get("mismatch"):                      # sent to / typed into another person: the account is paused, the lead stopped, NOT a step
+            raise HTTPException(409, f"Not recorded as sent: {verdict['mismatch_why']}. The LinkedIn account was paused and the owner alerted.")
         linkedin_guard.clear(store, lead_id)
-        li.mark_sent(store, lead_id, body.step, origin=_with_ai_note(store, lead_or_404(lead_id), body.step,
-                                                                     _agent_origin(store, lead_or_404(lead_id), body.step, account_of(request), request)))
-        return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id))}
+        li.mark_sent(store, lead_id, body.step, now=now, proof={**proof, **verdict, "account": account, "kind": kind} if (proof or account) else None,
+                     origin=_with_ai_note(store, lead, body.step, _agent_origin(store, lead, body.step, account, request)))
+        return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id)), "verified": not verdict.get("unverified", True)}
 
     @router.post("/api/extension/leads/{lead_id}/accepted")
     def accepted(lead_id: str, request: Request):
@@ -258,10 +289,22 @@ def make_router(store) -> APIRouter:
             store.update_lead(lead_id, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "account": account}})
         return {"ok": True, "match": ext.describe(store, lead_or_404(lead_id), account)}
 
+    def holder_check(lead: dict, request: Request) -> str:
+        """The agent's LinkedIn account must be the one handling this person; its client account may reach the lead."""
+        from . import lead_access
+        lead_access.check_http(store, request, lead)
+        account = account_of(request)
+        holder = ext.owner_of(lead, store.read("settings"))
+        if account and holder not in ("", account):
+            raise HTTPException(409, f"Another LinkedIn account ({holder}) is handling this person.")
+        return account
+
     @router.post("/api/extension/leads/{lead_id}/profile")
-    def profile(lead_id: str, body: ProfileBody):
+    def profile(lead_id: str, body: ProfileBody, request: Request):
         """What the agent saw on the profile: the connection degree and whether it is an Open Profile (message without connecting)."""
-        lead_or_404(lead_id)
+        holder_check(lead_or_404(lead_id), request)
+        if body.dry:
+            return {"ok": True, "dry": True}                  # a dry run looks only: nothing is written to the lead
         degree = body.degree if body.degree in ("1st", "2nd", "3rd") else ""
         stamp = li.iso(li.now_utc())
 
@@ -276,8 +319,9 @@ def make_router(store) -> APIRouter:
         return {"ok": True}
 
     @router.post("/api/extension/leads/{lead_id}/replied")
-    def replied(lead_id: str, body: ReplyBody):
+    def replied(lead_id: str, body: ReplyBody, request: Request):
         lead = lead_or_404(lead_id)
+        holder_check(lead, request)
         if not lead.get("linkedin_seq"):
             refuse(ext.describe(store, lead), "This person is not on the LinkedIn sequence.")
         li.mark_replied(store, lead_id, body.text.strip())

@@ -59,7 +59,9 @@ document.getElementById('send').onclick = () => {{
   rec({{kind:'invite', note: document.getElementById('note').value}});
   document.getElementById('dlg').style.display = 'none';
   document.getElementById('actions').innerHTML = '<button>Pending</button>';
+  localStorage.setItem('pending:' + location.pathname, '1');      // like LinkedIn: the profile shows Pending after a reload too
 }};
+if (localStorage.getItem('pending:' + location.pathname)) document.getElementById('actions').innerHTML = '<button>Pending</button>';
 const msg = document.querySelector('[aria-label^="Message"]');
 if (msg) msg.onclick = () => {{
   const bub = document.createElement('div'); bub.className = 'msg-overlay-conversation-bubble';

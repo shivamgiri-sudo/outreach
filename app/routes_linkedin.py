@@ -243,7 +243,7 @@ def make_router(store) -> APIRouter:
 
     @router.post("/api/leads/{lead_id}/linkedin/accepted")
     def accepted(lead_id: str):
-        return call(li.mark_accepted, lead_id)
+        return call(lambda st, lid: li.mark_accepted(st, lid, strict=True), lead_id)
 
     @router.post("/api/leads/{lead_id}/linkedin/replied")
     def replied(lead_id: str, body: ReplyBody):

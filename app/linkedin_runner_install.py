@@ -2,7 +2,7 @@
 
 The one-line commands embed only the portal's public address and the short-lived pairing code; the scripts
 (deploy/office-runner/install.ps1 and install.sh) are templates with __PORTAL__ and __CODE__. The bundle holds only the
-runner's own files: the agent, the runner, the cloud-login helper, the shared agent pool and the minimal Playwright
+runner's own files: the agent, the runner, the cloud-login helper, the page-guard helper, the shared agent pool and the minimal Playwright
 package (deploy/linkedin-runtime/package*.json)."""
 import io
 import os
@@ -18,6 +18,7 @@ BUNDLE = (                                       # (path inside the bundle, sour
     ("tools/linkedin_agent.mjs", ROOT / "tools" / "linkedin_agent.mjs"),
     ("tools/linkedin_runner.mjs", ROOT / "tools" / "linkedin_runner.mjs"),
     ("tools/linkedin_cloud_login.mjs", ROOT / "tools" / "linkedin_cloud_login.mjs"),
+    ("tools/linkedin_guard_dom.mjs", ROOT / "tools" / "linkedin_guard_dom.mjs"),
     ("tools/linkedin_agent_pool.mjs", ROOT / "tools" / "linkedin_agent_pool.mjs"),
     ("package.json", ROOT / "deploy" / "linkedin-runtime" / "package.json"),
     ("package-lock.json", ROOT / "deploy" / "linkedin-runtime" / "package-lock.json"),

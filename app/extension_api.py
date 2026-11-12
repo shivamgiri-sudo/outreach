@@ -171,21 +171,43 @@ def _words(text: str, company: bool = False) -> str:
     return " ".join(t.split())
 
 
-def find_lead(store, profile_url: str = "", name: str = "", company: str = "") -> Optional[dict]:
+def find_lead(store, profile_url: str = "", name: str = "", company: str = "", check_name: bool = True) -> Optional[dict]:
     from .accounts import same_account_as_new
     ours = same_account_as_new(store)                 # never another client company's lead
     leads = [l for l in store.read("leads") if ours(l)]
     slug = profile_slug(profile_url)
     if slug:
         hits = [l for l in leads if profile_slug(l.get("linkedin_url", "")) == slug]
+        if name and check_name:                   # the page shows a name: a lead with that URL but another name is another person
+            from .sequences import clean_first_name
+            same = [l for l in hits if _words(l.get("contact_name")) == _words(name) or
+                    (clean_first_name(l.get("contact_name")) and
+                     clean_first_name(l.get("contact_name")).lower() == clean_first_name(name).lower())]
+            if hits and not same:
+                return None                       # fail closed: the URL says one person, the page says another
+            hits = same or hits
+        hits.sort(key=lambda l: (not _live(l), l.get("created_at") or ""))
+        if len({l["id"] for l in hits}) > 1 and not _live(hits[0]):
+            return None                           # two leads share this link and none is running: never guess
         if hits:
             return hits[0]
     n, c = _words(name), _words(company, True)
     if n and c:
         hits = [l for l in leads if _words(l.get("contact_name")) == n and _words(l.get("company"), True) == c]
+        if slug and _vanity(slug):                # the page has a public slug: a lead with another public slug is another person
+            hits = [l for l in hits if not (_vanity(profile_slug(l.get("linkedin_url", ""))) and profile_slug(l.get("linkedin_url", "")) != slug)]
         if len(hits) == 1:
             return hits[0]                    # an ambiguous name + company never guesses
     return None
+
+
+def _vanity(slug: str) -> bool:
+    """A public vanity slug (not LinkedIn's internal ACw... / ACoA... member id)."""
+    return bool(slug) and not slug.lower().startswith(("acw", "acoa"))
+
+
+def _live(lead: dict) -> bool:
+    return (lead.get("linkedin_seq") or {}).get("status") in ("waiting_to_connect", "waiting_for_acceptance", "messaging")
 
 
 # ---------- what may be sent ----------
@@ -217,6 +239,9 @@ def describe(store, lead: dict, account: str = "") -> dict:
         out["actions"] = ["replied"] if seq else []
         return out
     from . import linkedin_dupes
+    if lead.get("linkedin_url") and not linkedin_dupes.profile_key(lead["linkedin_url"]):
+        out["reason"] = "The saved LinkedIn link is not a person profile (/in/...). Fix the link first."
+        return out
     dup = linkedin_dupes.duplicate_of(store, lead, account)
     if dup:                                        # the same person was already contacted through another lead
         out.update(reason=dup["reason"], duplicate=dup)
@@ -225,6 +250,9 @@ def describe(store, lead: dict, account: str = "") -> dict:
         out["reason"] = "Not on the LinkedIn sequence yet. Start it from the LinkedIn page in the app."
         return out
     status = seq.get("status")
+    if li.target_changed(lead):
+        out["reason"] = "The name or profile link changed after the sequence started. Stop the sequence and start it again."
+        return out
     holder = owner_of(lead, settings)
     if account and holder and holder != account:
         out["reason"] = f"Another LinkedIn account ({holder}) is handling this person; only that account messages them."
@@ -245,6 +273,8 @@ def describe(store, lead: dict, account: str = "") -> dict:
         return out
     task = _open_task(store, lead["id"])
     due = (task or {}).get("due_at")
+    if not due and seq.get("last_sent_at") and nxt["after"] == "previous":     # task closed by hand: the gap still holds
+        due = iso(datetime.fromisoformat(seq["last_sent_at"]) + timedelta(days=nxt["days"]))
     out["linkedin_seq"]["due"] = due
     last = seq.get("last_sent_at") or ""
     if last[:10] == iso(now)[:10]:
@@ -276,18 +306,20 @@ def queue(store, account: str = "") -> dict:
     settings = store.read("settings")
     leads = {l["id"]: l for l in store.read("leads")}
     from . import workspaces
+    from .linkedin_dupes import profile_key
     mine = lambda lead: (not account or owner_of(lead, settings) in ("", account)) and workspaces.visible(lead)
     due = []
     for d in q["due"]:
         lead = leads.get(d["lead_id"]) or {}
-        if lead.get("stage") in ("unsubscribed", "disqualified") or not mine(lead):
+        if lead.get("stage") in ("unsubscribed", "disqualified") or not mine(lead) or li.target_changed(lead):
             continue
         kind = next((s["kind"] for s in li.lead_steps(lead, settings) if s["n"] == d["step"]), None)
         due.append({"lead_id": d["lead_id"], "name": d["name"], "company": d["company"], "title": d["title"], "step": d["step"],
-                    "kind": kind, "due_at": d["due_at"], "profile_url": safe_http_url(d.get("linkedin_url"))})
+                    "kind": kind, "due_at": d["due_at"],
+                    "profile_url": safe_http_url(d.get("linkedin_url")) if profile_key(d.get("linkedin_url")) else ""})      # never a company / search link
     from . import linkedin_guard
     waiting = [{"lead_id": w["lead_id"], "name": w["name"], "company": w["company"], "since": w["since"],
-                "profile_url": safe_http_url(w.get("linkedin_url"))} for w in q["waiting_for_acceptance"]
+                "profile_url": safe_http_url(w.get("linkedin_url")) if profile_key(w.get("linkedin_url")) else ""} for w in q["waiting_for_acceptance"]
                if (leads.get(w["lead_id"]) or {}).get("stage") not in ("unsubscribed", "disqualified") and mine(leads.get(w["lead_id"]) or {})
                and (not account or linkedin_guard.check_due(leads.get(w["lead_id"]) or {}))]
     if account:                                  # an agent: each profile looked at once per 6 hours, whatever restarts it

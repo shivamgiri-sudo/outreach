@@ -59,7 +59,7 @@ def test_a_lead_belongs_to_the_first_account_that_claims_it(tmp_path):
 
 def test_an_agent_without_an_account_works_as_before(tmp_path):
     c, owner, store, acme, tok = rig(tmp_path)
-    assert c.post(f"/api/extension/leads/{acme}/claim", headers=bearer(tok)).json() == {"ok": True, "account": ""}
+    assert c.post(f"/api/extension/leads/{acme}/claim", headers=bearer(tok)).status_code == 409      # claim needs the LinkedIn account header (per-account pause, caps, lease)
     assert c.post(f"/api/extension/leads/{acme}/sent", json={"step": 1}, headers=bearer(tok)).status_code == 200
     agent.record(store, {"kind": "error", "fatal": True, "note": "checkpoint"}, now=TUE_11)
     assert agent.config(store)["enabled"] is False

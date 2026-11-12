@@ -281,6 +281,9 @@ def make_router(store) -> APIRouter:
         store.update("leads", apply)
         if result.get("missing"):
             raise HTTPException(404, "Lead not found: " + ", ".join(result["missing"]))
+        from .linkedin_seq import _close_linkedin_tasks
+        for old_id in ids:                       # a merged-away lead's open LinkedIn step must not land on the kept lead's own sequence
+            _close_linkedin_tasks(store, old_id, "lead merged into another")
         moved = {}
         for key in REPOINTED:
             count = {"n": 0}

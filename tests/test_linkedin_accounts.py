@@ -28,6 +28,7 @@ def rig(tmp_path):
     store = c.app.state.store
     for acct, name in (("acct-a", "Asha"), ("acct-b", "Bala")):
         agent.heartbeat(store, "idle", account=acct, name=name)
+    agent.save_config(store, {"enabled": True, "weekdays_only": False, "start_hour": 0, "end_hour": 24, "gap_minutes": 3})      # claim re-checks the switch and hours
     store.update("settings", lambda s: {**s, "team": [{"name": "Priya"}, {"name": "Karan"}]})
     ids = {l["company"]: l["id"] for l in store.read("leads")}
     tok = c.post("/api/extension/pair", json={"label": "agent"}, headers=owner).json()["token"]

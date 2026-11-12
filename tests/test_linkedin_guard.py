@@ -16,6 +16,7 @@ def make(tmp_path):
     store = c.app.state.store
     lid = store.read("leads")[0]["id"]
     li.start(store, lid)
+    agent.save_config(store, {"enabled": True, "weekdays_only": False, "start_hour": 0, "end_hour": 24, "gap_minutes": 3})      # claim re-checks the switch and hours
     tok = c.post("/api/extension/pair", json={"label": "agent"}).json()["token"]
     return c, store, lid, {"Authorization": f"Bearer {tok}", "X-LinkedIn-Account": "acct-a"}
 

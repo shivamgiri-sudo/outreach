@@ -1,5 +1,6 @@
 """Email sequence: templates, variable cleaning, due-step logic, business-hours rule, delivery."""
 import re
+import unicodedata
 from datetime import datetime, timedelta, timezone
 
 from .template_vars import custom_variables, is_custom_placeholder
@@ -126,12 +127,17 @@ def clean_company(name) -> str:
 def clean_first_name(contact_name) -> str:
     """First name without honorifics, title-cased. Empty when it is not a real name."""
     raw = str(contact_name or "")
+    head = raw.strip().strip(",").split(",", 1)
+    if len(head) == 2 and len(head[0].split()) == 1 and head[1].split():
+        after = head[1].split()[0].strip(".,;:")           # "Sharma, Rahul" is "Last, First"; "Ravi, MBA" is a credential
+        if after and not after.isupper() and not re.search(r"[\d@]", after) and len(after) >= 2:
+            raw = head[1]
     words = [w.strip(".,;:") for w in re.split(r"\s+" if "@" in raw else r"[\s.]+", raw)]   # "Dr.MEENA" too
     words = [w for w in words if w and w.lower() not in _HONORIFICS]
     if not words:
         return ""
     first = words[0]
-    if len(first) < 2 or re.search(r"[@\d{}]", first) or first.lower() in _GENERIC_NAMES:
+    if len(first) < 2 or re.search(r"[@\d{}]", first) or any(unicodedata.category(ch) in ("So", "Cs", "Cn") for ch in first) or first.lower() in _GENERIC_NAMES:
         return ""
     return _title_word(first)
 

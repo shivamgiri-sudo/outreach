@@ -609,7 +609,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_analytics_router(store))
     from .routes_funnel import make_router as make_funnel_router
     app.include_router(make_funnel_router(store))
-    app.include_router(make_extension_router(store))
+    app.include_router(make_extension_router(store, transactional_sender))
     app.include_router(make_compliance_router(store))
     app.include_router(make_channels_router(store, channel_transport or channel_request, smtp_factory, imap_factory, resolver,
                                             BASE_URL, _present, inbound_processor, delivery_processor, transactional_sender))

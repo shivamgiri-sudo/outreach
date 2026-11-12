@@ -38,7 +38,7 @@ def test_inbox_reply_stops_the_sequence_and_reaches_replies(tmp_path):
     for lid in ids.values():
         li.start(store, lid)
         li.mark_sent(store, lid, 1)
-    items = [{"name": "Anil Shah", "text": "Happy to talk next week", "from_them": True},
+    items = [{"name": "Anil Shah", "text": "Happy to talk next week", "from_them": True, "profile_url": "https://www.linkedin.com/in/anil-shah/"},
              {"name": "Ravi Kumar", "text": "Hi Ravi, came across…", "from_them": False},           # our own last message
              {"name": "Unknown Person", "text": "hello", "from_them": True}]
     found = li.match_inbox(store, "", items)

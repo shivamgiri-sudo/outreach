@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from .activities import add_task, caller_name, iso, now_utc
+from .linkedin_target import _name_key, match_inbox, target_changed, target_of  # noqa: F401  (identity binding: app/linkedin_target.py)
 from .sequences import clean_first_name
 
 DEFAULT_DAILY_CONNECTIONS = 12
@@ -213,7 +214,8 @@ def _schedule(store, lead: dict, step: dict, due: datetime, settings: dict) -> d
 
 def has_profile_link(lead: dict) -> bool:
     """The same test for "Suggested people" and for Start, so a suggested person can always be started."""
-    return bool(re.match(r"^https?://([a-z]+\.)?linkedin\.com/", lead.get("linkedin_url") or "", re.I))
+    from .linkedin_dupes import profile_key
+    return bool(profile_key(lead.get("linkedin_url") or ""))          # a person profile (/in/name), not a company / search / sales link
 
 
 def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = False, find: bool = False) -> dict:
@@ -242,7 +244,7 @@ def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = Fals
     from .linkedin_config import current
     cfg = current(settings)
     state = {"started_at": iso(now), "done": [], "status": "waiting_to_connect", "persona": persona(lead.get("title", ""), settings)[0],
-             "variant": pick_variant(lead_id), "steps_version": cfg.get("version", 1), **({"auto_started": True} if auto else {})}
+             "variant": pick_variant(lead_id), "target": target_of(lead), "steps_version": cfg.get("version", 1), **({"auto_started": True} if auto else {})}
     text = "Started LinkedIn sequence automatically (daily auto-start)" if auto else "Started LinkedIn sequence"
     saved = store.update_lead(lead_id, lambda l: None if l.get("linkedin_seq") else {
         **{k: v for k, v in l.items() if k not in ("linkedin_dup_of", "linkedin_dup_reason")}, "linkedin_seq": state, "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin", "text": text, **({"auto": True} if auto else {})}]})
@@ -250,10 +252,13 @@ def start(store, lead_id: str, now: Optional[datetime] = None, auto: bool = Fals
     return {"lead": saved, "task": task}
 
 
-def mark_sent(store, lead_id: str, step_n: int, now: Optional[datetime] = None, origin: Optional[dict] = None) -> dict:
+def mark_sent(store, lead_id: str, step_n: int, now: Optional[datetime] = None, origin: Optional[dict] = None,
+              proof: Optional[dict] = None) -> dict:
     """The person sent step n on LinkedIn. Schedule the next one (message steps wait for the connection).
 
-    `origin` (app/provenance.py) says who: a person marking it sent, or the LinkedIn agent; it goes on the timeline line."""
+    `origin` (app/provenance.py) says who: a person marking it sent, or the LinkedIn agent; it goes on the timeline line.
+    `proof` (the agent's observed name / url / chat title / text sent, and the verdict) is kept on the timeline and in
+    lead["linkedin_sends"]. A step already recorded is a no-op; any other step than the next one is refused."""
     now = now or now_utc()
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None or not lead.get("linkedin_seq"):
@@ -262,6 +267,15 @@ def mark_sent(store, lead_id: str, step_n: int, now: Optional[datetime] = None, 
     state = lead["linkedin_seq"]
     if state.get("status") in ("stopped", "finished") or lead.get("stage") in CLOSED:
         raise ValueError("The LinkedIn sequence for this lead has ended.")
+    if step_n in (state.get("done") or []):
+        return {"lead": lead, "next_task": None, "duplicate": True}
+    if target_changed(lead):
+        raise ValueError("The name or profile link changed after the sequence started. Stop and restart the sequence.")
+    due_now = _next_step(state, settings)
+    if due_now is None or due_now["n"] != step_n:
+        raise ValueError(f"The step to send now is {due_now['n'] if due_now else 'none'}, not {step_n}.")
+    if due_now["kind"] == "message" and not state.get("accepted_at"):
+        raise ValueError("They have not accepted the connection request yet.")
     _close_linkedin_tasks(store, lead_id, f"Step {step_n} sent")
     done = sorted(set(state.get("done", [])) | {step_n})
     status = "waiting_for_acceptance" if step_n == 1 and not state.get("accepted_at") else "messaging"
@@ -269,10 +283,13 @@ def mark_sent(store, lead_id: str, step_n: int, now: Optional[datetime] = None, 
     nxt = _next_step(new_state, settings)
     if nxt is None:
         new_state["status"] = "finished"
+    sent = {"at": iso(now), "step": step_n, "to": lead.get("contact_name") or "", "target_url": lead.get("linkedin_url") or "", **(proof or {})}
+    flag = f" - MISMATCH: {sent.get('mismatch_why')}" if sent.get("mismatch") else " - not verified" if proof and sent.get("unverified") else ""
+    entry = {"at": iso(now), "kind": "linkedin", "text": f"LinkedIn step {step_n} sent" + (f" from {sent['account']}" if sent.get("account") else "") + flag,
+             **({"sent": sent, "alert": True} if proof and sent.get("mismatch") else {"sent": sent} if proof else {}), **_origin_fields(origin)}
     saved = store.update_lead(lead_id, lambda l: {**l, "linkedin_seq": new_state, "last_activity_at": iso(now),
-                                                  "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin",
-                                                                                "text": f"LinkedIn step {step_n} sent",
-                                                                                **_origin_fields(origin)}]})
+                                                  **({"linkedin_sends": [*(l.get("linkedin_sends") or []), sent]} if proof else {}),
+                                                  "timeline": [*l["timeline"], entry]})
     task = None
     if nxt and (nxt["after"] != "accepted" or new_state.get("accepted_at")) and status == "messaging":
         task = _schedule(store, saved, nxt, now + timedelta(days=nxt["days"]), settings)
@@ -286,8 +303,8 @@ def _origin_fields(origin: Optional[dict]) -> dict:
     return {"origin": origin, **({"by": actor} if actor else {})}
 
 
-def mark_accepted(store, lead_id: str, now: Optional[datetime] = None) -> dict:
-    """They accepted the connection: schedule the first message."""
+def mark_accepted(store, lead_id: str, now: Optional[datetime] = None, strict: bool = False) -> dict:
+    """They accepted the connection: schedule the first message. strict (the person's button): only while a request is pending."""
     now = now or now_utc()
     lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
     if lead is None or not lead.get("linkedin_seq"):
@@ -295,6 +312,10 @@ def mark_accepted(store, lead_id: str, now: Optional[datetime] = None) -> dict:
     settings = lead_settings(store.read("settings"), lead)
     if lead["linkedin_seq"].get("status") in ("stopped", "finished") or lead.get("stage") in CLOSED:
         raise ValueError("The LinkedIn sequence for this lead has ended.")
+    if strict and lead["linkedin_seq"].get("status") != "waiting_for_acceptance":
+        raise ValueError("This person is not waiting to accept a connection request.")
+    if strict and target_changed(lead):
+        raise ValueError("The name or profile link changed after the sequence started. Stop and restart the sequence.")
     state = {**lead["linkedin_seq"], "accepted_at": iso(now), "status": "messaging", "done": sorted(set(lead["linkedin_seq"].get("done", [])) | {1})}
     saved = store.update_lead(lead_id, lambda l: {**l, "linkedin_seq": state,
                                                   "timeline": [*l["timeline"], {"at": iso(now), "kind": "linkedin", "text": "Connection accepted"}]})
@@ -425,35 +446,3 @@ def auto_start(store, max_new: int, now: Optional[datetime] = None, user: Option
             continue
     return started
 
-
-_HONORIFIC = re.compile(r"^(mr|mrs|ms|miss|dr|prof|shri|smt|er|ca|adv)\.?\s+", re.I)
-
-
-def _name_key(name: str) -> str:
-    words = re.sub(r"[^a-z\s]", " ", _HONORIFIC.sub("", (name or "").strip()).lower()).split()
-    return " ".join([words[0], words[-1]]) if len(words) >= 2 else (words[0] if words else "")
-
-
-def match_inbox(store, account: str, items: list, now: Optional[datetime] = None) -> list:
-    """The agent read the LinkedIn messaging list: a conversation whose last message is from a person on the sequence
-    (owned by this account or by no account yet) is their reply. Matched on first + last name; a name shared by two
-    people on the sequence is left alone (a person checks it). Returns [{lead_id, name, text}] marked replied."""
-    from . import workspaces
-    now = now or now_utc()
-    active = [l for l in store.read("leads") if (l.get("linkedin_seq") or {}).get("status") in ("waiting_for_acceptance", "messaging")
-              and (l["linkedin_seq"].get("account") or "") in ("", account) and l.get("stage") not in CLOSED
-              and workspaces.visible(l)]                     # the agent's own client account only (its token's scope)
-    by_key = {}
-    for l in active:
-        by_key.setdefault(_name_key(l.get("contact_name")), []).append(l)
-    replied = []
-    for item in items:
-        if not item.get("from_them"):
-            continue
-        found = by_key.get(_name_key(item.get("name")), [])
-        if len(found) != 1 or any(r["lead_id"] == found[0]["id"] for r in replied):
-            continue
-        text = str(item.get("text") or "").strip()[:2000]
-        mark_replied(store, found[0]["id"], text, now)
-        replied.append({"lead_id": found[0]["id"], "name": found[0].get("contact_name") or "", "text": text})
-    return replied

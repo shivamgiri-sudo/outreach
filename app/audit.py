@@ -49,8 +49,7 @@ def _clean(field: str, raw) -> Optional[str]:
         tidy = linkedin_url(text, "in")
         if tidy:
             return tidy
-        if "linkedin.com/" not in text.lower():
-            raise EditRefused("That is not a LinkedIn profile link.")
+        raise EditRefused("That is not a LinkedIn profile link (linkedin.com/in/name).")
     if field == "website" and text:
         return text if "." in text else (_ for _ in ()).throw(EditRefused("That does not look like a website."))
     return text
@@ -85,7 +84,7 @@ def edit_contact(store, lead_id: str, changes: dict, actor: dict, reason: str = 
     twin = next((l for l in leads if l["id"] != lead_id and l.get("dedupe_key") == new_key and ours(l)), None)
     if twin:
         raise EditRefused(f"Another lead already has this ({twin.get('company') or twin.get('contact_name') or twin['id']}). Merge them instead.")
-    rows, stamp = [], now_iso()
+    rows, stamp, resets = [], now_iso(), []
 
     def apply(lead: dict):
         merged = {**lead}
@@ -109,10 +108,19 @@ def edit_contact(store, lead_id: str, changes: dict, actor: dict, reason: str = 
         lines = "; ".join(f"{EDITABLE[r['field']]}: {r['old'] or '(empty)'} → {r['new'] or '(empty)'}" for r in rows)
         why = f" Reason: {reason[:300]}" if reason else ""
         merged["timeline"] = [*lead["timeline"], {**event("edit", f"{actor['name']} edited {lines}.{why}"), "by": actor["name"]}]
+        if lead.get("linkedin_seq") and ("linkedin_url" in cleaned or "contact_name" in cleaned):
+            from .linkedin_target import on_identity_edit          # another person must not inherit "connected" / queued steps
+            reset = on_identity_edit(lead, merged)
+            if reset is not None:
+                merged = reset
+                resets.append(True)
         return merged
     saved = store.update_lead(lead_id, apply)
     if saved is None:
         raise LookupError("Lead not found")
+    if resets:
+        from .linkedin_seq import _close_linkedin_tasks
+        _close_linkedin_tasks(store, lead_id, "name or LinkedIn link edited")
     store.update("audit", lambda old: [*old, *rows][-MAX_AUDIT_ROWS:])
     return {"lead": saved, "changed": [r["field"] for r in rows]}
 

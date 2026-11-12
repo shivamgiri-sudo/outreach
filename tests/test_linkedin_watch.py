@@ -38,6 +38,7 @@ def test_alert_when_people_wait_and_the_agent_is_gone(rig):
     c, owner, store = rig
     lead = store.read("leads")[0]
     store.update_lead(lead["id"], lambda l: {**l, "linkedin_seq": {"status": "waiting_to_connect", "done": []}})
+    agent.save_config(store, {"enabled": True, "weekdays_only": False, "start_hour": 0, "end_hour": 24})       # an alert only while it should be running
     assert watch.tick(store, NOW)["offline"] == 1 and "not running" in _bell(store)[-1]["title"]
     assert watch.tick(store, NOW + timedelta(hours=1))["offline"] == 0                # repeats only every 6 hours
     assert watch.tick(store, NOW + timedelta(hours=7))["offline"] == 1

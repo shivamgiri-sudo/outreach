@@ -16,6 +16,7 @@ from .apollo import APOLLO_BASE
 from .hygiene import business_domain, company_domain, normalise_email, safe_http_url
 from .job_discover import discover_jobs
 from .jobs import is_job_board, job_age_days, parse_job_postings
+from .standardise import linkedin_url
 from .lead_model import source_phone, to_int
 
 APOLLO_PEOPLE_SEARCH_URL = f"{APOLLO_BASE}/mixed_people/api_search"
@@ -95,7 +96,7 @@ def map_apollo_person(person: dict) -> dict:
     website, domain = own_site(org.get("website_url") or (f"https://{org['primary_domain']}" if org.get("primary_domain") else ""))
     return {"company": str(org.get("name") or "").strip(), "contact_name": name, "title": str(person.get("title") or "").strip(),
             "email": email or "", "website": website, "domain": domain,
-            "linkedin_url": safe_http_url(person.get("linkedin_url")),
+            "linkedin_url": linkedin_url(person.get("linkedin_url"), "in"),
             "city": str(person.get("city") or org.get("city") or "").strip(),
             "country": _country(person.get("country") or org.get("country")),
             "company_size": to_int(org.get("estimated_num_employees")),

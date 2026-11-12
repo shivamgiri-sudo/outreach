@@ -40,9 +40,12 @@ def test_working_hours_and_weekends_are_respected(rig):
     agent.save_config(store, {"enabled": True})
     assert agent.control(store, TUE_11 - timedelta(hours=3))["why_not"] == "outside working hours"      # 08:00 IST
     assert not agent.control(store, TUE_11 + timedelta(hours=8))["may_connect"]                          # 19:00 IST
+    assert agent.control(store, SAT_11)["may_connect"]                                                   # default is Monday to Saturday
+    assert agent.control(store, SAT_11 + timedelta(days=1))["why_not"] == "outside working hours"        # Sunday
+    agent.save_config(store, {"weekdays_only": True})
     assert agent.control(store, SAT_11)["why_not"] == "outside working hours"
     agent.save_config(store, {"weekdays_only": False})
-    assert agent.control(store, SAT_11)["may_connect"]
+    assert agent.control(store, SAT_11 + timedelta(days=1))["may_connect"]
 
 
 def test_a_fixed_gap_between_actions_survives_a_restart(rig):

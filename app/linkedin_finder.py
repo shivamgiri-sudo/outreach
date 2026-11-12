@@ -49,9 +49,29 @@ def norm_company(name: str) -> str:
     return " ".join(w for w in _plain(name).split() if w not in _LEGAL)
 
 
+_FORMER = re.compile(r"\b(ex|former|formerly|previously|past)\b")
+_SEP = re.compile(r"\bat\b|@|,|\s[-\u2013\u2014]\s", re.I)
+_JUNIOR = re.compile(r"\b(intern|interns|trainee|student|fresher|junior|apprentice)\b")
+
+
 def mentions_company(headline: str, company: str) -> bool:
+    """The company is the person's EMPLOYER in the headline: the whole company name after "at" / "@" / "," / " - " or as a whole
+    segment ("Tata" is not "Tata Motors"; "Ex-Infosys" is a former employer)."""
     c = norm_company(company)
-    return bool(c) and f" {c} " in f" {_plain(headline)} "
+    if not c:
+        return False
+    for seg in re.split(r"\s*[|\u00b7\u2022;]\s*", str(headline or "")):
+        if _FORMER.search(_plain(seg)):
+            continue
+        if norm_company(seg) == c or any(norm_company(seg[m.end():]) == c for m in _SEP.finditer(seg)):
+            return True
+    return False
+
+
+def _title_clash(lead: dict, card: dict) -> bool:
+    """A junior title on the card for a lead whose title is not junior (an intern is not the CHRO)."""
+    want = _plain(lead.get("title"))
+    return bool(want) and bool(_JUNIOR.search(_plain(card.get("headline")))) and not _JUNIOR.search(want)
 
 
 def profile_url(raw: str) -> str:
@@ -85,7 +105,7 @@ def decide(lead: dict, candidates: list) -> dict:
     cards = clean_candidates(candidates)
     want = norm_name(lead.get("contact_name"))
     exact = [c for c in cards if want and norm_name(c["name"]) == want]
-    if len(exact) == 1 and mentions_company(exact[0]["headline"], lead.get("company")):
+    if len(exact) == 1 and mentions_company(exact[0]["headline"], lead.get("company")) and not _title_clash(lead, exact[0]):
         return {"status": "found", "pick": exact[0], "candidates": [exact[0]]}
     tokens = want.split()
     ends = {tokens[0], tokens[-1]} if tokens else set()

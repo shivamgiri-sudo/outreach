@@ -297,7 +297,7 @@ def test_an_unusable_public_address_is_refused_before_a_code_is_made(rig):
 
 def test_the_bundle_holds_only_the_runner_files_and_needs_the_code_or_the_token(rig):
     c, https, owner, store, base = rig
-    want = {"tools/linkedin_agent.mjs", "tools/linkedin_runner.mjs", "tools/linkedin_cloud_login.mjs", "tools/linkedin_agent_pool.mjs",
+    want = {"tools/linkedin_agent.mjs", "tools/linkedin_runner.mjs", "tools/linkedin_cloud_login.mjs", "tools/linkedin_guard_dom.mjs", "tools/linkedin_agent_pool.mjs",
             "package.json", "package-lock.json"}
     assert c.get("/api/linkedin-runner/bundle.tar.gz").status_code == 403
     code = code_for(c, owner)["code"]

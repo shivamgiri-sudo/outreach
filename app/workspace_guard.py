@@ -55,7 +55,9 @@ LIMITED_OK = {
     ("GET", "/api/linkedin/accounts"), ("POST", "/api/linkedin/assign"), ("GET", "/api/linkedin/stages"), ("GET", "/api/linkedin/stages.csv"),
     # the account's own LinkedIn agent, cloud slots and office computer (owners and the account's admins change them; the
     # routes cut every view and change to the login's account: app/linkedin_scope.py)
-    ("GET", "/api/linkedin-agent"), ("PUT", "/api/linkedin-agent"), ("GET", "/api/linkedin-cloud"), ("POST", "/api/linkedin-cloud/slots"),
+    ("GET", "/api/linkedin-agent"), ("PUT", "/api/linkedin-agent"), ("GET", "/api/linkedin-cloud"),
+    ("GET", "/api/linkedin-agent/lead/{lead_id}/why"), ("GET", "/api/linkedin-agent/stuck"),       # owner / admin; cut to visible leads
+    ("POST", "/api/linkedin-cloud/slots"),
     ("PUT", "/api/linkedin-cloud/slots/{slot_id}"), ("DELETE", "/api/linkedin-cloud/slots/{slot_id}"),
     ("POST", "/api/linkedin-cloud/slots/{slot_id}/login"), ("POST", "/api/linkedin-cloud/slots/{slot_id}/code"),
     ("POST", "/api/linkedin-cloud/slots/{slot_id}/logout"), ("POST", "/api/linkedin-cloud/slots/{slot_id}/restart"),

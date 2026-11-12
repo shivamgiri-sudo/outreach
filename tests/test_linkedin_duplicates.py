@@ -32,6 +32,8 @@ def rig(tmp_path):
                                                             {"id": "w3", "name": "W3", "account_id": "accty"},
                                                             {"id": "w4", "name": "W4"}]})
     tok = c.post("/api/extension/pair", json={"label": "agent"}).json()["token"]
+    from app import linkedin_agent
+    linkedin_agent.save_config(store, {"enabled": True, "weekdays_only": False, "start_hour": 0, "end_hour": 24, "gap_minutes": 3})           # claim re-checks the switch and hours
     return {"c": c, "store": store, "a": ids["Acme"], "b": ids["Acme Two"], "m": ids["Other"],
             "h": {"Authorization": f"Bearer {tok}", "X-LinkedIn-Account": "li-b"}}
 

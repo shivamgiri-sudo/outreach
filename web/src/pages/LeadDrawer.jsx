@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, canEditContacts, canWrite, isOwner } from "../api.js";
+import { api, canEditContacts, canWrite, isOwner, isWorkspaceAdmin } from "../api.js";
 import { copyText } from "../clipboard.js";
 import { sourceLabel, stageLabel, useSourceRegistry } from "../labels.js";
 import { istLabel } from "../time.js";
@@ -20,6 +20,7 @@ import { LeadAssignedBy } from "./LeadFirstTouch.jsx";
 import LinkedInAccountPick from "./LinkedInAccountPick.jsx";
 import LinkedInFinder from "./LinkedInFinder.jsx";
 import LinkedInContacts from "./LinkedInContacts.jsx";
+import LinkedInWhy from "./LinkedInWhy.jsx";
 import LinkedInStartStop from "./LinkedInStartStop.jsx";
 import { LeadCustomData } from "./LeadCustomFields.jsx";
 import PhoneTag, { isLandline } from "./PhoneTag.jsx";
@@ -221,6 +222,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
         && <LinkedInFinder row={{ lead_id: lead.id, name: lead.contact_name, company: lead.company, ...lead.linkedin_lookup }} onChanged={load} onMessage={say} />}
       <LinkedInStartStop lead={lead} onLead={setLead} say={say} />
       <LinkedInContacts lead={lead} />
+      {(isOwner() || isWorkspaceAdmin()) && <LinkedInWhy lead={lead} />}
       <LinkedInAccountPick lead={lead} onChanged={load} />
       {linkedinDrafts(lead).map(([title, text]) => (
         <div className="tip" key={title} style={{ marginBottom: 8 }}>

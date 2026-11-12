@@ -59,7 +59,8 @@ def lead_domain(lead: dict) -> str:
 
 
 def _li_key(url: str) -> str:
-    return str(url).strip().lower().rstrip("/")
+    from .linkedin_dupes import profile_key        # http / www / locale / ?query / #frag variants are one person
+    return profile_key(url) or str(url).strip().lower().rstrip("/")
 
 
 def _phone_key(value) -> str:
