@@ -38,8 +38,11 @@ def visible(store, user: Optional[dict], row: dict) -> bool:
     them or shared with them."""
     if not lead_access.in_workspace(user, row):
         return False
-    if not lead_access.ownership_on(store, workspaces.ws_of(row)) or user is None or user.get("role") == "viewer":
+    ws = workspaces.ws_of(row)
+    if not lead_access.ownership_on(store, ws) or user is None:
         return True
+    if user.get("role") == "viewer":          # read-only: lists of their own team's people
+        return lead_access.matches(user, row.get("assigned_to")) or str(row.get("assigned_to") or "").strip().lower() in lead_access.circle(store, user, ws)
     return (lead_access.is_admin(user, row) or lead_access.matches(user, row.get("assigned_to"))
             or any(lead_access.matches(user, n) for n in row.get("shared_with") or []))
 
@@ -81,6 +84,7 @@ def _give(store, lead_ids: list, person: dict, by: str, why: str, take_over: boo
             continue
         if lead_ops.set_owner(store, lid, to, by, why) is not None and current.lower() != to.lower():
             moved += 1
+            lead_ops.tell_reassigned(store, lead, current, to, by)
     return {"moved": moved, "skipped": skipped}
 
 

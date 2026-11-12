@@ -46,9 +46,13 @@ def owner_choices(store, user: Optional[dict] = None) -> list:
     if allowed is None:
         names = [m.get("name") for m in team(store)] + [u.get("name") or u.get("email") for u in auth.users(store)]
     else:
-        mine = (user or {}).get("email")
-        names = [u.get("name") or u.get("email") for u in auth.users(store)
-                 if u.get("email") == mine or set(u.get("workspaces") or []) & allowed]
+        from . import accounts
+        mine, client = (user or {}).get("email"), accounts.is_client(user)
+        names = []
+        for u in auth.users(store):
+            theirs = allowed_of(u)                          # None = a login of every workspace (Mas Callnet staff only; never offered to a client)
+            if u.get("email") == mine or (theirs is None and not client and not accounts.is_client(u)) or (theirs is not None and theirs & allowed):
+                names.append(u.get("name") or u.get("email"))
     seen, out = set(), []
     for n in names:
         n = " ".join(str(n or "").split())[:OWNER_MAX]
@@ -82,6 +86,24 @@ def _owner_change(lead: dict, owner: str, by: str, why: str = ""):
 def set_owner(store, lead_id: str, owner: str, by: str, why: str = "") -> Optional[dict]:
     """Give one lead to `owner` ('' = nobody). Returns the saved lead (unchanged when already theirs) or None."""
     return store.update_lead(lead_id, lambda lead: _owner_change(lead, owner, by, why))
+
+
+def tell_reassigned(store, lead: dict, old: str, new: str, by: str) -> None:
+    """A person took a lead from `old` and gave it to `new`: a bell to the old owner, the new owner and the workspace's manager.
+    (The first-touch clock sends its own bells.) Nothing for a lead that had no owner, or when nothing changed."""
+    old, new = str(old or "").strip(), str(new or "").strip()
+    if not old or not new or old.lower() == new.lower():
+        return
+    from . import assignment
+    from .reminders import notify
+    name = lead.get("company") or lead.get("contact_name") or lead.get("id")
+    text = f"{name} moved from {old} to {new} (by {by}). Running email and LinkedIn steps carry on under {new}."
+    sent = set()
+    for to, title in ((old, "A lead was taken from you"), (new, "A lead was given to you"),
+                      (assignment.manager_of(store, workspaces_mod.ws_of(lead), old), "A lead changed owner")):
+        if to and to.lower() not in sent:
+            sent.add(to.lower())
+            notify(store, to, title, text, lead_id=lead.get("id"), kind="reassigned")
 
 
 def auto_assign_on_reply(store, lead_id: str) -> Optional[str]:
@@ -244,7 +266,7 @@ def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool
         if not value:
             raise LeadOpRefused("Write a tag.")
     from . import lead_access
-    visible = {l["id"] for l in store.read("leads") if workspaces_mod.visible(l) and (action == "enroll" or lead_access.can_see(store, user, l))}   # enrol says whose lead it is
+    visible = {l["id"] for l in store.read("leads") if (workspaces_mod.visible_ws(l) if action == "enroll" else workspaces_mod.visible(l) and lead_access.can_send(store, user, l))}   # enrol says whose lead it is
     reasons = {i: "not found" for i in ids if i not in visible}
     wanted = [i for i in ids if i in visible]
     done, gone = [], []

@@ -114,6 +114,11 @@ def make_router(store) -> APIRouter:
     def get_report(request: Request, workspace: str = ""):
         return mig.report(store, admin_ws(request, workspace))
 
+    @router.get("/api/ownership/preview")
+    def get_preview(request: Request, workspace: str = ""):
+        """What each person would see once ownership mode is on (counts only; nothing changes)."""
+        return mig.preview(store, admin_ws(request, workspace))
+
     @router.post("/api/ownership/migrate")
     def migrate(request: Request, workspace: str = ""):
         target = admin_ws(request, workspace)

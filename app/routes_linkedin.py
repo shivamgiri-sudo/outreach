@@ -242,21 +242,24 @@ def make_router(store) -> APIRouter:
             raise HTTPException(400, str(exc))
 
     @router.post("/api/leads/{lead_id}/linkedin/accepted")
-    def accepted(lead_id: str):
+    def accepted(lead_id: str, request: Request):
+        lead_access.check_http(store, request, lead_or_404(lead_id))
         return call(lambda st, lid: li.mark_accepted(st, lid, strict=True), lead_id)
 
     @router.post("/api/leads/{lead_id}/linkedin/replied")
-    def replied(lead_id: str, body: ReplyBody):
+    def replied(lead_id: str, body: ReplyBody, request: Request):
+        lead_access.check_http(store, request, lead_or_404(lead_id))
         return call(li.mark_replied, lead_id, body.text)
 
     @router.post("/api/leads/{lead_id}/linkedin/stop")
-    def stop(lead_id: str):
-        lead_or_404(lead_id)
+    def stop(lead_id: str, request: Request):
+        lead_access.check_http(store, request, lead_or_404(lead_id))
         return li.stop(store, lead_id)
 
     @router.post("/api/leads/{lead_id}/linkedin/branch")
-    def branch(lead_id: str, body: BranchBody):
+    def branch(lead_id: str, body: BranchBody, request: Request):
         lead = lead_or_404(lead_id)
+        lead_access.check_http(store, request, lead)
         if body.key not in li.BRANCHES:
             raise HTTPException(400, f"key must be one of: {', '.join(li.BRANCHES)}")
         settings = store.read("settings")

@@ -472,6 +472,7 @@ export const api = {
   ownershipMode: () => request("/api/ownership-mode"),
   setOwnershipMode: (on, acknowledge = false) => request("/api/ownership-mode", { method: "PUT", body: { on, acknowledge } }),
   ownershipReport: () => request("/api/ownership/report"),
+  ownershipPreview: () => request("/api/ownership/preview"),
   fixOwners: (leadIds) => request("/api/ownership/fix-owners", { method: "POST", body: { lead_ids: leadIds } }),
   assignment: () => request("/api/assignment"),
   saveAssignment: (body) => request("/api/assignment", { method: "PUT", body }),

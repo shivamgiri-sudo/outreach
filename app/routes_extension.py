@@ -275,6 +275,8 @@ def make_router(store, notify_sender=None) -> APIRouter:
     @router.post("/api/extension/leads/{lead_id}/accepted")
     def accepted(lead_id: str, request: Request):
         lead = lead_or_404(lead_id)
+        from . import lead_access
+        lead_access.check_http(store, request, lead)
         account = account_of(request)
         holder = ext.owner_of(lead, store.read("settings"))
         if account and holder not in ("", account):

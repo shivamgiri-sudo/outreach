@@ -360,6 +360,19 @@ def assign_new_many(store, leads: list, uploader=None) -> int:
     return done
 
 
+def assign_created(store, lead_ids, uploader=None) -> int:
+    """The rules pick owners for leads an entry point just created that have no person behind them (an admin's upload, a Find leads
+    run, a connector): only unowned ones, only while assignment is on. Never raises: assignment must not lose an import."""
+    wanted = {str(i) for i in lead_ids or []}
+    if not wanted:
+        return 0
+    try:
+        return assign_new_many(store, [l for l in store.read("leads") if l.get("id") in wanted and not l.get("owner")], uploader)
+    except Exception:
+        log.exception("assignment failed after an import")
+        return 0
+
+
 def run_unowned(store, ws: str) -> dict:
     """Give every unowned lead of this workspace an owner by the rules. {assigned, left}."""
     unowned = [l for l in store.read("leads") if workspaces_mod.ws_of(l) == ws and not l.get("owner")]
@@ -380,10 +393,11 @@ def stats(store, ws: str) -> dict:
             if m not in names:
                 names.append(m)
     rows = {_low(n): {"name": n, "assigned": 0, "_mins": [], "reassigned_away": 0} for n in names}
-    unassigned = reassigned = 0
+    unassigned = reassigned = stuck = 0
     for l in store.read("leads"):
         if workspaces_mod.ws_of(l) != ws:
             continue
+        stuck += 1 if l.get("first_touch_stuck") and not l.get("first_touch_at") else 0
         owner = _low(l.get("owner"))
         if not owner:
             unassigned += 1
@@ -403,4 +417,4 @@ def stats(store, ws: str) -> dict:
     members = [{"name": r["name"], "assigned": r["assigned"],
                 "avg_first_touch_min": round(sum(r["_mins"]) / len(r["_mins"]), 1) if r["_mins"] else None,
                 "reassigned_away": r["reassigned_away"]} for r in rows.values()]
-    return {"members": members, "unassigned": unassigned, "reassigned_total": reassigned}
+    return {"members": members, "unassigned": unassigned, "reassigned_total": reassigned, "stuck": stuck}
