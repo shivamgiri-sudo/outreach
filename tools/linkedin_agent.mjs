@@ -275,20 +275,48 @@ async function doConnect(page, lead, note, retried = false, shortNote = "") {
   return { done: true, bare: !notesOk || retried };
 }
 
+// A message must only ever go into the conversation with THIS person. LinkedIn keeps chat windows open between pages,
+// so "the last text box on the page" can belong to somebody else. Close every chat window before opening this person's,
+// then send only if the one chat that opened is titled with this person's name (or links to their profile).
+const CHAT_BUBBLE = ".msg-overlay-conversation-bubble";
+async function closeChats(page) {
+  for (let i = 0; i < 6 && (await page.locator(CHAT_BUBBLE).count()); i++) {
+    const close = page.locator(`${CHAT_BUBBLE} button[aria-label*="Close your conversation" i], ${CHAT_BUBBLE} button[aria-label^="Close" i]`).first();
+    if (!(await close.count()) || !(await tap(close, 2000))) break;
+    await sleep(400);
+  }
+}
+const slugOf = (url) => { const m = String(url || "").match(/\/in\/([^/?#]+)/i); return m ? decodeURIComponent(m[1]).toLowerCase() : ""; };
+// The chat that opened: exactly one window, titled with the person (or holding a link to their profile). null = cannot confirm.
+async function chatWith(page, lead) {
+  const bubbles = page.locator(CHAT_BUBBLE);
+  if ((await bubbles.count()) !== 1) return { why: `${await bubbles.count()} chat windows are open (expected only this person's)` };
+  const bubble = bubbles.first();
+  const title = ((await bubble.locator(".msg-overlay-bubble-header, header, h2").first().innerText().catch(() => "")) || "").replace(/\s+/g, " ");
+  const slug = slugOf(lead.profile_url);
+  const links = await bubble.locator('a[href*="/in/"]').evaluateAll((as) => as.map((a) => a.getAttribute("href") || "")).catch(() => []);
+  const linked = slug && links.some((h) => slugOf(h) === slug);
+  if (namesLead(title, lead.name) || linked) return { bubble };
+  return { why: `the chat that opened is "${title.slice(0, 60)}", not ${lead.name}` };
+}
+
 async function doMessage(page, lead, text) {
   const button = await findMessage(page, lead.name);
   if (!button) return { done: false, why: "no Message button for this person (you may not be connected yet)" };
   if (DRY) return { done: false, dry: true, why: `would open Message and send ${text.length} characters` };
+  await closeChats(page);                                       // no other person's chat window may be open next to this one
   if (!(await clickOne([button]))) return { done: false, why: "the Message button was covered by something on the page; nothing was sent" };
   await sleep(SETTLE);
-  const box = page.locator('div[role="textbox"][contenteditable="true"]').last();
+  const chat = await chatWith(page, lead);
+  if (!chat.bubble) { await closeChats(page); return { done: false, why: `${chat.why}; nothing was sent` }; }
+  const box = chat.bubble.locator('div[role="textbox"][contenteditable="true"]').last();
   if (!(await box.count())) return { done: false, why: "the message box did not open" };
-  const theirs = await readThread(page, lead);
+  const theirs = await readThread(page, lead, chat.bubble);
   if (theirs.length) { await page.keyboard.press("Escape"); return { done: false, replied: theirs.join("\n\n") }; }
   await box.click({ timeout: 5000 });
   await page.keyboard.insertText(text);
   await sleep(500);
-  if (!(await tap(page.getByRole("button", { name: /^send$/i }).last()))) return { done: false, why: "the Send button could not be pressed; nothing was sent" };
+  if (!(await tap(chat.bubble.getByRole("button", { name: /^send$/i }).last()))) return { done: false, why: "the Send button could not be pressed; nothing was sent" };
   await sleep(SETTLE);
   await checkTrouble(page);
   const stillTyped = ((await box.innerText().catch(() => "")) || "").trim().length > 0;
@@ -299,12 +327,12 @@ async function doMessage(page, lead, text) {
 // LinkedIn's chat window lists the conversation as groups (sender name + messages). Their messages are the ones marked
 // "--other" or in a group under their name. Read before every follow-up: a person who already answered is never sent
 // the next step; the reply goes to the portal instead. Returns their message texts (empty when there are none).
-async function readThread(page, lead) {
+async function readThread(page, lead, bubble) {
   await sleep(800);
-  return page.evaluate(({ first, me }) => {
+  return bubble.evaluate((root, { first, me }) => {
     const out = [];
     let sender = "";
-    for (const ev of document.querySelectorAll(".msg-s-message-list__event")) {
+    for (const ev of root.querySelectorAll(".msg-s-message-list__event")) {
       const n = ev.querySelector(".msg-s-message-group__name");
       if (n) sender = n.textContent.trim().toLowerCase();
       for (const it of ev.querySelectorAll(".msg-s-event-listitem")) {

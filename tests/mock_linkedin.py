@@ -62,10 +62,12 @@ document.getElementById('send').onclick = () => {{
 }};
 const msg = document.querySelector('[aria-label^="Message"]');
 if (msg) msg.onclick = () => {{
+  const bub = document.createElement('div'); bub.className = 'msg-overlay-conversation-bubble';
+  const hd = document.createElement('header'); hd.className = 'msg-overlay-bubble-header'; hd.textContent = '{name}';
   const box = document.createElement('div'); box.setAttribute('role','textbox'); box.setAttribute('contenteditable','true'); box.style.minHeight='40px'; box.style.border='1px solid #999';
   const send = document.createElement('button'); send.textContent = 'Send';
   send.onclick = () => {{ rec({{kind:'message', text: box.innerText}}); box.innerText = ''; }};
-  document.body.appendChild(box); document.body.appendChild(send);
+  bub.append(hd, box, send); document.body.appendChild(bub);
 }};
 </script></body></html>"""
 

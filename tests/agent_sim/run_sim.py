@@ -416,6 +416,31 @@ f3, c3, b3 = add_nolink("Find Three", "Threeco")
 check("S20 switch off: old refusal, nothing queued", c3 == 400 and "LinkedIn profile link first" in str(b3) and not lead_of(f3).get("linkedin_lookup"), str(b3))
 agent.save_config(store, {"find_profiles": True})
 
+# ---------------------------------------------------------------- S21: a message goes only into the chat with the right person
+def make_due(lead_id):
+    store.update("tasks", lambda rows: [{**t, "due_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(timespec="seconds")}
+                                        if t.get("lead_id") == lead_id and t.get("kind") == "linkedin" and t.get("status", "open") == "open" else t for t in rows])
+    store.update_lead(lead_id, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "last_sent_at": "2026-01-01T00:00:00+00:00"}})
+
+before = len(fake_state()["messages"])
+st = add_lead("stale-1", "StaleCo")
+store.update_lead(st, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "account": "acct-a"}})
+run_agent(PROFILE_A, "--once"); skip_gap()
+make_due(st)
+run_agent(PROFILE_A, "--once"); skip_gap()
+new = fake_state()["messages"][before:]
+check("S21 another person's chat window left open is closed; the message goes to the right person only",
+      len(new) == 1 and new[0]["to"] == "stale-1", str(new))
+before = len(fake_state()["messages"])
+sk = add_lead("stuck-1", "StuckCo")
+store.update_lead(sk, lambda l: {**l, "linkedin_seq": {**l["linkedin_seq"], "account": "acct-a"}})
+run_agent(PROFILE_A, "--once"); skip_gap()
+make_due(sk)
+run_agent(PROFILE_A, "--once"); skip_gap()
+check("S21 a chat with someone else that cannot be closed: nothing is sent to anyone",
+      len(fake_state()["messages"]) == before and 2 not in seq(sk).get("done", []), str(fake_state()["messages"][before:]))
+check("S21 and the reason is logged", any("chat" in r["note"] and "nothing was sent" in r["note"] for r in agent.log_rows(store)[-6:]), str(agent.log_rows(store)[-3:]))
+
 # ---------------------------------------------------------------- done
 fake.terminate()
 server.should_exit = True

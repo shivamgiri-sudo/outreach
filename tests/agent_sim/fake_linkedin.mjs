@@ -7,6 +7,8 @@
 //   find-*     the people search (/search/results/people/?keywords=..) answers by the name searched: "Find One" -> 1 card
 //              (at the company), "Find Two" -> 2 cards with the same name, "Find Zero" -> none. Slugs end in -N so the
 //              profile name is the slug without it.
+//   stale-*    1st-degree; another person's chat window (Kamal Other) is already open and can be closed
+//   stuck-*    like stale-*, but that chat cannot be closed: the agent must send nothing
 //   short-*    free account: the note box takes at most 200 characters (maxlength)
 //   upsell-*   "Add a note" + "Send without a note"; Add a note opens a Premium offer with no text box (note limit)
 // GET /__state shows every invite and message; POST /__accept?slug=..&acct=.. makes a pending invite accepted;
@@ -48,7 +50,7 @@ function profile(acct, slug) {
   const name = kind === "find" ? pretty(slug) : kind[0].toUpperCase() + kind.slice(1) + " Lead";      // the same name the driver gives the lead
   const accepted = state.accepted[`${acct}|${slug}`];
   const pending = kind === "pending" || state.invites.some((i) => i.from === acct && i.to === slug) && !accepted;
-  const degree = kind === "first" || accepted ? "1st" : "2nd";
+  const degree = ["first", "stale", "stuck"].includes(kind) || accepted ? "1st" : "2nd";
   let buttons = "";
   if (degree === "1st" || kind === "open") buttons += `<button aria-label="Message ${name}" id="msg">Message</button>`;
   if (degree !== "1st") {
@@ -83,16 +85,21 @@ if (c) c.onclick = () => {
 };
 const oc = document.getElementById("other-connect");
 if (oc) oc.onclick = async () => { await post("/__invite", { to: "kamal-other", note: "" }); oc.textContent = "Pending"; };
-const m = document.getElementById("msg");
-if (m) m.onclick = () => {
-  const list = document.createElement("ul"); list.className = "msg-s-message-list-content";
-  list.innerHTML = ${JSON.stringify(thread(acct, slug, name))};
-  document.body.append(list);
+const post2 = (to, text) => post("/__message", { to, text });
+const bubble = (who, to, thread, closable) => {
+  const b = document.createElement("div"); b.className = "msg-overlay-conversation-bubble";
+  const h = document.createElement("header"); h.className = "msg-overlay-bubble-header"; h.textContent = who;
+  if (closable) { const x = document.createElement("button"); x.setAttribute("aria-label", "Close your conversation with " + who); x.textContent = "\u00d7"; x.onclick = () => b.remove(); h.append(x); }
+  const list = document.createElement("ul"); list.className = "msg-s-message-list-content"; list.innerHTML = thread;
   const box = document.createElement("div"); box.setAttribute("role", "textbox"); box.contentEditable = "true"; box.style.minHeight = "40px"; box.style.border = "1px solid #999";
   const s = document.createElement("button"); s.textContent = "Send";
-  s.onclick = async () => { await post("/__message", { to: ${JSON.stringify(slug)}, text: box.innerText }); box.innerText = ""; };
-  document.body.append(box, s);
+  s.onclick = async () => { await post2(to, box.innerText); box.innerText = ""; };
+  b.append(h, list, box, s); document.body.append(b); return b;
 };
+const kindNow = ${JSON.stringify(kind)};
+if (kindNow === "stale" || kindNow === "stuck") bubble("Kamal Other", "kamal-other", "", kindNow === "stale");   // another person's chat left open by an earlier page
+const m = document.getElementById("msg");
+if (m) m.onclick = () => bubble(${JSON.stringify(name)}, ${JSON.stringify(slug)}, ${JSON.stringify(thread(acct, slug, name))}, true);
 </script>`, name);
 }
 
