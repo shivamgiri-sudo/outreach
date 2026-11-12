@@ -3,11 +3,12 @@
 import { inrShort, pct as pctText, STAGE_COLORS } from "./salesFormat.js";
 import { Stage } from "./components/Abbr.jsx";
 
-// The funnel: one band per stage, centred and tapering, so the shape itself shows where leads fall away. Band width follows
-// the count (with a floor so every label stays readable); between two bands a chip says how many moved on and how many
-// dropped, and the biggest drop is marked. One colour family from dark to light (stage order), white text on every band.
-const FUNNEL_FLOOR = 30;                       // % of the full width the smallest band keeps, so its count still fits
-const bandWidth = (count, max) => FUNNEL_FLOOR + (100 - FUNNEL_FLOOR) * (count / max);
+// The funnel: one continuous silhouette. Each stage is a trapezoid whose top edge is its own width and whose bottom edge is
+// the next stage's width, with no gap between rows, so the outline is a true funnel that narrows where leads fall away.
+// Width follows the count (with a floor so the smallest count still fits); the last stage narrows to a neck. Left: the stage;
+// right: share of all inquiries, then how many moved on / dropped from the stage before (biggest drop marked).
+const FUNNEL_FLOOR = 20;                       // % of the full width the narrowest edge keeps
+const edgeWidth = (count, max) => FUNNEL_FLOOR + (100 - FUNNEL_FLOOR) * (count / max);
 const bandColor = (i, n) => `color-mix(in srgb, #0e7490 ${Math.round((i / Math.max(1, n - 1)) * 100)}%, #1e3a8a)`;
 
 export function FunnelChart({ stages, onPick }) {
@@ -17,33 +18,31 @@ export function FunnelChart({ stages, onPick }) {
     const loss = i ? stages[i - 1].count - s.count : 0;
     if (loss > worstLoss) { worstLoss = loss; worst = i; }
   });
+  const first = stages[0] ? stages[0].count : 0;
   return (
     <div className="sf-funnel" data-testid="sf-funnel" role="list">
       {stages.map((s, i) => {
-        const w = bandWidth(s.count, max);
+        const top = edgeWidth(s.count, max);
         const next = stages[i + 1];
-        const wBottom = next ? bandWidth(next.count, max) : w * 0.86;
-        const inset = Math.max(0, ((w - wBottom) / 2 / w) * 100);       // taper: the band's bottom edge meets the next band
+        const bottom = next ? edgeWidth(next.count, max) : top * 0.8;
+        const l1 = (100 - top) / 2, r1 = l1 + top, l2 = (100 - bottom) / 2, r2 = l2 + bottom;
         const loss = i ? Math.max(0, stages[i - 1].count - s.count) : 0;
         return (
-          <div key={s.key} role="listitem" className="sf-funnel-item">
-            {i > 0 && (
-              <div className={`sf-funnel-step${i === worst ? " worst" : ""}`} data-testid={`sf-step-${s.key}`}>
-                <span className="sf-funnel-conv" title="Of the stage before">{pctText(s.conv)} moved on</span>
-                {loss > 0 && <span className="sf-funnel-loss">{loss} dropped</span>}
-                {i === worst && <span className="pill warn">Biggest drop</span>}
-              </div>
-            )}
-            <div className="sf-funnel-row">
-              <span className="sf-funnel-label"><Stage status={s.label} full /></span>
-              <div className="sf-funnel-lane">
-                <button type="button" className="sf-funnel-bar" onClick={() => onPick(s.drill)} disabled={!s.count} data-testid={`sf-stage-${s.key}`}
-                        style={{ width: `${w}%`, background: bandColor(i, stages.length), clipPath: `polygon(0 0, 100% 0, ${100 - inset}% 100%, ${inset}% 100%)` }}
-                        aria-label={`${s.label}: ${s.count} leads${i ? `, ${pctText(s.conv)} of the stage before` : ""}. Show the leads.`}>
-                  <b>{s.count}</b>
-                </button>
-              </div>
-              <small className="sf-funnel-share" title="Of the first stage">{i === 0 ? "100%" : pctText(stages[0].count ? Math.round((s.count / stages[0].count) * 1000) / 10 : 0)}</small>
+          <div key={s.key} role="listitem" className="sf-funnel-row">
+            <span className="sf-funnel-label"><Stage status={s.label} full /></span>
+            <button type="button" className="sf-funnel-bar" onClick={() => onPick(s.drill)} disabled={!s.count} data-testid={`sf-stage-${s.key}`}
+                    style={{ background: bandColor(i, stages.length), clipPath: `polygon(${l1}% 0, ${r1}% 0, ${r2}% 100%, ${l2}% 100%)` }}
+                    aria-label={`${s.label}: ${s.count} leads${i ? `, ${pctText(s.conv)} of the stage before` : ""}. Show the leads.`}>
+              <b>{s.count}</b>
+            </button>
+            <div className="sf-funnel-side">
+              <small className="sf-funnel-share" title="Of the first stage">{i === 0 ? "100%" : pctText(first ? Math.round((s.count / first) * 1000) / 10 : 0)}</small>
+              {i > 0 && (
+                <small className={`sf-funnel-step${i === worst ? " worst" : ""}`} data-testid={`sf-step-${s.key}`}>
+                  <span className="sf-funnel-conv" title="Of the stage before">{pctText(s.conv)} moved on</span>
+                  {loss > 0 && <span className="sf-funnel-loss"> · {loss} dropped{i === worst ? " (biggest)" : ""}</span>}
+                </small>
+              )}
             </div>
           </div>
         );

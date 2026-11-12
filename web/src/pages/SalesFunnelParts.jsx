@@ -44,8 +44,8 @@ export function FunnelHealth({ data, onDrill }) {
         <div className="card">
           <h4>Funnel (leads created in the range)</h4>
           <FunnelChart stages={data.funnel} onPick={(k) => onDrill(k, "Leads in this funnel stage")} />
-          <p className="sub">Each band is every lead that reached that stage by the To date; click one to see the leads. Between bands: the share of the stage
-            before that moved on, and how many dropped. On the right: the share of all inquiries.</p>
+          <p className="sub">Each section of the funnel is every lead that reached that stage by the To date; click one to see the leads. On the right: the share of all
+            inquiries, then the share of the stage before that moved on and how many dropped.</p>
         </div>
         <div className="card table-card-inner">
           <h4>Stage conversion</h4>
