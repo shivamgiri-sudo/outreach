@@ -298,10 +298,10 @@ def run_import(leads: list, table: list, columns: list, source: str, suppressed:
     accounts are invisible here (another client company may hold the same contact); None = one account."""
     today, at = today or date.today(), at or now_iso()
     from . import workspaces
-    scoped = workspaces.scoped()
+    scoped = workspaces.scoped(owned=False)
     ours = same_account or (lambda l: True)
-    index = LeadIndex(leads, include=(lambda l: ours(l) and workspaces.visible(l)) if scoped else (ours if same_account else None))
-    elsewhere = LeadIndex(leads, include=lambda l: ours(l) and not workspaces.visible(l)) if scoped else None
+    index = LeadIndex(leads, include=(lambda l: ours(l) and workspaces.visible_ws(l)) if scoped else (ours if same_account else None))
+    elsewhere = LeadIndex(leads, include=lambda l: ours(l) and not workspaces.visible_ws(l)) if scoped else None
     if scoped or same_account:
         index.keys = {l.get("dedupe_key") for l in leads if ours(l)}       # dedupe keys stay unique across the account's workspaces
     created, touched = {}, {}

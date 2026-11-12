@@ -63,7 +63,10 @@ def make_router(store, present) -> APIRouter:
             owner = lead_ops.clean_owner(store, body.owner, who, getattr(request.state, "user", None))
         except lead_ops.LeadOpRefused as exc:
             raise HTTPException(400, str(exc)) from exc
+        before = next((l for l in store.read("leads") if l["id"] == lead_id), None)
         saved = lead_ops.set_owner(store, lead_id, owner, who)
+        if saved is not None and before is not None:
+            lead_ops.tell_reassigned(store, saved, before.get("owner"), owner, who)
         if saved is None:
             raise HTTPException(404, "Lead not found")
         return present(saved)

@@ -228,18 +228,26 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     docs = os.environ.get("OUTREACH_ENABLE_DOCS") == "1"
     def lead_scope_guard(request: Request) -> None:
         """A login limited to some workspaces gets 404 for any /…/{lead_id} route of a lead outside them (read or write),
-        so knowing an id is not enough to call, note or move another client's lead."""
+        so knowing an id is not enough to call, note or move another client's lead. With lead ownership on, a member also
+        cannot read (404) or act on (409, with the owner's name) a lead of someone else on ANY lead route."""
         lead_id, task_id = request.path_params.get("lead_id"), request.path_params.get("task_id")
         _, allowed = getattr(request.state, "workspace_scope", (None, None))
-        if not (lead_id or task_id) or allowed is None:
+        hider = workspaces_mod._OWN.get()
+        if not (lead_id or task_id) or (allowed is None and hider is None):
             return
         if task_id and not lead_id:                     # a task belongs to its lead's workspace
             lead_id = next((t.get("lead_id") for t in store.read("tasks") if t.get("id") == task_id), None)
             if not lead_id:
                 return
         lead = next((l for l in store.read("leads") if l.get("id") == lead_id), None)
-        if lead is not None and workspaces_mod.ws_of(lead) not in allowed:
+        if lead is None:
+            return
+        if allowed is not None and workspaces_mod.ws_of(lead) not in allowed:
             raise HTTPException(404, "Not found")
+        if hider is not None and hider(lead):
+            if request.method in ("GET", "HEAD"):
+                raise HTTPException(404, "Not found")
+            raise HTTPException(409, lead_access.refusal(store, getattr(request.state, "user", None), lead) or "This lead belongs to someone else.")
 
     from . import account_guard, routes_signup
     app = FastAPI(title="Outreach OS", dependencies=[Depends(account_guard.guard), Depends(role_guard), Depends(workspace_guard.guard), Depends(workspaces_mod.scope_dependency), Depends(lead_scope_guard)], docs_url="/docs" if docs else None,
@@ -374,13 +382,21 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
         return _present(leads[i])
 
     @app.post("/api/leads/import")
-    def import_leads(body: ImportBody):
-        """Quick paste: the simple importer, now reading Apollo, Sales Navigator and other column names too."""
+    def import_leads(body: ImportBody, request: Request):
+        """Quick paste: the simple importer, now reading Apollo, Sales Navigator and other column names too. A member who
+        pastes owns the new leads and gets a list; rows that belong to someone else are skipped and reported."""
         try:
             rows = quick_rows(body.csv, lead_fields_mod.list_fields(store)) if body.csv.strip() else []
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
         account_limits_mod.check_current(store, "imports_per_day", len(rows))        # the account's daily imports limit
+        from . import upload_owner
+        user = getattr(request.state, "user", None)
+        member = upload_owner.is_member(user)
+        if member:
+            upload_owner.check_caps(store, user, len(rows))
+        own = upload_owner.Ownership(upload_owner.user_name(user), "quick paste") if member else None
+        placed, owned_elsewhere, new_ids = [], [], []
         stats = {}
         erased = set(store.read("suppressed_hashes"))
         blocked = set(store.read("suppressed"))      # do-not-contact list, as the smart import skips it
@@ -393,7 +409,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             keys = lambda l: {l["dedupe_key"], *(f"{k}:{l.get(k)}" for k in ("email", "phone", "domain"))}   # merges re-key
             ours = [l for l in leads if same(l)]
             seen = set().union(*map(keys, ours))
-            mine = set().union(*map(keys, workspaces_mod.filter_rows(ours))) if workspaces_mod.scoped() else seen
+            mine = set().union(*map(keys, workspaces_mod.filter_rows(ours, owned=False))) if workspaces_mod.scoped(owned=False) else seen
             created = duplicates = rejected = merged = suppressed = elsewhere = 0
             limited_login = workspaces_mod._SCOPE.get()[1] is not None
             for row in rows:
@@ -405,22 +421,44 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                 elif lead["dedupe_key"] in seen:
                     if lead["dedupe_key"] in mine or limited_login:     # SECURITY: a limited login is not told it is held elsewhere
                         duplicates += 1
-                        sales_import_mod.reimport(leads, lead["dedupe_key"], row, lambda l: same(l) and workspaces_mod.visible(l), datetime.now(timezone.utc))
+                        twin = next((l for l in leads if l.get("dedupe_key") == lead["dedupe_key"] and same(l) and workspaces_mod.visible_ws(l)), None)
+                        if own and twin is not None:
+                            if own.conflict(twin):
+                                owned_elsewhere.append({"lead_id": twin["id"], "owner": twin["owner"]})
+                                continue                  # somebody else's lead: not touched, not merged
+                            placed.append(twin["id"])
+                            leads[leads.index(twin)] = own.stamp(twin)
+                        sales_import_mod.reimport(leads, lead["dedupe_key"], row, lambda l: same(l) and workspaces_mod.visible_ws(l), datetime.now(timezone.utc))
                     else:
                         elsewhere += 1               # held in another workspace: skipped, nothing about it shown
-                elif ((target := _contactless_match(leads, lead)) is not None and workspaces_mod.visible(leads[target])
+                elif ((target := _contactless_match(leads, lead)) is not None and workspaces_mod.visible_ws(leads[target])
                       and same(leads[target])):
+                    if own and own.conflict(leads[target]):
+                        owned_elsewhere.append({"lead_id": leads[target]["id"], "owner": leads[target]["owner"]})
+                        continue
                     leads[target] = _merge_contact(leads[target], lead)
+                    if own:
+                        leads[target] = own.stamp(leads[target])
+                        placed.append(leads[target]["id"])
                     seen |= keys(leads[target]) | {lead["dedupe_key"]}
                     merged += 1
                 else:
                     seen.add(lead["dedupe_key"])
-                    leads.append(lead)
+                    leads.append(own.stamp(lead) if own else lead)
+                    new_ids.append(lead["id"])
+                    if own:
+                        placed.append(lead["id"])
                     created += 1
             stats.update(created=created, duplicates=duplicates, rejected=rejected, merged=merged, **({"suppressed": suppressed} if suppressed else {}),
                          **({"elsewhere": elsewhere} if elsewhere else {}))
             return leads
         store.update("leads", merge_in)
+        if not member and stats.get("created"):
+            from . import assignment
+            assignment.assign_created(store, new_ids)
+        if member:
+            row = upload_owner.finish_upload(store, own.uploader, "Quick paste " + _now()[:10], list(dict.fromkeys(placed)), "quick paste", blocked)
+            stats.update(list_id=(row or {}).get("id"), owned_by_other=owned_elsewhere)
         return stats
 
     @app.post("/api/leads/{lead_id}/stage")

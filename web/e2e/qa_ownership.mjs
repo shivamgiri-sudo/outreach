@@ -57,6 +57,11 @@ await step("Setup > Assignment shows the ownership switch and its report; turnin
   await go(admin, "#setup/assignment");
   await admin.getByTestId("ownership-mode").waitFor({ timeout: 8000 });
   ok(/Off/.test(await admin.getByTestId("ownership-state").innerText()), "should start Off");
+  await admin.getByTestId("ownership-preview").waitFor({ timeout: 8000 });
+  const prev = await admin.getByTestId("ownership-preview").innerText();
+  ok(/Priya/.test(prev) && /Ravi/.test(prev) && /would see/.test(prev), `preview: ${prev.slice(0, 200)}`);
+  ok(await admin.getByTestId("ownership-preview-row").count() >= 2, "preview rows");
+  await admin.screenshot({ path: `${SHOTS}/own-preview.png`, fullPage: true });
   if (await admin.getByTestId("ownership-ack").count()) await admin.getByTestId("ownership-ack").check();
   await admin.getByTestId("ownership-toggle").click();
   await admin.waitForTimeout(1500);

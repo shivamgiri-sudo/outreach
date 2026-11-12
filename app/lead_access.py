@@ -59,12 +59,80 @@ def can_send(store, user: Optional[dict], lead: dict) -> bool:
     return is_admin(user, lead) or owns(user, lead)
 
 
+def circle(store, user: Optional[dict], ws: str) -> set:
+    """Lower-case names and emails of every member of the teams `user` belongs to in workspace `ws` (the viewer's team).
+    Empty when the person is in no team: a viewer then sees nothing."""
+    from . import assignment, auth
+    mine = _names(user or {})
+    users = auth.users(store)
+    out = set()
+    for t in assignment.config(store, ws)["teams"]:
+        members = {str(m).strip().lower() for m in t["members"]}
+        for m in list(members):
+            login = assignment._login_for(users, m)
+            if login:
+                members |= _names(login)
+        if mine & members:
+            out |= members
+    return out
+
+
 def can_see(store, user: Optional[dict], lead: dict) -> bool:
+    """Viewers are read-only: with ownership on they see their own leads plus those of the people in their team (none if no team)."""
     if not in_workspace(user, lead):
         return False
-    if not ownership_on(store, workspaces.ws_of(lead)) or user is None or (user or {}).get("role") == "viewer":
+    ws = workspaces.ws_of(lead)
+    if not ownership_on(store, ws) or user is None:
         return True
-    return is_admin(user, lead) or owns(user, lead)
+    if is_admin(user, lead) or owns(user, lead):
+        return True
+    if (user or {}).get("role") == "viewer":
+        return str(lead.get("owner") or "").strip().lower() in circle(store, user, ws)
+    return False
+
+
+class Hider:
+    """One request's ownership filter: `hider(lead)` is True when the lead is hidden from `user`, `hider.list(row)` the same for a list."""
+
+    def __init__(self, store, user, on):
+        self.store, self.user, self.on, self.circles, self.admin = store, user, on, {}, {}
+        self.me = _names(user or {})
+        self.viewer = (user or {}).get("role") == "viewer"
+
+    def _admin(self, ws):
+        if ws not in self.admin:
+            self.admin[ws] = is_admin(self.user, ws)
+        return self.admin[ws]
+
+    def _circle(self, ws):
+        if ws not in self.circles:
+            self.circles[ws] = circle(self.store, self.user, ws)
+        return self.circles[ws]
+
+    def __call__(self, row) -> bool:
+        ws = workspaces.ws_of(row)
+        if ws not in self.on or self._admin(ws) or str(row.get("owner") or "").strip().lower() in self.me:
+            return False
+        if self.viewer:
+            return str(row.get("owner") or "").strip().lower() not in self._circle(ws)
+        return True
+
+    def list(self, row) -> bool:
+        ws = workspaces.ws_of(row)
+        if ws not in self.on or self._admin(ws):
+            return False
+        mine = matches(self.user, row.get("assigned_to")) or any(matches(self.user, n) for n in row.get("shared_with") or [])
+        if mine:
+            return False
+        if (self.user or {}).get("role") == "viewer":
+            return str(row.get("assigned_to") or "").strip().lower() not in self._circle(ws)
+        return True
+
+
+def hidden_test(store, user: Optional[dict]):
+    """The request's ownership filter (a Hider), or None when nothing is hidden (switch off everywhere, or no person)."""
+    on = {w for w, v in modes(store).items() if v}
+    return Hider(store, user, on) if on and user is not None else None
 
 
 def refusal(store, user: Optional[dict], lead: dict) -> str:

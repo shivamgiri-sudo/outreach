@@ -47,7 +47,7 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
             upload_owner.check_caps(store, user, len(incoming))
         own = upload_owner.Ownership(upload_owner.user_name(user), "sheet import") if member else None
         stats = {"created": 0, "duplicates": 0, "merged": 0}
-        placed, owned_elsewhere = [], []
+        placed, owned_elsewhere, new_ids = [], [], []
         erased = set(store.read("suppressed_hashes"))
         blocked = set(store.read("suppressed"))
 
@@ -77,11 +77,15 @@ def make_router(store, fetcher, apollo_transport=post_json) -> APIRouter:
                 else:
                     seen.add(lead["dedupe_key"])
                     leads.append(own.stamp(lead) if own else lead)
+                    new_ids.append(lead["id"])
                     if own:
                         placed.append(lead["id"])
                     stats["created"] += 1
             return leads
         store.update("leads", merge_in)
+        if not member and new_ids:                # nobody's upload: the assignment rules pick owners (off by default)
+            from . import assignment
+            assignment.assign_created(store, new_ids)
         created, duplicates, merged = stats["created"], stats["duplicates"], stats["merged"]
         extra = {"suppressed": stats["suppressed"]} if stats.get("suppressed") else {}
         if member:

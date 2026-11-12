@@ -241,7 +241,10 @@ def make_router(store, transports=None) -> APIRouter:
             out["ownership"] = {"owned": res["owned"], "conflicts": res["conflicts"]}
             out["list_id"] = res["list_id"]
             lead_ids = [i for i in lead_ids if i not in {c["lead_id"] for c in res["conflicts"]}]
-        elif lead_ids and (body.list_id or body.list_name.strip()):
+        else:
+            from . import assignment               # an admin's add: the assignment rules give the NEW leads owners (off by default)
+            assignment.assign_created(store, [r["lead_id"] for r in out["added"]])
+        if not upload_owner.is_member(user) and lead_ids and (body.list_id or body.list_name.strip()):
             if body.list_id:
                 row = lists.get(store, body.list_id)
                 if row is None or not filter_rows([row]):

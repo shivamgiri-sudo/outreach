@@ -202,7 +202,7 @@ def recalculate(store, user: Optional[dict], now: Optional[datetime] = None) -> 
         out = []
         for lead in leads:
             s = lead.get("sales")
-            if not isinstance(s, dict) or not s.get("status") or not workspaces.visible(lead):
+            if not isinstance(s, dict) or not s.get("status") or not workspaces.visible_ws(lead):
                 out.append(lead)
                 continue
             stats["checked"] += 1

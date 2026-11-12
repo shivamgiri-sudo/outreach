@@ -38,6 +38,7 @@ LIMITED_OK = {
     ("GET", "/api/lead-owners"), ("GET", "/api/lead-tags"), ("GET", "/api/companies"), ("GET", "/api/companies/{key:path}"),
     ("GET", "/api/lists"), ("GET", "/api/lists/companies"), ("GET", "/api/lists/enriched-summary"), ("POST", "/api/lists"),
     ("GET", "/api/lists/{list_id}"), ("POST", "/api/lists/{list_id}/members"), ("DELETE", "/api/lists/{list_id}"),
+    ("POST", "/api/lists/{list_id}/start-email"), ("POST", "/api/lists/{list_id}/start-linkedin"),      # the list is cut to the login's workspaces and leads it may send to
     ("GET", "/api/today"), ("GET", "/api/my-day"), ("PUT", "/api/my-day/targets"), ("GET", "/api/call-queue"),
     ("GET", "/api/tasks"), ("GET", "/api/tasks/board"), ("POST", "/api/tasks"), ("POST", "/api/tasks/done"),
     ("GET", "/api/notifications"), ("POST", "/api/notifications/read"),
@@ -87,7 +88,7 @@ LIMITED_OK = {
     ("GET", "/api/reports/sla"), ("GET", "/api/reports/daily"), ("GET", "/api/reports/daily.csv"), ("POST", "/api/reports/email"),
     # lead ownership: lists assigned / split / shared, the switch and its migration report (admins of the workspace; the routes check)
     ("PUT", "/api/lists/{list_id}/assign"), ("POST", "/api/lists/{list_id}/split"), ("PUT", "/api/lists/{list_id}/share"),
-    ("GET", "/api/ownership-mode"), ("PUT", "/api/ownership-mode"), ("GET", "/api/ownership/report"), ("POST", "/api/ownership/migrate"),
+    ("GET", "/api/ownership-mode"), ("PUT", "/api/ownership-mode"), ("GET", "/api/ownership/report"), ("GET", "/api/ownership/preview"), ("POST", "/api/ownership/migrate"),
     ("POST", "/api/ownership/fix-owners"),
     ("POST", "/api/import/preview"), ("POST", "/api/import/excel"), ("POST", "/api/import/commit"), ("GET", "/api/import/history"), ("POST", "/api/import/{import_id}/undo"),
 }

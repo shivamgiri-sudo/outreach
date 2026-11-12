@@ -195,7 +195,7 @@ def test_leads_list_api(r):
     companies = lambda who: {l["company"] for l in r.c.get("/api/leads", headers=r.h[who]).json()}
     assert companies("priya") == {"Beta Ltd", "Other WS Co"} and companies("ravi") == {"Acme"}      # Priya owns a lead in the second workspace too
     assert companies("adm") == {"Acme", "Beta Ltd", "Cora Inc"} and companies("adm2") == {"Other WS Co"}
-    assert companies("view") == {"Acme", "Beta Ltd", "Cora Inc", "Other WS Co"}              # viewers cannot send; the plan lets them read
+    assert companies("view") == set()                       # viewers are read-only and see their team's leads only (no team: none)
     assert r.c.get(f"/api/leads/{lid(r, 'Acme')}", headers=r.h["priya"]).status_code == 404
     assert r.c.get(f"/api/leads/{lid(r, 'Beta Ltd')}", headers=r.h["priya"]).status_code == 200
 

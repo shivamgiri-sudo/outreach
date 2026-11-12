@@ -177,6 +177,9 @@ def make_router(store) -> APIRouter:
             return leads
         store.update("leads", apply)
         result = holder["result"]
+        if slices is None:                       # an admin's plain upload: the assignment rules give the new leads owners (off by default)
+            from . import assignment
+            assignment.assign_created(store, result["created_ids"])
         if result["source_opt_outs"]:          # a "no" recorded in the source CRM goes on the do-not-contact list
             store.update("suppressed", lambda rows: [*rows, *(e for e in result["source_opt_outs"] if e not in rows)])
             from .privacy import record_consent       # the consent record shows where the "no" came from

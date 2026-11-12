@@ -17,6 +17,7 @@ from .lead_model import now_iso
 
 MAIN = "main"
 MAX_WORKSPACES = 50
+_OWN = contextvars.ContextVar("lead_ownership_hidden", default=None)       # row -> True when lead ownership hides this lead from the caller
 _SCOPE = contextvars.ContextVar("workspace_scope", default=(None, None))     # (selected id or None, allowed set or None)
 
 
@@ -84,24 +85,54 @@ async def scope_dependency(request: Request) -> None:
         account = accounts.account_of_ws(store, selected) if store is not None else None
     accounts.set_current(account, client)
     _SCOPE.set((selected, allowed))
+    _OWN.set(None)
+    store = getattr(request.app.state, "store", None)
+    if user is not None and store is not None:
+        from . import lead_access
+        _OWN.set(lead_access.hidden_test(store, user))
     request.state.workspace_scope = (selected, allowed)
 
 
-def visible(row: dict) -> bool:
+def visible_ws(row: dict) -> bool:
+    """In this request's workspace scope, ignoring lead ownership (for de-duplication, which must see every lead)."""
     selected, allowed = _SCOPE.get()
     ws = ws_of(row)
     return (allowed is None or ws in allowed) and (selected is None or ws == selected)
 
 
-def filter_rows(rows) -> list:
-    return [r for r in rows if visible(r)]
+def visible(row: dict) -> bool:
+    """In this request's scope: its workspaces and, for a lead or list, what lead ownership lets this caller see."""
+    return visible_ws(row) and not own_hidden(row)
+
+
+def is_lead(row) -> bool:
+    return isinstance(row, dict) and "contact_name" in row and "timeline" in row
+
+
+def is_list(row) -> bool:
+    return isinstance(row, dict) and "lead_ids" in row and "name" in row
+
+
+def own_hidden(row) -> bool:
+    """Lead ownership (switch on) hides this lead (or list) from the caller: a member sees only their own leads and the
+    lists given to them, a viewer those of their team."""
+    test = _OWN.get()
+    if not test:
+        return False
+    return test(row) if is_lead(row) else (test.list(row) if is_list(row) else False)
+
+
+def filter_rows(rows, owned: bool = True) -> list:
+    """Rows in this request's workspace scope; lead rows also respect lead ownership (owned=False: workspace only, for de-duplication)."""
+    keep = visible if owned else visible_ws
+    return [r for r in rows if keep(r)]
 
 
 def hidden_ids(leads) -> set:
     """Ids of leads outside this request's scope, so tasks, call queues and summaries tied to them can be left out
     (a task for a deleted lead, or one with no lead, is not hidden)."""
     selected, allowed = _SCOPE.get()
-    if selected is None and allowed is None:
+    if selected is None and allowed is None and _OWN.get() is None:
         return set()
     return {lead["id"] for lead in leads if isinstance(lead, dict) and lead.get("id") and not visible(lead)}
 
@@ -181,10 +212,11 @@ def counts(store) -> dict:
     return out
 
 
-def scoped() -> bool:
-    """This request sees only some workspaces (a limited login, or a workspace picked in the menu)."""
+def scoped(owned: bool = True) -> bool:
+    """This request sees only some workspaces (a limited login, or a workspace picked in the menu), or (owned) only some
+    leads because lead ownership is on for it. De-duplication passes owned=False: it must still see every lead."""
     selected, allowed = _SCOPE.get()
-    return selected is not None or allowed is not None
+    return selected is not None or allowed is not None or (owned and _OWN.get() is not None)
 
 
 def visible_lead_ids(store) -> Optional[set]:

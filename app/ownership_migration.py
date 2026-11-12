@@ -8,7 +8,7 @@
 4. `turn_on` refuses while unowned leads exist unless the admin acknowledges it, and migrates lists first so no member
    loses a list when the switch goes on.
 """
-from . import lead_access, lead_ops, list_assign, lists, workspaces
+from . import auth, lead_access, lead_ops, list_assign, lists, workspaces
 
 
 class SwitchRefused(ValueError):
@@ -74,6 +74,33 @@ def report(store, ws: str) -> dict:
             "legacy_lists": sum(1 for r in rows if _legacy(r)), "mismatches": mismatches,
             "unowned": sum(1 for l in leads.values() if not str(l.get("owner") or "").strip()), "leads": len(leads),
             "ownership_on": lead_access.ownership_on(store, ws)}
+
+
+def preview(store, ws: str) -> dict:
+    """Read-only 'what each person would see' once the switch is on for this workspace: per login that works here, how many
+    leads and lists they would see (lists as migration would assign them). Nothing is written, the switch is not touched."""
+    leads = [l for l in store.read("leads") if workspaces.ws_of(l) == ws]
+    rows = [{**r, "assigned_to": proposed_assignee(store, r) if _legacy(r) else (r.get("assigned_to") or "")} for r in _ws_lists(store, ws)]
+    hider = lead_access.Hider
+    members, seen = [], set()
+    for u in auth.users(store):
+        person = list_assign.login_named(store, u.get("email"), ws)
+        if person is None or person.get("email") in seen:
+            continue
+        seen.add(person.get("email"))
+        role = person.get("role") or ""
+        if lead_access.is_admin(person, ws):
+            n_leads, n_lists, why = len(leads), len(rows), "everything in this workspace"
+        else:
+            h = hider(store, person, {ws})
+            n_leads, n_lists = sum(1 for l in leads if not h(l)), sum(1 for r in rows if not h.list(r))
+            why = "their team's leads and lists (read-only)" if role == "viewer" else "leads they own and lists assigned or shared with them"
+        members.append({"name": list_assign.display(person), "email": person.get("email") or "", "role": role, "leads": n_leads,
+                        "lists": n_lists, "sees": why})
+    unowned = sum(1 for l in leads if not str(l.get("owner") or "").strip())
+    return {"workspace": ws, "ownership_on": lead_access.ownership_on(store, ws), "leads": len(leads), "lists": len(rows), "unowned": unowned,
+            "unowned_note": f"{unowned} lead(s) have no owner: only admins would see them until they are assigned." if unowned else "",
+            "members": sorted(members, key=lambda m: (m["role"] not in ("owner", "admin"), m["name"].lower()))}
 
 
 def fix_owners(store, ws: str, by: str, lead_ids=None) -> dict:

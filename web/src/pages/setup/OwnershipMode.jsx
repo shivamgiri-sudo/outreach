@@ -11,6 +11,7 @@ export default function OwnershipMode() {
 function OwnershipModeBody() {
   const [mode, setMode] = useState(null);       // { on, unowned }
   const [report, setReport] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [ack, setAck] = useState(false);
   const [picked, setPicked] = useState([]);
   const [msg, setMsg] = useState(null);
@@ -19,6 +20,7 @@ function OwnershipModeBody() {
   const load = () => {
     api.ownershipMode().then(setMode).catch((e) => setMsg({ text: e.message, error: true }));
     api.ownershipReport().then((r) => { setReport(r); setPicked([]); }).catch(() => {});
+    api.ownershipPreview().then(setPreview).catch(() => setPreview(null));
   };
   useEffect(load, []);
   if (!mode) return <div className="card setup-card">{msg ? <div className="tip error" role="alert">{msg.text}</div> : "Loading…"}</div>;
@@ -47,6 +49,21 @@ function OwnershipModeBody() {
           <li>{report.unowned} lead(s) with no owner</li>
           <li>{mism.length} lead(s) whose owner differs from their list's assignee</li>
         </ul>
+      )}
+      {preview && preview.members.length > 0 && (
+        <div data-testid="ownership-preview">
+          <h4 style={{ marginBottom: 4 }}>{mode.on ? "What each person sees now" : "What each person would see once it is on"}</h4>
+          <div className="table-scroll"><table>
+            <thead><tr><th>Person</th><th>Role</th><th style={{ textAlign: "right" }}>Leads</th><th style={{ textAlign: "right" }}>Lists</th><th>Sees</th></tr></thead>
+            <tbody>{preview.members.map((m) => (
+              <tr key={m.email} data-testid="ownership-preview-row">
+                <td><b>{m.name}</b><br /><small>{m.email}</small></td><td>{m.role}</td>
+                <td style={{ textAlign: "right" }}>{m.leads}</td><td style={{ textAlign: "right" }}>{m.lists}</td><td><small>{m.sees}</small></td>
+              </tr>))}
+            </tbody>
+          </table></div>
+          {preview.unowned_note && <p className="sub" data-testid="ownership-preview-note">{preview.unowned_note}</p>}
+        </div>
       )}
       {needAck && (
         <label className="row tip" style={{ gap: 8 }}>

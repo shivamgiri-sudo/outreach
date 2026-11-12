@@ -282,6 +282,9 @@ class Runner:
                 row = upload_owner.finish_upload(self.store, me, "Find leads " + _now_text()[:10], claimed["mine"], "find leads",
                                                  set(self.store.read("suppressed")))
                 report.update(list_id=(row or {}).get("id"), owned_by_other=claimed["conflicts"])
+            elif found_ids:                        # no person behind the run: the assignment rules pick owners for the NEW leads (off by default)
+                from . import assignment
+                assignment.assign_created(self.store, found_ids)
         with self._guard:
             run = self._live[run_id]
             report["errors"] = list(run["errors"])

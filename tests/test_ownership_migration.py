@@ -114,3 +114,20 @@ def test_before_the_switch_nothing_is_hidden_from_members(r):
     legacy_list(r, "Ravi list", ["Acme"], "Ravi")
     assert [x["name"] for x in r.c.get("/api/lists", headers=r.h["priya"]).json()] == ["Ravi list"]      # legacy list, switch off
     assert len(r.c.get("/api/leads", headers=r.h["priya"]).json()) == 4
+
+
+# ---- dry-run preview: what each person would see once the switch is on
+def test_preview_counts_per_member_and_changes_nothing(r):
+    legacy_list(r, "Priya list", ["Beta Ltd", "Acme"], "Priya")
+    before = (r.store.read("lists"), r.store.read("settings").get("ownership_mode"))
+    out = r.c.get("/api/ownership/preview", headers=r.h["adm"]).json()
+    who = {m["email"]: m for m in out["members"]}
+    assert not out["ownership_on"] and out["leads"] == 3 and out["unowned"] == 1 and "no owner" in out["unowned_note"]
+    assert who["adm@x.in"]["leads"] == 3 and who["adm@x.in"]["lists"] == 1                       # admin: everything
+    assert who["priya@x.in"]["leads"] == 1 and who["priya@x.in"]["lists"] == 1                  # owns Beta; the legacy list goes to its creator
+    assert who["ravi@x.in"]["leads"] == 1 and who["ravi@x.in"]["lists"] == 0                     # owns Acme; no list of hers
+    assert who["view@x.in"]["leads"] == 0 and who["view@x.in"]["lists"] == 0                    # viewer with no team sees nothing
+    assert "adm2@x.in" not in who                                                                # another workspace's admin is not a member here
+    assert (r.store.read("lists"), r.store.read("settings").get("ownership_mode")) == before        # a dry run: nothing written
+    assert r.c.get("/api/ownership/preview", headers=r.h["priya"]).status_code == 403             # admins only
+    assert r.c.get("/api/ownership/preview", params={"workspace": r.w2}, headers=r.h["adm"]).status_code == 404   # strict workspaces
