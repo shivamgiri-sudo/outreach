@@ -395,8 +395,13 @@ async function oneCycle(page, state) {
   if (!ctl.active_now) return { idle: `not now: ${ctl.why_not}` };
   const queue = await api("/api/extension/queue");
   // 1. someone waiting for acceptance? look at a few profiles (a read, no caps) at most every 6 hours each.
-  for (const w of queue.waiting_for_acceptance.slice(0, 3)) {
-    if (!w.profile_url || Date.now() - (state.checked[w.lead_id] || 0) < 6 * 3600 * 1000) continue;
+  // Only people not looked at in the last 6 hours, longest-waiting first, before taking 3: otherwise the same first 3
+  // people fill the slice every cycle and everyone behind them is never checked (acceptances were missed).
+  const toCheck = queue.waiting_for_acceptance
+    .filter((w) => w.profile_url && Date.now() - (state.checked[w.lead_id] || 0) >= 6 * 3600 * 1000)
+    .sort((a, b) => String(a.since || "").localeCompare(String(b.since || "")))
+    .slice(0, 3);
+  for (const w of toCheck) {
     state.checked[w.lead_id] = Date.now();
     await page.goto(toLocal(w.profile_url), { waitUntil: "domcontentloaded" }); await sleep(SETTLE);
     await checkTrouble(page);
