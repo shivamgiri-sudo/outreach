@@ -29,7 +29,7 @@ OWNER_ROUTES = {
     ("PUT", "/api/settings"), ("POST", "/api/settings/live-sending"), ("PUT", "/api/offer"), ("PUT", "/api/team"), ("POST", "/api/workspaces"), ("DELETE", "/api/workspaces/{ws_id}"), ("POST", "/api/sequence/{index}/send-preview"),
     ("GET", "/api/channels/webhooks"), ("GET", "/api/flows/{flow_id}/webhook"), ("PUT", "/api/icp"), ("POST", "/api/signals/run"), ("POST", "/api/signals/watch"), ("DELETE", "/api/signals/watch/{watch_id}"), ("POST", "/api/icp/score"), ("GET", "/api/oauth/{provider}/start"),
     ("POST", "/api/sequences/run"), ("POST", "/api/sending/resume"), ("POST", "/api/sequences/resume-failed"),
-    ("POST", "/api/practice/clear"), ("GET", "/api/enrich/apollo-export"), ("GET", "/api/change-log.csv"),   # CSV downloads: owners only
+    ("POST", "/api/practice/clear"), ("GET", "/api/enrich/apollo-export"), ("GET", "/api/change-log.csv"), ("GET", "/api/call-log/export"),   # CSV downloads: owners only
     ("GET", "/api/leads/{lead_id}/export"), ("POST", "/api/leads/{lead_id}/erase"),
     ("POST", "/api/find-leads"),          # spends provider credits
     ("POST", "/api/sequences"), ("PUT", "/api/sequences/{seq_id}"), ("POST", "/api/sequences/{seq_id}/duplicate"),       # sequence library

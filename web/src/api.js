@@ -446,6 +446,7 @@ export const api = {
   saveTargets: (targets, scope = "me") => request("/api/my-day/targets", { method: "PUT", body: { scope, targets } }),
   callQueue: (mine = false) => request(`/api/call-queue${mine ? "?mine=true" : ""}`),
   callOutcome: (id, outcome, notes = "", callbackAt = null, to = "") => request(`/api/leads/${id}/call-outcome`, { method: "POST", body: { outcome, notes, callback_at: callbackAt, to } }),
+  callLog: (params = {}) => request(`/api/call-log?${callLogQuery(params)}`),
   callScript: () => request("/api/call-script"),
   saveCallScript: (script, objections) => request("/api/call-script", { method: "PUT", body: { script, objections } }),
   resetCallScript: () => request("/api/call-script", { method: "DELETE" }),
@@ -483,4 +484,7 @@ export const api = {
   saveScoring: (body) => request("/api/scoring", { method: "PUT", body }),
 };
 // Shared with small feature modules (opsApi.js) so they can call the API without growing this file.
+// Query string for the call log and its CSV export; empty values are left out.
+export const callLogQuery = (params) => new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "" && v != null)).toString();
+
 export { request as apiRequest, download as apiDownload };

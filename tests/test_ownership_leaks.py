@@ -61,7 +61,9 @@ def test_no_aggregate_or_list_endpoint_leaks(r):
     r.c.post(f"/api/leads/{acme}/meetings", json={"title": "ACMEMEET", "at": "2026-12-01T10:00:00+00:00"}, headers=r.h["owner"])
     r.c.post("/api/tasks", json={"lead_id": acme, "title": "ACMETASK"}, headers=r.h["owner"])
     new_list(r, "Ravi private list", ["Acme"], assigned_to="Ravi")
-    needles = ["acme.com", "Ravi Kumar", "98765 43210", "ravi@acme", "Ravi private list", "ACMEMEET", "ACMETASK", "\"Acme\""]
+    from app.activities import log_activity
+    log_activity(r.store, acme, "call", {"outcome": "connected", "by": "Ravi", "notes": "ACMECALL"})       # /api/call-log must not show it
+    needles = ["acme.com", "Ravi Kumar", "98765 43210", "ravi@acme", "Ravi private list", "ACMEMEET", "ACMETASK", "ACMECALL", "\"Acme\""]
     gets = sorted(p for p, d in r.c.app.openapi()["paths"].items() if "get" in d and "{" not in p and p.startswith("/api")
                   and p != "/api/icp" and not p.startswith("/api/prospects"))   # /api/icp: a sample company called Acme; the prospect pool keeps name/title/company but redacts every contact (test_prospect_ownership)
     for who in ("priya", "view"):
