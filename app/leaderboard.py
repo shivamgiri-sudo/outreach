@@ -5,7 +5,7 @@ Definitions
 - A caller is the person who LOGGED the call (`by`). Meetings booked and 'interested' outcomes are credited to that person.
 - calls = call attempts. Marker outcomes (invalid_lead, consultant_lead) are a quality verdict, not an attempt: they are
   counted apart as `marked` and left out of calls, connected and connect rate.
-- connected = outcomes in rep_workflow.CONNECTED (the same list My day and the Call log use); unanswered = no answer / busy /
+- connected = outcomes in rep_workflow.CONNECTED (connected, interested, meeting booked: the same list My day, the Call log and the daily report use); unanswered = no answer / busy /
   call disconnected; connect rate = connected / calls.
 - avg_per_day = calls / days on which that person made at least one call.
 - Attainment = calls / (daily calls target x working days), working days = Mon-Sat (IST) from the period start to today

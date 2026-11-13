@@ -12,7 +12,7 @@ export default {
       "**Replies** opens {{menu:Replies}}. The number in brackets is how many replies wait for you.",
     ]],
     ["h", "Daily targets"],
-    ["p", "Below the buttons, progress bars show what you did today against your target for **Calls**, **Connects**, **Emails**, **LinkedIn** and **WhatsApp**. A bar turns green when you reach the target. Only measures with a target or some activity today are shown. The line under the bars shows your totals for this week."],
+    ["p", "Below the buttons, progress bars show what you did today against your target for **Calls**, **Connects** (calls that reached a real conversation: connected, interested or meeting booked), **Emails**, **LinkedIn** and **WhatsApp**. A bar turns green when you reach the target. Only measures with a target or some activity today are shown. The line under the bars shows your totals for this week."],
     ["steps", [
       "Click **Change targets** (you need a role that can make changes).",
       "Type a number for each measure. 0 means no target.",

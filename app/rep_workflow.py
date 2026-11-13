@@ -20,7 +20,8 @@ from .stages import ALL_STAGES, EXIT_STAGES, STAGES, TERMINAL, can_move
 
 CLOSED = ("unsubscribed", "disqualified", "not_now", "customer", "advocate")
 CALL_STAGES = ("interested", "whatsapp_active")
-CONNECTED = ("connected", "interested", "not_interested", "meeting_booked", "call_back")
+CONNECTED = ("connected", "interested", "meeting_booked")       # a real conversation that went well enough to continue (the one definition for My day, the Call log, the Leaderboard and the daily report)
+SPOKE_TO = ("connected", "interested", "not_interested", "meeting_booked", "call_back")    # anyone who picked up and talked, including a no or a call-back
 TARGET_KEYS = ("calls", "connects", "emails", "linkedin", "whatsapp")
 DEFAULT_TARGETS = {"calls": 40, "connects": 10, "emails": 20, "linkedin": 15, "whatsapp": 10}
 MAX_TARGET = 1000

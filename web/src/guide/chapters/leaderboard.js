@@ -7,7 +7,7 @@ export default {
     ["h", "What each column means"],
     ["ul", [
       "**Calls**: call attempts, counted for the person who logged them. The number in brackets is the change against the same number of days just before.",
-      "**Connected**: calls where someone picked up and talked (connected, call back, interested, not interested, meeting booked). **Connect rate** is connected divided by calls.",
+      "**Connected**: calls that reached a real conversation (connected, interested, meeting booked). A call-back request or a not-interested answer is a call that got through but is not counted as connected. The same rule is used on My day, the Call log and the daily report. **Connect rate** is connected divided by calls.",
       "**Interested** and **Meetings**: outcomes credited to the person who logged them.",
       "**Marked**: leads the caller marked **Invalid** or **Consultant**. A mark is a verdict on the lead, not a call, so it is kept out of Calls and Connect rate.",
       "**Target reached**: calls divided by the daily calls target times the working days so far (Monday to Saturday). A bar and the number are shown; \"No target\" means the target is zero.",

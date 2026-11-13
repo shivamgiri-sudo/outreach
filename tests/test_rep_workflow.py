@@ -152,7 +152,7 @@ def test_my_day_for_signed_in_caller(tmp_path):
     assert "Send deck" in titles and "Amit's job" not in titles
     assert [t["lead_id"] for t in d["callbacks"]] == [beta]
     assert d["callbacks"][0]["next"]["action"] == "call"
-    assert d["today"]["calls"] == 2 and d["today"]["connects"] == 2      # asked to call back counts as a connect
+    assert d["today"]["calls"] == 2 and d["today"]["connects"] == 1      # connect = connected / interested / meeting booked; a call-back request is not one
     assert d["week"]["calls"] >= 2 and d["targets"]["calls"] == 40
     assert any(r["lead_id"] == acme for r in d["replies"])
     assert d["replies"][0]["next"]["action"] in ("email", "call")

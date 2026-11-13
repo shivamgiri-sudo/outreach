@@ -15,7 +15,7 @@ from .replies import is_person_reply
 from .source_stats import real
 
 LOG_LIMIT = 5000
-CONNECTED = {"connected", "interested", "not_interested", "meeting_booked", "call_back"}
+from .rep_workflow import CONNECTED          # one definition of "connected" (narrow: connected, interested, meeting booked)
 COUNTERS = ("leads_added", "calls", "calls_connected", "interested", "not_interested", "follow_ups", "bad_numbers", "emails_sent",
             "whatsapp_sent", "linkedin", "replies", "meetings", "notes", "stage_changes", "tasks_done", "opens", "clicks")
 SYSTEM = "System"

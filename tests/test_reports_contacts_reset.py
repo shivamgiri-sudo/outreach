@@ -30,7 +30,7 @@ def test_daily_report_counts_calls_and_shows_number_used(tmp_path):
     c.post(f"/api/leads/{acme}/call-outcome", json={"outcome": "not_interested", "notes": "no budget"}, headers=p)
     c.post(f"/api/leads/{lid(c, h, 'Beta Ltd')}/call-outcome", json={"outcome": "no_answer"}, headers=p)
     r = c.get("/api/reports/daily", params={"days": 7}, headers=h).json()
-    assert r["totals"]["calls"] == 2 and r["totals"]["calls_connected"] == 1 and r["totals"]["not_interested"] == 1
+    assert r["totals"]["calls"] == 2 and r["totals"]["calls_connected"] == 0 and r["totals"]["not_interested"] == 1      # not interested is a call that got through, but not a "connect"
     assert r["totals"]["leads_added"] == 2
     call = next(x for x in r["log"] if x["kind"] == "call" and x["company"] == "Acme")
     assert call["who"] == "Priya" and call["where"].endswith("9876543210") and call["notes"] == "no budget"
