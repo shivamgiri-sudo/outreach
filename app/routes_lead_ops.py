@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import audit, lead_ops, scoring
+from . import audit, bulk_reassign, bulk_undo, lead_ops, scoring
 from . import workspaces as workspaces_mod
 from .routes_outreach import enroll_lead
 
@@ -23,6 +23,14 @@ class BulkBody(BaseModel):
     action: str
     value: Optional[str] = Field(default=None, max_length=200)
     force: bool = False
+
+
+class ReassignBody(BaseModel):
+    from_owner: str = Field(max_length=200)
+    to_owner: str = Field(max_length=200)
+    stage: str = Field(default="", max_length=40)
+    only_untouched: bool = False
+    dry_run: bool = True              # safe by default: nothing is written unless the caller says dry_run=false
 
 
 class ViewBody(BaseModel):
@@ -94,6 +102,32 @@ def make_router(store, present) -> APIRouter:
             raise HTTPException(403, str(exc)) from exc
         except lead_ops.LeadOpRefused as exc:
             raise HTTPException(400, str(exc)) from exc
+
+    @router.post("/api/leads/bulk-reassign")
+    def bulk_reassign_route(body: ReassignBody, request: Request):
+        """Hand over everything one person owns (optionally one stage / only untouched leads). Owner and admin only."""
+        try:
+            result = bulk_reassign.reassign_all(store, getattr(request.state, "user", None), actor(request), body.from_owner, body.to_owner,
+                                                body.stage, body.only_untouched, body.dry_run)
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from exc
+        except lead_ops.LeadOpRefused as exc:
+            raise HTTPException(400, str(exc)) from exc
+        if result.get("sample"):                 # the sample shows names only; never more than the caller may see
+            ids = {l["id"] for l in workspaces_mod.filter_rows(store.read("leads"))}
+            result["sample"] = [r for r in result["sample"] if r["id"] in ids]
+        return result
+
+    @router.post("/api/leads/bulk-undo/{undo_id}")
+    def bulk_undo_route(undo_id: str, request: Request):
+        try:
+            return bulk_undo.undo(store, undo_id, getattr(request.state, "user", None), actor(request))
+        except bulk_undo.UndoRefused as exc:
+            raise HTTPException(exc.status, exc.message) from exc
+
+    @router.get("/api/bulk-undo")
+    def bulk_undo_open(request: Request):
+        return bulk_undo.list_for(store, getattr(request.state, "user", None))
 
     @router.get("/api/lead-views")
     def views(request: Request):

@@ -462,6 +462,9 @@ export const api = {
   changeLeadTags: (id, add = [], remove = []) => request(`/api/leads/${id}/tags`, { method: "POST", body: { add, remove } }),
   leadTags: () => request("/api/lead-tags"),
   bulkLeads: (leadIds, action, value = null, force = false) => request("/api/leads/bulk", { method: "POST", body: { lead_ids: leadIds, action, value, force } }),
+  // Bulk hand-over of a person's leads (dry run first), and undo for any bulk change (24 h, last 20)
+  bulkReassign: (body) => request("/api/leads/bulk-reassign", { method: "POST", body }),
+  bulkUndo: (id) => request(`/api/leads/bulk-undo/${encodeURIComponent(id)}`, { method: "POST" }),
   leadViews: () => request("/api/lead-views"),
   saveLeadView: (name, filters) => request("/api/lead-views", { method: "POST", body: { name, filters } }),
   deleteLeadView: (id) => request(`/api/lead-views/${id}`, { method: "DELETE" }),

@@ -67,7 +67,7 @@ CALLER_WRITES = {
     ("POST", "/api/leads/{lead_id}/linkedin/find"), ("POST", "/api/linkedin-runner/heartbeat"), ("POST", "/api/mcp"),
     # leads: add, import, edit, work
     ("PUT", "/api/leads/{lead_id}/sales"),          # the sales stage of a lead (the rules are checked in app/sales_service.py)
-    ("POST", "/api/leads/import"), ("POST", "/api/leads/import-sheet"), ("POST", "/api/leads/bulk"), ("PATCH", "/api/leads/{lead_id}"),
+    ("POST", "/api/leads/import"), ("POST", "/api/leads/import-sheet"), ("POST", "/api/leads/bulk"), ("POST", "/api/leads/bulk-undo/{undo_id}"), ("PATCH", "/api/leads/{lead_id}"),
     ("PATCH", "/api/leads/{lead_id}/custom"), ("POST", "/api/leads/{lead_id}/stage"), ("POST", "/api/leads/{lead_id}/tags"),
     ("POST", "/api/leads/{lead_id}/owner"), ("POST", "/api/leads/{lead_id}/note"), ("POST", "/api/leads/{lead_id}/activity"),
     ("POST", "/api/leads/{lead_id}/call-outcome"), ("POST", "/api/leads/{lead_id}/consent"), ("POST", "/api/leads/{lead_id}/reply"),
@@ -114,6 +114,7 @@ ADMIN_WRITES = {
     ("PUT", "/api/lists/{list_id}/assign"), ("POST", "/api/lists/{list_id}/split"), ("PUT", "/api/lists/{list_id}/share"),
     ("PUT", "/api/ownership-mode"), ("POST", "/api/ownership/migrate"), ("POST", "/api/ownership/fix-owners"),
     ("PUT", "/api/assignment"), ("POST", "/api/assignment/run-unowned"),      # lead assignment rules (the routes refuse callers)
+    ("POST", "/api/leads/bulk-reassign"),         # hand over a person's leads (app/bulk_reassign.py refuses non-admins and other workspaces)
 }
 # LinkedIn agent per client account (app/linkedin_scope.py): an account's admins run their own account's agent, slots and
 # office computer (the routes cut to the admin's account, 404 for another's); callers / viewers only read its status.

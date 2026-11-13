@@ -26,7 +26,8 @@ VIEWS_KEY = "lead_views"
 VIEWS_PER_USER = 30
 VIEW_NAME_MAX = 60
 VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort", "has", "li_stage", "contact")
-BULK_ACTIONS = ("stage", "owner", "tag_add", "tag_remove", "do_not_contact", "delete", "enroll")
+BULK_ACTIONS = ("stage", "owner", "tag_add", "tag_remove", "do_not_contact", "delete", "enroll", "list_add")
+UNDOABLE = ("stage", "owner", "tag_add", "tag_remove")
 
 
 class LeadOpRefused(ValueError):
@@ -264,7 +265,10 @@ def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool
     if action == "stage" and value not in ALL_STAGES:
         raise LeadOpRefused("Pick a stage.")
     if action == "owner":
-        value = clean_owner(store, value, who)
+        value = clean_owner(store, value, who, user)
+    list_row = None
+    if action == "list_add":
+        list_row = _list_for_bulk(store, value, user)
     if action in ("tag_add", "tag_remove"):
         value = clean_tag(value)
         if not value:
@@ -273,9 +277,11 @@ def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool
     visible = {l["id"] for l in store.read("leads") if (workspaces_mod.visible_ws(l) if action == "enroll" else workspaces_mod.visible(l) and lead_access.can_send(store, user, l))}   # enrol says whose lead it is
     reasons = {i: "not found" for i in ids if i not in visible}
     wanted = [i for i in ids if i in visible]
-    done, gone = [], []
+    done, gone, trace, undo_id = [], [], [], None
 
-    if action == "enroll":
+    if action == "list_add":
+        undo_id = _bulk_list_add(store, list_row, [l for l in store.read("leads") if l["id"] in set(wanted)], reasons, actor)
+    elif action == "enroll":
         for lead_id in wanted:
             try:
                 enroll(store, lead_id, f"Enrolled in email sequence (bulk, by {who})", by=who, by_email=actor.get("email") or "",
@@ -288,7 +294,7 @@ def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool
         targets = set(wanted)
 
         def apply(rows: list) -> list:
-            done.clear(); gone.clear()
+            done.clear(); gone.clear(); trace.clear()
             seen, out = set(), []
             for lead in rows:
                 if lead["id"] not in targets:
@@ -303,6 +309,7 @@ def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool
                     reasons[lead["id"]] = why
                 else:
                     done.append(lead)
+                    trace.append((lead, changed))
                 out.append(changed or lead)
             for missing in targets - seen:
                 reasons[missing] = "not found"
@@ -324,10 +331,60 @@ def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool
         if action == "stage":
             for lead in done:
                 _stage_side_effects(store, lead["id"], value, who)
+        if action in UNDOABLE and trace:
+            undo_id = _bulk_trail(store, action, value, actor, trace)
     results = [{"id": i, "ok": i not in reasons, **({"reason": reasons[i]} if i in reasons else {})} for i in ids]
     ok = sum(1 for r in results if r["ok"])
     return {"action": action, "asked": len(ids), "ok": ok, "failed": len(ids) - ok, "results": results,
-            "reasons": _reason_counts(results)}
+            "reasons": _reason_counts(results), "undo_id": undo_id}
+
+
+def _list_for_bulk(store, list_id, user):
+    from . import list_assign, lists
+    row = lists.get(store, str(list_id or ""))
+    if row is None or not workspaces_mod.visible(row) or not list_assign.visible(store, user, row):
+        raise LeadOpRefused("That list was not found.")
+    if not list_assign.may_work(store, user, row):
+        raise LeadOpRefused("This list is shared with you to look at only. Ask an admin to assign it to you.")
+    return row
+
+
+def _bulk_list_add(store, row: dict, leads: list, reasons: dict, actor: dict):
+    """Add leads to a list (same workspace only, list size capped). Fills `reasons` for the ones left out; returns the undo id."""
+    from . import bulk_undo, lists
+    members = set(row["lead_ids"])
+    room, add = lists.MAX_LIST_LEADS - len(members), []
+    for lead in leads:
+        if lead["id"] in members:
+            reasons[lead["id"]] = "already in this list"
+        elif workspaces_mod.ws_of(lead) != workspaces_mod.ws_of(row):
+            reasons[lead["id"]] = "belongs to a different workspace than the list"
+        elif len(add) >= room:
+            reasons[lead["id"]] = f"the list is full ({lists.MAX_LIST_LEADS} leads)"
+        else:
+            add.append(lead["id"])
+    if not add:
+        return None
+    lists.set_members(store, row["id"], add, [], actor["name"])
+    _audit_bulk(store, "list_add", actor, row["name"], f"added {len(add)} lead(s) to list {row['name']}", {"lead_ids": add[:500]})
+    return bulk_undo.record_list_add(store, row, add, actor)
+
+
+def _audit_bulk(store, action: str, actor: dict, target: str, detail: str, extra: dict) -> None:
+    from .audit import record
+    record(store, {"name": actor.get("name"), "email": actor.get("email"), "role": actor.get("role", "")}, f"bulk.{action}", target, detail, extra)
+
+
+def _bulk_trail(store, action: str, value, actor: dict, trace: list):
+    """Undo record, audit row and (for owners) bells for one bulk owner / tag / stage change."""
+    from . import bulk_reassign, bulk_undo
+    label = {"owner": f"Assigned {len(trace)} lead(s) to {value or 'nobody'}", "stage": f"Moved {len(trace)} lead(s) to {value}",
+             "tag_add": f"Tagged {len(trace)} lead(s) “{value}”", "tag_remove": f"Removed tag “{value}” from {len(trace)} lead(s)"}[action]
+    undo_id = bulk_undo.record_bulk(store, action, value, actor, trace, label)
+    _audit_bulk(store, action, actor, label, label, {"count": len(trace), "undo_id": undo_id, "lead_ids": [b["id"] for b, _ in trace][:500]})
+    if action == "owner":
+        bulk_reassign.tell_moves(store, [(a, b.get("owner") or "", value) for b, a in trace], actor["name"])
+    return undo_id
 
 
 def _reason_counts(results: list) -> list:

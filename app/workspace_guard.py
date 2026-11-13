@@ -35,6 +35,7 @@ LIMITED_OK = {
     ("GET", "/api/lead-views"), ("POST", "/api/lead-views"), ("DELETE", "/api/lead-views/{view_id}"),
     # leads and pages built only from leads in scope
     ("GET", "/api/dashboard"), ("GET", "/api/leads"), ("POST", "/api/leads/import"), ("POST", "/api/leads/bulk"),
+    ("POST", "/api/leads/bulk-reassign"), ("POST", "/api/leads/bulk-undo/{undo_id}"), ("GET", "/api/bulk-undo"),   # cut to the login's workspaces and leads
     ("GET", "/api/lead-owners"), ("GET", "/api/lead-tags"), ("GET", "/api/companies"), ("GET", "/api/companies/{key:path}"),
     ("GET", "/api/lists"), ("GET", "/api/lists/companies"), ("GET", "/api/lists/enriched-summary"), ("POST", "/api/lists"),
     ("GET", "/api/lists/{list_id}"), ("POST", "/api/lists/{list_id}/members"), ("DELETE", "/api/lists/{list_id}"),
