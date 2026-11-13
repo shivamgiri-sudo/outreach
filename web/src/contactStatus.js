@@ -1,6 +1,6 @@
 // Has anyone tried this lead yet? Same rule as app/contact_status.py.
 const TRY_KINDS = ["email", "linkedin", "whatsapp", "call"];
-const REACHED = ["connected", "interested", "meeting booked", "meeting_booked", "call back", "call_back"];
+const REACHED = /\b(connected|interested|meeting[ _]booked|call[ _]back)\b/i;   // word boundaries: "call disconnected" is not "connected"
 const isReply = (e) => e.kind === "reply" && !String(e.text || "").startsWith("[auto_reply]") && !String(e.text || "").startsWith("[bounce]");
 
 export const CONTACT_STATUSES = [["never", "Never contacted"], ["tried", "Tried, no answer"], ["connected", "Connected"], ["replied", "Replied"]];
@@ -10,7 +10,7 @@ export function contactOf(lead) {
   const events = lead.timeline || [];
   const tries = events.filter((e) => TRY_KINDS.includes(e.kind));
   const replied = events.some(isReply);
-  const reached = tries.some((e) => e.kind === "call" && REACHED.some((w) => String(e.text || "").toLowerCase().includes(w)));
+  const reached = tries.some((e) => e.kind === "call" && REACHED.test(String(e.text || "")));
   const status = replied ? "replied" : reached ? "connected" : tries.length ? "tried" : "never";
   return { status, attempts: tries.length };
 }

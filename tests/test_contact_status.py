@@ -88,3 +88,14 @@ def test_leads_list_reads_outbox_activities_and_replies(tmp_path):
     r.store.update("inbox", lambda rows: [*rows, {"id": "i2", "lead_id": ids["Cora Inc"], "channel": "email", "label": "auto_reply", "text": "ooo", "received_at": "2026-11-12T10:00:00+00:00"}])
     by = {l["company"]: l for l in r.c.get("/api/leads", headers=r.h["owner"]).json()}
     assert by["Acme"]["contact_status"] == "replied" and by["Cora Inc"]["contact_status"] == "never"
+
+
+def test_disconnected_is_not_connected_and_one_attempt_counts_once():
+    drop = {"timeline": [{"kind": "call", "at": "2026-11-12T10:00:00+00:00", "text": "Call — call disconnected: line dropped"}]}
+    assert cs.of(drop)["status"] == "tried"
+    both = {"id": "L1", "timeline": [{"kind": "call", "at": "2026-11-12T10:00:00+00:00", "text": "Call — no answer: x"}]}
+    idx = {"L1": {"tries": [("call", "2026-11-12T10:00:05+00:00")], "reply": False, "reached": False}}        # same call, different second
+    assert cs.of(both, idx)["attempts"] == 1
+    two = {"id": "L1", "timeline": [{"kind": "call", "at": "2026-11-12T10:00:00+00:00", "text": "Call — no answer"}]}
+    idx2 = {"L1": {"tries": [("call", "a"), ("call", "b")], "reply": False, "reached": False}}
+    assert cs.of(two, idx2)["attempts"] == 2

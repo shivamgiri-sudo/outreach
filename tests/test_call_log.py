@@ -143,3 +143,12 @@ def test_real_outcome_flow_is_logged(off):
     assert res.status_code == 200
     d = get(off, "priya").json()
     assert d["total"] == 1 and d["rows"][0]["outcome"] == "connected" and d["rows"][0]["notes"] == "via api"
+
+
+def test_calls_with_slightly_different_timestamps_are_not_counted_twice():
+    from app import call_log
+    lead = {"id": "L1", "company": "Acme", "timeline": [{"kind": "call", "at": "2026-11-12T10:00:00+00:00", "text": "Call — no answer: n", "by": "P"}]}
+    acts = [{"id": "a1", "lead_id": "L1", "type": "call", "at": "2026-11-12T10:00:07+00:00", "outcome": "no_answer", "by": "P", "body": "n"}]
+    assert len(call_log.collect([lead], acts)) == 1
+    older = {**lead, "timeline": [{"kind": "call", "at": "2026-10-01T10:00:00+00:00", "text": "Call — busy", "by": "P"}, *lead["timeline"]]}
+    assert len(call_log.collect([older], acts)) == 2        # an older call with no activity row of its own is kept

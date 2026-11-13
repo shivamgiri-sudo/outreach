@@ -41,10 +41,10 @@ export default function CallLog() {
       <p className="sub">Every contact attempt across your leads, with who made it, when (IST), how it ended and the notes. You see only leads you can see.</p>
 
       <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <button className={`tab-chip ${f.from === today && f.to === today ? "active" : ""}`} onClick={() => preset(today, today)}>Today</button>
-        <button className={`tab-chip ${f.from === istDaysAgo(1) && f.to === istDaysAgo(1) ? "active" : ""}`} onClick={() => preset(istDaysAgo(1), istDaysAgo(1))}>Yesterday</button>
-        <button className={`tab-chip ${f.from === istDaysAgo(6) && f.to === today ? "active" : ""}`} onClick={() => preset(istDaysAgo(6), today)}>Last 7 days</button>
-        <button className={`tab-chip ${!f.from && !f.to ? "active" : ""}`} onClick={() => preset("", "")}>All time</button>
+        <button className={`tab-chip${f.from === today && f.to === today ? " on" : ""}`} onClick={() => preset(today, today)}>Today</button>
+        <button className={`tab-chip${f.from === istDaysAgo(1) && f.to === istDaysAgo(1) ? " on" : ""}`} onClick={() => preset(istDaysAgo(1), istDaysAgo(1))}>Yesterday</button>
+        <button className={`tab-chip${f.from === istDaysAgo(6) && f.to === today ? " on" : ""}`} onClick={() => preset(istDaysAgo(6), today)}>Last 7 days</button>
+        <button className={`tab-chip${!f.from && !f.to ? " on" : ""}`} onClick={() => preset("", "")}>All time</button>
         <DownloadButton path={`/api/call-log/export?${exportQuery}`} filename="call-log.csv" label="Download CSV" testId="download-call-log"
           title="The rows matching these filters, as a CSV that opens in Excel" />
       </div>

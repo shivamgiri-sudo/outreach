@@ -43,20 +43,22 @@ def collect(leads: List[dict], activities: Iterable[dict], channel: str = "call"
     """All attempts on `leads` (already scoped by the caller), de-duplicated, newest first."""
     by_id = {l["id"]: l for l in leads if isinstance(l, dict) and l.get("id")}
     want = None if channel == "all" else channel
-    rows, seen = [], set()
+    rows, calls_by_lead = [], {}
     for a in activities or []:
         kind = a.get("type")
         if a.get("lead_id") not in by_id or (want and kind != want) or kind in ("note", "other"):
             continue
-        seen.add((a["lead_id"], a.get("at"), kind))
+        if kind == "call":
+            calls_by_lead[a["lead_id"]] = calls_by_lead.get(a["lead_id"], 0) + 1
         rows.append({"id": a.get("id") or "", "lead_id": a["lead_id"], "at": a.get("at"), "by": str(a.get("by") or "").strip(),
                      "channel": kind, "outcome": a.get("outcome") or "", "notes": a.get("body") or a.get("notes") or a.get("subject") or "",
                      "to": a.get("to") or ""})
     if want in (None, "call"):
         for lead in by_id.values():
-            for e in lead.get("timeline") or []:
-                if e.get("kind") != "call" or (lead["id"], e.get("at"), "call") in seen:
-                    continue
+            # Each logged call is an activity row AND a timeline event. Whatever the timestamps say, a lead's timeline calls are
+            # explained by its activity rows one for one; only the surplus (the oldest, from before activity rows existed) is added.
+            timeline = sorted((e for e in lead.get("timeline") or [] if e.get("kind") == "call"), key=lambda e: str(e.get("at") or ""))
+            for e in timeline[:max(0, len(timeline) - calls_by_lead.get(lead["id"], 0))]:     # the oldest are the legacy ones
                 outcome, notes = _timeline_call(e)
                 rows.append({"id": "", "lead_id": lead["id"], "at": e.get("at"), "by": str(e.get("by") or "").strip(),
                              "channel": "call", "outcome": outcome, "notes": notes, "to": ""})
