@@ -17,7 +17,7 @@ export default {
       "Read the **per caller** table above the list: calls, connected, unanswered, interested, meetings and connect rate. It ignores the caller and outcome filters so you can compare callers.",
       "Click a row to open the lead.",
     ]],
-    ["tip", "Owners can press **Download** to get the filtered list as a CSV that opens in Excel. Each download is written to the audit log."],
+    ["tip", "Owners can press **Download CSV** to get the filtered list as a CSV that opens in Excel. Each download is written to the audit log."],
     ["p", "Related: [Call desk](#help/calls), [Leads](#help/leads)."],
   ],
 };
