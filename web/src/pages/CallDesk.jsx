@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { api, canWrite } from "../api.js";
+import { api, canWrite, isOwner } from "../api.js";
 import { stageLabel } from "../labels.js";
 import { istLabel } from "../time.js";
+import CallRetrySettings from "./CallRetrySettings.jsx";
 import CallScript from "./CallScript.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
 import PhoneTag from "./PhoneTag.jsx";
@@ -173,6 +174,8 @@ export default function CallDesk() {
   useEffect(() => { api.me().then((m) => setRep(m.name || "your name")).catch(() => {}); api.callScript().then(setScript).catch(() => {}); }, []);
   const load = () => api.callQueue(mine).then((d) => { setData(d); if (d.me) setRep(d.me); }).catch((e) => setError(e.message));
   useEffect(() => { load(); }, [mine]);
+  const [best, setBest] = useState(null);
+  useEffect(() => { api.bestTime().then(setBest).catch(() => {}); }, []);
   const [view, setView] = useState("all");
   const everyone = data?.queue || [];
   const CHIPS = [["all", "Everyone", () => true], ["fresh", "Never called", (l) => !l.attempts],
@@ -183,7 +186,11 @@ export default function CallDesk() {
     <>
       <h2>Call desk</h2>
       <p className="sub">Call-backs and call tasks first, then leads who said yes, then leads with a phone and consent. <b>{script?.note}</b></p>
+      {best && <p className="sub" data-testid="best-time">{best.enough && best.window
+        ? `Calls reach people most between ${String(best.window.from).padStart(2, "0")}:00-${String(best.window.to).padStart(2, "0")}:00 IST (based on ${best.sample} calls).`
+        : `Not enough calls yet to say when people pick up (${best.sample} of ${best.min_total} calls so far).`}</p>}
       {error && <p className="error" role="alert">{error}</p>}
+      {!walking && isOwner() && <CallRetrySettings />}
       {walking ? (
         <Dialer queue={walking} script={script} rep={rep} onScript={setScript} onOpen={setOpen} onExit={() => { setWalking(null); load(); }} />
       ) : (
@@ -208,7 +215,7 @@ export default function CallDesk() {
                     {queue.map((l, i) => (
                       <tr key={l.lead_id}>
                         <td><button className="link" onClick={() => setOpen(l.lead_id)}><b>{l.company || l.contact_name}</b></button><br />
-                          <small>{l.contact_name}{l.score != null ? ` · score ${l.score}` : ""}</small></td>
+                          <small>{l.contact_name}{l.score != null ? ` · score ${l.score}` : ""}</small>{l.retry_exhausted && <span className="pill warn" style={{ marginLeft: 6 }}>Retries used up</span>}</td>
                         <td>{l.reason}{l.due_at ? <div className="sub">due {istLabel(l.due_at)}</div> : null}</td>
                         <td data-testid="queue-attempts">{l.attempts ? <>{l.attempts} call{l.attempts > 1 ? "s" : ""}<div className="sub">{l.last_outcome ? `last: ${l.last_outcome.replace(/_/g, " ")} · ` : "last "}{istLabel(l.last_attempt_at)}</div></> : <span className="pill ok">never called</span>}</td>
                         <td><a href={dialLink(l.phone)}>{l.phone}</a><PhoneTag lead={l} /><br /><button className="link" onClick={() => setWalking([...queue.slice(i), ...queue.slice(0, i)])}>Call from here</button></td>
