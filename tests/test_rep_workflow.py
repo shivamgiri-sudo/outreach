@@ -335,12 +335,16 @@ def test_invalid_and_consultant_outcomes_mark_the_lead(tmp_path):
     give_consent(c, acme)
     give_consent(c, beta)
     assert {acme, beta} <= {q["lead_id"] for q in c.get("/api/call-queue").json()["queue"]}
-    r = c.post(f"/api/leads/{acme}/call-outcome", json={"outcome": "invalid_lead", "notes": "no such company"})
+    refused = c.post(f"/api/leads/{acme}/call-outcome", json={"outcome": "invalid_lead", "notes": "no such company"})
+    assert refused.status_code == 400 and "why" in refused.text.lower()                  # an invalid mark needs a reason
+    assert c.post(f"/api/leads/{acme}/call-outcome", json={"outcome": "invalid_lead", "reason": "made_up"}).status_code == 400
+    r = c.post(f"/api/leads/{acme}/call-outcome", json={"outcome": "invalid_lead", "notes": "no such company", "reason": "wrong_company"})
     assert r.status_code == 200, r.text
     r = c.post(f"/api/leads/{beta}/call-outcome", json={"outcome": "consultant_lead", "notes": "staffing agency"})
     assert r.status_code == 200, r.text
     a, b = lead_named(c, "Acme"), lead_named(c, "Beta Ltd")
     assert a["lead_quality"]["kind"] == "invalid" and a["lead_quality"]["note"] == "no such company" and a["stage"] == "disqualified"
+    assert a["lead_quality"]["reason"] == "wrong_company" and any("Wrong company" in e["text"] for e in a["timeline"])
     assert b["lead_quality"]["kind"] == "consultant" and b["stage"] != "disqualified"            # a consultant keeps their stage
     assert any(e["kind"] == "quality" for e in a["timeline"]) and any(e["kind"] == "quality" for e in b["timeline"])
     assert not ({acme, beta} & {q["lead_id"] for q in c.get("/api/call-queue").json()["queue"]})   # both leave the call queue

@@ -1,5 +1,6 @@
 """Has anyone tried this lead yet, and how did it go? One rule for the Leads page and for prospects that are already leads.
 
+invalid / consultant   a caller marked the lead (a quality verdict, kept apart from the attempt counts)
 never      no call, email, WhatsApp, SMS or LinkedIn attempt and no reply
 tried      attempts made, nobody answered
 connected  a call got through (connected / interested / meeting booked / call back)
@@ -22,6 +23,8 @@ REACHED = ("connected", "interested", "meeting booked", "meeting_booked", "call 
 REACHED_TEXT = re.compile(r"\b(connected|interested|meeting[ _]booked|call[ _]back)\b", re.I)
 NOT_SENT = ("dry_run", "held", "failed", "provider_error", "error", "blocked", "skipped", "bounced_before_send")
 OUT_ACTIVITY = ("call", "email", "whatsapp", "sms", "linkedin")
+MARKER_OUTCOMES = ("invalid_lead", "consultant_lead")     # marking a lead is not a contact attempt
+MARKER_TEXT = ("call — invalid lead", "call — consultant lead")
 
 
 def index(store) -> dict:
@@ -34,7 +37,7 @@ def index(store) -> dict:
         if m.get("lead_id") and m.get("status") not in NOT_SENT and m.get("sent_at"):
             out[m["lead_id"]]["tries"].append(("whatsapp", m["sent_at"]))
     for a in store.read("activities"):
-        if not a.get("lead_id") or a.get("type") not in OUT_ACTIVITY or a.get("direction", "out") != "out":
+        if not a.get("lead_id") or a.get("type") not in OUT_ACTIVITY or a.get("direction", "out") != "out" or a.get("outcome") in MARKER_OUTCOMES:
             continue
         out[a["lead_id"]]["tries"].append((a["type"], a.get("at") or ""))
         if a["type"] == "call" and str(a.get("outcome") or "").lower() in REACHED:
@@ -54,7 +57,7 @@ def of(lead: dict, idx: Optional[dict] = None) -> dict:
     events = lead.get("timeline") or []
     in_timeline = defaultdict(list)
     for e in events:
-        if e.get("kind") in CONTACT_KINDS:
+        if e.get("kind") in CONTACT_KINDS and not str(e.get("text") or "").lower().startswith(MARKER_TEXT):
             in_timeline[e["kind"]].append(e.get("at") or "")
     elsewhere = extra["tries"]                                   # [(kind, at)] from the outbox, activities and logs
     kinds = set(in_timeline) | {k for k, _ in elsewhere}
@@ -72,4 +75,7 @@ def of(lead: dict, idx: Optional[dict] = None) -> dict:
     reached = extra["reached"] or any(e.get("kind") == "call" and REACHED_TEXT.search(str(e.get("text") or "")) for e in events)
     attempts = len(tries)
     status = "replied" if replied else "connected" if reached else "tried" if tries else "never"
+    quality = (lead.get("lead_quality") or {}).get("kind")
+    if quality in ("invalid", "consultant"):
+        status = quality                                          # a verdict, not an attempt: its own bucket
     return {"status": status, "attempts": attempts, "last_at": max((t for t in tries if t), default=None)}

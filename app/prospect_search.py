@@ -216,7 +216,7 @@ def person_rows(store, rows: list) -> list:
     return out
 
 
-_ORDER = ("replied", "connected", "tried", "never")
+_ORDER = ("replied", "connected", "tried", "never", "consultant", "invalid")
 
 
 def _crm_status(store, ids: list, linked: set) -> dict:

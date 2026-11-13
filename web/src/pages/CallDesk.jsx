@@ -5,6 +5,7 @@ import { istLabel } from "../time.js";
 import CallScript from "./CallScript.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
 import PhoneTag from "./PhoneTag.jsx";
+import { INVALID_REASONS } from "../leadReasons.js";
 
 // [outcome, button label, key]. Every outcome is logged with the signed-in person's name.
 const OUTCOMES = [["connected", "Connected", "1"], ["no_answer", "No answer", "2"], ["busy", "Busy", "3"], ["call_back", "Call back…", "4"],
@@ -52,7 +53,8 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
   const [notes, setNotes] = useState("");
   const [dialled, setDialled] = useState("");
   const [callback, setCallback] = useState(null);
-  const [cbFor, setCbFor] = useState("call_back");     // which outcome the call-back time belongs to
+  const [cbFor, setCbFor] = useState("call_back");
+  const [reason, setReason] = useState(null);          // invalid lead: null = not asked yet, "" = asked, else the chosen reason     // which outcome the call-back time belongs to
   const [summary, setSummary] = useState(null);
   const [busy, setBusy] = useState(false);
   const [log, setLog] = useState([]);
@@ -61,7 +63,7 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
   const lead = queue[index];
   const state = useRef({});
   useEffect(() => {
-    setNotes(""); setCallback(null); setSummary(null); setMsg("");
+    setNotes(""); setCallback(null); setReason(null); setSummary(null); setMsg("");
     if (lead) api.historySummary(lead.lead_id).then(setSummary).catch(() => setSummary(null));
   }, [index, lead?.lead_id]);
 
@@ -70,11 +72,12 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
     if ((outcome === "call_back" || outcome === "call_disconnected") && callback === null && !skipCallback) {
       setCbFor(outcome); setCallback(inIstMinutes(outcome === "call_back" ? 60 : 15)); return;      // a dropped call offers a retry in 15 minutes
     }
+    if (outcome === "invalid_lead" && !reason) { setReason(""); setMsg(reason === "" ? "Pick why this lead is invalid first." : ""); return; }   // a reason is required
     const withCallback = callback !== null && !skipCallback && outcome === cbFor && (outcome === "call_back" || outcome === "call_disconnected");
     setBusy(true); setMsg("");
     try {
       const numbers = [lead.phone, ...(lead.phones || [])].filter(Boolean);
-      const r = await api.callOutcome(lead.lead_id, outcome, notes.trim(), withCallback ? withIst(callback) : null, numbers.includes(dialled) ? dialled : lead.phone);
+      const r = await api.callOutcome(lead.lead_id, outcome, notes.trim(), withCallback ? withIst(callback) : null, numbers.includes(dialled) ? dialled : lead.phone, outcome === "invalid_lead" ? reason : "");
       setDialled("");
       setLog((l) => [...l, { company: lead.company, outcome, stage: r.stage }]);
       setIndex((i) => i + 1);
@@ -128,6 +131,13 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
         {canWrite() && <>
         <label htmlFor="dial-notes">Notes (saved with the outcome)</label>
         <textarea id="dial-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What they said, next step" />
+        {reason !== null && (
+          <label className="row" style={{ gap: 6, marginTop: 6 }}>Why is it invalid?
+            <select value={reason} onChange={(e) => setReason(e.target.value)} aria-label="Reason the lead is invalid" data-testid="invalid-reason">
+              <option value="">Pick a reason…</option>
+              {INVALID_REASONS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select></label>
+        )}
         {callback !== null && (
           <label className="row" style={{ gap: 6, marginTop: 6 }}>Call back at (IST)
             <input type="datetime-local" value={callback} onChange={(e) => setCallback(e.target.value)} aria-label="Call back at" />
@@ -137,7 +147,7 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
           {OUTCOMES.map(([o, label, key]) => (
             <button key={o} className={`btn ${o === "interested" ? "" : "ghost"}${["not_interested", "wrong_number", "inactive_number", "invalid_lead", "consultant_lead"].includes(o) ? " danger" : ""}`} disabled={busy}
               title={`${MEANS[o] || "Log it and go to the next lead."} Key ${key}.`} onClick={() => record(o)}>
-              {o === cbFor && callback !== null && (o === "call_back" || o === "call_disconnected") ? "Save call back" : label}
+              {o === "invalid_lead" && reason !== null ? "Save as invalid" : o === cbFor && callback !== null && (o === "call_back" || o === "call_disconnected") ? "Save call back" : label}
             </button>
           ))}
         </div>

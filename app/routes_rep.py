@@ -19,6 +19,7 @@ class OutcomeBody(BaseModel):
     notes: str = ""
     callback_at: Optional[str] = None       # call_back: when (ISO; no zone = IST)
     to: str = Field(default="", max_length=60)   # the number dialled (main or an extra one); default the main one
+    reason: str = Field(default="", max_length=40)   # invalid_lead only: why (rep_workflow.INVALID_REASONS)
 
 
 class TargetsBody(BaseModel):
@@ -167,7 +168,7 @@ def make_router(store, present) -> APIRouter:
         before = lead_or_404(lead_id)["stage"]
         try:
             result = rw.record_call_outcome(store, lead_id, body.outcome, body.notes.strip()[:4000], who,
-                                            _when(body.callback_at, "callback_at"), to=body.to.strip())
+                                            _when(body.callback_at, "callback_at"), to=body.to.strip(), reason=body.reason.strip())
         except rw.OutcomeRefused as exc:
             raise HTTPException(400, str(exc)) from None
         if result["stage"] != before:

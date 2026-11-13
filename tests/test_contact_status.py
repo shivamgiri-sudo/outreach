@@ -99,3 +99,34 @@ def test_disconnected_is_not_connected_and_one_attempt_counts_once():
     two = {"id": "L1", "timeline": [{"kind": "call", "at": "2026-11-12T10:00:00+00:00", "text": "Call — no answer"}]}
     idx2 = {"L1": {"tries": [("call", "a"), ("call", "b")], "reply": False, "reached": False}}
     assert cs.of(two, idx2)["attempts"] == 2
+
+
+def test_marked_leads_are_their_own_bucket_and_not_an_attempt():
+    marked = {"id": "L9", "lead_quality": {"kind": "invalid", "by": "P"},
+              "timeline": [{"kind": "call", "at": "2026-11-12T10:00:00+00:00", "text": "Call — invalid lead: no such firm"}]}
+    idx = {"L9": {"tries": [], "reply": False, "reached": False}}
+    got = cs.of(marked, idx)
+    assert got["status"] == "invalid" and got["attempts"] == 0
+    cons = {"id": "L8", "lead_quality": {"kind": "consultant", "by": "P"}, "timeline": [{"kind": "email", "at": "2026-11-01T10:00:00+00:00", "text": "sent"}]}
+    assert cs.of(cons)["status"] == "consultant" and cs.of(cons)["attempts"] == 1       # a real earlier email still counts as an attempt
+
+
+def test_lead_quality_report_by_source_and_reason():
+    from app import lead_quality as lq
+    leads = [{"source": "apollo"}, {"source": "apollo", "lead_quality": {"kind": "invalid", "by": "Priya", "reason": "fake"}},
+             {"source": "apollo", "lead_quality": {"kind": "consultant", "by": "Amit"}}, {"source": "naukri"}, {"source": "naukri"}]
+    rep = lq.report(leads)
+    by = {s["source"]: s for s in rep["sources"]}
+    assert by["apollo"]["leads"] == 3 and by["apollo"]["invalid_rate"] == 33.3 and by["apollo"]["consultant_rate"] == 33.3
+    assert by["naukri"]["invalid"] == 0 and rep["sources"][0]["source"] == "apollo"     # worst source first
+    assert rep["total"]["leads"] == 5 and rep["reasons"] == [{"reason": "fake", "count": 1}]
+    assert {c["caller"] for c in rep["callers"]} == {"Priya", "Amit"}
+
+
+def test_lead_quality_endpoint_is_scoped_like_the_leads(tmp_path):
+    r = make_rig(tmp_path, mode_on=True)
+    r.set("Acme", lead_quality={"kind": "invalid", "by": "Ravi", "reason": "fake"})                      # Ravi's lead
+    owner = r.c.get("/api/lead-quality", headers=r.h["owner"]).json()
+    assert owner["total"]["leads"] == 4 and owner["total"]["invalid"] == 1
+    priya = r.c.get("/api/lead-quality", headers=r.h["priya"]).json()
+    assert priya["total"]["invalid"] == 0 and priya["total"]["leads"] == 2        # only her own two leads (Beta and Other WS Co): not Ravi's Acme, not the unowned Cora

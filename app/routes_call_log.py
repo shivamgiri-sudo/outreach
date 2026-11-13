@@ -6,7 +6,7 @@ import io
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response
 
-from . import audit, call_log as cl, lead_access, workspaces
+from . import audit, call_log as cl, lead_access, lead_quality, rep_workflow, workspaces
 from .hygiene import csv_safe
 
 EXPORT_MAX = 20000
@@ -44,6 +44,16 @@ def make_router(store) -> APIRouter:
         start = (page - 1) * size
         return {"rows": [cl.public(r) for r in rows[start:start + size]], "total": len(rows), "page": page, "size": size,
                 "summary": summary, "callers": [s["caller"] for s in summary]}
+
+    @router.get("/api/lead-quality")
+    def quality(request: Request):
+        """Invalid / consultant rates per source and caller, over the leads this person may see."""
+        user = getattr(request.state, "user", None)
+        hider = lead_access.hidden_test(store, user)
+        leads = [l for l in workspaces.filter_rows(store.read("leads")) if not (hider and hider(l))]
+        out = lead_quality.report(leads)
+        out["reason_names"] = rep_workflow.INVALID_REASONS
+        return out
 
     @router.get("/api/call-log/export")
     def export(request: Request, day_from: str = Query("", alias="from"), day_to: str = Query("", alias="to"), by: str = "",

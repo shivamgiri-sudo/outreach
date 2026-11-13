@@ -3,6 +3,7 @@ import { api, canWrite } from "../api.js";
 import { istLabel } from "../time.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import { useConfirm } from "../Dialog.jsx";
+import { INVALID_REASONS } from "../leadReasons.js";
 
 const TYPES = [["call", "Call"], ["meeting", "Meeting"], ["note", "Note"], ["email", "Email (sent outside the app)"],
   ["whatsapp", "WhatsApp (sent outside the app)"], ["linkedin", "LinkedIn message"], ["other", "Other"]];
@@ -114,6 +115,7 @@ export default function LeadActivity({ lead, onChanged }) {
   const [composing, setComposing] = useState(false);
   const [callback, setCallback] = useState(null);
   const [cbFor, setCbFor] = useState("call_back");
+  const [invalidReason, setInvalidReason] = useState(null);     // invalid lead: null = not asked, else the chosen reason ("" = still to pick)
   const [remarks, setRemarks] = useState("");
   const phones = [lead.phone, ...(lead.phones || [])].filter((v, i, a) => v && a.indexOf(v) === i);
   const [dialled, setDialled] = useState("");
@@ -170,6 +172,7 @@ export default function LeadActivity({ lead, onChanged }) {
             {QUICK_CALLS.map(([v, l]) => <button key={v} className={`btn ghost${QUICK_CONFIRM[v] ? " danger" : ""}`} onClick={async () => {
               if (v === "call_back") { setCbFor("call_back"); setCallback(new Date(Date.now() + 390 * 60000).toISOString().slice(0, 16)); return; }
               if (v === "call_disconnected") { setCbFor("call_disconnected"); setCallback(new Date(Date.now() + 345 * 60000).toISOString().slice(0, 16)); return; }   // a dropped call offers a retry in 15 minutes (IST)
+              if (v === "invalid_lead") { setInvalidReason(""); return; }                // a reason is required: pick it below
               if (QUICK_CONFIRM[v] && !(await confirm({ message: QUICK_CONFIRM[v], confirmLabel: l }))) return;
               run(() => api.callOutcome(lead.id, v, remarks.trim(), null, to), `Call logged: ${l}${phones.length > 1 ? ` (${to})` : ""}.`).then(() => setRemarks(""));
             }}>{l}</button>)}
@@ -178,6 +181,15 @@ export default function LeadActivity({ lead, onChanged }) {
           {canWrite() && <label className="row" style={{ gap: 6, marginTop: 6, flexWrap: "wrap" }}>Remarks
             <input data-testid="call-remarks" style={{ flex: "1 1 240px", minWidth: 0 }} value={remarks} onChange={(e) => setRemarks(e.target.value)}
               placeholder="Optional: what they said; saved with the call you log" maxLength={500} /></label>}
+          {invalidReason !== null && canWrite() && (
+            <form className="row" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault();
+              run(() => api.callOutcome(lead.id, "invalid_lead", remarks.trim(), null, to, invalidReason), "Call logged: marked as an invalid lead.").then(() => { setInvalidReason(null); setRemarks(""); }); }}>
+              <label className="row" style={{ gap: 6 }}>Why is it invalid?
+                <select required value={invalidReason} onChange={(e) => setInvalidReason(e.target.value)} aria-label="Reason the lead is invalid" data-testid="invalid-reason">
+                  <option value="">Pick a reason…</option>{INVALID_REASONS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+              <button className="btn danger" type="submit" disabled={!invalidReason}>Mark invalid</button><button className="btn ghost" type="button" onClick={() => setInvalidReason(null)}>Cancel</button>
+            </form>
+          )}
           {callback !== null && canWrite() && (
             <form className="row" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault();
               run(() => api.callOutcome(lead.id, cbFor, remarks.trim(), withIst(callback), to), "Call logged; a call-back task was created.").then(() => { setCallback(null); setRemarks(""); }); }}>

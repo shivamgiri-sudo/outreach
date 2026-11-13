@@ -17,6 +17,8 @@ export default {
       "Read the **per caller** table above the list: calls, connected, unanswered, interested, meetings and connect rate. It ignores the caller and outcome filters so you can compare callers.",
       "Click a row to open the lead.",
     ]],
+    ["h", "Lead quality"],
+    ["p", "Above the call table, **Lead quality** shows how many leads callers marked **Invalid** or **Consultant**, as a percentage per data source, with the reasons given and who marked them. A source with a high invalid rate is a bad source: raise it with whoever supplied the data. Marked leads have their own **Invalid lead** and **Consultant lead** choices in the Leads page's contact status filter."],
     ["tip", "Owners can press **Download CSV** to get the filtered list as a CSV that opens in Excel. Each download is written to the audit log."],
     ["p", "Related: [Call desk](#help/calls), [Leads](#help/leads)."],
   ],

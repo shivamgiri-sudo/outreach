@@ -40,7 +40,7 @@ LIMITED_OK = {
     ("GET", "/api/lists"), ("GET", "/api/lists/companies"), ("GET", "/api/lists/enriched-summary"), ("POST", "/api/lists"),
     ("GET", "/api/lists/{list_id}"), ("POST", "/api/lists/{list_id}/members"), ("DELETE", "/api/lists/{list_id}"),
     ("POST", "/api/lists/{list_id}/start-email"), ("POST", "/api/lists/{list_id}/start-linkedin"),      # the list is cut to the login's workspaces and leads it may send to
-    ("GET", "/api/today"), ("GET", "/api/call-log"), ("GET", "/api/my-day"), ("PUT", "/api/my-day/targets"), ("GET", "/api/call-queue"),
+    ("GET", "/api/today"), ("GET", "/api/call-log"), ("GET", "/api/lead-quality"), ("GET", "/api/my-day"), ("PUT", "/api/my-day/targets"), ("GET", "/api/call-queue"),
     ("GET", "/api/tasks"), ("GET", "/api/tasks/board"), ("POST", "/api/tasks"), ("POST", "/api/tasks/done"),
     ("GET", "/api/notifications"), ("POST", "/api/notifications/read"),
     ("GET", "/api/intelligence"), ("GET", "/api/analytics"), ("GET", "/api/analytics/overview"), ("GET", "/api/analytics/pipeline"),

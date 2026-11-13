@@ -423,7 +423,7 @@ def _clean_filters(raw) -> dict:
             from .linkedin_stages import FILTER_KEYS
             out[key] = value if value in FILTER_KEYS else ""
         elif key == "contact":                       # never / tried / connected / replied / fresh (web/src/contactStatus.js)
-            out[key] = value if value in ("never", "tried", "connected", "replied", "fresh") else ""
+            out[key] = value if value in ("never", "tried", "connected", "replied", "invalid", "consultant", "fresh") else ""
         elif key == "quality":                       # lead type: valid / invalid / consultant (marked by a caller on a call)
             out[key] = value if value in ("valid", "invalid", "consultant") else ""
         else:

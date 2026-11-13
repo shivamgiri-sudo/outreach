@@ -225,10 +225,17 @@ def lead_card(lead: dict, presented: Optional[dict] = None) -> dict:
             "recent_notes": [{"at": e.get("at"), "kind": e.get("kind"), "text": (e.get("text") or "")[:300], "by": e.get("by", "")} for e in reversed(notes)]}
 
 
+INVALID_REASONS = {"wrong_company": "Wrong company", "no_such_person": "No such person", "not_hiring": "Not hiring / no need",
+                   "duplicate": "Duplicate lead", "fake": "Fake or junk data", "other": "Other"}
+MARKER_OUTCOMES = ("invalid_lead", "consultant_lead")       # marking a lead is a quality verdict, not a contact attempt
+
+
 def call_history_of(lead: dict, activities: list) -> dict:
     """{attempts, last_outcome, last_attempt_at}: how many calls were tried on this lead, and how the latest ended."""
-    from_timeline = [e for e in lead.get("timeline") or [] if e.get("kind") == "call"]
-    rows = sorted(activities or [], key=lambda a: parse_at(a.get("at")) or datetime.min.replace(tzinfo=timezone.utc))
+    from_timeline = [e for e in lead.get("timeline") or [] if e.get("kind") == "call"
+                     and not str(e.get("text") or "").lower().startswith(("call — invalid lead", "call — consultant lead"))]
+    activities = [a for a in activities or [] if a.get("outcome") not in MARKER_OUTCOMES]
+    rows = sorted(activities, key=lambda a: parse_at(a.get("at")) or datetime.min.replace(tzinfo=timezone.utc))
     last = rows[-1] if rows else (from_timeline[-1] if from_timeline else None)
     return {"attempts": max(len(rows), len(from_timeline)),
             "last_outcome": str((last or {}).get("outcome") or "") if last else "",
@@ -304,7 +311,7 @@ class OutcomeRefused(ValueError):
 
 
 def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str, callback_at: Optional[datetime] = None,
-                        now: Optional[datetime] = None, to: str = "") -> dict:
+                        now: Optional[datetime] = None, to: str = "", reason: str = "") -> dict:
     """Log one call (by `who`) and do what the outcome means. Returns {activity, task, stage, consent_recorded, phone_flagged}."""
     from .privacy import record_consent
     now = now or now_utc()
@@ -315,6 +322,8 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
         raise OutcomeRefused("Pick when to call back.")
     if outcome in ("call_back", "call_disconnected") and callback_at is not None and callback_at <= now - timedelta(minutes=1):
         raise OutcomeRefused("The call-back time is in the past.")
+    if outcome == "invalid_lead" and reason not in INVALID_REASONS:
+        raise OutcomeRefused("Pick why this lead is invalid: " + ", ".join(INVALID_REASONS.values()) + ".")
     dialled = to if to and to in [lead.get("phone"), *(lead.get("phones") or [])] else (lead.get("phone") or "")
     activity = log_activity(store, lead_id, "call", {"outcome": outcome, "notes": notes, "by": who, "to": dialled})
     result = {"activity": activity, "task": None, "stage": lead["stage"], "consent_recorded": False, "phone_flagged": False}
@@ -366,7 +375,9 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
             seq = l.get("sequence")
             event = {"at": stamp, "kind": "quality", "by": who,
                      "text": f"Marked {'an invalid lead' if kind == 'invalid' else 'a consultant lead (not a direct employer)'} on a call by {who}" + (f": {notes[:300]}" if notes else "")}
-            changes = {"lead_quality": {"kind": kind, "at": stamp, "by": who, "note": notes[:300]},
+            if kind == "invalid":
+                event["text"] += f" — reason: {INVALID_REASONS[reason]}"
+            changes = {"lead_quality": {"kind": kind, "at": stamp, "by": who, "note": notes[:300], **({"reason": reason} if kind == "invalid" else {})},
                        **({"sequence": {**seq, "stopped": seq.get("stopped") or outcome}} if seq else {})}
             if kind == "invalid" and l["stage"] not in CLOSED and can_move(l["stage"], "disqualified"):
                 changes["stage"] = "disqualified"                    # a consultant keeps their stage: the owner decides what to do with them

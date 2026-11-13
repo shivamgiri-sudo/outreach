@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, callLogQuery } from "../api.js";
 import { Empty, ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
+import LeadQualityCard from "./LeadQualityCard.jsx";
 import DownloadButton from "../DownloadButton.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
 
@@ -67,6 +68,7 @@ export default function CallLog() {
         <input aria-label="Search" placeholder="Search company, name, phone, notes" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
       </div>
 
+      <LeadQualityCard />
       {data && data.summary.length > 0 && (
         <div className="card" style={{ marginBottom: 12 }} data-testid="call-summary">
           <h3 style={{ marginTop: 0 }}>By caller</h3>
