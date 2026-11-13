@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { api, isOwner } from "../api.js";
+import { api, canAdminister, isOwner } from "../api.js";
 import { EmptyArt, ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import { CopyRow, StatusPill } from "./integrations/Fields.jsx";
 import Wizard, { guideKeys } from "./integrations/Wizard.jsx";
 import { GuideButton } from "../GuidePanel.jsx";
 import LeadCapture from "./integrations/LeadCapture.jsx";
+import CallTracker from "./integrations/CallTracker.jsx";
 import Abbr from "../components/Abbr.jsx";
 
-const EXTRA_TABS = [["capture", "Lead capture"], ["custom", "Custom"], ["webhooks", "Webhook addresses"]];
+const EXTRA_TABS = [["calltracker", "Call Tracker"], ["capture", "Lead capture"], ["custom", "Custom"], ["webhooks", "Webhook addresses"]];
 const OAUTH_ERRORS = {
   access_denied: "You did not allow access, so nothing was connected.",
   token_exchange_failed: "The provider did not accept the sign-in. Check the client ID, secret and redirect URI, then try again.",
@@ -85,7 +86,7 @@ export default function Integrations({ go }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [query] = useState(hashQuery);
-  const [tab, setTab] = useState(query.get("tab") || (query.get("connected") || query.get("oauth_error") ? "calendar" : "email_send"));
+  const [tab, setTab] = useState(query.get("tab") || (query.get("connected") || query.get("oauth_error") ? "calendar" : !isOwner() && canAdminister() ? "calltracker" : "email_send"));
   const [open, setOpen] = useState(null);
   const [hooks, setHooks] = useState(null);
   const [notice, setNotice] = useState(() => {
@@ -130,7 +131,7 @@ export default function Integrations({ go }) {
       )}
       {error && <div className="tip error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
       <div className="tabs scroll" role="tablist" aria-label="Channels">
-        {[...data.channels.map((c) => [c.id, c.title, c.status]), ...EXTRA_TABS.filter(([id]) => isOwner() || id === "custom")].map(([id, label, status]) => (
+        {[...data.channels.map((c) => [c.id, c.title, c.status]), ...EXTRA_TABS.filter(([id]) => isOwner() || id === "custom" || (id === "calltracker" && canAdminister()))].map(([id, label, status]) => (
           <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => setTab(id)} data-testid={`tab-${id}`}>
             {label}{status === "configured" && <span className="tab-dot" aria-label="connected" />}
           </button>
@@ -143,6 +144,8 @@ export default function Integrations({ go }) {
           <div className="prov-grid">{current.providers.map((p) => card(current, p))}</div>
         </>
       )}
+
+      {tab === "calltracker" && (canAdminister() ? <CallTracker /> : <p className="sub">Only the owner or a workspace admin can connect Call Tracker.</p>)}
 
       {tab === "capture" && (isOwner() ? <LeadCapture go={go} /> : <p className="sub">Only the owner can connect lead sources.</p>)}
 

@@ -21,6 +21,7 @@ PREFIX = "enc:v1:"
 ENV_KEY = "OUTREACH_SECRET_KEY"
 SECRET_SETTINGS = ("server_secret", "webhook_secret")
 CONTAINERS = ("tokens", "webhook_tokens")       # every string inside is a secret
+CT_SECRET_KEYS = ("api_key", "webhook_secret")  # Call Tracker connections (ct_connections: {workspace: {...}})
 EXTRA_SECRET_KEYS = ("access_token", "refresh_token", "id_token")
 
 
@@ -101,6 +102,9 @@ class SecretBox:
         out = dict(data)
         if isinstance(data.get("integrations"), dict):
             out["integrations"] = self._walk(data["integrations"], fn)
+        if isinstance(data.get("ct_connections"), dict):
+            out["ct_connections"] = {ws: ({k: (fn(v) if k in CT_SECRET_KEYS and isinstance(v, str) else v) for k, v in conn.items()}
+                                          if isinstance(conn, dict) else conn) for ws, conn in data["ct_connections"].items()}
         if isinstance(data.get("settings"), dict):
             out["settings"] = {k: (fn(v) if k in SECRET_SETTINGS else self._walk(v, fn) if k == "account_settings" and isinstance(v, dict) else v)
                                for k, v in data["settings"].items()}      # a client account's own keys (sending, WhatsApp) too

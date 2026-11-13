@@ -405,6 +405,13 @@ export const api = {
   stories: () => request("/api/stories"),
   addStory: (story) => request("/api/stories", { method: "POST", body: story }),
   generatePrompt: (spec) => request("/api/prompts/generate", { method: "POST", body: spec }),
+  // Call Tracker (per workspace; app/routes_calltracker.py)
+  calltracker: (ws) => request(`/api/calltracker?workspace=${encodeURIComponent(ws || "")}`),
+  saveCalltracker: (body) => request("/api/calltracker", { method: "PUT", body }),
+  deleteCalltracker: (ws) => request(`/api/calltracker?workspace=${encodeURIComponent(ws || "")}`, { method: "DELETE" }),
+  testCalltracker: (ws) => request("/api/calltracker/test", { method: "POST", body: { workspace: ws } }),
+  retryCalltracker: (ws) => request("/api/calltracker/retry", { method: "POST", body: { workspace: ws } }),
+  calltrackerFunnel: (from, to) => request(`/api/calltracker/funnel?from=${encodeURIComponent(from || "")}&to=${encodeURIComponent(to || "")}`),
   // Integrations hub
   channels: () => request("/api/channels"),
   saveChannel: (channel, provider, values, makeActive = false) =>

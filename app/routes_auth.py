@@ -43,6 +43,7 @@ OWNER_ROUTES = {
     ("GET", "/api/prospects/suppressions"), ("POST", "/api/prospects/unsuppress"),
     ("DELETE", "/api/prospects/people/{person_id}"), ("PATCH", "/api/prospects/people/{person_id}"), ("POST", "/api/prospects/sync-crm"),
     ("PUT", "/api/prospects/settings"), ("POST", "/api/prospects/enrich"), ("GET", "/api/prospects/spend"), ("PUT", "/api/prospects/spend"),
+    ("GET", "/api/calltracker"),          # the connection card (the route also lets a workspace admin in for its own workspace)
     ("GET", "/api/security/settings"), ("PUT", "/api/security/settings"), ("POST", "/api/security/two-step/{email}/reset"),
     ("PUT", "/api/insights/source-spend"), ("GET", "/api/inbound/log"), ("POST", "/api/inbound/{connector_id}/test"), ("POST", "/api/inbound/{connector_id}/sync"),
 }
@@ -59,7 +60,7 @@ CALLER_WRITES = {
     ("POST", "/api/login"), ("POST", "/api/login/code"), ("POST", "/api/login/setup/start"), ("POST", "/api/login/setup/confirm"),
     ("POST", "/api/password/forgot"), ("POST", "/api/password/reset"), ("POST", "/api/linkedin-runner/pair"),
     ("POST", "/api/webhooks/{channel}/{provider}"), ("POST", "/api/inbound/{connector_id}"), ("POST", "/api/inbound/google/{connector_id}"),
-    ("POST", "/api/inbound/meta/{connector_id}"), ("POST", "/api/activation/event"), ("POST", "/u/{token}"), ("POST", "/demo/{token}/opened"),
+    ("POST", "/api/inbound/meta/{connector_id}"), ("POST", "/api/calltracker/hook/{conn_id}"), ("POST", "/api/activation/event"), ("POST", "/u/{token}"), ("POST", "/demo/{token}/opened"),
     # paired tools: the Chrome assistant / LinkedIn agent token, the office runner, MCP (each limited to its own paths)
     ("POST", "/api/extension/pair"), ("DELETE", "/api/extension/tokens/{token_id}"), ("POST", "/api/extension/save-profile"),
     ("POST", "/api/extension/inbox"), ("POST", "/api/extension/agent/event"), ("POST", "/api/extension/cloud/state"),
@@ -118,6 +119,8 @@ ADMIN_WRITES = {
     ("PUT", "/api/ownership-mode"), ("POST", "/api/ownership/migrate"), ("POST", "/api/ownership/fix-owners"),
     ("PUT", "/api/assignment"), ("POST", "/api/assignment/run-unowned"),      # lead assignment rules (the routes refuse callers)
     ("POST", "/api/leads/bulk-reassign"),         # hand over a person's leads (app/bulk_reassign.py refuses non-admins and other workspaces)
+    # Call Tracker connection of their own workspaces (app/routes_calltracker.py refuses main and other workspaces)
+    ("GET", "/api/calltracker"), ("PUT", "/api/calltracker"), ("DELETE", "/api/calltracker"), ("POST", "/api/calltracker/test"), ("POST", "/api/calltracker/retry"),
 }
 # LinkedIn agent per client account (app/linkedin_scope.py): an account's admins run their own account's agent, slots and
 # office computer (the routes cut to the admin's account, 404 for another's); callers / viewers only read its status.
