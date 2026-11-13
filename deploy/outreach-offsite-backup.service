@@ -1,0 +1,16 @@
+# Nightly encrypted backup of MCN Outreach (database + data folder) with an offsite copy. See offsite-backup.sh.
+[Unit]
+Description=MCN Outreach offsite backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/outreach-offsite-backup
+Nice=10
+IOSchedulingClass=idle
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/outreach-backup
