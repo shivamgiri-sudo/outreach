@@ -451,6 +451,7 @@ export const api = {
   leadQualityReview: (days = 7) => request(`/api/lead-quality/review?days=${days}`),
   restoreLeadQuality: (id) => request(`/api/leads/${id}/quality-restore`, { method: "POST", body: {} }),
   callLog: (params = {}) => request(`/api/call-log?${callLogQuery(params)}`),
+  leaderboard: (period, rankBy, from = "", to = "") => request(`/api/leaderboard?period=${period}&rank_by=${rankBy}${from ? `&from=${from}&to=${to}` : ""}`),
   callScript: () => request("/api/call-script"),
   saveCallScript: (script, objections) => request("/api/call-script", { method: "PUT", body: { script, objections } }),
   resetCallScript: () => request("/api/call-script", { method: "DELETE" }),
