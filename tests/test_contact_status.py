@@ -130,3 +130,56 @@ def test_lead_quality_endpoint_is_scoped_like_the_leads(tmp_path):
     assert owner["total"]["leads"] == 4 and owner["total"]["invalid"] == 1
     priya = r.c.get("/api/lead-quality", headers=r.h["priya"]).json()
     assert priya["total"]["invalid"] == 0 and priya["total"]["leads"] == 2        # only her own two leads (Beta and Other WS Co): not Ravi's Acme, not the unowned Cora
+
+
+# ---------------------------------------------------------------- weekly review, manager restore, outlier flag
+def _mark(c, lead_id, outcome, headers=None, **kw):
+    return c.post(f"/api/leads/{lead_id}/call-outcome", json={"outcome": outcome, "notes": "n", **kw}, headers=headers or {})
+
+
+def test_manager_can_restore_a_marked_lead(tmp_path):
+    r = make_rig(tmp_path, mode_on=False)
+    acme = r.lead["Acme"]["id"]
+    assert r.c.post(f"/api/leads/{acme}/consent", json={"text": "Yes call me", "channel": "call"}, headers=r.h["owner"]).status_code == 200
+    stage_before = next(l for l in r.store.read("leads") if l["id"] == acme)["stage"]
+    assert _mark(r.c, acme, "invalid_lead", r.h["priya"], reason="fake").status_code == 200
+    lead = next(l for l in r.store.read("leads") if l["id"] == acme)
+    assert lead["stage"] == "disqualified" and lead["lead_quality"]["prev_stage"] == stage_before
+    assert r.c.post(f"/api/leads/{acme}/quality-restore", headers=r.h["priya"]).status_code == 403          # a caller cannot undo a mark
+    assert r.c.post(f"/api/leads/{acme}/quality-restore", headers=r.h["view"]).status_code == 403
+    done = r.c.post(f"/api/leads/{acme}/quality-restore", headers=r.h["owner"])
+    assert done.status_code == 200 and done.json() == {"lead_id": acme, "stage": stage_before, "was": "invalid"}
+    lead = next(l for l in r.store.read("leads") if l["id"] == acme)
+    assert "lead_quality" not in lead and lead["stage"] == stage_before
+    assert any(e["kind"] == "quality" and "restored" in e["text"] for e in lead["timeline"])
+    assert any(a.get("action") == "lead.quality_restore" for a in r.store.read("audit"))
+    assert r.c.post(f"/api/leads/{acme}/quality-restore", headers=r.h["owner"]).status_code == 400           # nothing left to restore
+    assert r.c.post("/api/leads/nope/quality-restore", headers=r.h["owner"]).status_code == 404
+
+
+def test_restore_keeps_a_stage_the_lead_moved_to_since(tmp_path):
+    r = make_rig(tmp_path, mode_on=False)
+    beta = r.lead["Beta Ltd"]["id"]
+    r.c.post(f"/api/leads/{beta}/consent", json={"text": "Yes call me", "channel": "call"}, headers=r.h["owner"])
+    _mark(r.c, beta, "consultant_lead", r.h["priya"])
+    out = r.c.post(f"/api/leads/{beta}/quality-restore", headers=r.h["owner"]).json()
+    assert out["was"] == "consultant" and out["stage"] != "disqualified"                                   # a consultant never changed stage
+
+
+def test_review_list_and_scope(tmp_path):
+    r = make_rig(tmp_path, mode_on=True)
+    r.set("Acme", lead_quality={"kind": "invalid", "by": "Ravi", "reason": "fake", "at": "2099-01-01T00:00:00+00:00"})
+    r.set("Beta Ltd", lead_quality={"kind": "consultant", "by": "Priya", "at": "2000-01-01T00:00:00+00:00"})        # long ago: not this week
+    got = r.c.get("/api/lead-quality/review", headers=r.h["owner"]).json()
+    assert [x["company"] for x in got["rows"]] == ["Acme"] and got["rows"][0]["reason"] == "fake"
+    assert r.c.get("/api/lead-quality/review", headers=r.h["priya"]).status_code == 403                    # managers only
+    assert r.c.get("/api/lead-quality/review?days=90", headers=r.h["owner"]).status_code == 200
+
+
+def test_outlier_flag():
+    from app import lead_quality as lq
+    callers = [{"caller": "Heavy", "marked": 12}, {"caller": "Normal", "marked": 2}, {"caller": "Few", "marked": 1}]
+    got = {c["caller"]: c for c in lq.flag_outliers(callers, {"Heavy": 40, "Normal": 100, "Few": 8})}
+    assert got["Heavy"]["outlier"] and got["Heavy"]["rate"] == 30.0
+    assert not got["Normal"]["outlier"] and not got["Few"]["outlier"]          # Few has too few calls to judge
+    assert lq.flag_outliers([{"caller": "X", "marked": 1}], {})[0]["outlier"] is False

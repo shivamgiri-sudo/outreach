@@ -18,7 +18,7 @@ export default {
       "Click a row to open the lead.",
     ]],
     ["h", "Lead quality"],
-    ["p", "Above the call table, **Lead quality** shows how many leads callers marked **Invalid** or **Consultant**, as a percentage per data source, with the reasons given and who marked them. A source with a high invalid rate is a bad source: raise it with whoever supplied the data. Marked leads have their own **Invalid lead** and **Consultant lead** choices in the Leads page's contact status filter."],
+    ["p", "Above the call table, **Lead quality** shows how many leads callers marked **Invalid** or **Consultant**, as a percentage per data source, with the reasons given and who marked them. A source with a high invalid rate is a bad source: raise it with whoever supplied the data. Owners and admins also see **Marked in the last 7 days**: each lead with who marked it and why, and a **Restore** button that removes the mark (an invalid lead goes back to its earlier stage). A **High** tag beside a caller means they mark far more of their calls than the team does: worth a conversation. Marked leads have their own **Invalid lead** and **Consultant lead** choices in the Leads page's contact status filter."],
     ["tip", "Owners can press **Download CSV** to get the filtered list as a CSV that opens in Excel. Each download is written to the audit log."],
     ["p", "Related: [Call desk](#help/calls), [Leads](#help/leads)."],
   ],

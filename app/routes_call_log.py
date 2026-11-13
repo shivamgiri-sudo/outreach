@@ -52,7 +52,36 @@ def make_router(store) -> APIRouter:
         hider = lead_access.hidden_test(store, user)
         leads = [l for l in workspaces.filter_rows(store.read("leads")) if not (hider and hider(l))]
         out = lead_quality.report(leads)
+        by_id = {l["id"] for l in leads}
+        calls = {}
+        for a in store.read("activities"):
+            if a.get("type") == "call" and a.get("lead_id") in by_id and a.get("outcome") not in rep_workflow.MARKER_OUTCOMES:
+                who = str(a.get("by") or "Unknown").strip() or "Unknown"
+                calls[who] = calls.get(who, 0) + 1
+        lead_quality.flag_outliers(out["callers"], calls)          # callers marking far more than their team: worth a conversation
         out["reason_names"] = rep_workflow.INVALID_REASONS
+        return out
+
+    @router.get("/api/lead-quality/review")
+    def review(request: Request, days: int = Query(7, ge=1, le=90)):
+        """Leads marked invalid / consultant recently: for a manager's weekly check (and a Restore)."""
+        user = getattr(request.state, "user", None)
+        hider = lead_access.hidden_test(store, user)
+        leads = [l for l in workspaces.filter_rows(store.read("leads")) if not (hider and hider(l))]
+        return {"days": days, "rows": lead_quality.review(leads, days), "reason_names": rep_workflow.INVALID_REASONS}
+
+    @router.post("/api/leads/{lead_id}/quality-restore")
+    def restore(lead_id: str, request: Request):
+        lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+        if lead is None or not workspaces.filter_rows([lead]):
+            raise HTTPException(404, "Lead not found")
+        lead_access.check_http(store, request, lead)
+        user = getattr(request.state, "user", None)
+        try:
+            out = rep_workflow.restore_lead_quality(store, lead_id, rep_workflow.actor_name(store, user or {}))
+        except rep_workflow.OutcomeRefused as exc:
+            raise HTTPException(400, str(exc)) from None
+        audit.record(store, user, "lead.quality_restore", lead.get("company") or lead_id, f"was {out['was']}; stage now {out['stage']}")
         return out
 
     @router.get("/api/call-log/export")

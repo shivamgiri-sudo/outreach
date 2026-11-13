@@ -7,6 +7,40 @@ from __future__ import annotations
 from collections import defaultdict
 
 
+OUTLIER_MIN_CALLS = 20       # a caller needs this many calls before their rate means anything
+OUTLIER_FACTOR = 2.0         # flagged when their marked-per-call rate is this many times the team's ...
+OUTLIER_FLOOR = 10.0         # ... and at least this percent
+
+
+def review(leads: list, days: int = 7, now=None) -> list:
+    """Leads marked invalid / consultant in the last `days` days, newest first: the list a manager checks each week."""
+    from datetime import datetime, timedelta, timezone
+    from .rep_workflow import parse_at
+    cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=days)
+    rows = []
+    for lead in leads:
+        q = lead.get("lead_quality") or {}
+        at = parse_at(q.get("at"))
+        if q.get("kind") in ("invalid", "consultant") and at and at >= cutoff:
+            rows.append({"lead_id": lead["id"], "company": lead.get("company") or lead.get("domain") or "", "contact_name": lead.get("contact_name") or "",
+                         "kind": q["kind"], "reason": q.get("reason") or "", "by": q.get("by") or "Unknown", "at": q.get("at"), "note": q.get("note") or "",
+                         "stage": lead.get("stage"), "source": lead.get("source") or ""})
+    rows.sort(key=lambda r: parse_at(r["at"]), reverse=True)
+    return rows
+
+
+def flag_outliers(callers: list, calls_by_caller: dict) -> list:
+    """Add `calls`, `rate` (percent of that caller's calls that ended in a mark) and `outlier` to each caller row."""
+    total_calls = sum(calls_by_caller.values())
+    team = 100.0 * sum(c["marked"] for c in callers) / total_calls if total_calls else 0.0
+    for c in callers:
+        calls = calls_by_caller.get(c["caller"], 0)
+        c["calls"] = calls
+        c["rate"] = round(100.0 * c["marked"] / calls, 1) if calls else 0.0
+        c["outlier"] = bool(calls >= OUTLIER_MIN_CALLS and c["rate"] >= OUTLIER_FLOOR and c["rate"] >= OUTLIER_FACTOR * team)
+    return callers
+
+
 def report(leads: list) -> dict:
     by_source = defaultdict(lambda: {"leads": 0, "invalid": 0, "consultant": 0})
     by_caller = defaultdict(lambda: {"invalid": 0, "consultant": 0})

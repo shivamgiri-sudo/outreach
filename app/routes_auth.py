@@ -30,6 +30,7 @@ OWNER_ROUTES = {
     ("GET", "/api/channels/webhooks"), ("GET", "/api/flows/{flow_id}/webhook"), ("PUT", "/api/icp"), ("POST", "/api/signals/run"), ("POST", "/api/signals/watch"), ("DELETE", "/api/signals/watch/{watch_id}"), ("POST", "/api/icp/score"), ("GET", "/api/oauth/{provider}/start"),
     ("POST", "/api/sequences/run"), ("POST", "/api/sending/resume"), ("POST", "/api/sequences/resume-failed"),
     ("POST", "/api/practice/clear"), ("GET", "/api/enrich/apollo-export"), ("GET", "/api/change-log.csv"), ("GET", "/api/call-log/export"),   # CSV downloads: owners only
+    ("GET", "/api/lead-quality/review"), ("POST", "/api/leads/{lead_id}/quality-restore"),   # a manager reviews and restores marked leads
     ("GET", "/api/leads/{lead_id}/export"), ("POST", "/api/leads/{lead_id}/erase"),
     ("POST", "/api/find-leads"),          # spends provider credits
     ("POST", "/api/sequences"), ("PUT", "/api/sequences/{seq_id}"), ("POST", "/api/sequences/{seq_id}/duplicate"),       # sequence library
@@ -110,6 +111,7 @@ ADMIN_WRITES = {
     ("PUT", "/api/account/whatsapp"), ("DELETE", "/api/account/whatsapp"), ("PUT", "/api/account/alerts"),
     # the sales funnel's SLA, stalled days and monthly targets, and the stage-date back-fill (the routes refuse callers)
     ("PUT", "/api/funnel/settings"), ("POST", "/api/funnel/recalculate"),
+    ("GET", "/api/lead-quality/review"), ("POST", "/api/leads/{lead_id}/quality-restore"),
     # lead ownership (app/routes_assignment.py): assigning lists, the switch, the migration; the routes check the caller is an admin of the workspace
     ("PUT", "/api/lists/{list_id}/assign"), ("POST", "/api/lists/{list_id}/split"), ("PUT", "/api/lists/{list_id}/share"),
     ("PUT", "/api/ownership-mode"), ("POST", "/api/ownership/migrate"), ("POST", "/api/ownership/fix-owners"),

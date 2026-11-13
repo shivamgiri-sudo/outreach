@@ -380,6 +380,7 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
             changes = {"lead_quality": {"kind": kind, "at": stamp, "by": who, "note": notes[:300], **({"reason": reason} if kind == "invalid" else {})},
                        **({"sequence": {**seq, "stopped": seq.get("stopped") or outcome}} if seq else {})}
             if kind == "invalid" and l["stage"] not in CLOSED and can_move(l["stage"], "disqualified"):
+                changes["lead_quality"] = {**changes["lead_quality"], "prev_stage": l["stage"]}      # so a manager can restore it
                 changes["stage"] = "disqualified"                    # a consultant keeps their stage: the owner decides what to do with them
                 event["text"] += f" ({l['stage']} → disqualified)"
             return {**l, **changes, "timeline": [*l["timeline"], event]}
@@ -395,6 +396,38 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
         store.update_lead(lead_id, no)
         result["stage"] = next(l for l in store.read("leads") if l["id"] == lead_id)["stage"]
     return result
+
+
+def restore_lead_quality(store, lead_id: str, who: str, now: Optional[datetime] = None) -> dict:
+    """A manager undoes a caller's invalid / consultant mark: the mark goes, an invalid lead gets its earlier stage back (only if it is
+    still Disqualified from that mark) and the emails the mark stopped may run again. Returns {lead_id, stage, was}."""
+    stamp = iso(now or now_utc())
+    lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+    if lead is None:
+        raise LookupError("Lead not found")
+    q = lead.get("lead_quality")
+    if not q:
+        raise OutcomeRefused("This lead is not marked invalid or consultant.")
+
+    def undo(l: dict) -> dict:
+        if not l.get("lead_quality"):
+            return None
+        out = {k: v for k, v in l.items() if k != "lead_quality"}
+        back = q.get("prev_stage")
+        note = ""
+        if back and l["stage"] == "disqualified" and back in STAGES:
+            out["stage"] = back
+            note = f" and moved back to {back}"
+        seq = l.get("sequence")
+        if seq and seq.get("stopped") in MARKER_OUTCOMES:
+            out["sequence"] = {k: v for k, v in seq.items() if k != "stopped"}
+        out["timeline"] = [*l["timeline"], {"at": stamp, "kind": "quality", "by": who,
+                                            "text": f"{who} restored this lead (was marked {q.get('kind')} by {q.get('by') or 'a caller'}){note}"}]
+        return out
+    saved = store.update_lead(lead_id, undo)
+    if saved is None:
+        raise OutcomeRefused("This lead is not marked invalid or consultant.")
+    return {"lead_id": lead_id, "stage": saved["stage"], "was": q.get("kind")}
 
 
 # ---------------------------------------------------------------- call script
