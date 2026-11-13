@@ -7,6 +7,7 @@ script, reply triage state and stage moves with a reason.
 - State that belongs to the whole team (targets, call script, reply triage) lives in settings so it needs no new
   collection: settings.rep_targets, settings.call_script, settings.reply_state.
 """
+from collections import defaultdict
 from datetime import datetime, time, timedelta, timezone
 from typing import Optional
 
@@ -224,6 +225,16 @@ def lead_card(lead: dict, presented: Optional[dict] = None) -> dict:
             "recent_notes": [{"at": e.get("at"), "kind": e.get("kind"), "text": (e.get("text") or "")[:300], "by": e.get("by", "")} for e in reversed(notes)]}
 
 
+def call_history_of(lead: dict, activities: list) -> dict:
+    """{attempts, last_outcome, last_attempt_at}: how many calls were tried on this lead, and how the latest ended."""
+    from_timeline = [e for e in lead.get("timeline") or [] if e.get("kind") == "call"]
+    rows = sorted(activities or [], key=lambda a: parse_at(a.get("at")) or datetime.min.replace(tzinfo=timezone.utc))
+    last = rows[-1] if rows else (from_timeline[-1] if from_timeline else None)
+    return {"attempts": max(len(rows), len(from_timeline)),
+            "last_outcome": str((last or {}).get("outcome") or "") if last else "",
+            "last_attempt_at": (last or {}).get("at") if last else None}
+
+
 def call_queue(store, present, now: datetime, names: Optional[set] = None) -> list:
     """Who to dial, best first: overdue callbacks, call tasks due today, leads who said yes, then leads with a phone
     and consent. Leads that are closed, on the do-not-contact list or with a phone marked wrong are left out.
@@ -273,10 +284,14 @@ def call_queue(store, present, now: datetime, names: Optional[set] = None) -> li
         rows.append((rank, -(present(lead).get("score") or 0), "", lead, None, why))
         seen.add(lead["id"])
     rows.sort(key=lambda r: (r[0], r[2] or "9999", r[1]))
+    calls_by_lead = defaultdict(list)
+    for a in activities:
+        if a.get("type") == "call" and a.get("lead_id"):
+            calls_by_lead[a["lead_id"]].append(a)
     out = []
     for rank, _score, _due, lead, task, why in rows:
         p = present(lead)
-        out.append({**lead_card(lead, p), "reason": why, "rank": rank, "task_id": task.get("id") if task else None,
+        out.append({**lead_card(lead, p), **call_history_of(lead, calls_by_lead.get(lead["id"], [])), "reason": why, "rank": rank, "task_id": task.get("id") if task else None,
                     "due_at": task.get("due_at") if task else None, "task_owner": task.get("owner") if task else None,
                     "next": next_action(lead, task=task)})
     return out

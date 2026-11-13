@@ -155,7 +155,11 @@ export default function CallDesk() {
   useEffect(() => { api.me().then((m) => setRep(m.name || "your name")).catch(() => {}); api.callScript().then(setScript).catch(() => {}); }, []);
   const load = () => api.callQueue(mine).then((d) => { setData(d); if (d.me) setRep(d.me); }).catch((e) => setError(e.message));
   useEffect(() => { load(); }, [mine]);
-  const queue = data?.queue || [];
+  const [view, setView] = useState("all");
+  const everyone = data?.queue || [];
+  const CHIPS = [["all", "Everyone", () => true], ["fresh", "Never called", (l) => !l.attempts],
+    ["retry", "Tried before", (l) => l.attempts > 0], ["yes", "Said yes", (l) => l.rank === 3], ["back", "Call backs", (l) => l.rank <= 1]];
+  const queue = everyone.filter((CHIPS.find((c) => c[0] === view) || CHIPS[0])[2]);
 
   return (
     <>
@@ -171,16 +175,24 @@ export default function CallDesk() {
               <button className="btn" disabled={!queue.length} onClick={() => setWalking(queue)} data-testid="start-calling">Start calling ({queue.length})</button>
               <label className="row" style={{ gap: 6, fontWeight: 400 }}><input type="checkbox" style={{ width: "auto" }} checked={mine} onChange={(e) => setMine(e.target.checked)} /> Only mine</label>
             </div>
-            {queue.length === 0 ? <p className="empty">No one is waiting for a call right now.</p> : (
+            <div className="row" style={{ padding: "0 12px 8px", gap: 6, flexWrap: "wrap" }} role="group" aria-label="Who to call">
+              {CHIPS.map(([k, label, test]) => (
+                <button key={k} type="button" className={`btn ghost${view === k ? " on" : ""}`} aria-pressed={view === k} onClick={() => setView(k)} data-testid={`queue-${k}`}>
+                  {label} ({everyone.filter(test).length})
+                </button>
+              ))}
+            </div>
+            {queue.length === 0 ? <p className="empty">{everyone.length ? "No one in this group right now." : "No one is waiting for a call right now."}</p> : (
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>Lead</th><th>Why now</th><th>Phone</th></tr></thead>
+                  <thead><tr><th>Lead</th><th>Why now</th><th>Calls so far</th><th>Phone</th></tr></thead>
                   <tbody>
                     {queue.map((l, i) => (
                       <tr key={l.lead_id}>
                         <td><button className="link" onClick={() => setOpen(l.lead_id)}><b>{l.company || l.contact_name}</b></button><br />
                           <small>{l.contact_name}{l.score != null ? ` · score ${l.score}` : ""}</small></td>
                         <td>{l.reason}{l.due_at ? <div className="sub">due {istLabel(l.due_at)}</div> : null}</td>
+                        <td data-testid="queue-attempts">{l.attempts ? <>{l.attempts} call{l.attempts > 1 ? "s" : ""}<div className="sub">{l.last_outcome ? `last: ${l.last_outcome.replace(/_/g, " ")} · ` : "last "}{istLabel(l.last_attempt_at)}</div></> : <span className="pill ok">never called</span>}</td>
                         <td><a href={dialLink(l.phone)}>{l.phone}</a><PhoneTag lead={l} /><br /><button className="link" onClick={() => setWalking([...queue.slice(i), ...queue.slice(0, i)])}>Call from here</button></td>
                       </tr>
                     ))}

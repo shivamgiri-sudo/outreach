@@ -128,6 +128,9 @@ def test_call_queue_orders_callbacks_then_yes_then_consent(tmp_path):
     c.post(f"/api/leads/{beta}/call-outcome", json={"outcome": "call_back", "callback_at": soon(1)})
     q = c.get("/api/call-queue").json()["queue"]
     assert q[0]["lead_id"] == beta and q[0]["reason"].startswith("Call back")
+    by = {x["lead_id"]: x for x in q}
+    assert by[beta]["attempts"] == 1 and by[beta]["last_outcome"] == "call_back" and by[beta]["last_attempt_at"]
+    assert by[acme]["attempts"] == 0 and by[acme]["last_outcome"] == ""         # never called: the "Never called" group
 
 
 # ---------------------------------------------------------------- my day
