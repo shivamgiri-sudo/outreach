@@ -14,7 +14,7 @@ const OUTCOMES = [["connected", "Connected", "1"], ["no_answer", "No answer", "2
 const MEANS = { interested: "Records their yes (phone), moves them to Interested and adds a follow-up for tomorrow.",
   not_interested: "Moves them to Disqualified and stops their emails.", wrong_number: "Marks this number wrong; they leave the queue until it is fixed.",
   inactive_number: "Not in service or switched off: they leave the queue until the number is changed.",
-  call_disconnected: "The call dropped; counted as an unanswered attempt.",
+  call_disconnected: "The call dropped; counted as an unanswered attempt. Offers a call-back in 15 minutes (you can skip it).",
   call_back: "Pick a time; a call-back task is created for you.",
   invalid_lead: "Not a real or usable lead (fake, not hiring, wrong company). Disqualifies them, stops their emails and removes them from the queue.",
   consultant_lead: "A consultant or agency, not a direct employer. Marks the lead, stops their emails and removes them from the queue; their stage stays." };
@@ -52,6 +52,7 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
   const [notes, setNotes] = useState("");
   const [dialled, setDialled] = useState("");
   const [callback, setCallback] = useState(null);
+  const [cbFor, setCbFor] = useState("call_back");     // which outcome the call-back time belongs to
   const [summary, setSummary] = useState(null);
   const [busy, setBusy] = useState(false);
   const [log, setLog] = useState([]);
@@ -64,13 +65,16 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
     if (lead) api.historySummary(lead.lead_id).then(setSummary).catch(() => setSummary(null));
   }, [index, lead?.lead_id]);
 
-  const record = async (outcome) => {
+  const record = async (outcome, skipCallback = false) => {
     if (!lead || busy || !canWrite()) return;
-    if (outcome === "call_back" && callback === null) { setCallback(inIstMinutes(60)); return; }
+    if ((outcome === "call_back" || outcome === "call_disconnected") && callback === null && !skipCallback) {
+      setCbFor(outcome); setCallback(inIstMinutes(outcome === "call_back" ? 60 : 15)); return;      // a dropped call offers a retry in 15 minutes
+    }
+    const withCallback = callback !== null && !skipCallback && outcome === cbFor && (outcome === "call_back" || outcome === "call_disconnected");
     setBusy(true); setMsg("");
     try {
       const numbers = [lead.phone, ...(lead.phones || [])].filter(Boolean);
-      const r = await api.callOutcome(lead.lead_id, outcome, notes.trim(), outcome === "call_back" ? withIst(callback) : null, numbers.includes(dialled) ? dialled : lead.phone);
+      const r = await api.callOutcome(lead.lead_id, outcome, notes.trim(), withCallback ? withIst(callback) : null, numbers.includes(dialled) ? dialled : lead.phone);
       setDialled("");
       setLog((l) => [...l, { company: lead.company, outcome, stage: r.stage }]);
       setIndex((i) => i + 1);
@@ -126,13 +130,14 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
         <textarea id="dial-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What they said, next step" />
         {callback !== null && (
           <label className="row" style={{ gap: 6, marginTop: 6 }}>Call back at (IST)
-            <input type="datetime-local" value={callback} onChange={(e) => setCallback(e.target.value)} aria-label="Call back at" /></label>
+            <input type="datetime-local" value={callback} onChange={(e) => setCallback(e.target.value)} aria-label="Call back at" />
+            {cbFor === "call_disconnected" && <button type="button" className="btn ghost" disabled={busy} onClick={() => record("call_disconnected", true)} data-testid="drop-no-callback">No call back, just log it</button>}</label>
         )}
         <div className="row" style={{ flexWrap: "wrap", gap: 6, marginTop: 8 }} aria-label="Call outcome">
           {OUTCOMES.map(([o, label, key]) => (
             <button key={o} className={`btn ${o === "interested" ? "" : "ghost"}${["not_interested", "wrong_number", "inactive_number", "invalid_lead", "consultant_lead"].includes(o) ? " danger" : ""}`} disabled={busy}
               title={`${MEANS[o] || "Log it and go to the next lead."} Key ${key}.`} onClick={() => record(o)}>
-              {o === "call_back" && callback !== null ? "Save call back" : label}
+              {o === cbFor && callback !== null && (o === "call_back" || o === "call_disconnected") ? "Save call back" : label}
             </button>
           ))}
         </div>

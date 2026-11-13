@@ -347,3 +347,16 @@ def test_invalid_and_consultant_outcomes_mark_the_lead(tmp_path):
     summary = c.get(f"/api/leads/{beta}/history-summary").json()
     assert summary["calls"]["outcomes"] == {"consultant_lead": 1}
     assert c.post(f"/api/leads/{beta}/call-outcome", json={"outcome": "bogus"}).status_code == 400
+
+
+def test_call_disconnected_can_offer_a_quick_callback(tmp_path):
+    c = make(tmp_path, PW)
+    acme = lead_named(c, "Acme")["id"]
+    plain = c.post(f"/api/leads/{acme}/call-outcome", json={"outcome": "call_disconnected", "notes": "line dropped"})
+    assert plain.status_code == 200 and plain.json()["task"] is None                    # no time given: no task, as before
+    r = c.post(f"/api/leads/{acme}/call-outcome", json={"outcome": "call_disconnected", "notes": "dropped after hello", "callback_at": soon(15)})
+    assert r.status_code == 200, r.text
+    task = r.json()["task"]
+    assert task and task["title"] == "Call back (call dropped)" and task["kind"] == "call"
+    assert c.post(f"/api/leads/{acme}/call-outcome", json={"outcome": "call_disconnected", "callback_at": "2020-01-01T00:00:00+00:00"}).status_code in (400, 422)
+    assert c.get(f"/api/leads/{acme}/history-summary").json()["calls"]["outcomes"]["call_disconnected"] == 2     # the refused past-time call was not logged

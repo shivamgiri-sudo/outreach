@@ -113,6 +113,7 @@ export default function LeadActivity({ lead, onChanged }) {
   const [summary, setSummary] = useState(null);
   const [composing, setComposing] = useState(false);
   const [callback, setCallback] = useState(null);
+  const [cbFor, setCbFor] = useState("call_back");
   const [remarks, setRemarks] = useState("");
   const phones = [lead.phone, ...(lead.phones || [])].filter((v, i, a) => v && a.indexOf(v) === i);
   const [dialled, setDialled] = useState("");
@@ -167,7 +168,8 @@ export default function LeadActivity({ lead, onChanged }) {
             {phones.length > 1 && <select value={to} onChange={(e) => setDialled(e.target.value)} aria-label="Number called" data-testid="call-number" style={{ width: "auto" }}>
               {phones.map((p) => <option key={p} value={p}>{p}{p === lead.phone ? " (main)" : ""}</option>)}</select>}
             {QUICK_CALLS.map(([v, l]) => <button key={v} className={`btn ghost${QUICK_CONFIRM[v] ? " danger" : ""}`} onClick={async () => {
-              if (v === "call_back") { setCallback(new Date(Date.now() + 390 * 60000).toISOString().slice(0, 16)); return; }
+              if (v === "call_back") { setCbFor("call_back"); setCallback(new Date(Date.now() + 390 * 60000).toISOString().slice(0, 16)); return; }
+              if (v === "call_disconnected") { setCbFor("call_disconnected"); setCallback(new Date(Date.now() + 345 * 60000).toISOString().slice(0, 16)); return; }   // a dropped call offers a retry in 15 minutes (IST)
               if (QUICK_CONFIRM[v] && !(await confirm({ message: QUICK_CONFIRM[v], confirmLabel: l }))) return;
               run(() => api.callOutcome(lead.id, v, remarks.trim(), null, to), `Call logged: ${l}${phones.length > 1 ? ` (${to})` : ""}.`).then(() => setRemarks(""));
             }}>{l}</button>)}
@@ -178,9 +180,11 @@ export default function LeadActivity({ lead, onChanged }) {
               placeholder="Optional: what they said; saved with the call you log" maxLength={500} /></label>}
           {callback !== null && canWrite() && (
             <form className="row" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault();
-              run(() => api.callOutcome(lead.id, "call_back", remarks.trim(), withIst(callback), to), "Call logged; a call-back task was created.").then(() => { setCallback(null); setRemarks(""); }); }}>
+              run(() => api.callOutcome(lead.id, cbFor, remarks.trim(), withIst(callback), to), "Call logged; a call-back task was created.").then(() => { setCallback(null); setRemarks(""); }); }}>
               <label className="row" style={{ gap: 6 }}>Call back at (IST)<input type="datetime-local" required value={callback} onChange={(e) => setCallback(e.target.value)} /></label>
-              <button className="btn" type="submit">Save</button><button className="btn ghost" type="button" onClick={() => setCallback(null)}>Cancel</button>
+              <button className="btn" type="submit">Save</button>{cbFor === "call_disconnected" && <button className="btn ghost" type="button" data-testid="drop-no-callback"
+                onClick={() => run(() => api.callOutcome(lead.id, "call_disconnected", remarks.trim(), null, to), "Call logged: Call disconnected.").then(() => { setCallback(null); setRemarks(""); })}>No call back, just log it</button>}
+              <button className="btn ghost" type="button" onClick={() => setCallback(null)}>Cancel</button>
             </form>
           )}
           {composing && canWrite() && <Composer lead={lead} onCancel={() => setComposing(false)} onDone={(m) => { setComposing(false); setMessage(m); load(); onChanged?.(); }} />}

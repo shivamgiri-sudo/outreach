@@ -313,7 +313,7 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
         raise LookupError("Lead not found")
     if outcome == "call_back" and callback_at is None:
         raise OutcomeRefused("Pick when to call back.")
-    if outcome == "call_back" and callback_at <= now - timedelta(minutes=1):
+    if outcome in ("call_back", "call_disconnected") and callback_at is not None and callback_at <= now - timedelta(minutes=1):
         raise OutcomeRefused("The call-back time is in the past.")
     dialled = to if to and to in [lead.get("phone"), *(lead.get("phones") or [])] else (lead.get("phone") or "")
     activity = log_activity(store, lead_id, "call", {"outcome": outcome, "notes": notes, "by": who, "to": dialled})
@@ -325,6 +325,9 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
     if outcome == "call_back":
         result["task"] = add_task(store, lead_id, "call", notes or "They asked to be called back.", due_at=callback_at, owner=who,
                                   priority="high", title="Call back", source="callback")
+    elif outcome == "call_disconnected" and callback_at is not None:          # the line dropped: an optional quick retry task
+        result["task"] = add_task(store, lead_id, "call", notes or "The call dropped; try again.", due_at=callback_at, owner=who,
+                                  priority="high", title="Call back (call dropped)", source="callback")
     elif outcome in ("wrong_number", "inactive_number") and dialled and dialled != lead.get("phone"):
         what = "wrong number" if outcome == "wrong_number" else "inactive (not in service / switched off)"
         store.update_lead(lead_id, lambda l: {**l, "bad_numbers": {**(l.get("bad_numbers") or {}), dialled: {"status": outcome, "at": stamp, "by": who}},
