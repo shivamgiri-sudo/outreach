@@ -133,3 +133,22 @@ def test_existing_groups_max_200():
     assert j["total_groups"] == 250 and len(j["groups"]) == 200
     other = duplicates.existing_groups([leads[0], {**leads[250], "id": "z"}], lambda l: "x" if l["id"] == "z" else "y")
     assert other["total_groups"] == 0                                           # never across accounts
+
+
+def test_skip_duplicates_with_a_split_uses_the_rows_that_remain(r):
+    """Dropped rows shrink the file the split is planned over: an even split covers what is left, and a counts split that
+    still adds up to the ORIGINAL row count is refused in plain words with the real number."""
+    r.c.put("/api/team", json={"team": [{"name": "Priya", "email": "priya@x.in", "role": "caller"}, {"name": "Ravi", "email": "ravi@x.in", "role": "caller"}]},
+            headers=r.h["owner"])
+    body = csv("Acme,Ravi Kumar,HR,ravi@acme.com,98765 43210,https://acme.com,",       # exists already
+               "New One,Nia A,HR,nia@one.com,90000 00001,https://one.com,",
+               "New Two,Omar B,HR,omar@two.com,90000 00002,https://two.com,",
+               "New Three,Pia C,HR,pia@three.com,90000 00003,https://three.com,")
+    bad = r.c.post("/api/import/commit", json={"csv": body, "source": "t", "options": {"skip_duplicates": True}, "split_between": ["Priya", "Ravi"],
+                                              "mode": "count", "counts": [2, 2]}, headers=r.h["owner"])
+    assert bad.status_code == 400 and "3 rows" in bad.text
+    ok = r.c.post("/api/import/commit", json={"csv": body, "source": "t", "options": {"skip_duplicates": True}, "split_between": ["Priya", "Ravi"],
+                                             "mode": "even"}, headers=r.h["owner"])
+    assert ok.status_code == 200, ok.text
+    owners = sorted(l.get("owner") for l in r.store.read("leads") if l["company"] in ("New One", "New Two", "New Three"))
+    assert owners == ["Priya", "Priya", "Ravi"]
