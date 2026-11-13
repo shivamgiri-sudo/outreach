@@ -23,7 +23,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from . import account_limits, audit, lists, upload_owner, prospect_db as P, prospect_ingest as ingest, prospect_search as S, prospect_waterfall as W
+from . import account_limits, audit, lead_access, lists, prospect_access, upload_owner, prospect_db as P, prospect_ingest as ingest, prospect_search as S, prospect_waterfall as W
 from . import prospect_fields as F
 from . import prospect_unsuppress as U
 from .hygiene import csv_safe
@@ -101,6 +101,10 @@ def _user(request: Request) -> dict:
     return getattr(request.state, "user", None) or {"sub": "local", "role": "owner", "name": "This computer", "email": ""}
 
 
+def _user_or_none(request: Request):
+    return getattr(request.state, "user", None)
+
+
 def _owner_key(request: Request) -> str:
     u = _user(request)
     return str(u.get("email") or u.get("sub") or "local")[:120]
@@ -138,16 +142,24 @@ def _lead_row(person: dict) -> dict:
             "state": person.get("state") or "", "sector": c.get("industry") or "", "company_size": str(c.get("employees") or "")}
 
 
-def add_to_leads(store, person_ids: list, by: str) -> dict:
+def add_to_leads(store, person_ids: list, by: str, user=None) -> dict:
     """New CRM leads for these people (deduped against the CRM, in the request's workspace), skipping suppressed/erased."""
     repo = repo_for(store)
     result = {"added": [], "existing": [], "skipped": []}
     new, wanted = [], {}
-    by_key = {l.get("dedupe_key"): l["id"] for l in store.read("leads") if l.get("dedupe_key")}
-    for pid in list(dict.fromkeys(person_ids))[:MAX_ADD]:
+    all_leads = store.read("leads")
+    by_key = {l.get("dedupe_key"): l["id"] for l in all_leads if l.get("dedupe_key")}
+    by_id = {l["id"]: l for l in all_leads}
+    hider = lead_access.hidden_test(store, user)
+    ids = list(dict.fromkeys(person_ids))[:MAX_ADD]
+    hidden = prospect_access.hidden_people(store, user, ids)
+    for pid in ids:
         person = P.get_person(store, pid)
         if person is None:
             result["skipped"].append({"id": pid, "reason": "not found"})
+            continue
+        if pid in hidden:
+            result["skipped"].append({"id": pid, "reason": "already another member's lead"})
             continue
         why = blocked_reason(store, person)
         if why:
@@ -160,6 +172,9 @@ def add_to_leads(store, person_ids: list, by: str) -> dict:
             continue
         if lead["dedupe_key"] in by_key:
             lead_id = by_key[lead["dedupe_key"]]
+            if hider is not None and by_id.get(lead_id) is not None and hider(by_id[lead_id]):
+                result["skipped"].append({"id": pid, "name": person.get("full_name"), "reason": "already another member's lead"})
+                continue
             result["existing"].append({"id": pid, "lead_id": lead_id})
             if not repo.q1("SELECT 1 AS x FROM pdb_crm_links WHERE lead_id = ?", (lead_id,)):
                 ws = next((l.get("workspace") or "main" for l in store.read("leads") if l["id"] == lead_id), "main")
@@ -187,6 +202,10 @@ def add_to_leads(store, person_ids: list, by: str) -> dict:
 def make_router(store, transports=None) -> APIRouter:
     router = APIRouter()
 
+    def _hide_in_results(request: Request, res: dict) -> dict:
+        res["results"] = prospect_access.apply(store, _user_or_none(request), res.get("results") or [])
+        return res
+
     @router.get("/api/prospects/stats")
     def stats():
         ingest.sync_soon(store)
@@ -199,11 +218,12 @@ def make_router(store, transports=None) -> APIRouter:
     @router.get("/api/prospects/people")
     def people(request: Request):
         raw, sort, page, size = _filters_from_query(request)
-        return S.search_people(store, raw, sort, page, size)
+        return _hide_in_results(request, S.search_people(store, raw, sort, page, size))
 
     @router.post("/api/prospects/people/search")
-    def people_post(body: dict):
-        return S.search_people(store, body.get("filters") or {}, body.get("sort") or "relevance", body.get("page") or 1, body.get("size") or 25)
+    def people_post(body: dict, request: Request):
+        return _hide_in_results(request, S.search_people(store, body.get("filters") or {}, body.get("sort") or "relevance",
+                                                         body.get("page") or 1, body.get("size") or 25))
 
     @router.get("/api/prospects/companies")
     def companies(request: Request):
@@ -211,17 +231,18 @@ def make_router(store, transports=None) -> APIRouter:
         return S.search_companies(store, raw, sort, page, size)
 
     @router.get("/api/prospects/people/{person_id}")
-    def person(person_id: str):
-        found = P.get_person(store, person_id)
+    def person(person_id: str, request: Request):
+        found = prospect_access.one(store, _user_or_none(request), P.get_person(store, person_id))
         if found is None:
             raise HTTPException(404, "Prospect not found")
         return found
 
     @router.get("/api/prospects/companies/{key}")
-    def company(key: str):
+    def company(key: str, request: Request):
         found = P.get_company(store, key)
         if found is None:
             raise HTTPException(404, "Company not found")
+        found["people"] = prospect_access.apply(store, _user_or_none(request), found.get("people") or [])
         return found
 
     @router.post("/api/prospects/add-to-leads")
@@ -231,7 +252,7 @@ def make_router(store, transports=None) -> APIRouter:
             raise HTTPException(400, "Pick people first.")
         by = audit.actor_of(getattr(request.state, "user", None))["name"]
         account_limits.check_current(store, "imports_per_day", len(ids))              # the account's daily imports limit
-        out = add_to_leads(store, ids, by)
+        out = add_to_leads(store, ids, by, getattr(request.state, "user", None))
         lead_ids = [r["lead_id"] for r in out["added"] + out["existing"]]
         user = getattr(request.state, "user", None)
         if lead_ids and upload_owner.is_member(user):          # a member owns what they add and gets a list assigned to them
@@ -302,9 +323,14 @@ def make_router(store, transports=None) -> APIRouter:
         writer = csv.writer(out)
         writer.writerow(EXPORT_COLUMNS)
         written = left_out = 0
-        for pid in ids[:MAX_EXPORT]:
+        ids = ids[:MAX_EXPORT]
+        hidden = prospect_access.hidden_people(store, getattr(request.state, "user", None), ids)
+        for pid in ids:
             p = P.get_person(store, pid)
             if p is None:
+                continue
+            if pid in hidden:
+                left_out += 1
                 continue
             if blocked_reason(store, p):
                 left_out += 1

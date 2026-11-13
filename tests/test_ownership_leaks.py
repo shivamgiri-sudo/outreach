@@ -63,7 +63,7 @@ def test_no_aggregate_or_list_endpoint_leaks(r):
     new_list(r, "Ravi private list", ["Acme"], assigned_to="Ravi")
     needles = ["acme.com", "Ravi Kumar", "98765 43210", "ravi@acme", "Ravi private list", "ACMEMEET", "ACMETASK", "\"Acme\""]
     gets = sorted(p for p, d in r.c.app.openapi()["paths"].items() if "get" in d and "{" not in p and p.startswith("/api")
-                  and p != "/api/icp" and not p.startswith("/api/prospects"))   # /api/icp: a sample company called Acme; the prospect database is a shared contact pool (see report)
+                  and p != "/api/icp" and not p.startswith("/api/prospects"))   # /api/icp: a sample company called Acme; the prospect pool keeps name/title/company but redacts every contact (test_prospect_ownership)
     for who in ("priya", "view"):
         for p in gets:
             res = r.c.get(p, headers=r.h[who])

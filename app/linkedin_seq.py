@@ -185,9 +185,9 @@ GRACE = timedelta(hours=12)         # a step 1 / first message after acceptance 
 
 
 def grace_for(step: Optional[dict]) -> timedelta:
-    """How early a step may be offered. A follow-up that waits N days after the previous message waits the full gap
-    (no grace); the working-hours gate stays in agent.control."""
-    if step and step.get("after") == "previous" and (step.get("days") or 0) > 0:
+    """How early a step may be offered. Any step that waits N>0 days (after the previous message, the acceptance or the start)
+    waits the full gap; only a same-day step gets the grace. The working-hours gate stays in agent.control."""
+    if step and (step.get("days") or 0) > 0:
         return timedelta(0)
     return GRACE
 

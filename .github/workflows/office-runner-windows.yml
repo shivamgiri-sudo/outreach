@@ -13,6 +13,9 @@ on:
       - app/routes_linkedin_runner.py
       - tools/linkedin_runner.mjs
       - tools/linkedin_agent_pool.mjs
+      - tools/linkedin_agent.mjs
+      - tools/linkedin_guard_dom.mjs
+      - tools/linkedin_agent_inbox.mjs
       - deploy/linkedin-runtime/**
       - scripts/ci/office_runner_windows.ps1
       - .github/workflows/office-runner-windows.yml
