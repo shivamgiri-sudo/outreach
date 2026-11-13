@@ -14,6 +14,7 @@ from typing import Optional
 from .activities import (ACTIVITY_TYPES, add_task, caller_name, ensure_task_ids, history_summary, iso, log_activity, now_utc,
                          task_buckets, team)
 from .sequences import IST
+from . import call_retry
 from .contact_rules import add_consent, has_consent_for
 from .stages import ALL_STAGES, EXIT_STAGES, STAGES, TERMINAL, can_move
 
@@ -256,10 +257,11 @@ def call_queue(store, present, now: datetime, names: Optional[set] = None) -> li
     activities = store.read("activities")
     open_tasks = [t for t in store.read("tasks") if t.get("status", "open") == "open" and not t.get("done") and t.get("lead_id") not in hidden]
     task_owner = {t.get("lead_id"): t.get("owner") for t in open_tasks if t.get("lead_id")}
+    waiting_retry = {t.get("lead_id") for t in open_tasks if call_retry.is_retry_task(t) and (parse_at(t.get("due_at")) or now) > now}   # booked for later: not before
 
     def usable(lead: Optional[dict]) -> bool:
         return (bool(lead) and lead.get("stage") not in CLOSED and phone_ok(lead) and (lead.get("email") or "") not in suppressed
-                and not lead.get("lead_quality"))          # marked invalid / consultant by a caller: not a lead to dial
+                and not lead.get("lead_quality") and not lead.get("retry_exhausted"))   # marked invalid / consultant, or out of retries: not a lead to dial
 
     def mine(owner) -> bool:
         return names is None or not owner or owner in names
@@ -272,16 +274,19 @@ def call_queue(store, present, now: datetime, names: Optional[set] = None) -> li
         due = parse_at(t.get("due_at"))
         if not usable(lead) or (due and due.astimezone(IST).date().isoformat() > today):
             continue
+        if call_retry.is_retry_task(t) and due and due > now:          # an automatic retry rings when it is due, not earlier today
+            continue
         overdue = bool(due) and due < now
         callback = t.get("source") == "callback"
         rank = 0 if callback and overdue else 1 if callback else 2
         rows.append((rank, -(present(lead).get("score") or 0), t.get("due_at") or "", lead, t,
+                     call_retry.retry_label(t) if call_retry.is_retry_task(t) else
                      ("Call back (overdue)" if overdue else "Call back") if callback else ("Call task (overdue)" if overdue else "Call task due today")))
         seen.add(lead["id"])
     for lead in leads.values():
         if lead["id"] in seen or not usable(lead) or not mine(lead.get("owner") or task_owner.get(lead["id"])):
             continue
-        if called_today(activities, lead, today):
+        if called_today(activities, lead, today) or lead["id"] in waiting_retry:
             continue
         if lead.get("stage") in CALL_STAGES:
             rank, why = 3, "Said yes — waiting for a call"
@@ -395,6 +400,7 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
                     "timeline": [*l["timeline"], {"at": stamp, "kind": "stage", "text": f"{l['stage']} → disqualified (not interested on a call, by {who})", "by": who}]}
         store.update_lead(lead_id, no)
         result["stage"] = next(l for l in store.read("leads") if l["id"] == lead_id)["stage"]
+    call_retry.after_outcome(store, lead, outcome, who, now, callback_at is not None, result)
     return result
 
 

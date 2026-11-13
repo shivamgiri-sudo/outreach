@@ -26,6 +26,7 @@ ANYONE = {("POST", "/api/logout"), ("POST", "/api/me/password"),
           ("POST", "/api/me/two-step/recovery"),       # each person's own two-step login
           ("POST", "/api/linkedin/sequence/preview")}     # a preview changes nothing, so viewers may see it
 OWNER_ROUTES = {
+    ("PUT", "/api/call-retry"),
     ("PUT", "/api/settings"), ("POST", "/api/settings/live-sending"), ("PUT", "/api/offer"), ("PUT", "/api/team"), ("POST", "/api/workspaces"), ("DELETE", "/api/workspaces/{ws_id}"), ("POST", "/api/sequence/{index}/send-preview"),
     ("GET", "/api/channels/webhooks"), ("GET", "/api/flows/{flow_id}/webhook"), ("PUT", "/api/icp"), ("POST", "/api/signals/run"), ("POST", "/api/signals/watch"), ("DELETE", "/api/signals/watch/{watch_id}"), ("POST", "/api/icp/score"), ("GET", "/api/oauth/{provider}/start"),
     ("POST", "/api/sequences/run"), ("POST", "/api/sending/resume"), ("POST", "/api/sequences/resume-failed"),

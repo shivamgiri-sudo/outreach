@@ -57,6 +57,7 @@ from .routes_assignment_rules import make_router as make_assignment_rules_router
 from .routes_companies import make_router as make_companies_router
 from .routes_prospects import make_router as make_prospects_router
 from .routes_call_log import make_router as make_call_log_router
+from .routes_call_retry import make_router as make_call_retry_router
 from .routes_analytics import make_router as make_analytics_router
 from .routes_audit import make_router as make_audit_router
 from .routes_contacts import make_router as make_contacts_router
@@ -665,6 +666,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_reply_inbox_router(store))
     app.include_router(make_rep_router(store, _present))
     app.include_router(make_call_log_router(store))
+    app.include_router(make_call_retry_router(store))
     app.include_router(make_icp_router(store, ai_transport))
     app.include_router(make_mcp_router(store))
     app.include_router(make_signals_router(store, signal_fetch, ai_transport))

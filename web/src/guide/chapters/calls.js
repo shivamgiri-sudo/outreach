@@ -46,6 +46,9 @@ export default {
     ["p", "Above the queue, the group buttons filter the list: **Everyone**, **Never called**, **Tried before**, **Said yes** and **Call backs**, each with a count. The **Calls so far** column shows how many calls were tried and how the last one ended. A lead you called today leaves the queue until tomorrow."],
     ["tip", "Keys 1 to 9 and 0 log an outcome, **C** marks a consultant lead and **S** skips the lead. The keys do not work while you are typing in the notes box or while a lead panel is open."],
     ["warn", "Not interested, Wrong number, Inactive number, Invalid lead and Consultant lead change the lead. Check the number before you press them."],
+    ["h", "Automatic retries and the best time to call"],
+    ["p", "Owners can turn on **Automatic call retries** in the card at the top of the page. It is **off by default**. When on, No answer, Busy and Call disconnected book the next try as a call task (**Retry (attempt 2 of 6)** in the queue) after a wait you choose, inside Monday to Saturday 09:00 to 19:00 [[IST]]. A retry does not show before it is due. After the most tries the lead leaves the queue and shows **Retries used up**. A connected call cancels the waiting retry, and a call-back time you pick yourself is used instead of an automatic one."],
+    ["p", "The line under the page title says when calls reach people most, from your team's own call log. It says **Not enough calls yet** until there are at least 30 calls."],
     ["h", "The call script"],
     ["p", "The right-hand card shows the script with the lead's first name, role and company already filled in, plus your own name. Click **If they say…** to open the answers to common objections. Your company name, product and selling points come from {{menu:Brand & offer}}. If one is missing, the script tells you where to add it."],
     ["steps", [
