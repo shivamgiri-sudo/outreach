@@ -187,7 +187,10 @@ export default function ProspectSearch() {
                       <tr key={p.id} data-testid="prospect-row">
                         <td className="pick"><input type="checkbox" aria-label={`Pick ${p.full_name || p.email}`} checked={picked.has(p.id)} onChange={() => toggle(p.id)} /></td>
                         <td className="ps-name"><button className="linkish" onClick={() => setPerson(p.id)}><b>{p.full_name || p.email || "Unnamed"}</b></button>
-                          {p.in_crm && <span className="pill" style={{ marginLeft: 6 }}>In leads</span>}</td>
+                          {p.in_crm && <span className="pill" style={{ marginLeft: 6 }}>In leads</span>}
+                          {p.in_crm && p.crm_status && <span className={`pill ${p.crm_status === "never" ? "ok" : p.crm_status === "tried" ? "warn" : ""}`} style={{ marginLeft: 4 }} data-testid="prospect-contact-status"
+                            title="How far outreach got on their lead">{{ never: "Not contacted yet", tried: "Tried, no answer", connected: "Connected", replied: "Replied" }[p.crm_status]}</span>}
+                          {!p.in_crm && !p.contact_hidden && <span className="pill ok" style={{ marginLeft: 6 }} title="Not a lead yet, so nobody has contacted them" data-testid="prospect-fresh">Fresh</span>}</td>
                         <td>{p.title || "—"}{p.seniority && <div><small className="sub">{label(p.seniority)}{p.department ? ` · ${label(p.department)}` : ""}</small></div>}</td>
                         <td>{p.company ? <button className="linkish" onClick={() => setCompany(p.company.id)}>{p.company.name || p.company.domain}</button> : "—"}
                           {p.company?.industry && <div><small className="sub">{p.company.industry}{p.company.employees ? ` · ${p.company.employees} staff` : ""}</small></div>}</td>

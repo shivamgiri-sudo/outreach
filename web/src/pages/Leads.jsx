@@ -18,6 +18,7 @@ import { LinkedInCell, LinkedInStageFilter, liStageMatches } from "./LeadLinkedI
 import HelpLink from "../components/HelpLink.jsx";
 import Abbr, { Stage } from "../components/Abbr.jsx";
 import { FirstTouchTimer, isWaiting } from "./LeadFirstTouch.jsx";
+import { CONTACT_STATUSES, contactOf, isFresh } from "../contactStatus.js";
 
 const SAMPLE = "company,contact_name,title,email,phone,website,open_roles,company_size,country\n";
 const SHEET_SOURCES = { "Team sheet — Leads tab": "leads", "Team sheet — Demo Shared tab": "demo", "Team sheet — Decision Makers tab": "decision_makers" };
@@ -133,6 +134,7 @@ export default function Leads({ go }) {
   const [liStage, setLiStage] = useState("");
   const [salesStage, setSalesStage] = useState("");
   const [waitingOnly, setWaitingOnly] = useState(false);
+  const [contact, setContact] = useState("");        // "" any, never | tried | connected | replied | fresh
   const [customFilter, setCustomFilter] = useState({});
   const { fields: customFields } = useLeadFields();
   const tableFields = customFields.filter((f) => f.show_in_table);
@@ -249,19 +251,19 @@ export default function Leads({ go }) {
     .catch((e) => setMessage(e.message));
 
   const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, hasFilter)
-    && customMatches(l, customFilter, customFields) && liStageMatches(l, liStage) && (!salesStage || salesStageOf(l) === salesStage) && (!waitingOnly || isWaiting(l))).sort(SORTS[sort]),
-    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter, liStage, salesStage, waitingOnly]);
+    && customMatches(l, customFilter, customFields) && liStageMatches(l, liStage) && (!salesStage || salesStageOf(l) === salesStage) && (!waitingOnly || isWaiting(l)) && (!contact || (contact === "fresh" ? isFresh(l) : contactOf(l).status === contact))).sort(SORTS[sort]),
+    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter, liStage, salesStage, waitingOnly, contact]);
   const allTags = useMemo(() => [...new Set(leads.flatMap((l) => l.tags || []).map(String))].sort((a, b) => a.localeCompare(b)), [leads]);
-  const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, has: hasFilter, li_stage: liStage, sort };
+  const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, has: hasFilter, li_stage: liStage, contact, sort };
   const applyView = (f) => {
     setQuery(f.query || ""); setStage(f.stage || ""); setBand(f.band || ""); setSrcFilter(f.sources || []); setInboundOnly(Boolean(f.inbound));
-    setOwnerFilter(f.owner || ""); setTagFilter(f.tag || ""); setHasFilter(Array.isArray(f.has) ? f.has : []); setLiStage(f.li_stage || ""); setSort(SORTS[f.sort] ? f.sort : "score"); setOnlyIds(null);
+    setOwnerFilter(f.owner || ""); setTagFilter(f.tag || ""); setHasFilter(Array.isArray(f.has) ? f.has : []); setLiStage(f.li_stage || ""); setContact(f.contact || ""); setSort(SORTS[f.sort] ? f.sort : "score"); setOnlyIds(null);
   };
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const safePage = Math.min(page, pages - 1);
-  useEffect(() => { setPage(0); }, [query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, pageSize, customFilter, hasFilter, liStage, waitingOnly]);
+  useEffect(() => { setPage(0); }, [query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, pageSize, customFilter, hasFilter, liStage, waitingOnly, contact]);
   const visible = shown.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const togglePick = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const allPicked = shown.length > 0 && shown.every((l) => picked.includes(l.id));
@@ -269,8 +271,8 @@ export default function Leads({ go }) {
   const [spaces, setSpaces] = useState([]);
   useEffect(() => { api.workspaces().then(setSpaces).catch(() => {}); }, []);
 
-  const filtered = Boolean(waitingOnly || query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter || customOn || hasFilter.length || liStage);
-  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); setHasFilter([]); setLiStage(""); setSalesStage(""); setWaitingOnly(false); };
+  const filtered = Boolean(waitingOnly || query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter || customOn || hasFilter.length || liStage || contact);
+  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); setHasFilter([]); setLiStage(""); setSalesStage(""); setWaitingOnly(false); setContact(""); };
 
   const header = (key, label) => (
     <th aria-sort={sort === key ? (key === "score" ? "descending" : "ascending") : "none"}>
@@ -388,6 +390,14 @@ export default function Leads({ go }) {
             <option value="">All tags</option>
             {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>}
+          <select aria-label="Filter by contact status" value={contact} onChange={(e) => setContact(e.target.value)} data-testid="contact-filter">
+            <option value="">Any contact status</option>
+            {CONTACT_STATUSES.map(([k, v]) => <option key={k} value={k}>{v} ({leads.filter((l) => contactOf(l).status === k).length})</option>)}
+          </select>
+          <button type="button" className={`btn ghost${contact === "fresh" ? " on" : ""}`} aria-pressed={contact === "fresh"} onClick={() => setContact(contact === "fresh" ? "" : "fresh")}
+            title="Never contacted, still open, not on the do-not-contact list, with a phone or email" data-testid="fresh-to-attempt">
+            Fresh to attempt ({leads.filter(isFresh).length})
+          </button>
           <button type="button" className={`btn ghost${waitingOnly ? " on" : ""}`} aria-pressed={waitingOnly} onClick={() => setWaitingOnly(!waitingOnly)} data-testid="waiting-first-touch">
             Waiting for first touch ({leads.filter(isWaiting).length})
           </button>
@@ -418,7 +428,7 @@ export default function Leads({ go }) {
             <thead><tr>
               {canWrite() && <th><label className="pick-hit"><input type="checkbox" aria-label="Select all shown" checked={allPicked}
                 onChange={() => setPicked(allPicked ? [] : shown.map((l) => l.id))} /></label></th>}
-              {header("company", "Company")}<th>Contact</th>{header("stage", "Stage")}<th>Sales stage</th>{header("score", "Score")}<th>Owner</th>{waitingOnly && <th>First touch</th>}<th>Tags</th>{tableFields.map((f) => <th key={f.key}>{f.label}</th>)}<th>Source</th>{header("activity", "Last activity")}{header("due", "Next task due")}<th>LinkedIn</th><th>Next step</th>
+              {header("company", "Company")}<th>Contact</th>{header("stage", "Stage")}<th>Sales stage</th><th>Contact status</th>{header("score", "Score")}<th>Owner</th>{waitingOnly && <th>First touch</th>}<th>Tags</th>{tableFields.map((f) => <th key={f.key}>{f.label}</th>)}<th>Source</th>{header("activity", "Last activity")}{header("due", "Next task due")}<th>LinkedIn</th><th>Next step</th>
             </tr></thead>
             <tbody>
               {visible.map((l) => (
@@ -430,6 +440,7 @@ export default function Leads({ go }) {
                   <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small><PhoneTag lead={l} /></td>
                   <td data-label="Stage">{stageLabel(l.stage)}{l.do_not_contact && <span className="pill warn" style={{ marginLeft: 6 }} title="On the do-not-contact list: never emailed, called or messaged">Do not contact</span>}</td>
                   <td data-label="Sales stage" data-testid="sales-stage-cell"><Stage status={salesStageOf(l)} full /></td>
+                  <td data-label="Contact status" data-testid="contact-cell">{(() => { const c = contactOf(l); return <span className={`pill ${c.status === "never" ? "ok" : c.status === "tried" ? "warn" : ""}`}>{CONTACT_STATUSES.find((x) => x[0] === c.status)[1]}{c.attempts ? ` · ${c.attempts}` : ""}</span>; })()}</td>
                   <td data-label="Score"><span className={`pill ${l.band}`}>{l.score} · {l.band}</span></td>
                   <td data-label="Owner">{l.owner || <small className="sub">—</small>}</td>
                   {waitingOnly && <td data-label="First touch"><FirstTouchTimer lead={l} /></td>}

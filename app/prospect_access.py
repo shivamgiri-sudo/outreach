@@ -11,7 +11,7 @@ from typing import Optional
 from . import lead_access
 from .prospect_repo import repo_for
 
-CONTACT_KEYS = ("email", "email_status", "email_confidence", "linkedin_url", "phones", "source_url", "provenance", "crm_leads")
+CONTACT_KEYS = ("crm_status", "email", "email_status", "email_confidence", "linkedin_url", "phones", "source_url", "provenance", "crm_leads")
 
 
 def hidden_people(store, user: Optional[dict], person_ids) -> set:

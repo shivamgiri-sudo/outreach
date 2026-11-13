@@ -137,3 +137,5 @@ label.pick-hit input { margin: 0; }
   .onb-steps li.on .onb-label { display: inline; }
 }
 .ro-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }   /* wraps a form shown read-only (viewers): <fieldset disabled> */
+
+.btn.ghost.on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); font-weight: 700; }   /* a pressed filter button must look pressed */

@@ -199,10 +199,12 @@ def person_rows(store, rows: list) -> list:
         ws_sql, ws_vals = _workspace_clause()
         linked = {r["person_id"] for r in repo.q(f"SELECT person_id FROM pdb_crm_links l WHERE person_id IN ({', '.join('?' for _ in ids)}){ws_sql}",
                                                  ids + ws_vals)}
+    status = _crm_status(store, ids, linked)
     dis = None
     out = []
     for r in rows:
         item = {k: r.get(k) for k in PERSON_COLS}
+        item["crm_status"] = status.get(r["id"], "")
         item["has_phone"] = bool(r.get("has_phone"))
         item["suppressed"] = bool(r.get("suppressed"))
         item["in_crm"] = r["id"] in linked
@@ -211,6 +213,28 @@ def person_rows(store, rows: list) -> list:
         item["company"] = {"id": r.get("company_id"), "name": r.get("c_name"), "domain": r.get("c_domain"), "industry": r.get("c_industry"),
                            "employees": r.get("c_employees"), "hq_city": r.get("c_hq_city"), "signal_score": r.get("c_signal")} if r.get("company_id") else None
         out.append(item)
+    return out
+
+
+_ORDER = ("replied", "connected", "tried", "never")
+
+
+def _crm_status(store, ids: list, linked: set) -> dict:
+    """For people who are already leads: the furthest any of their leads got (replied > connected > tried > never)."""
+    mine = [i for i in ids if i in linked]
+    if not mine:
+        return {}
+    from . import contact_status
+    repo = repo_for(store)
+    by_person: dict = {}
+    for r in repo.q(f"SELECT person_id, lead_id FROM pdb_crm_links WHERE person_id IN ({', '.join('?' for _ in mine)})", mine):
+        by_person.setdefault(r["person_id"], []).append(r["lead_id"])
+    leads = {l["id"]: l for l in store.read("leads")}
+    out = {}
+    for pid, lead_ids in by_person.items():
+        got = [contact_status.of(leads[l])["status"] for l in lead_ids if l in leads]
+        if got:
+            out[pid] = min(got, key=_ORDER.index)
     return out
 
 

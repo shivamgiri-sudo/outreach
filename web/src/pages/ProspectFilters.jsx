@@ -113,7 +113,7 @@ export default function ProspectFilters({ value, onChange, facets, kind, onClear
         </div>
       </Section>
       <Section title="Data" count={(value.source?.length || 0) + (value.updated_days ? 1 : 0) + (value.not_in_crm ? 1 : 0)}>
-        <label className="pf-check"><input type="checkbox" checked={!!value.not_in_crm} onChange={(e) => set("not_in_crm")(e.target.checked)} /><span>Not already in my leads</span></label>
+        <label className="pf-check"><input type="checkbox" checked={!!value.not_in_crm} onChange={(e) => set("not_in_crm")(e.target.checked)} /><span>Fresh only: not already in my leads (never contacted)</span></label>
         <label htmlFor="pf-upd">Updated within</label>
         <select id="pf-upd" value={value.updated_days || ""} onChange={num("updated_days")}>
           <option value="">Any time</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option><option value="180">180 days</option>
