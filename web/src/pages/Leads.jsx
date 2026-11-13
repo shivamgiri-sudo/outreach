@@ -134,6 +134,7 @@ export default function Leads({ go }) {
   const [liStage, setLiStage] = useState("");
   const [salesStage, setSalesStage] = useState("");
   const [waitingOnly, setWaitingOnly] = useState(false);
+  const [leadType, setLeadType] = useState("");       // "" any | valid | invalid | consultant (marked by a caller)
   const [contact, setContact] = useState("");        // "" any, never | tried | connected | replied | fresh
   const [customFilter, setCustomFilter] = useState({});
   const { fields: customFields } = useLeadFields();
@@ -251,19 +252,19 @@ export default function Leads({ go }) {
     .catch((e) => setMessage(e.message));
 
   const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, hasFilter)
-    && customMatches(l, customFilter, customFields) && liStageMatches(l, liStage) && (!salesStage || salesStageOf(l) === salesStage) && (!waitingOnly || isWaiting(l)) && (!contact || (contact === "fresh" ? isFresh(l) : contactOf(l).status === contact))).sort(SORTS[sort]),
-    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter, liStage, salesStage, waitingOnly, contact]);
+    && customMatches(l, customFilter, customFields) && liStageMatches(l, liStage) && (!salesStage || salesStageOf(l) === salesStage) && (!waitingOnly || isWaiting(l)) && (!leadType || (leadType === "valid" ? !l.lead_quality : l.lead_quality?.kind === leadType)) && (!contact || (contact === "fresh" ? isFresh(l) : contactOf(l).status === contact))).sort(SORTS[sort]),
+    [leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter, liStage, salesStage, waitingOnly, contact, leadType]);
   const allTags = useMemo(() => [...new Set(leads.flatMap((l) => l.tags || []).map(String))].sort((a, b) => a.localeCompare(b)), [leads]);
-  const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, has: hasFilter, li_stage: liStage, contact, sort };
+  const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, has: hasFilter, li_stage: liStage, contact, quality: leadType, sort };
   const applyView = (f) => {
     setQuery(f.query || ""); setStage(f.stage || ""); setBand(f.band || ""); setSrcFilter(f.sources || []); setInboundOnly(Boolean(f.inbound));
-    setOwnerFilter(f.owner || ""); setTagFilter(f.tag || ""); setHasFilter(Array.isArray(f.has) ? f.has : []); setLiStage(f.li_stage || ""); setContact(f.contact || ""); setSort(SORTS[f.sort] ? f.sort : "score"); setOnlyIds(null);
+    setOwnerFilter(f.owner || ""); setTagFilter(f.tag || ""); setHasFilter(Array.isArray(f.has) ? f.has : []); setLiStage(f.li_stage || ""); setContact(f.contact || ""); setLeadType(f.quality || ""); setSort(SORTS[f.sort] ? f.sort : "score"); setOnlyIds(null);
   };
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const safePage = Math.min(page, pages - 1);
-  useEffect(() => { setPage(0); }, [query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, pageSize, customFilter, hasFilter, liStage, waitingOnly, contact]);
+  useEffect(() => { setPage(0); }, [query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, pageSize, customFilter, hasFilter, liStage, waitingOnly, contact, quality]);
   const visible = shown.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const togglePick = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const allPicked = shown.length > 0 && shown.every((l) => picked.includes(l.id));
@@ -271,8 +272,8 @@ export default function Leads({ go }) {
   const [spaces, setSpaces] = useState([]);
   useEffect(() => { api.workspaces().then(setSpaces).catch(() => {}); }, []);
 
-  const filtered = Boolean(waitingOnly || query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter || customOn || hasFilter.length || liStage || contact);
-  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); setHasFilter([]); setLiStage(""); setSalesStage(""); setWaitingOnly(false); setContact(""); };
+  const filtered = Boolean(waitingOnly || query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter || customOn || hasFilter.length || liStage || contact || leadType);
+  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); setHasFilter([]); setLiStage(""); setSalesStage(""); setWaitingOnly(false); setContact(""); setLeadType(""); };
 
   const header = (key, label) => (
     <th aria-sort={sort === key ? (key === "score" ? "descending" : "ascending") : "none"}>
@@ -368,7 +369,10 @@ export default function Leads({ go }) {
           <input aria-label="Search leads" placeholder="Search company, person, email or phone" value={query} onChange={(e) => setQuery(e.target.value)} />
           <select aria-label="Filter by stage" value={stage} onChange={(e) => setStage(e.target.value)}>
             <option value="">All stages</option>
-            {Object.keys(STAGE_LABELS).map((k) => <option key={k} value={k}>{stageLabel(k)}</option>)}
+            {[...new Set([...Object.keys(STAGE_LABELS), ...leads.map((l) => l.stage).filter(Boolean)])].map((k) => {
+              const n = leads.filter((l) => l.stage === k).length;
+              return <option key={k} value={k} disabled={!n && k !== stage}>{stageLabel(k)} ({n})</option>;
+            })}
           </select>
           <select aria-label="Filter by sales stage" value={salesStage} onChange={(e) => setSalesStage(e.target.value)} data-testid="sales-stage-filter">
             <option value="">All sales stages</option>
@@ -393,6 +397,12 @@ export default function Leads({ go }) {
           <select aria-label="Filter by contact status" value={contact} onChange={(e) => setContact(e.target.value)} data-testid="contact-filter">
             <option value="">Any contact status</option>
             {CONTACT_STATUSES.map(([k, v]) => <option key={k} value={k}>{v} ({leads.filter((l) => contactOf(l).status === k).length})</option>)}
+          </select>
+          <select aria-label="Filter by lead type" value={leadType} onChange={(e) => setLeadType(e.target.value)} data-testid="quality-filter">
+            <option value="">Any lead type</option>
+            <option value="valid">Valid ({leads.filter((l) => !l.lead_quality).length})</option>
+            <option value="invalid">Invalid lead ({leads.filter((l) => l.lead_quality?.kind === "invalid").length})</option>
+            <option value="consultant">Consultant lead ({leads.filter((l) => l.lead_quality?.kind === "consultant").length})</option>
           </select>
           <button type="button" className={`btn ghost${contact === "fresh" ? " on" : ""}`} aria-pressed={contact === "fresh"} onClick={() => setContact(contact === "fresh" ? "" : "fresh")}
             title="Never contacted, still open, not on the do-not-contact list, with a phone or email" data-testid="fresh-to-attempt">
@@ -438,7 +448,7 @@ export default function Leads({ go }) {
                   </td>}
                   <td data-label="Company"><button className="linkish" onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{l.company || l.domain || l.contact_name}</b></button>{l.is_test && <span className="pill warn" style={{ marginLeft: 6 }}>Test</span>}</td>
                   <td data-label="Contact">{l.contact_name || "—"}<br /><small>{l.email || l.phone || ""}</small><PhoneTag lead={l} /></td>
-                  <td data-label="Stage">{stageLabel(l.stage)}{l.do_not_contact && <span className="pill warn" style={{ marginLeft: 6 }} title="On the do-not-contact list: never emailed, called or messaged">Do not contact</span>}</td>
+                  <td data-label="Stage">{stageLabel(l.stage)}{l.lead_quality && <span className="pill warn" style={{ marginLeft: 6 }} data-testid="quality-pill" title={`Marked by ${l.lead_quality.by || "a caller"}${l.lead_quality.note ? `: ${l.lead_quality.note}` : ""}`}>{l.lead_quality.kind === "invalid" ? "Invalid lead" : "Consultant"}</span>}{l.do_not_contact && <span className="pill warn" style={{ marginLeft: 6 }} title="On the do-not-contact list: never emailed, called or messaged">Do not contact</span>}</td>
                   <td data-label="Sales stage" data-testid="sales-stage-cell"><Stage status={salesStageOf(l)} full /></td>
                   <td data-label="Contact status" data-testid="contact-cell">{(() => { const c = contactOf(l); return <span className={`pill ${c.status === "never" ? "ok" : c.status === "tried" ? "warn" : ""}`}>{CONTACT_STATUSES.find((x) => x[0] === c.status)[1]}{c.attempts ? ` · ${c.attempts}` : ""}</span>; })()}</td>
                   <td data-label="Score"><span className={`pill ${l.band}`}>{l.score} · {l.band}</span></td>

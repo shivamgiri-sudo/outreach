@@ -68,3 +68,23 @@ def test_prospect_rows_carry_status_of_their_lead(tmp_path):
     rows = {p["full_name"]: p for p in S.search_people(r.store, {}, "relevance", 1, 50)["results"]}
     assert rows["Ravi Kumar"]["crm_status"] == "tried" and rows["Sita Rao"]["crm_status"] == "never"
     assert rows["Pool Person"]["crm_status"] == "" and not rows["Pool Person"]["in_crm"]
+
+
+def test_leads_list_reads_outbox_activities_and_replies(tmp_path):
+    """The Leads page's status must come from every place an attempt is recorded, not only the timeline (a live bug: leads
+    with sent emails showed as never contacted)."""
+    r = make_rig(tmp_path, mode_on=False)
+    ids = {c: r.lead[c]["id"] for c in ("Acme", "Beta Ltd", "Cora Inc")}
+    r.store.update("outbox", lambda rows: [*rows,
+        {"id": "m1", "lead_id": ids["Acme"], "status": "sent", "sent_at": "2026-11-10T10:00:00+00:00", "subject": "hi", "to": "x@y.z"},
+        {"id": "m2", "lead_id": ids["Cora Inc"], "status": "dry_run", "sent_at": "2026-11-10T10:00:00+00:00", "subject": "practice", "to": "x@y.z"}])
+    r.store.update("activities", lambda rows: [*rows, {"id": "a1", "lead_id": ids["Beta Ltd"], "type": "call", "direction": "out", "at": "2026-11-11T10:00:00+00:00",
+                                                       "outcome": "connected", "by": "Priya"}])
+    by = {l["company"]: l for l in r.c.get("/api/leads", headers=r.h["owner"]).json()}
+    assert by["Acme"]["contact_status"] == "tried" and by["Acme"]["contact_attempts"] == 1
+    assert by["Beta Ltd"]["contact_status"] == "connected"
+    assert by["Cora Inc"]["contact_status"] == "never" and by["Cora Inc"]["contact_attempts"] == 0     # a practice run is not an attempt
+    r.store.update("inbox", lambda rows: [*rows, {"id": "i1", "lead_id": ids["Acme"], "channel": "email", "label": "interested", "text": "yes", "received_at": "2026-11-12T10:00:00+00:00"}])
+    r.store.update("inbox", lambda rows: [*rows, {"id": "i2", "lead_id": ids["Cora Inc"], "channel": "email", "label": "auto_reply", "text": "ooo", "received_at": "2026-11-12T10:00:00+00:00"}])
+    by = {l["company"]: l for l in r.c.get("/api/leads", headers=r.h["owner"]).json()}
+    assert by["Acme"]["contact_status"] == "replied" and by["Cora Inc"]["contact_status"] == "never"

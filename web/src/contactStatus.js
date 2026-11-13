@@ -6,6 +6,7 @@ const isReply = (e) => e.kind === "reply" && !String(e.text || "").startsWith("[
 export const CONTACT_STATUSES = [["never", "Never contacted"], ["tried", "Tried, no answer"], ["connected", "Connected"], ["replied", "Replied"]];
 
 export function contactOf(lead) {
+  if (lead.contact_status) return { status: lead.contact_status, attempts: lead.contact_attempts || 0 };   // the server read every outbox and log
   const events = lead.timeline || [];
   const tries = events.filter((e) => TRY_KINDS.includes(e.kind));
   const replied = events.some(isReply);

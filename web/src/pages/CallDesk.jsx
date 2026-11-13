@@ -9,12 +9,15 @@ import PhoneTag from "./PhoneTag.jsx";
 // [outcome, button label, key]. Every outcome is logged with the signed-in person's name.
 const OUTCOMES = [["connected", "Connected", "1"], ["no_answer", "No answer", "2"], ["busy", "Busy", "3"], ["call_back", "Call back…", "4"],
   ["interested", "Interested", "5"], ["not_interested", "Not interested", "6"], ["wrong_number", "Wrong number", "7"],
-  ["call_disconnected", "Call disconnected", "8"], ["inactive_number", "Inactive number", "9"]];
+  ["call_disconnected", "Call disconnected", "8"], ["inactive_number", "Inactive number", "9"],
+  ["invalid_lead", "Invalid lead", "0"], ["consultant_lead", "Consultant lead", "c"]];
 const MEANS = { interested: "Records their yes (phone), moves them to Interested and adds a follow-up for tomorrow.",
   not_interested: "Moves them to Disqualified and stops their emails.", wrong_number: "Marks this number wrong; they leave the queue until it is fixed.",
   inactive_number: "Not in service or switched off: they leave the queue until the number is changed.",
   call_disconnected: "The call dropped; counted as an unanswered attempt.",
-  call_back: "Pick a time; a call-back task is created for you." };
+  call_back: "Pick a time; a call-back task is created for you.",
+  invalid_lead: "Not a real or usable lead (fake, not hiring, wrong company). Disqualifies them, stops their emails and removes them from the queue.",
+  consultant_lead: "A consultant or agency, not a direct employer. Marks the lead, stops their emails and removes them from the queue; their stage stays." };
 const withIst = (local) => (local ? `${local}:00+05:30` : null);
 const inIstMinutes = (m) => new Date(Date.now() + (330 + m) * 60000).toISOString().slice(0, 16);
 const typing = (el) => el && ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
@@ -127,7 +130,7 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
         )}
         <div className="row" style={{ flexWrap: "wrap", gap: 6, marginTop: 8 }} aria-label="Call outcome">
           {OUTCOMES.map(([o, label, key]) => (
-            <button key={o} className={`btn ${o === "interested" ? "" : "ghost"}${["not_interested", "wrong_number", "inactive_number"].includes(o) ? " danger" : ""}`} disabled={busy}
+            <button key={o} className={`btn ${o === "interested" ? "" : "ghost"}${["not_interested", "wrong_number", "inactive_number", "invalid_lead", "consultant_lead"].includes(o) ? " danger" : ""}`} disabled={busy}
               title={`${MEANS[o] || "Log it and go to the next lead."} Key ${key}.`} onClick={() => record(o)}>
               {o === "call_back" && callback !== null ? "Save call back" : label}
             </button>

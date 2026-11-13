@@ -230,9 +230,10 @@ def _crm_status(store, ids: list, linked: set) -> dict:
     for r in repo.q(f"SELECT person_id, lead_id FROM pdb_crm_links WHERE person_id IN ({', '.join('?' for _ in mine)})", mine):
         by_person.setdefault(r["person_id"], []).append(r["lead_id"])
     leads = {l["id"]: l for l in store.read("leads")}
+    idx = contact_status.index(store)
     out = {}
     for pid, lead_ids in by_person.items():
-        got = [contact_status.of(leads[l])["status"] for l in lead_ids if l in leads]
+        got = [contact_status.of(leads[l], idx)["status"] for l in lead_ids if l in leads]
         if got:
             out[pid] = min(got, key=_ORDER.index)
     return out

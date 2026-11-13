@@ -12,7 +12,7 @@ const STEP = { total: "All leads", contactable: "Have phone / email / LinkedIn",
   not_attempted: "Not attempted yet", no_connect: "Attempted, not connected", bad_number: "Wrong / inactive number", not_connected: "Not connected" };
 const CALL = { connected: "Connected", no_answer: "No answer", busy: "Busy", call_disconnected: "Call disconnected", call_back: "Call back",
   interested: "Interested", not_interested: "Not interested", meeting_booked: "Meeting booked", wrong_number: "Wrong number",
-  inactive_number: "Inactive number", no_outcome: "No outcome" };
+  inactive_number: "Inactive number", invalid_lead: "Invalid lead", consultant_lead: "Consultant lead", no_outcome: "No outcome" };
 const CALL_COLOR = { connected: SERIES.blue, interested: SERIES.green, meeting_booked: SERIES.teal, call_back: SERIES.amber, not_interested: SERIES.red,
   wrong_number: SERIES.slate, inactive_number: SERIES.slate };
 const CHANNEL = { email: "Email", call: "Call", linkedin: "LinkedIn", whatsapp: "WhatsApp", sms: "SMS" };

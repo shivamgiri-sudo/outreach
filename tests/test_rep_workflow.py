@@ -326,3 +326,24 @@ def test_tasks_for_an_owned_lead_go_to_its_owner(tmp_path):
     assert add_task(store, a, "call", "ring", owner=caller_name(store))["owner"] == "Meena"
     assert add_task(store, a, "follow_up", "x")["owner"] == "Meena"
     assert add_task(store, a, "review", "y", owner="Ravi")["owner"] == "Ravi"         # a named person stays
+
+
+# ---------------------------------------------------------------- invalid / consultant leads marked on a call
+def test_invalid_and_consultant_outcomes_mark_the_lead(tmp_path):
+    c = make(tmp_path, PW)
+    acme, beta = lead_named(c, "Acme")["id"], lead_named(c, "Beta Ltd")["id"]
+    give_consent(c, acme)
+    give_consent(c, beta)
+    assert {acme, beta} <= {q["lead_id"] for q in c.get("/api/call-queue").json()["queue"]}
+    r = c.post(f"/api/leads/{acme}/call-outcome", json={"outcome": "invalid_lead", "notes": "no such company"})
+    assert r.status_code == 200, r.text
+    r = c.post(f"/api/leads/{beta}/call-outcome", json={"outcome": "consultant_lead", "notes": "staffing agency"})
+    assert r.status_code == 200, r.text
+    a, b = lead_named(c, "Acme"), lead_named(c, "Beta Ltd")
+    assert a["lead_quality"]["kind"] == "invalid" and a["lead_quality"]["note"] == "no such company" and a["stage"] == "disqualified"
+    assert b["lead_quality"]["kind"] == "consultant" and b["stage"] != "disqualified"            # a consultant keeps their stage
+    assert any(e["kind"] == "quality" for e in a["timeline"]) and any(e["kind"] == "quality" for e in b["timeline"])
+    assert not ({acme, beta} & {q["lead_id"] for q in c.get("/api/call-queue").json()["queue"]})   # both leave the call queue
+    summary = c.get(f"/api/leads/{beta}/history-summary").json()
+    assert summary["calls"]["outcomes"] == {"consultant_lead": 1}
+    assert c.post(f"/api/leads/{beta}/call-outcome", json={"outcome": "bogus"}).status_code == 400

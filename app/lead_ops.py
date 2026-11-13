@@ -25,7 +25,7 @@ BULK_MAX = 5000
 VIEWS_KEY = "lead_views"
 VIEWS_PER_USER = 30
 VIEW_NAME_MAX = 60
-VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort", "has", "li_stage", "contact")
+VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort", "has", "li_stage", "contact", "quality")
 BULK_ACTIONS = ("stage", "owner", "tag_add", "tag_remove", "do_not_contact", "delete", "enroll")
 
 
@@ -183,7 +183,14 @@ def with_list_extras(store, rows: list) -> list:
         lid = t.get("lead_id")
         if lid and (lid not in due or t["due_at"] < due[lid]):
             due[lid] = t["due_at"]
-    return [{**r, "last_activity_at": _last_activity(r), "next_task_due": due.get(r["id"])} for r in rows]
+    from . import contact_status
+    idx = contact_status.index(store)                         # contact status reads every place an attempt is recorded
+    out = []
+    for r in rows:
+        c = contact_status.of(r, idx)
+        out.append({**r, "last_activity_at": _last_activity(r), "next_task_due": due.get(r["id"]),
+                    "contact_status": c["status"], "contact_attempts": c["attempts"], "contact_last_at": c["last_at"]})
+    return out
 
 
 # ---------- bulk ----------
@@ -360,6 +367,8 @@ def _clean_filters(raw) -> dict:
             out[key] = value if value in FILTER_KEYS else ""
         elif key == "contact":                       # never / tried / connected / replied / fresh (web/src/contactStatus.js)
             out[key] = value if value in ("never", "tried", "connected", "replied", "fresh") else ""
+        elif key == "quality":                       # lead type: valid / invalid / consultant (marked by a caller on a call)
+            out[key] = value if value in ("valid", "invalid", "consultant") else ""
         else:
             out[key] = str(value or "")[:120]
     return out

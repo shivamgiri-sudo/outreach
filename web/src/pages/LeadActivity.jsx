@@ -8,7 +8,7 @@ const TYPES = [["call", "Call"], ["meeting", "Meeting"], ["note", "Note"], ["ema
   ["whatsapp", "WhatsApp (sent outside the app)"], ["linkedin", "LinkedIn message"], ["other", "Other"]];
 const OUTCOMES = [["", "—"], ["connected", "Connected"], ["no_answer", "No answer"], ["busy", "Busy"], ["call_back", "Asked to call back"],
   ["interested", "Interested"], ["not_interested", "Not interested"], ["meeting_booked", "Meeting booked"], ["wrong_number", "Wrong number"],
-  ["call_disconnected", "Call disconnected"], ["inactive_number", "Inactive number"]];
+  ["call_disconnected", "Call disconnected"], ["inactive_number", "Inactive number"], ["invalid_lead", "Invalid lead"], ["consultant_lead", "Consultant lead"]];
 const FILTERS = [["all", "All"], ["email", "Emails"], ["reply", "Replies"], ["call", "Calls"], ["linkedin", "LinkedIn"], ["whatsapp", "WhatsApp"], ["meeting", "Meetings"],
   ["task", "Tasks"], ["note", "Notes"]];
 const ICON = { email: "✉", whatsapp: "🟢", call: "📞", meeting: "📅", task: "☑", note: "📝", reply: "↩", linkedin: "in", sms: "💬" };
@@ -19,10 +19,12 @@ const nowLocalIst = () => new Date(Date.now() + 330 * 60000).toISOString().slice
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const QUICK_CALLS = [["no_answer", "No answer"], ["busy", "Busy"], ["call_disconnected", "Call disconnected"], ["call_back", "Call back"], ["connected", "Connected"],
-  ["not_interested", "Not interested"], ["wrong_number", "Wrong number"], ["inactive_number", "Inactive number"]];
+  ["not_interested", "Not interested"], ["wrong_number", "Wrong number"], ["inactive_number", "Inactive number"], ["invalid_lead", "Invalid lead"], ["consultant_lead", "Consultant lead"]];
 const QUICK_CONFIRM = { not_interested: "Mark them not interested? They move to Disqualified and their emails stop.",
   wrong_number: "Mark this number as wrong? They leave the call queue until the number is changed.",
-  inactive_number: "Mark this number inactive (not in service / switched off)? They leave the call queue until the number is changed." };
+  inactive_number: "Mark this number inactive (not in service / switched off)? They leave the call queue until the number is changed.",
+  invalid_lead: "Mark this as an invalid lead? They move to Disqualified, their emails stop and they leave the call queue.",
+  consultant_lead: "Mark this as a consultant / agency lead? Their emails stop and they leave the call queue. Their stage stays." };
 
 // One printable page with everything about the contact: details, attempt counts and the full history (Save as PDF from print).
 function openReport(win, lead, items, s) {

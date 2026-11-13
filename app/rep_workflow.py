@@ -251,7 +251,8 @@ def call_queue(store, present, now: datetime, names: Optional[set] = None) -> li
     task_owner = {t.get("lead_id"): t.get("owner") for t in open_tasks if t.get("lead_id")}
 
     def usable(lead: Optional[dict]) -> bool:
-        return bool(lead) and lead.get("stage") not in CLOSED and phone_ok(lead) and (lead.get("email") or "") not in suppressed
+        return (bool(lead) and lead.get("stage") not in CLOSED and phone_ok(lead) and (lead.get("email") or "") not in suppressed
+                and not lead.get("lead_quality"))          # marked invalid / consultant by a caller: not a lead to dial
 
     def mine(owner) -> bool:
         return names is None or not owner or owner in names
@@ -355,6 +356,21 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
         result["stage"] = saved["stage"]
         result["task"] = add_task(store, lead_id, "follow_up", "Said yes on the call: send the demo link and set up their first role.",
                                   due_at=next_business_morning(now), owner=who, priority="high", title="Follow up after the yes", source="activity")
+    elif outcome in ("invalid_lead", "consultant_lead"):
+        kind = "invalid" if outcome == "invalid_lead" else "consultant"
+
+        def mark(l: dict) -> dict:
+            seq = l.get("sequence")
+            event = {"at": stamp, "kind": "quality", "by": who,
+                     "text": f"Marked {'an invalid lead' if kind == 'invalid' else 'a consultant lead (not a direct employer)'} on a call by {who}" + (f": {notes[:300]}" if notes else "")}
+            changes = {"lead_quality": {"kind": kind, "at": stamp, "by": who, "note": notes[:300]},
+                       **({"sequence": {**seq, "stopped": seq.get("stopped") or outcome}} if seq else {})}
+            if kind == "invalid" and l["stage"] not in CLOSED and can_move(l["stage"], "disqualified"):
+                changes["stage"] = "disqualified"                    # a consultant keeps their stage: the owner decides what to do with them
+                event["text"] += f" ({l['stage']} → disqualified)"
+            return {**l, **changes, "timeline": [*l["timeline"], event]}
+        saved = store.update_lead(lead_id, mark)
+        result["stage"] = saved["stage"]
     elif outcome == "not_interested":
         def no(l: dict) -> dict:
             if l["stage"] in CLOSED or not can_move(l["stage"], "disqualified"):
