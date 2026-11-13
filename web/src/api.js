@@ -7,6 +7,7 @@ let role = "owner";
 export const getRole = () => role;
 export const setRole = (r) => { role = r || "owner"; };
 export const isOwner = () => role === "owner";
+export const isManager = () => role === "owner" || role === "admin";
 // Viewers are read only: the server refuses every change they send, so pages hide write controls behind canWrite().
 // Owner-only changes (settings, integrations, flows, sequence library...) use isOwner(), as the server's routes_auth.py.
 export const canAdminister = () => role === "owner" || role === "admin";
@@ -130,6 +131,7 @@ export const api = {
   lead: (id) => request(`/api/leads/${id}`),
   importCsv: (csv, source) => request("/api/leads/import", { method: "POST", body: { csv, source } }),
   importPreview: (body) => request("/api/import/preview", { method: "POST", body }),
+  importDuplicates: (body) => request("/api/leads/import-preview", { method: "POST", body }),
   importCommit: (body) => request("/api/import/commit", { method: "POST", body }),
   importHistory: () => request("/api/import/history"),
   importUndo: (id) => request(`/api/import/${id}/undo`, { method: "POST" }),
@@ -477,6 +479,10 @@ export const api = {
   leadViews: () => request("/api/lead-views"),
   saveLeadView: (name, filters) => request("/api/lead-views", { method: "POST", body: { name, filters } }),
   deleteLeadView: (id) => request(`/api/lead-views/${id}`, { method: "DELETE" }),
+  leadAgeing: () => request("/api/lead-ageing"),
+  saveLeadAgeing: (body) => request("/api/lead-ageing", { method: "PUT", body }),
+  reEngage: (lead_ids, kind) => request("/api/lead-ageing/re-engage", { method: "POST", body: { lead_ids, kind } }),
+  leadDuplicates: () => request("/api/lead-duplicates"),
   // Lead ownership and assignment: list hand-out, teams and rules, ownership mode, first-touch statistics
   assignList: (id, to, takeOver = false) => request(`/api/lists/${id}/assign`, { method: "PUT", body: { to, take_over: takeOver } }),
   splitList: (id, members, mode = "even", counts = []) => request(`/api/lists/${id}/split`, { method: "POST", body: { members, mode, counts } }),
