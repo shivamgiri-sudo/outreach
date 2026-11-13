@@ -13,6 +13,7 @@ import Templates from "./pages/Templates.jsx";
 import Stories from "./pages/Stories.jsx";
 import PromptGenerator from "./pages/PromptGenerator.jsx";
 import CallDesk from "./pages/CallDesk.jsx";
+import CallLog from "./pages/CallLog.jsx";
 import Outbox from "./pages/Outbox.jsx";
 import Growth from "./pages/Growth.jsx";
 import Insights from "./pages/Insights.jsx";
@@ -67,6 +68,7 @@ const PAGES = [
   ["workflows", "Simple rules", Workflows, "rules"],
   ["outbox", "Outbox & sending", Outbox, "send"],
   ["calls", "Call desk", CallDesk, "phone"],
+  ["calllog", "Call log", CallLog, "phone"],
   ["meetings", "Meetings", Meetings, "calendar"],
   ["replies", "Replies", Replies, "inbox"],
   ["tasks", "Tasks & follow-ups", Tasks, "tasks"],
@@ -84,7 +86,7 @@ const PAGES = [
 const GROUPS_ALL = [
   ["Today", ["myday", "dashboard"]],
   ["Pipeline", ["prospects", "leads", "companies", "lists", "campaigns", "growth"]],
-  ["Conversations", ["replies", "calls", "linkedin", "tasks", "meetings", "outbox"]],
+  ["Conversations", ["replies", "calls", "calllog", "linkedin", "tasks", "meetings", "outbox"]],
   ["Content & automation", ["templates", "flows", "workflows", "stories", "prompts"]],
   ["Analytics", ["analytics", "funnel", "reports"]],
   ["Data", ["sources", "signals", "hygiene", "engine"]],
@@ -94,7 +96,7 @@ const BY_ID = Object.fromEntries(PAGES.map((p) => [p[0], p]));
 // Pages whose every API call is owner-only: hidden from callers and viewers, and a short note if they open the link.
 const OWNER_PAGES = new Set(["engine"]);
 // A login limited to some workspaces sees only pages built from its own workspace's leads (the server refuses the rest).
-const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "funnel", "replies", "calls", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports", "linkedin", "flows"]);
+const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "funnel", "replies", "calls", "calllog", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports", "linkedin", "flows"]);
 const isLimited = (me) => me.role !== "owner" && ((me.workspaces || []).length > 0 || me.role === "admin");
 const pageAllowed = (me, id) => (me.role === "owner" || !OWNER_PAGES.has(id)) && (!isLimited(me) || LIMITED_PAGES.has(id));
 const GROUPS = GROUPS_ALL.map(([g, ids]) => [g, ids.filter((id) => BY_ID[id])]).filter(([, ids]) => ids.length);
