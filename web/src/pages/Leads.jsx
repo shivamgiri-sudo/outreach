@@ -9,6 +9,7 @@ import { useHashParam } from "../route.js";
 import { useConfirm, usePrompt } from "../Dialog.jsx";
 import FindLeadsDrawer, { FindLeadsCard, takePendingLeadIds } from "./FindLeads.jsx";
 import LeadBulkBar from "./LeadBulkBar.jsx";
+import { BulkNotice, HandoverPanel } from "./LeadBulkParts.jsx";
 import LeadViews from "./LeadViews.jsx";
 import { istDateLabel, istLabel } from "../time.js";
 import { CustomFilters, customMatches, showValue, useLeadFields } from "./LeadCustomFields.jsx";
@@ -157,6 +158,7 @@ export default function Leads({ go }) {
   const [source, setSource] = useState("apollo");
   const importSources = sourceOptions(["outbound", "import", "referral", "manual"]).map((x) => x.id);
   const [message, setMessage] = useState("");
+  const [bulkNotice, setBulkNotice] = useState(null);       // { text, undoId } after a bulk change
   const [showScrape, setShowScrape] = useState(false);
   const [showJobs, setShowJobs] = useState(false);
   const [scrapeUrl, setScrapeUrl] = useState("");
@@ -425,8 +427,10 @@ export default function Leads({ go }) {
       )}
       {picked.length > 0 && canWrite() && (
         <LeadBulkBar picked={picked} pageIds={visible.map((l) => l.id)} owners={owners} spaces={spaces} onClear={() => setPicked([])}
-          onDone={(msg, changed) => { setMessage(msg); if (changed) { setPicked([]); load(); } }} />
+          onDone={(msg, changed, undoId) => { if (undoId) { setMessage(""); setBulkNotice({ text: msg, undoId }); } else { setBulkNotice(null); setMessage(msg); } if (changed) { setPicked([]); load(); } }} />
       )}
+      <BulkNotice key={bulkNotice?.undoId} notice={bulkNotice} onUndone={load} onClose={() => setBulkNotice(null)} />
+      <HandoverPanel owners={owners} onDone={(n, changed) => { setBulkNotice(n); if (changed) load(); }} />
 
       <div className="card table-card">
         {leads.length === 0 ? (
