@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { istLabel } from "../time.js";
 import ImportConflicts from "./ImportConflicts.jsx";
+import ImportDuplicates from "./ImportDuplicates.jsx";
 import { api, canWrite, EXCEL_ACCEPT, readLeadFile } from "../api.js";
 import { sourceLabel, sourceOptions, useSourceRegistry } from "../labels.js";
 import Abbr from "../components/Abbr.jsx";
 
-// Four steps: add the list, check the columns, dry run (nothing saved), import (with undo).
-const STEPS = ["Add your list", "Check the columns", "Dry run", "Done"];
+// Five steps: add the list, check the columns, duplicates found (nothing saved), dry run (nothing saved), import (with undo).
+const STEPS = ["Add your list", "Check the columns", "Duplicates found", "Dry run", "Done"];
 const WARNING_LABELS = {
   invalid_email: "Emails that are not valid (left out)", typo_fixed: "Email typos fixed", invalid_phone: "Phones that could not be read",
   junk_phone: "Placeholder phone numbers", landline_without_std: "Landlines without an STD code", invalid_website: "Websites that are not valid",
@@ -184,7 +185,8 @@ export default function ImportWizard({ onClose, onDone }) {
   const [preview, setPreview] = useState(null);
   const [mapping, setMapping] = useState({});
   const [remember, setRemember] = useState(true);
-  const [options, setOptions] = useState({ skip_role_addresses: false, skip_free_mail: false });
+  const [options, setOptions] = useState({ skip_role_addresses: false, skip_free_mail: false, skip_duplicates: false });
+  const [dupChoice, setDupChoice] = useState("skip");
   const [result, setResult] = useState(null);
   const [undone, setUndone] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -198,7 +200,7 @@ export default function ImportWizard({ onClose, onDone }) {
   };
   const check = (nextStep, extra) => run(async () => { setPreview(await api.importPreview(body(extra))); setStep(nextStep); });
   const changeOptions = (next) => { setOptions(next); run(async () => setPreview(await api.importPreview(body({ options: next })))); };
-  const commit = () => run(async () => { setResult(await api.importCommit(body())); setStep(3); onDone?.(); });
+  const commit = () => run(async () => { setResult(await api.importCommit(body())); setStep(4); onDone?.(); });
   const undo = (id) => api.importUndo(id).then((r) => { setUndone(r); onDone?.(); return r; });
   const [sheets, setSheets] = useState(null);       // Excel: { file, sheet, sheets, rows }
   const readFile = (file, sheet = "") => {
@@ -257,16 +259,28 @@ export default function ImportWizard({ onClose, onDone }) {
           <MappingStep preview={preview} mapping={mapping} setMapping={setMapping} remember={remember} setRemember={setRemember} />
           <div className="row" style={{ marginTop: 12 }}>
             <button className="btn ghost" onClick={() => setStep(0)}>Back</button>
-            <button className="btn" disabled={busy} onClick={() => check(2)}>{busy ? "Checking…" : "Next: dry run"}</button>
+            <button className="btn" disabled={busy} onClick={() => setStep(2)}>Next: look for duplicates</button>
           </div>
         </>
       )}
 
       {step === 2 && preview && (
         <>
-          <DryRun preview={preview} options={options} setOptions={changeOptions} />
+          <ImportDuplicates body={body()} choice={dupChoice} setChoice={setDupChoice} />
           <div className="row" style={{ marginTop: 12 }}>
             <button className="btn ghost" onClick={() => setStep(1)}>Back to columns</button>
+            <button className="btn" disabled={busy} data-testid="dup-next" onClick={() => { const next = { ...options, skip_duplicates: dupChoice === "skip" }; setOptions(next); check(3, { options: next }); }}>
+              {busy ? "Checking…" : "Next: dry run"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {step === 3 && preview && (
+        <>
+          <DryRun preview={preview} options={options} setOptions={changeOptions} />
+          <div className="row" style={{ marginTop: 12 }}>
+            <button className="btn ghost" onClick={() => setStep(2)}>Back to duplicates</button>
             <button className="btn" disabled={busy || preview.summary.create + preview.summary.merge + preview.summary.duplicates_in_file === 0} onClick={commit}>
               {busy ? "Importing…" : `Import: ${preview.summary.create} new, ${preview.summary.merge} updated`}
             </button>
@@ -274,7 +288,7 @@ export default function ImportWizard({ onClose, onDone }) {
         </>
       )}
 
-      {step === 3 && result && (
+      {step === 4 && result && (
         <>
           <p>
             Done. Added <b>{result.summary.create}</b> new lead(s) and added details to <b>{result.summary.merge}</b> existing lead(s).

@@ -7,10 +7,10 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from . import account_limits, accounts, workspaces
-from . import audit, landline_restore, lead_fields, lists, upload_owner
+from . import audit, duplicates, landline_restore, lead_access, lead_fields, lists, upload_owner
 from .header_map import FIELDS, detect_format, loose_header, map_columns
 from .hygiene_report import apply_standardise, report, standardise_changes
-from .lead_import import fingerprint, read_table, run_import, trim_lists
+from .lead_import import extract_record, fingerprint, read_table, run_import, trim_lists
 from .hygiene import is_role_address
 from .lead_merge import merge_leads
 from .lead_model import event, now_iso
@@ -38,6 +38,7 @@ def _not_again(store, table: list) -> set:
 class ImportOptions(BaseModel):
     skip_role_addresses: bool = False
     skip_free_mail: bool = False
+    skip_duplicates: bool = False          # leave out rows already in the app or repeated in the file (nothing is filled in)
 
 
 class ImportBody(BaseModel):
@@ -107,9 +108,26 @@ def make_router(store) -> APIRouter:
                 "columns": columns, "source": _source_name(body.source, fmt["source"]),
                 "options": body.options.model_dump()}
 
+    def check_duplicates(ctx: dict, user, limit=duplicates.PREVIEW_ROWS) -> dict:
+        """Read-only duplicate report for the parsed rows (same account and workspace scoping as the import)."""
+        from datetime import date
+        today = date.today()
+        records = [(n, extract_record(row, ctx["columns"], today, ctx["custom_fields"])[0]) for n, row in ctx["table"]]
+        can_see = lambda lead: workspaces.visible_ws(lead) and lead_access.can_see(store, user, lead)
+        return duplicates.preview(records, store.read("leads"), can_see, accounts.same_account_as_new(store), limit)
+
+    def drop_duplicates(ctx: dict, user) -> None:
+        """The 'skip duplicates' choice: rows already in the app or repeated in the file are not imported."""
+        ctx["duplicates_skipped"] = 0
+        if not ctx["options"].get("skip_duplicates"):
+            return
+        gone = {r["row"] for r in check_duplicates(ctx, user, None)["rows"] if r["kind"] in ("exists", "in_file")}
+        ctx["table"] = [(n, row) for n, row in ctx["table"] if n not in gone]
+        ctx["duplicates_skipped"] = len(gone)
+
     def answer(ctx: dict, result: dict) -> dict:
         columns = ctx["columns"]
-        return {"format": ctx["format"], "source": ctx["source"], "columns": columns,
+        return {"duplicates_skipped": ctx.get("duplicates_skipped", 0), "format": ctx["format"], "source": ctx["source"], "columns": columns,
                 "mapping": {c["column"]: c["field"] or "ignore" for c in columns},
                 "unmapped": [c["column"] for c in columns if not c["field"]],
                 "fields": {**FIELDS, **{f"custom:{f['key']}": f"{f['label']} (custom)" for f in ctx["custom_fields"]}},
@@ -138,16 +156,27 @@ def make_router(store) -> APIRouter:
         """Dry run: what would happen, with nothing saved."""
         ctx = prepare(body)
         user = getattr(request.state, "user", None)
+        drop_duplicates(ctx, user)
         own = upload_owner.Ownership(upload_owner.user_name(user), ctx["source"]) if upload_owner.is_member(user) else None
         result = run_import(store.read("leads"), ctx["table"], ctx["columns"], ctx["source"],
                             _not_again(store, ctx["table"]), ctx["options"], custom_fields=ctx["custom_fields"],
                             same_account=accounts.same_account_as_new(store), ownership=own)
         return {**answer(ctx, result), "dry_run": True}
 
+    @router.post("/api/leads/import-preview")
+    def import_preview(body: ImportBody, request: Request):
+        """Which rows are duplicates, before anything is saved. Writes nothing. A row that matches a lead this login may not
+        see is reported as {kind: "exists"} only: no company, owner or contact."""
+        ctx = prepare(body)
+        report = check_duplicates(ctx, getattr(request.state, "user", None))
+        return {**report, "source": ctx["source"], "dry_run": True,
+                "kinds": {k: duplicates.KIND_TEXT[k] for k in duplicates.KIND_TEXT}}
+
     @router.post("/api/import/commit")
     def commit(body: ImportBody, request: Request):
         ctx = prepare(body)
         user = getattr(request.state, "user", None)
+        drop_duplicates(ctx, user)
         slices = upload_owner.plan(store, user, body, len(ctx["table"]))             # None = no ownership change
         upload_owner.check_caps(store, user, len(ctx["table"]), len([s for s in slices or [] if s["end"] > s["start"]]) or 1)
         account_limits.check_current(store, "imports_per_day", len(ctx["table"]))       # the account's daily imports limit

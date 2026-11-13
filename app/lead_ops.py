@@ -25,7 +25,7 @@ BULK_MAX = 5000
 VIEWS_KEY = "lead_views"
 VIEWS_PER_USER = 30
 VIEW_NAME_MAX = 60
-VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort", "has", "li_stage", "contact", "quality")
+VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort", "has", "li_stage", "contact", "quality", "ageing")
 BULK_ACTIONS = ("stage", "owner", "tag_add", "tag_remove", "do_not_contact", "delete", "enroll", "list_add")
 UNDOABLE = ("stage", "owner", "tag_add", "tag_remove")
 
@@ -186,11 +186,13 @@ def with_list_extras(store, rows: list) -> list:
             due[lid] = t["due_at"]
     from . import contact_status
     idx = contact_status.index(store)                         # contact status reads every place an attempt is recorded
-    out = []
+    from . import lead_ageing
+    cfg, now, out = lead_ageing.config_of(store.read("settings")), datetime.now(timezone.utc), []
     for r in rows:
         c = contact_status.of(r, idx)
         out.append({**r, "last_activity_at": _last_activity(r), "next_task_due": due.get(r["id"]),
-                    "contact_status": c["status"], "contact_attempts": c["attempts"], "contact_last_at": c["last_at"]})
+                    "contact_status": c["status"], "contact_attempts": c["attempts"], "contact_last_at": c["last_at"],
+                    "ageing": lead_ageing.of(r, c, cfg, now)})
     return out
 
 
@@ -424,6 +426,8 @@ def _clean_filters(raw) -> dict:
             out[key] = value if value in FILTER_KEYS else ""
         elif key == "contact":                       # never / tried / connected / replied / fresh (web/src/contactStatus.js)
             out[key] = value if value in ("never", "tried", "connected", "replied", "invalid", "consultant", "fresh") else ""
+        elif key == "ageing":                        # untouched / stale / stuck (app/lead_ageing.py)
+            out[key] = value if value in ("untouched", "stale", "stuck") else ""
         elif key == "quality":                       # lead type: valid / invalid / consultant (marked by a caller on a call)
             out[key] = value if value in ("valid", "invalid", "consultant") else ""
         else:

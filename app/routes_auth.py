@@ -35,7 +35,7 @@ OWNER_ROUTES = {
     ("POST", "/api/find-leads"),          # spends provider credits
     ("POST", "/api/sequences"), ("PUT", "/api/sequences/{seq_id}"), ("POST", "/api/sequences/{seq_id}/duplicate"),       # sequence library
     ("POST", "/api/sequences/{seq_id}/archive"), ("POST", "/api/sequences/{seq_id}/steps/{index}/send-preview"),
-    ("GET", "/api/scoring"), ("PUT", "/api/scoring"),
+    ("GET", "/api/scoring"), ("PUT", "/api/scoring"), ("PUT", "/api/lead-ageing"),
     ("PUT", "/api/linkedin/owner-accounts"), ("PUT", "/api/linkedin/sequence"), ("POST", "/api/linkedin/sequence/reset"), ("PUT", "/api/lead-fields"),   # industry setup
     ("POST", "/api/presets/{preset_id}/apply"),
     ("POST", "/api/prospects/export"), ("POST", "/api/prospects/import"), ("POST", "/api/prospects/suppress"),       # prospect DB
@@ -92,7 +92,7 @@ CALLER_WRITES = {
     ("POST", "/api/notifications/read"), ("PUT", "/api/my-day/targets"), ("POST", "/api/intelligence/remind-stale"),
     ("POST", "/api/lists"), ("DELETE", "/api/lists/{list_id}"), ("POST", "/api/lists/{list_id}/members"),
     ("POST", "/api/lists/{list_id}/start-email"), ("POST", "/api/lists/{list_id}/start-linkedin"),
-    ("POST", "/api/lead-views"), ("DELETE", "/api/lead-views/{view_id}"),
+    ("POST", "/api/lead-views"), ("DELETE", "/api/lead-views/{view_id}"), ("POST", "/api/lead-ageing/re-engage"), ("POST", "/api/leads/import-preview"),
     # writing help and shared snippets, stories, partners, call script, reports by email, estimates and searches (no spend)
     ("POST", "/api/prompts/generate"), ("POST", "/api/sequences/preview-draft"), ("POST", "/api/stories"), ("POST", "/api/partners"), ("POST", "/api/partners/{partner_id}/status"),
     ("PUT", "/api/call-script"), ("DELETE", "/api/call-script"), ("POST", "/api/reports/email"), ("POST", "/api/find-leads/estimate"),
