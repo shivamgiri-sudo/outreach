@@ -139,6 +139,20 @@ def test_test_connection_previews_owner_matching(r):
     assert not bad["ok"] and "API key" in bad["message"] and KEY not in bad["message"]
 
 
+def test_far_future_follow_up_is_not_sent_as_a_time_but_kept_in_the_note(r):
+    """DialHalo refuses follow-up times more than a year out (HTTP 400, which would end the push for good)."""
+    connect(r)
+    acme = r.lead["Acme"]["id"]
+    far = r.c.post("/api/tasks", json={"lead_id": acme, "title": "Call them", "text": "later", "kind": "call", "due_at": "2099-12-01T10:00:00+05:30", "owner": "Ravi"}, headers=r.h["owner"])
+    assert far.status_code == 200
+    body = ct.push_payload(r.store, next(l for l in r.store.read("leads") if l["id"] == acme), "http://x")
+    assert "followupAtMs" not in body and "follow up on 01 Dec 2099" in body["note"]
+    near = (ct.now_utc() + timedelta(days=3)).isoformat()
+    r.store.update("tasks", lambda ts: [{**t, "due_at": near} if t.get("lead_id") == acme else t for t in ts])
+    body = ct.push_payload(r.store, next(l for l in r.store.read("leads") if l["id"] == acme), "http://x")
+    assert isinstance(body.get("followupAtMs"), int)
+
+
 def test_unmatched_reason_when_member_is_switched_off(r):
     from app import calltracker as ct
     people = ct.owner_preview(r.store, "main", [{"name": "Ravi CT", "email": "ravi@x.in", "active": 1}],

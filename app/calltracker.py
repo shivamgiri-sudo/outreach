@@ -52,6 +52,9 @@ DEFAULT_MAPPING = {
 }
 
 
+FOLLOWUP_WINDOW_DAYS = 360          # DialHalo refuses follow-up times more than 366 days from now (external.service.ts)
+
+
 def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -338,7 +341,12 @@ def push_payload(store, lead: dict, base_url: str) -> dict:
             "phone": str(phone or "")[:40], "email": (lead.get("email") or "")[:190], "note": note, "sourceLabel": SOURCE_LABEL,
             "url": f"{public_base_url(store, base_url)}/#leads?lead={quote(lead['id'])}", "city": (lead.get("city") or "")[:80]}
     if due:
-        body["followupAtMs"] = int(due.timestamp() * 1000)
+        # DialHalo accepts follow-up times within a year of today (past or future); anything further out would be refused with
+        # a 400 and the whole push would give up. Send such a lead without a follow-up time and keep the date in the note.
+        if abs((due - now_utc()).total_seconds()) <= FOLLOWUP_WINDOW_DAYS * 86400:
+            body["followupAtMs"] = int(due.timestamp() * 1000)
+        else:
+            body["note"] = (f"{note} (follow up on {due.astimezone(timezone(timedelta(hours=5, minutes=30))).strftime('%d %b %Y')})")[:1000]
     if owner:
         body["ownerEmail"] = owner
     return body
