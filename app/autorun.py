@@ -17,13 +17,23 @@ DEFAULT_INTERVAL_SECONDS = 900          # sequence sends and time rules
 REMINDER_INTERVAL_SECONDS = 60          # task and meeting reminders need minute precision
 
 
-def tick(store, now: Optional[datetime] = None, sender=None, campaign_runner=None) -> dict:
+def tick(store, now: Optional[datetime] = None, sender=None, campaign_runner=None, gate_runner=None) -> dict:
     """Due sequence emails, time rules, and (when given) campaigns marked 'running' that have not run today."""
     now = now or datetime.now(timezone.utc)
     sender = sender or make_email_sender(store, base_url=BASE_URL)
+    checks = None
+    if gate_runner is not None:                           # first, so a lead checked now can be sent in this same run
+        try:
+            checks = gate_runner()
+            mark(store, "email_gate")
+        except Exception as exc:
+            print(f"email gate check failed: {exc}")
+            mark(store, "email_gate", False, type(exc).__name__)
     result = run_due(store, now, public_base_url(store, BASE_URL), sender, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1")
     mark(store, "sequence_run", not result.get("failed"), run_summary(result), now)
     out = {**result, "workflow_rules_run": run_time_rules(store, now)}
+    if checks is not None:
+        out["email_checks"] = checks
     if campaign_runner is not None:
         out["campaign_runs"] = campaign_runner(now)
     mark(store, "autorun", True, run_summary(result), now)
@@ -61,7 +71,7 @@ def reminder_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
     return {**run_reminders(store, now, sender, BASE_URL), "digest": bool(run_digest(store, now, sender))}
 
 
-def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVAL_SECONDS, campaign_runner=None, capture_runner=None) -> threading.Event:
+def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVAL_SECONDS, campaign_runner=None, capture_runner=None, gate_runner=None) -> threading.Event:
     """Reminders and flow steps every minute; due sequence emails, time rules and daily campaigns every `interval_seconds`."""
     stop = threading.Event()
 
@@ -91,7 +101,7 @@ def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVA
                         print(f"lead capture sync failed: {exc}")
                         mark(store, "capture_sync", False, type(exc).__name__)
                 try:
-                    tick(store, sender=sender, campaign_runner=campaign_runner)
+                    tick(store, sender=sender, campaign_runner=campaign_runner, gate_runner=gate_runner)
                 except Exception as exc:
                     print(f"autorun tick failed: {exc}")
                     mark(store, "autorun", False, f"failed: {type(exc).__name__}")

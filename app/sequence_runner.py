@@ -17,7 +17,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 
 from .template_vars import brand_variables
-from . import email_domain, provenance
+from . import email_domain, email_gate, provenance
 from . import sequence_library, sequences
 from .channels.security import server_secret
 from .growth_core import ensure_demo, get_offer, offer_line
@@ -114,6 +114,7 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
     domains_today = {business_domain(m["to"]) for m in todays} - {None}
     counts = {"sent": 0, "failed": 0, "needs_check": 0, "blocked": 0, "mode": "live" if live else "practice"}
 
+    gate_live = email_gate.for_run(store, True)       # "verify before the first email" (app/email_gate.py); None = off
     icp_rules = get_icp(store)
     _decide_ab_winners(store)
     from . import account_limits, account_sending
@@ -158,6 +159,18 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
             if seq.get("blocked") != bad:
                 _set_sequence(store, lead["id"], blocked=bad)
             continue
+        if live and gate_live and email_gate.is_first_email(lead):
+            what, why = email_gate.decision(lead, gate_live["ready"], gate_live["approve_risky"])
+            if what == "block":
+                counts["blocked"] += 1
+                _set_sequence(store, lead["id"], blocked=why)
+                continue
+            if what in ("check", "hold"):
+                counts["held"] = counts.get("held", 0) + 1      # waits for a mailbox check; looked at again next run
+                if seq.get("blocked") != why:
+                    _set_sequence(store, lead["id"], blocked=why)
+                continue
+            email_gate.clear_stale_note(store, lead)
         held = icp_gate_reason(lead, icp_rules)
         if held:
             counts["blocked"] += 1          # outside the ideal-customer score the owner set: held, never deleted

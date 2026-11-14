@@ -34,6 +34,8 @@ from .routes_auth import LOCAL_OWNER, make_router as make_auth_router, role_guar
 from .routes_security import make_router as make_security_router
 from .web_security import make_limiters, rate_limit_middleware, security_headers_middleware
 from .autorun import start_background
+from . import email_gate
+from .routes_email_gate import make_router as make_email_gate_router
 from .http_util import post_json
 from . import routes_growth
 from .growth_core import webhook_secret
@@ -680,10 +682,12 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(cloud_router)
     app.include_router(make_linkedin_runner_router(store, cloud_router))
     app.include_router(make_sources_router(store, campaign_io))
+    app.include_router(make_email_gate_router(store, campaign_io))
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender, capture_runner=lambda: run_sheet_syncs(store, capture_sheet_fetcher),
                          campaign_runner=lambda now: run_due_campaigns(
-            store, now, campaign_io, campaign_notify, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"))
+            store, now, campaign_io, campaign_notify, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"),
+                         gate_runner=lambda: email_gate.check_pending(store, campaign_io))
         start_imap_poller(store, imap_factory)
     return app
 

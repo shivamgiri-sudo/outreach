@@ -124,6 +124,10 @@ export default function LeadDrawer({ id, ids, onClose }) {
       <LeadPeople lead={lead} onLead={setLead} />
       <OtherContacts lead={lead} />
       <LeadMeetings lead={lead} onChanged={load} />
+      {lead.email_check?.status === "risky" && !lead.email_check.approved && (isOwner() || isWorkspaceAdmin()) && (
+        <p className="sub">The mailbox check says this address is risky, so the first email waits.{" "}
+          <button className="btn ghost" onClick={() => act(async () => { await api.approveEmail(id_); return api.lead(id_); })}>Approve this address</button></p>
+      )}
       {canWrite() && <>
         <label htmlFor="note-box">Quick note</label>
         <textarea id="note-box" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />

@@ -4,6 +4,7 @@ import { api, isOwner, isWorkspaceAdmin } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import LiveSendingSwitch from "./LiveSendingSwitch.jsx";
+import EmailGateCard from "./EmailGateCard.jsx";
 import OutboxTable from "./OutboxTable.jsx";
 import { InternalEmails } from "./SendWhy.jsx";
 import HelpLink from "../components/HelpLink.jsx";
@@ -95,6 +96,7 @@ export default function Outbox({ go }) {
       r.failed && `${r.failed} failed`,
       r.paused && `sending paused: ${r.paused}`,
       r.blocked && `${r.blocked} waiting for a missing detail`,
+      r.held && `${r.held} waiting for an email check`,
       r.needs_check && `${r.needs_check} need a check (the app stopped mid-send)`,
     ].filter(Boolean).join(", ");
     const what = r.mode === "practice" ? "practised (not sent)" : "sent";
@@ -115,6 +117,7 @@ export default function Outbox({ go }) {
       <SendingBanner status={status} onResume={() => act(api.resumeSending, "Sending resumed.")}
         onClearPractice={() => act(api.clearPractice, (r) => `Removed ${r.outbox} practice row(s). Live sending will start each lead from Email 1.`)} />
       <LiveSendingSwitch onChanged={load} />
+      <EmailGateCard />
       <Downloads />
       <div className="card" style={{ marginBottom: 14 }}><fieldset className="ro-fieldset" disabled={!isOwner()}>
         <div className="row">

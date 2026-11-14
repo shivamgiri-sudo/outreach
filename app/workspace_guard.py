@@ -46,6 +46,7 @@ LIMITED_OK = {
     ("GET", "/api/notifications"), ("POST", "/api/notifications/read"),
     ("GET", "/api/intelligence"), ("GET", "/api/analytics"), ("GET", "/api/analytics/overview"), ("GET", "/api/analytics/pipeline"),
     ("GET", "/api/analytics/pipeline/leads"), ("GET", "/api/insights"),
+    ("GET", "/api/email-gate"), ("POST", "/api/email-gate/check-now"),      # counts and checks cut to the login's workspaces
     ("GET", "/api/outbox"), ("GET", "/api/outbox/message"), ("GET", "/api/inbox"),
     ("GET", "/api/outbox/internal"), ("GET", "/api/outbox/export.csv"),      # owner/admin only; rows filtered by lead scope
     ("GET", "/api/reply-inbox"), ("POST", "/api/reply-inbox/action"),
