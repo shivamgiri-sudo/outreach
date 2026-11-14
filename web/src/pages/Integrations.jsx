@@ -9,7 +9,7 @@ import LeadCapture from "./integrations/LeadCapture.jsx";
 import CallTracker from "./integrations/CallTracker.jsx";
 import Abbr from "../components/Abbr.jsx";
 
-const EXTRA_TABS = [["calltracker", "Call Tracker"], ["capture", "Lead capture"], ["custom", "Custom"], ["webhooks", "Webhook addresses"]];
+const EXTRA_TABS = [["calltracker", "DialHalo"], ["capture", "Lead capture"], ["custom", "Custom"], ["webhooks", "Webhook addresses"]];
 const OAUTH_ERRORS = {
   access_denied: "You did not allow access, so nothing was connected.",
   token_exchange_failed: "The provider did not accept the sign-in. Check the client ID, secret and redirect URI, then try again.",
@@ -145,7 +145,7 @@ export default function Integrations({ go }) {
         </>
       )}
 
-      {tab === "calltracker" && (canAdminister() ? <CallTracker /> : <p className="sub">Only the owner or a workspace admin can connect Call Tracker.</p>)}
+      {tab === "calltracker" && (canAdminister() ? <CallTracker /> : <p className="sub">Only the owner or a workspace admin can connect DialHalo.</p>)}
 
       {tab === "capture" && (isOwner() ? <LeadCapture go={go} /> : <p className="sub">Only the owner can connect lead sources.</p>)}
 

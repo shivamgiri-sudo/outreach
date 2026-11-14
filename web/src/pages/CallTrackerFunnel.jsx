@@ -1,9 +1,9 @@
-// Sales funnel: real calls from Call Tracker on the leads in view (Integrations → Call Tracker). Hidden until connected.
+// Sales funnel: real calls from DialHalo on the leads in view (Integrations → DialHalo). Hidden until connected.
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 
 const TILES = [
-  ["sent_total", "Sent to Call Tracker", "Leads in a caller's dial queue (all time)"],
+  ["sent_total", "Sent to DialHalo", "Leads in a caller's dial queue (all time)"],
   ["called", "Called", "Leads called at least once"],
   ["connected", "Connected", "Leads with a connected call"],
   ["interested", "Interested", "Said yes on a call"],
@@ -21,7 +21,7 @@ export default function CallTrackerFunnel({ from, to }) {
   if (!data || (!data.connected_workspaces && !data.sent_total && !data.calls)) return null;
   return (
     <section className="card" data-testid="ct-funnel" style={{ marginTop: 16 }}>
-      <b>Calls from Call Tracker</b>
+      <b>Calls from DialHalo</b>
       <p className="sub">Real calls synced from callers' phones{from || to ? ` (${from || "start"} to ${to || "today"}, IST)` : ""}.</p>
       <div className="grid g4">
         {TILES.map(([key, label, hint]) => (

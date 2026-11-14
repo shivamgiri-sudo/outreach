@@ -1,13 +1,13 @@
-"""Call Tracker -> Outreach: the signed webhook receiver and what each event changes.
+"""DialHalo -> Outreach: the signed webhook receiver and what each event changes.
 
-Signature (Call Tracker's existing scheme, server/src/modules/webhooks.service.ts): header
-X-CallTracker-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>. Refused: a missing or wrong
+Signature (DialHalo's existing scheme, server/src/modules/webhooks.service.ts): header
+X-DialHalo-Signature (older name X-CallTracker-Signature, same value; both are accepted, the new one is preferred): t=<unix seconds>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>. Refused: a missing or wrong
 signature (401), a timestamp more than 5 minutes off (401), the same signature twice (409, a replay). The same event id
-delivered again with a new signature (Call Tracker's retry) answers 200 and changes nothing.
+delivered again with a new signature (DialHalo's retry) answers 200 and changes nothing.
 
 The receiver URL carries the connection id, so a call is only ever matched to leads of the workspace that owns that
-connection: Call Tracker's external reference first (the Outreach lead id it was pushed with), then the Call Tracker
-lead id, then the phone number. The call itself is fetched from Call Tracker's API (GET /api/v1/calls/<id>), so the
+connection: DialHalo's external reference first (the Outreach lead id it was pushed with), then the DialHalo
+lead id, then the phone number. The call itself is fetched from DialHalo's API (GET /api/v1/calls/<id>), so the
 outcome name, AI summary and links are current whatever order the events arrive in. Audio and transcripts stay in Call
 Tracker: Outreach keeps a link to the call page.
 """
@@ -95,7 +95,7 @@ def handle(store, conn_id: str, header: str, raw: bytes, now: Optional[float] = 
     except ct.CallTrackerError as exc:
         ct.note_status(store, ws, "last_event", False, f"{event}: {exc}")
         if exc.retry:
-            return 503, {"detail": "Call Tracker API unavailable; retry later"}
+            return 503, {"detail": "DialHalo API unavailable; retry later"}
         applied = 0
     finally:
         ct.FROM_CALLTRACKER.on = False
@@ -163,7 +163,7 @@ def _at(text) -> str:
 
 
 def _link(conn: dict, url: Optional[str]) -> Optional[str]:
-    """Call Tracker builds links from its own address (internal when called over 127.0.0.1): use the web address."""
+    """DialHalo builds links from its own address (internal when called over 127.0.0.1): use the web address."""
     if not url:
         return None
     base = (conn.get("public_url") or "").rstrip("/")
@@ -203,7 +203,7 @@ def apply_call(store, conn: dict, call: dict) -> bool:
     direction = "in" if call.get("direction") in ("incoming", "missed", "rejected") else "out"
     outcome = (rule or {}).get("outcome") or ("connected" if connected else "no_answer")
     sec = int(call.get("duration_sec") or 0)
-    who = _name_for(store, (call.get("user") or {}).get("email"), (call.get("user") or {}).get("name") or "Call Tracker")
+    who = _name_for(store, (call.get("user") or {}).get("email"), (call.get("user") or {}).get("name") or "DialHalo")
     note = (call.get("note") or "").strip()
     summary = (call.get("ai_summary") or "").strip()
     body = "\n".join(x for x in [note, f"AI summary: {summary}" if summary else ""] if x)[:8000]
@@ -211,7 +211,7 @@ def apply_call(store, conn: dict, call: dict) -> bool:
     info = {"conn": conn["id"], "call_id": int(call["id"]), "direction": call.get("direction"), "duration_sec": sec, "connected": connected,
             "outcome_name": call.get("outcome") or "", "callback_at": call.get("callback_at"), "has_recording": bool(call.get("has_recording")),
             "links": links, "user_email": (call.get("user") or {}).get("email") or "", "ai_summary": bool(summary)}
-    subject = f"Call Tracker: {call.get('direction') or 'call'} call, {_duration(sec)}" + (f" — {call['outcome']}" if call.get("outcome") else "")
+    subject = f"DialHalo: {call.get('direction') or 'call'} call, {_duration(sec)}" + (f" — {call['outcome']}" if call.get("outcome") else "")
     at = _at(call.get("started_at"))
     found = {}
 
@@ -240,11 +240,11 @@ def apply_call(store, conn: dict, call: dict) -> bool:
         act_on_outcome(store, conn, lead["id"], call, rule or {}, who)
         _set_ct(store, row["id"], {"applied": call["outcome"]})
     if connected and call.get("outcome"):
-        close_call_tasks(store, lead["id"], f"Call Tracker: {call['outcome']} ({who})")
+        close_call_tasks(store, lead["id"], f"DialHalo: {call['outcome']} ({who})")
     cb = ct.parse(_at(call["callback_at"])) if call.get("callback_at") else None
     if cb and cb > now_utc() and (row.get("ct") or {}).get("callback_task") != call["callback_at"]:
         add_task(store, lead["id"], "follow_up", f"Call back as agreed on the call ({who})." + (f" {note[:300]}" if note else ""),
-                 due_at=cb, owner=who if who != "Call Tracker" else None, priority="high", title="Call back (Call Tracker)", source="calltracker")
+                 due_at=cb, owner=who if who != "DialHalo" else None, priority="high", title="Call back (DialHalo)", source="calltracker")
         _set_ct(store, row["id"], {"callback_task": call["callback_at"]})
     return True
 
@@ -261,13 +261,13 @@ def act_on_outcome(store, conn: dict, lead_id: str, call: dict, rule: dict, who:
     from .stages import ALL_STAGES, EXIT_STAGES, STAGES, TERMINAL
     stamp = act_iso(now_utc())
     outcome, target = rule.get("outcome") or "", rule.get("stage") or ""
-    why = f"Call Tracker outcome '{call.get('outcome')}' ({who})"
+    why = f"DialHalo outcome '{call.get('outcome')}' ({who})"
     consent = {}
 
     def change(l: dict):
         changes, events = {}, []
         if outcome == "interested" and not has_consent_for(l, "call"):
-            changes["consent"] = add_consent(l, {"text": f"Said yes on a phone call with {who} (Call Tracker)", "at": stamp, "source": "phone call", "channel": "call"})
+            changes["consent"] = add_consent(l, {"text": f"Said yes on a phone call with {who} (DialHalo)", "at": stamp, "source": "phone call", "channel": "call"})
             changes["consent_withdrawn_at"] = None
             consent["text"] = changes["consent"]["text"]
         if outcome in ("wrong_number", "inactive_number") and l.get("phone") and ct.norm_phone(l["phone"]) == ct.norm_phone(call.get("number")):
@@ -295,17 +295,17 @@ def act_on_outcome(store, conn: dict, lead_id: str, call: dict, rule: dict, who:
         return {**l, **changes, "timeline": [*l["timeline"], *events]}
     saved = store.update_lead(lead_id, change) or {}
     if consent.get("text"):
-        record_consent(store, lead_id, "given", "call", consent["text"], "phone call (Call Tracker)", "person", who)
+        record_consent(store, lead_id, "given", "call", consent["text"], "phone call (DialHalo)", "person", who)
     if rule.get("opt_out") or consent.get("moved") == "unsubscribed":
         suppress_contact(store, lead_id, why)
     if outcome == "interested":
         add_task(store, lead_id, "follow_up", "Said yes on the call: send the demo link and set up their first role.",
-                 due_at=now_utc() + timedelta(hours=18), owner=who if who != "Call Tracker" else None, priority="high",
+                 due_at=now_utc() + timedelta(hours=18), owner=who if who != "DialHalo" else None, priority="high",
                  title="Follow up after the yes", source="calltracker", dedupe_open=True)
     if outcome in ("interested", "meeting_booked"):
         try:
             from . import alerts
-            alerts.safe(store, "call_interested", lead_id, f"{who} logged a call in Call Tracker: {call.get('outcome')}.", managers=True)
+            alerts.safe(store, "call_interested", lead_id, f"{who} logged a call in DialHalo: {call.get('outcome')}.", managers=True)
         except Exception:
             pass
     if consent.get("moved"):
@@ -318,7 +318,7 @@ def act_on_outcome(store, conn: dict, lead_id: str, call: dict, rule: dict, who:
 
 
 def suppress_contact(store, lead_id: str, why: str, unsubscribe: bool = False) -> None:
-    """Do-not-contact from Call Tracker: email suppressed, sequence stopped, consent ledger row. Never echoed back."""
+    """Do-not-contact from DialHalo: email suppressed, sequence stopped, consent ledger row. Never echoed back."""
     from .inbound import suppress
     from .privacy import record_consent
     stamp = ct.iso(ct.now_utc())
@@ -340,7 +340,7 @@ def suppress_contact(store, lead_id: str, why: str, unsubscribe: bool = False) -
         if store.update_lead(lead_id, change) is None or "email" not in state:
             return
         suppress(store, state["email"])
-        record_consent(store, lead_id, "do_not_contact", "any", why[:500], "Call Tracker", "provider")
+        record_consent(store, lead_id, "do_not_contact", "any", why[:500], "DialHalo", "provider")
     finally:
         ct.FROM_CALLTRACKER.on = was_on
 
@@ -358,10 +358,10 @@ def _dnc_leads(store, conn: dict, data: dict) -> list:
 
 
 def apply_dnc(store, conn: dict, data: dict) -> int:
-    """A number went on Call Tracker's do-not-call list: suppress the matching contacts of this workspace."""
+    """A number went on DialHalo's do-not-call list: suppress the matching contacts of this workspace."""
     if data.get("source") == ct.SOURCE:
         return 0                                  # we asked for it (an Outreach opt-out); the lead is already suppressed
-    why = "on Call Tracker's do-not-call list" + (f" ({data['reason']})" if data.get("reason") else "")
+    why = "on DialHalo's do-not-call list" + (f" ({data['reason']})" if data.get("reason") else "")
     leads = _dnc_leads(store, conn, data)
     for lead in leads:
         suppress_contact(store, lead["id"], why[:300], unsubscribe=True)
@@ -369,19 +369,19 @@ def apply_dnc(store, conn: dict, data: dict) -> int:
 
 
 def note_dnc_removed(store, conn: dict, data: dict) -> int:
-    """Taken off Call Tracker's list: noted only. An opt-out in Outreach is never undone automatically."""
+    """Taken off DialHalo's list: noted only. An opt-out in Outreach is never undone automatically."""
     leads = _dnc_leads(store, conn, data)
     stamp = ct.iso(ct.now_utc())
     for lead in leads:
         store.update_lead(lead["id"], lambda l: {**l, "timeline": [*l["timeline"], {"at": stamp, "kind": "calltracker",
-                          "text": "Call Tracker took this number off its do-not-call list. Outreach keeps the opt-out; a person decides."}]})
+                          "text": "DialHalo took this number off its do-not-call list. Outreach keeps the opt-out; a person decides."}]})
     return len(leads)
 
 
 # ---------------------------------------------------------------- funnel numbers
 def funnel(store, leads: list, start: Optional[datetime], end: Optional[datetime]) -> dict:
-    """Real calls from Call Tracker on these (already scoped) leads in [start, end): calls, leads called, connected,
-    interested, meetings booked, and leads sent to Call Tracker."""
+    """Real calls from DialHalo on these (already scoped) leads in [start, end): calls, leads called, connected,
+    interested, meetings booked, and leads sent to DialHalo."""
     ids = {l["id"] for l in leads}
     rows = []
     for a in store.read("activities"):

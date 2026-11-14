@@ -3,8 +3,8 @@ import { api, getWorkspace, isOwner } from "../../api.js";
 import { istLabel } from "../../time.js";
 import { CopyRow } from "./Fields.jsx";
 
-// Integrations → Call Tracker: one connection per workspace (owners: any workspace; a workspace admin: its own).
-// Leads with a new call task go to Call Tracker's phone dial queue; calls, outcomes and opt-outs come back by webhook.
+// Integrations → DialHalo: one connection per workspace (owners: any workspace; a workspace admin: its own).
+// Leads with a new call task go to DialHalo's phone dial queue; calls, outcomes and opt-outs come back by webhook.
 const LABEL = (s) => String(s || "").replace(/_/g, " ");
 
 function Status({ title, row }) {
@@ -23,15 +23,15 @@ function MappingEditor({ mapping, outcomes, stages, onSave, onReset, busy }) {
   const save = () => onSave(Object.fromEntries(rows.filter((r) => r.name.trim()).map(({ name, ...r }) => [name.trim().toLowerCase(), r])));
   return (
     <div className="card" data-testid="ct-mapping">
-      <b>What each Call Tracker outcome does here</b>
-      <p className="sub">Outcome names as your callers pick them in Call Tracker. Stages only move forward; Unsubscribed is never undone.</p>
+      <b>What each DialHalo outcome does here</b>
+      <p className="sub">Outcome names as your callers pick them in DialHalo. Stages only move forward; Unsubscribed is never undone.</p>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Call Tracker outcome</th><th>Logged as</th><th>Move stage to</th><th>Stop emails</th><th>Do not contact</th><th /></tr></thead>
+          <thead><tr><th>DialHalo outcome</th><th>Logged as</th><th>Move stage to</th><th>Stop emails</th><th>Do not contact</th><th /></tr></thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={i}>
-                <td><input aria-label="Call Tracker outcome name" value={r.name} onChange={(e) => set(i, { name: e.target.value })} /></td>
+                <td><input aria-label="DialHalo outcome name" value={r.name} onChange={(e) => set(i, { name: e.target.value })} /></td>
                 <td>
                   <select aria-label={`Logged as for ${r.name}`} value={r.outcome || ""} onChange={(e) => set(i, { outcome: e.target.value })}>
                     <option value="">connected / no answer</option>
@@ -68,6 +68,7 @@ export default function CallTracker() {
   const [form, setForm] = useState({ base_url: "", public_url: "", api_key: "", webhook_secret: "", enabled: true });
   const [msg, setMsg] = useState(null);
   const [owners, setOwners] = useState(null);
+  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const apply = (c) => {
@@ -100,8 +101,8 @@ export default function CallTracker() {
   return (
     <div data-testid="ct-card">
       <p className="sub">
-        Leads that get a call task (an employer replied yes, or someone added a call) go straight into the caller's phone dial queue in Call Tracker.
-        Calls, outcomes and AI summaries come back to the lead's timeline; opt-outs work both ways. Recordings and transcripts stay in Call Tracker.
+        Leads that get a call task (an employer replied yes, or someone added a call) go straight into the caller's phone dial queue in DialHalo.
+        Calls, outcomes and AI summaries come back to the lead's timeline; opt-outs work both ways. Recordings and transcripts stay in DialHalo.
       </p>
       {workspaces.length > 1 && (
         <label className="row">Workspace{" "}
@@ -113,16 +114,16 @@ export default function CallTracker() {
       {msg && <div className={`tip ${msg.ok ? "" : "error"}`} role="status" data-testid="ct-msg">{msg.text}</div>}
       <div className="card">
         <div className="row prov-head">
-          <b>Call Tracker</b>
+          <b>DialHalo</b>
           <span className={`pill ${conn ? (conn.enabled ? "ok" : "warn") : ""}`} data-testid="ct-status">{conn ? (conn.enabled ? "Connected" : "Paused") : "Not set up"}</span>
         </div>
         <ol className="sub">
-          <li>In Call Tracker: Settings → Integrations → API keys → "Fill in the MCN Outreach preset" → Create key, and paste it below.</li>
-          <li>Save, then add a webhook in Call Tracker with the receiver address below and the MCN Outreach events; paste its signing secret here.</li>
-          <li>Press Test connection. Callers are matched by email; anyone else's leads are shared out by Call Tracker's distribution.</li>
+          <li>In DialHalo: Settings → Integrations → API keys → "Fill in the MCN Outreach preset" → Create key, and paste it below.</li>
+          <li>Save, then add a webhook in DialHalo with the receiver address below and the MCN Outreach events; paste its signing secret here.</li>
+          <li>Press Test connection. Callers are matched by email; anyone else's leads are shared out by DialHalo's distribution.</li>
         </ol>
         <div className="grid g2">
-          <label>Call Tracker address (server to server)
+          <label>DialHalo address (server to server)
             <input value={form.base_url} placeholder="https://calls.example.com or http://127.0.0.1:8081" data-testid="ct-base-url"
               onChange={(e) => setForm({ ...form, base_url: e.target.value })} />
           </label>
@@ -144,13 +145,13 @@ export default function CallTracker() {
           <button className="btn" disabled={busy} onClick={() => save()} data-testid="ct-save">Save</button>
           {conn && <button className="btn ghost" disabled={busy} onClick={() => run(() => api.testCalltracker(ws))} data-testid="ct-test">Test connection</button>}
           {conn && <button className="btn ghost danger" disabled={busy}
-            onClick={() => window.confirm("Disconnect Call Tracker for this workspace? The key, the secret and unsent pushes are removed.") && run(() => api.deleteCalltracker(ws), "Disconnected.")}>Disconnect</button>}
+            onClick={() => window.confirm("Disconnect DialHalo for this workspace? The key, the secret and unsent pushes are removed.") && run(() => api.deleteCalltracker(ws), "Disconnected.")}>Disconnect</button>}
         </div>
         {conn && (
           <>
-            <CopyRow label="Receiver address for the Call Tracker webhook" value={card.receiver.public} testid="ct-receiver" />
-            {isOwner() && <CopyRow label="Same server (Call Tracker on this machine; needs WEBHOOK_ALLOW_PRIVATE_HOSTS there)" value={card.receiver.internal} />}
-            <p className="sub">Events to tick in Call Tracker: {card.events.join(", ")}.</p>
+            <CopyRow label="Receiver address for the DialHalo webhook" value={card.receiver.public} testid="ct-receiver" />
+            {isOwner() && <CopyRow label="Same server (DialHalo on this machine; needs WEBHOOK_ALLOW_PRIVATE_HOSTS there)" value={card.receiver.internal} />}
+            <p className="sub">Events to tick in DialHalo: {card.events.join(", ")}.</p>
             <div className="row" style={{ flexWrap: "wrap", gap: 12 }}>
               <Status title="Last test" row={conn.last_test} />
               <Status title="Last push" row={conn.last_push} />
@@ -162,7 +163,7 @@ export default function CallTracker() {
 
       {conn && (
         <div className="card" data-testid="ct-queue">
-          <b>Sending to Call Tracker</b>
+          <b>Sending to DialHalo</b>
           <p className="sub">{q.pending} waiting · {q.failed} failed · {q.done} sent recently. Failed sends are retried with back-off, then wait here.</p>
           {q.failed_rows.length > 0 && (
             <>
@@ -173,12 +174,26 @@ export default function CallTracker() {
         </div>
       )}
 
+      {owners && owners.some((o) => !o.matched) && (
+        <div className="card" data-testid="ct-unmatched">
+          <b>{owners.filter((o) => !o.matched).length} {owners.filter((o) => !o.matched).length === 1 ? "person has" : "people have"} no matching DialHalo member</b>
+          <p className="sub">Leads owned by these people are not put in their own dial queue; DialHalo shares them out by its distribution instead. Add each email below as a member in DialHalo (Members → Add), then press Test connection again.</p>
+          <ul>
+            {owners.filter((o) => !o.matched).map((o) => <li key={o.email}><b>{o.name}</b> · {o.email} <span className="sub-inline">({o.reason || "no DialHalo member has this email"})</span></li>)}
+          </ul>
+          <button type="button" className="btn ghost" data-testid="ct-copy-unmatched"
+            onClick={() => navigator.clipboard?.writeText(owners.filter((o) => !o.matched).map((o) => o.email).join("\n")).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); }).catch(() => setMsg({ ok: false, text: "Copy was blocked; select the emails above and copy them." }))}>
+            {copied ? "Copied" : "Copy the emails"}
+          </button>
+        </div>
+      )}
+
       {owners && (
         <div className="card" data-testid="ct-owners">
           <b>Who gets the calls</b>
           <table>
-            <thead><tr><th>Outreach person</th><th>Email</th><th>Call Tracker member</th></tr></thead>
-            <tbody>{owners.map((o) => <tr key={o.email}><td>{o.name}</td><td>{o.email}</td><td>{o.matched ? o.calltracker : "no match: Call Tracker shares these out"}</td></tr>)}</tbody>
+            <thead><tr><th>Outreach person</th><th>Email</th><th>DialHalo member</th></tr></thead>
+            <tbody>{owners.map((o) => <tr key={o.email}><td>{o.name}</td><td>{o.email}</td><td>{o.matched ? o.calltracker : "no match: DialHalo shares these out"}</td></tr>)}</tbody>
           </table>
         </div>
       )}

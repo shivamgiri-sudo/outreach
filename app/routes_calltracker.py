@@ -1,12 +1,12 @@
-"""Call Tracker connection per workspace (Integrations -> Call Tracker) and its webhook receiver.
+"""DialHalo connection per workspace (Integrations -> DialHalo) and its webhook receiver.
 
   GET    /api/calltracker?workspace=ws        the card: connection (secrets masked), receiver address, queue, mapping
   PUT    /api/calltracker                     save address, API key, webhook secret, on/off, outcome mapping
   DELETE /api/calltracker?workspace=ws        disconnect (secrets and pending jobs removed)
-  POST   /api/calltracker/test                check the key against Call Tracker and preview owner matching
+  POST   /api/calltracker/test                check the key against DialHalo and preview owner matching
   POST   /api/calltracker/retry               failed pushes back into the queue
   GET    /api/calltracker/funnel              called / connected / meetings booked from real calls (leads in scope)
-  POST   /api/calltracker/hook/{conn_id}      receiver for Call Tracker's signed webhooks (no login: the signature is the key)
+  POST   /api/calltracker/hook/{conn_id}      receiver for DialHalo's signed webhooks (no login: the signature is the key)
 
 Owners manage any workspace; a workspace admin only its own workspaces (never main). Connect / change / disconnect
 are written to the change log with key names only, never values.
@@ -60,7 +60,7 @@ def make_router(store, base_url: str) -> APIRouter:
             return ws
         if user.get("role") == "admin" and allowed is not None and ws in allowed and ws != workspaces.MAIN:
             return ws
-        raise HTTPException(403, "Only the owner or this workspace's admin can connect Call Tracker.")
+        raise HTTPException(403, "Only the owner or this workspace's admin can connect DialHalo.")
 
     def receiver(request: Request, conn: Optional[dict]) -> dict:
         if not conn:
@@ -99,7 +99,7 @@ def make_router(store, base_url: str) -> APIRouter:
                     raise HTTPException(400, f"The {key.replace('_', ' ')} looks wrong (spaces or too long).")
                 changes[key] = value
         if body.api_key and not body.api_key.strip().startswith("ctk_"):
-            raise HTTPException(400, "A Call Tracker API key starts with ctk_. Create one in Call Tracker: Settings → Integrations → API keys.")
+            raise HTTPException(400, "A DialHalo API key starts with ctk_. Create one in DialHalo: Settings → Integrations → API keys.")
         if body.enabled is not None:
             changes["enabled"] = bool(body.enabled)
         if body.reset_mapping:
@@ -107,7 +107,7 @@ def make_router(store, base_url: str) -> APIRouter:
         elif body.mapping is not None:
             changes["mapping"] = ct.clean_mapping(body.mapping)
         if not existing and not changes.get("base_url"):
-            raise HTTPException(400, "Enter the Call Tracker address first.")
+            raise HTTPException(400, "Enter the DialHalo address first.")
         for key in changes:
             if key in ("api_key", "webhook_secret") or (existing or {}).get(key) != changes[key]:
                 changed.append(key)
@@ -121,7 +121,7 @@ def make_router(store, base_url: str) -> APIRouter:
     def disconnect(request: Request, workspace: str = ""):
         ws = workspace_for(request, workspace)
         if not ct.delete_connection(store, ws):
-            raise HTTPException(404, "Call Tracker is not connected for this workspace.")
+            raise HTTPException(404, "DialHalo is not connected for this workspace.")
         audit.record(store, _user(request), "calltracker.disconnect", f"workspace {ws}", "connection, API key and webhook secret removed")
         return card(request, ws)
 
@@ -137,13 +137,15 @@ def make_router(store, base_url: str) -> APIRouter:
         except ct.CallTrackerError as exc:
             ct.note_status(store, ws, "last_test", False, str(exc))
             return {"ok": False, "message": str(exc), "card": card(request, ws)}
-        members = [m for m in members if isinstance(m, dict) and m.get("active", 1)] if isinstance(members, list) else []
-        preview = ct.owner_preview(store, ws, members)
-        msg = f"Connected. {len(members)} Call Tracker member(s); {sum(p['matched'] for p in preview)} of {len(preview)} Outreach people match by email."
+        all_members = [m for m in members if isinstance(m, dict)] if isinstance(members, list) else []
+        members = [m for m in all_members if m.get("active", 1)]
+        preview = ct.owner_preview(store, ws, members, all_members)
+        msg = f"Connected. {len(members)} DialHalo member(s); {sum(p['matched'] for p in preview)} of {len(preview)} Outreach people match by email."
         if not conn.get("webhook_secret"):
             msg += " Add the webhook secret so calls come back."
         ct.note_status(store, ws, "last_test", True, msg)
-        return {"ok": True, "message": msg, "members": len(members), "owners": preview, "card": card(request, ws)}
+        unmatched = [{"name": p["name"], "email": p["email"], "reason": p["reason"]} for p in preview if not p["matched"]]
+        return {"ok": True, "message": msg, "members": len(members), "owners": preview, "unmatched": unmatched, "card": card(request, ws)}
 
     @router.post("/api/calltracker/retry")
     def retry(body: WorkspaceBody, request: Request):
@@ -168,7 +170,7 @@ def make_router(store, base_url: str) -> APIRouter:
         if len(raw) > MAX_BODY:
             return JSONResponse({"detail": "Too large"}, status_code=413)
         from starlette.concurrency import run_in_threadpool
-        status, payload = await run_in_threadpool(events.handle, store, conn_id, request.headers.get("x-calltracker-signature", ""), raw)
+        status, payload = await run_in_threadpool(events.handle, store, conn_id, request.headers.get("x-dialhalo-signature") or request.headers.get("x-calltracker-signature", ""), raw)
         return JSONResponse(payload, status_code=status)
 
     return router

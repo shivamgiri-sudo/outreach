@@ -21,7 +21,7 @@ PREFIX = "enc:v1:"
 ENV_KEY = "OUTREACH_SECRET_KEY"
 SECRET_SETTINGS = ("server_secret", "webhook_secret")
 CONTAINERS = ("tokens", "webhook_tokens")       # every string inside is a secret
-CT_SECRET_KEYS = ("api_key", "webhook_secret")  # Call Tracker connections (ct_connections: {workspace: {...}})
+CT_SECRET_KEYS = ("api_key", "webhook_secret")  # DialHalo connections (ct_connections: {workspace: {...}})
 EXTRA_SECRET_KEYS = ("access_token", "refresh_token", "id_token")
 
 

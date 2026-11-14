@@ -411,7 +411,7 @@ export const api = {
   stories: () => request("/api/stories"),
   addStory: (story) => request("/api/stories", { method: "POST", body: story }),
   generatePrompt: (spec) => request("/api/prompts/generate", { method: "POST", body: spec }),
-  // Call Tracker (per workspace; app/routes_calltracker.py)
+  // DialHalo (per workspace; app/routes_calltracker.py)
   calltracker: (ws) => request(`/api/calltracker?workspace=${encodeURIComponent(ws || "")}`),
   saveCalltracker: (body) => request("/api/calltracker", { method: "PUT", body }),
   deleteCalltracker: (ws) => request(`/api/calltracker?workspace=${encodeURIComponent(ws || "")}`, { method: "DELETE" }),
