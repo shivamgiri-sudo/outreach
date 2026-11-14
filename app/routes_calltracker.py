@@ -168,7 +168,7 @@ def make_router(store, base_url: str) -> APIRouter:
         if len(raw) > MAX_BODY:
             return JSONResponse({"detail": "Too large"}, status_code=413)
         from starlette.concurrency import run_in_threadpool
-        status, payload = await run_in_threadpool(events.handle, store, conn_id, request.headers.get("x-calltracker-signature", ""), raw)
+        status, payload = await run_in_threadpool(events.handle, store, conn_id, request.headers.get("x-dialhalo-signature") or request.headers.get("x-calltracker-signature", ""), raw)
         return JSONResponse(payload, status_code=status)
 
     return router

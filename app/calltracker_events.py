@@ -1,7 +1,7 @@
 """Call Tracker -> Outreach: the signed webhook receiver and what each event changes.
 
 Signature (Call Tracker's existing scheme, server/src/modules/webhooks.service.ts): header
-X-CallTracker-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>. Refused: a missing or wrong
+X-CallTracker-Signature (or its new name X-DialHalo-Signature, either is accepted): t=<unix seconds>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>. Refused: a missing or wrong
 signature (401), a timestamp more than 5 minutes off (401), the same signature twice (409, a replay). The same event id
 delivered again with a new signature (Call Tracker's retry) answers 200 and changes nothing.
 
@@ -202,6 +202,8 @@ def apply_call(store, conn: dict, call: dict) -> bool:
     connected = bool(call.get("connected"))
     direction = "in" if call.get("direction") in ("incoming", "missed", "rejected") else "out"
     outcome = (rule or {}).get("outcome") or ("connected" if connected else "no_answer")
+    if call.get("outcome") and rule is None:
+        ct.note_unmapped(store, conn["workspace"], str(call["outcome"]), outcome)
     sec = int(call.get("duration_sec") or 0)
     who = _name_for(store, (call.get("user") or {}).get("email"), (call.get("user") or {}).get("name") or "Call Tracker")
     note = (call.get("note") or "").strip()
@@ -379,6 +381,9 @@ def note_dnc_removed(store, conn: dict, data: dict) -> int:
 
 
 # ---------------------------------------------------------------- funnel numbers
+from .rep_workflow import CONNECTED
+
+
 def funnel(store, leads: list, start: Optional[datetime], end: Optional[datetime]) -> dict:
     """Real calls from Call Tracker on these (already scoped) leads in [start, end): calls, leads called, connected,
     interested, meetings booked, and leads sent to Call Tracker."""
@@ -395,7 +400,7 @@ def funnel(store, leads: list, start: Optional[datetime], end: Optional[datetime
     sent = [l for l in leads if (l.get("calltracker") or {}).get("lead_id")]
     in_range = lambda l: (lambda w: w and (not start or w >= start) and (not end or w < end))(ct.parse((l.get("calltracker") or {}).get("pushed_at")))
     return {"calls": len(rows), "called": distinct(lambda a: a.get("direction") == "out"),
-            "connected": distinct(lambda a: (a.get("ct") or {}).get("connected")),
+            "connected": distinct(lambda a: a.get("outcome") in CONNECTED),     # the one definition: connected, interested, meeting booked
             "interested": distinct(lambda a: a.get("outcome") == "interested"),
             "meeting_booked": distinct(lambda a: a.get("outcome") == "meeting_booked"),
             "sent": len([l for l in sent if in_range(l)]), "sent_total": len(sent)}

@@ -183,6 +183,22 @@ export default function CallTracker() {
         </div>
       )}
 
+      {conn && (conn.unmapped_outcomes || []).length > 0 && (
+        <div className="card" role="alert" data-testid="ct-unmapped" style={{ borderLeft: "3px solid var(--warn)" }}>
+          <b>Some Call Tracker outcomes are not mapped</b>
+          <p className="sub" style={{ margin: "4px 0" }}>
+            These outcome names came in on real calls but have no row in the mapping below, so each call was counted as the plain
+            result shown, and nothing else (stage, follow-up or opt-out) was done for it. Add a row with the same name to give
+            them a proper meaning.
+          </p>
+          <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+            {conn.unmapped_outcomes.map((u) => (
+              <li key={u.name}><b>{u.name}</b>: {u.count} call{u.count === 1 ? "" : "s"}, counted as {String(u.counted_as || "").replace(/_/g, " ")}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {conn && (
         <MappingEditor mapping={conn.mapping} outcomes={card.outcomes} stages={card.stages} busy={busy}
           onSave={(mapping) => save({ mapping })} onReset={() => save({ reset_mapping: true })} />
