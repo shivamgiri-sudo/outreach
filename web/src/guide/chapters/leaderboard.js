@@ -3,7 +3,8 @@ export default {
   id: "leaderboard", title: "Leaderboard", group: "Menu pages", order: 122, kind: "page", menu: "Leaderboard",
   summary: "Calls, connects, interested leads and meetings per caller, ranked, with progress against each person's daily target.",
   blocks: [
-    ["p", "{{menu:Leaderboard}} ranks your callers for **Today**, **Yesterday**, **This week** or **This month** ([[IST]] dates). It adds up the same calls you see in [Call log](#help/calllog) and compares them with the daily targets people set on [My day](#help/myday)."],
+    ["p", "{{menu:Leaderboard}} ranks your callers for **Today**, **Yesterday**, **This week**, **This month** or a **Custom** range ([[IST]] dates). It adds up the same calls you see in [Call log](#help/calllog) and compares them with the daily targets people set on [My day](#help/myday)."],
+    ["p", "For a **Custom** range, pick a **From** and a **To** date. The range runs from the start of the first day to the end of the last day in [[IST]], can be at most 92 days, and the From date cannot be after the To date. If the dates do not work, a short message under the date boxes says why. The change in brackets then compares with the same number of days just before the range."],
     ["h", "What each column means"],
     ["ul", [
       "**Calls**: call attempts, counted for the person who logged them. The number in brackets is the change against the same number of days just before.",

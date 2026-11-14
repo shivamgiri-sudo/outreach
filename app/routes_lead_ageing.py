@@ -4,13 +4,19 @@ from typing import List
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import accounts, audit, duplicates, lead_access, lead_ageing
+from . import accounts, audit, duplicates, lead_access, lead_ageing, merge_flow
 from . import workspaces as workspaces_mod
 
 
 class ReEngageBody(BaseModel):
     lead_ids: List[str] = Field(default_factory=list, max_length=20000)
     kind: str = Field(default="", max_length=20)
+
+
+class MergeBody(BaseModel):
+    keep_id: str = Field(max_length=60)
+    merge_ids: List[str] = Field(default_factory=list, max_length=50)     # the limit (5) is checked in words by app/merge_flow.py
+    dry_run: bool = True              # safe by default: nothing is written unless the caller says dry_run=false
 
 
 def make_router(store) -> APIRouter:
@@ -48,5 +54,22 @@ def make_router(store) -> APIRouter:
         seen = lead_access.visible_leads(store, user, workspaces_mod.filter_rows(store.read("leads")))
         amap = accounts.ws_account_map(store)
         return duplicates.existing_groups(seen, lambda l: accounts.account_of_lead(amap, l))
+
+    @router.post("/api/lead-duplicates/merge")
+    def merge_duplicates(body: MergeBody, request: Request):
+        """Fold duplicate leads into one (owner / admin of the workspace). dry_run (default) only reports what would change."""
+        user = user_of(request)
+        try:
+            return merge_flow.merge(store, user, audit.actor_of(user), body.keep_id, body.merge_ids, body.dry_run)
+        except merge_flow.MergeRefused as exc:
+            raise HTTPException(exc.status, exc.message) from exc
+
+    @router.post("/api/lead-duplicates/merge-undo/{undo_id}")
+    def merge_undo(undo_id: str, request: Request):
+        user = user_of(request)
+        try:
+            return merge_flow.undo(store, undo_id, user, audit.actor_of(user))
+        except merge_flow.MergeRefused as exc:
+            raise HTTPException(exc.status, exc.message) from exc
 
     return router

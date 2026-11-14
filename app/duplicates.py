@@ -139,7 +139,8 @@ def existing_groups(leads: list, account_of: Callable[[dict], str], limit: int =
         if len(ids) < 2:
             continue
         groups.append({"reasons": sorted(reasons.get(root, [])), "leads": [
-            {k: by_id[i].get(k) or "" for k in ("id", "company", "contact_name", "email", "phone", "stage", "owner")} for i in ids[:20]],
+            {k: by_id[i].get(k) or "" for k in ("id", "company", "contact_name", "email", "phone", "stage", "owner")}
+            | {"history": len(by_id[i].get("timeline") or [])} for i in ids[:20]],
             "size": len(ids)})
     groups.sort(key=lambda g: (-g["size"], g["leads"][0]["company"].lower()))
     return {"total_groups": len(groups), "shown": min(len(groups), limit), "groups": groups[:limit]}

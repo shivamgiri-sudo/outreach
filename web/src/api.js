@@ -494,6 +494,8 @@ export const api = {
   saveLeadAgeing: (body) => request("/api/lead-ageing", { method: "PUT", body }),
   reEngage: (lead_ids, kind) => request("/api/lead-ageing/re-engage", { method: "POST", body: { lead_ids, kind } }),
   leadDuplicates: () => request("/api/lead-duplicates"),
+  mergeDuplicates: (keep_id, merge_ids, dry_run = true) => request("/api/lead-duplicates/merge", { method: "POST", body: { keep_id, merge_ids, dry_run } }),
+  mergeUndo: (id) => request(`/api/lead-duplicates/merge-undo/${encodeURIComponent(id)}`, { method: "POST" }),
   // Lead ownership and assignment: list hand-out, teams and rules, ownership mode, first-touch statistics
   assignList: (id, to, takeOver = false) => request(`/api/lists/${id}/assign`, { method: "PUT", body: { to, take_over: takeOver } }),
   splitList: (id, members, mode = "even", counts = []) => request(`/api/lists/${id}/split`, { method: "POST", body: { members, mode, counts } }),

@@ -1,8 +1,9 @@
 // Lead ageing on the Leads page: the Ageing filter, the Aged pill, "Make a re-engage list", the owner's day rules,
-// and the read-only "Find duplicates" report. Nothing here changes a stage, stops a sequence or sends a message.
+// and the "Find duplicates" report with its Merge flow (preview, confirm, undo). Ageing never changes a stage, stops a sequence or sends a message.
 import { useEffect, useState } from "react";
 import { api, canWrite, isManager, isOwner } from "../api.js";
 import { Modal } from "./setup/common.jsx";
+import MergeGroup from "./LeadMerge.jsx";
 
 const DEFAULTS = { untouched_days: 7, stale_days: 14, stuck_days: 21 };
 const KINDS = (d) => [["untouched", `Untouched ${d.untouched_days}+ days`], ["stale", `Gone quiet ${d.stale_days}+ days`], ["stuck", `Stuck in stage ${d.stuck_days}+ days`]];
@@ -72,9 +73,10 @@ export function ReEngageButton({ shown, kind, onNotice, onDone }) {
 function DuplicatesReport({ onClose }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
-  useEffect(() => { api.leadDuplicates().then(setData).catch((e) => setErr(e.message)); }, []);
+  const reload = () => api.leadDuplicates().then(setData).catch((e) => setErr(e.message));
+  useEffect(() => { reload(); }, []);
   return (
-    <Modal title="Duplicate leads" description="Leads that share an email, a phone number or a LinkedIn profile. This is only a report: nothing is merged or changed." onClose={onClose} wide testId="duplicates-report">
+    <Modal title="Duplicate leads" description="Leads that share an email, a phone number or a LinkedIn profile. Nothing changes until you press Merge, preview it and confirm; a merge can be undone for 24 hours." onClose={onClose} wide testId="duplicates-report">
       {err && <div className="tip error" role="alert">{err}</div>}
       {!data && !err && <p className="sub">Looking…</p>}
       {data && data.groups.length === 0 && <p>No duplicates found.</p>}
@@ -87,6 +89,7 @@ function DuplicatesReport({ onClose }) {
               {g.leads.map((l) => (
                 <p key={l.id} style={{ margin: "4px 0" }}><a href={`#leads?lead=${l.id}`} onClick={onClose}><b>{l.company || l.contact_name || l.id}</b></a> {l.contact_name} {l.email || l.phone} <small>({l.stage}{l.owner ? `, ${l.owner}` : ""})</small></p>
               ))}
+              <MergeGroup group={g} onMerged={reload} />
             </div>
           ))}
         </>
