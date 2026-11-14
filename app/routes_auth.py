@@ -27,6 +27,7 @@ ANYONE = {("POST", "/api/logout"), ("POST", "/api/me/password"),
           ("POST", "/api/linkedin/sequence/preview")}     # a preview changes nothing, so viewers may see it
 OWNER_ROUTES = {
     ("PUT", "/api/call-retry"), ("PUT", "/api/email-gate"),
+    ("GET", "/api/deliverability"), ("GET", "/api/deliverability/dns"),      # which source bounces + the sending domain's DNS records (owners and workspace admins)
     ("PUT", "/api/settings"), ("POST", "/api/settings/live-sending"), ("PUT", "/api/offer"), ("PUT", "/api/team"), ("POST", "/api/workspaces"), ("DELETE", "/api/workspaces/{ws_id}"), ("POST", "/api/sequence/{index}/send-preview"),
     ("GET", "/api/channels/webhooks"), ("GET", "/api/flows/{flow_id}/webhook"), ("PUT", "/api/icp"), ("POST", "/api/signals/run"), ("POST", "/api/signals/watch"), ("DELETE", "/api/signals/watch/{watch_id}"), ("POST", "/api/icp/score"), ("GET", "/api/oauth/{provider}/start"),
     ("POST", "/api/sequences/run"), ("POST", "/api/sending/resume"), ("POST", "/api/sequences/resume-failed"),
@@ -105,6 +106,7 @@ CALLER_WRITES = {
 # own workspace; the template routes / workspace guard check which). Never by callers.
 ADMIN_WRITES = {
     # workspace management of their own workspaces (app/routes_workspaces.py checks the workspace is theirs)
+    ("GET", "/api/deliverability"), ("GET", "/api/deliverability/dns"),
     ("POST", "/api/email-gate/check-now"), ("POST", "/api/leads/{lead_id}/email-approve"),     # mailbox checks before the first email (app/routes_email_gate.py)
     ("PUT", "/api/workspaces/{ws_id}"), ("POST", "/api/workspaces/{ws_id}/members"), ("DELETE", "/api/workspaces/{ws_id}/members/{email}"),
     ("POST", "/api/workspaces"),          # a workspace admin's new workspace is created as "requested" (an owner approves it)

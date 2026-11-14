@@ -43,10 +43,17 @@ def settings_of(store) -> dict:
             "approve_risky": bool(saved.get("approve_risky", False))}
 
 
+def builtin_on(store) -> bool:
+    """The owner chose the built-in checker (default off). Only used while no paid verifier is connected."""
+    return bool(((store.read("settings") or {}).get("email_gate") or {}).get("builtin", False))
+
+
 def verifier(store) -> dict:
     """{connected, provider, supported, config}: config is what campaign_pipeline._verify_one needs (None when unusable)."""
     config = src.verifier_config(store.read("integrations"))
     if not config:
+        if builtin_on(store):             # no paid verifier: the owner switched on the built-in checker (app/email_checker.py)
+            return {"connected": True, "provider": "builtin", "supported": True, "builtin": True, "config": {"builtin": True}}
         return {"connected": False, "provider": "", "supported": False, "config": None}
     usable = config if config["supported"] else None
     if usable is None:
@@ -106,8 +113,9 @@ def clear_stale_note(store, lead: dict) -> None:
         store.update_lead(lead["id"], lambda r: {**r, "sequence": {k: v for k, v in r["sequence"].items() if k != "blocked"}})
 
 
-def check_pending(store, transports: dict, limit: int = 100, lead_ids: Optional[set] = None) -> dict:
-    """Verify up to `limit` leads waiting for a first email whose address needs a check. Never loops: a rejected key stops the run."""
+def check_pending(store, transports: dict, limit: int = 100, lead_ids: Optional[set] = None, background: bool = False) -> dict:
+    """Verify up to `limit` leads waiting for a first email whose address needs a check. Never loops: a rejected key stops the run.
+    `background` is True only for the timer thread: it allows the built-in checker's optional SMTP step (never on a request)."""
     info = verifier(store)
     out = {"checked": 0, "valid": 0, "invalid": 0, "risky": 0, "unverified": 0, "error": ""}
     if not info["supported"]:
@@ -116,6 +124,14 @@ def check_pending(store, transports: dict, limit: int = 100, lead_ids: Optional[
         _status(store, out)
         return out
     from .campaign_pipeline import _verify_one
+    builtin = None
+    if info.get("builtin"):
+        from . import email_checker
+        from .senders import email_ready
+        smtp = email_checker.smtp_step((email_ready(store) or {}).get("from_email", "")) if background else None
+        import time
+        budget = time.monotonic() + (120 if background else 20)       # DNS can be slow: stop and carry on next run
+        builtin = {"budget": budget, "history": email_checker.build_history(store), "smtp": smtp, "check": email_checker.check}
     patches, failures = {}, 0
     for lead in store.read("leads"):
         if out["checked"] >= limit:
@@ -127,7 +143,18 @@ def check_pending(store, transports: dict, limit: int = 100, lead_ids: Optional[
         email = lead["email"]
         check = {"email": email, "syntax_ok": bool(normalise_email(email)), "business": bool(business_domain(email)),
                  "role": is_role_address(email), "provider": "", "at": now_iso()}
-        if not check["syntax_ok"]:
+        if builtin is not None:
+            import time
+            if time.monotonic() > builtin["budget"]:
+                break
+            out["checked"] += 1
+            verdict = builtin["check"](email, builtin["history"], smtp=builtin["smtp"], company_lead=bool(lead.get("company")))
+            if verdict["status"] == "unverified":          # DNS did not answer: no verdict, try again next run
+                out["unverified"] += 1
+                continue
+            check.update({k: v for k, v in verdict.items() if k != "status"})
+            status = verdict["status"]
+        elif not check["syntax_ok"]:
             status = "invalid"
         else:
             try:

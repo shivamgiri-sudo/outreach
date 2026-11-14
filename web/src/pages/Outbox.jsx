@@ -5,6 +5,7 @@ import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import LiveSendingSwitch from "./LiveSendingSwitch.jsx";
 import EmailGateCard from "./EmailGateCard.jsx";
+import DeliverabilityCard from "./DeliverabilityCard.jsx";
 import OutboxTable from "./OutboxTable.jsx";
 import { InternalEmails } from "./SendWhy.jsx";
 import HelpLink from "../components/HelpLink.jsx";
@@ -118,6 +119,7 @@ export default function Outbox({ go }) {
         onClearPractice={() => act(api.clearPractice, (r) => `Removed ${r.outbox} practice row(s). Live sending will start each lead from Email 1.`)} />
       <LiveSendingSwitch onChanged={load} />
       <EmailGateCard />
+      <DeliverabilityCard />
       <Downloads />
       <div className="card" style={{ marginBottom: 14 }}><fieldset className="ro-fieldset" disabled={!isOwner()}>
         <div className="row">
