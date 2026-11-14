@@ -127,12 +127,6 @@ export default function LeadToolbar({ leads, shown, f, set, owners, allTags, rul
             <label className="check-row"><input type="checkbox" checked={f.inboundOnly} onChange={(e) => set.inboundOnly(e.target.checked)} /> Inbound only</label>
           </div>
         </Popover>
-        <span className="dl-group lead-download">
-          <DownloadButton path={exportPath("leads")} label="Download all" title="Every lead as a CSV that opens in Excel" testId="download-leads-all" />
-          {filtered && <DownloadButton path={exportPath("leads", { q: f.query.trim(), stage: f.stage, band: f.band, source: f.srcFilter.join(","), inbound: f.inboundOnly ? "1" : "", tag: f.tagFilter })}
-            body={f.onlyIds || f.ownerFilter || customOn || f.hasFilter.length || f.liStage || f.waitingOnly ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
-            title="Only the leads that match the search and filters" testId="download-leads-shown" />}
-        </span>
       </div>
 
       <div className="lead-view-row">
@@ -147,6 +141,12 @@ export default function LeadToolbar({ leads, shown, f, set, owners, allTags, rul
         <LeadViews filters={viewFilters} onApply={applyView} onClear={clearFilters} />
         <span className="lead-count" role="status">Showing {shown.length} of {leads.length}</span>
         {tools && <span className="lead-tools">{tools}</span>}
+        <span className="dl-group lead-download">
+          <DownloadButton path={exportPath("leads")} label="Download all" title="Every lead as a CSV that opens in Excel" testId="download-leads-all" />
+          {filtered && <DownloadButton path={exportPath("leads", { q: f.query.trim(), stage: f.stage, band: f.band, source: f.srcFilter.join(","), inbound: f.inboundOnly ? "1" : "", tag: f.tagFilter })}
+            body={f.onlyIds || f.ownerFilter || customOn || f.hasFilter.length || f.liStage || f.waitingOnly ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
+            title="Only the leads that match the search and filters" testId="download-leads-shown" />}
+        </span>
       </div>
 
       {chips.length > 0 && (

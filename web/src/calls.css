@@ -26,6 +26,6 @@ p.error { color: var(--danger); font-weight: 500; }
   .outcome-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .btn.dial-btn { flex: 1 1 100%; }
 }
-.queue-card .tabs { gap: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.queue-card .tabs { gap: 0; flex-wrap: wrap; }          /* wrap, never clip: a clipped tab hides a count */
 .queue-card .tabs button { padding: 0 10px; font-size: var(--fs-sm); }
 .dialer-meta .pill { margin-right: 4px; }

@@ -4,7 +4,7 @@
 .lead-filter-row > select { flex: 0 0 160px; width: 160px; min-width: 0; }
 .lead-filter-row > [data-testid="contact-filter"] { flex-basis: 184px; width: 184px; }
 .lead-search { flex: 1 1 170px; min-width: 170px; }
-.lead-download { margin-left: auto; }
+.lead-download { margin-left: 0; }
 .lead-view-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
 .lead-view-sep { width: 1px; height: 22px; background: var(--line-strong); }
 .lead-views { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
