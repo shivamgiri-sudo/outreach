@@ -31,6 +31,17 @@ def lead_is_landline(lead: dict) -> bool:
     return bool(phone) and ((lead.get("phone_type") == "landline") or is_landline(phone))
 
 
+BAD_PHONE_STATUSES = ("wrong_number", "inactive_number")
+BAD_PHONE_REASON = "phone was marked wrong or inactive, so no calls, WhatsApp or SMS go to it"
+
+
+def phone_is_invalid(lead: dict) -> bool:
+    """The lead's main phone was marked wrong or inactive (by a caller or by a DialHalo outcome) and has not been changed since."""
+    lead = lead or {}
+    flag = lead.get("phone_status") or {}
+    return bool(lead.get("phone")) and flag.get("status") in BAD_PHONE_STATUSES and flag.get("number") == lead.get("phone")
+
+
 def messaging_block(phone) -> Optional[str]:
     """Why this number may not get WhatsApp/SMS, or None."""
     return LANDLINE_REASON if is_landline(phone) else None

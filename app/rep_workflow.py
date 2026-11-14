@@ -15,7 +15,7 @@ from .activities import (ACTIVITY_TYPES, add_task, caller_name, ensure_task_ids,
                          task_buckets, team)
 from .sequences import IST
 from . import call_retry
-from .contact_rules import add_consent, has_consent_for
+from .contact_rules import add_consent, has_consent_for, phone_is_invalid
 from .stages import ALL_STAGES, EXIT_STAGES, STAGES, TERMINAL, can_move
 
 CLOSED = ("unsubscribed", "disqualified", "not_now", "customer", "advocate")
@@ -176,8 +176,7 @@ def my_counts(store, names: set, since_day: str, until_day: Optional[str] = None
 
 # ---------------------------------------------------------------- next best action
 def phone_ok(lead: dict) -> bool:
-    flag = lead.get("phone_status") or {}
-    return bool(lead.get("phone")) and not (flag.get("status") in ("wrong_number", "inactive_number") and flag.get("number") == lead.get("phone"))   # a corrected number counts again
+    return bool(lead.get("phone")) and not phone_is_invalid(lead)      # a corrected number counts again
 
 
 def next_action(lead: dict, reply: Optional[dict] = None, task: Optional[dict] = None) -> dict:

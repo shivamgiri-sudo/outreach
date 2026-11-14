@@ -22,7 +22,7 @@ from .activities import add_task, caller_name, next_call_slot, on_became_interes
 from .channels.http import request
 from .channels.netguard import check_public_url
 from .channels.sms_send import send_sms
-from .contact_rules import LANDLINE_REASON, has_consent_for, lead_is_landline
+from .contact_rules import BAD_PHONE_REASON, LANDLINE_REASON, has_consent_for, lead_is_landline, phone_is_invalid
 from .flows import CUSTOM_FIELD_PREFIX, IF_FIELDS, is_custom_field, title_of
 from .growth_core import ensure_demo, get_offer
 from .hygiene import business_domain
@@ -391,6 +391,8 @@ def do_sms(store, flow, node, lead, now, ctx) -> dict:
         return refused("SMS not sent: no recorded SMS consent (a yes for call, email or WhatsApp does not cover SMS).")
     if not lead.get("phone"):
         return refused("SMS not sent: this lead has no phone number")
+    if phone_is_invalid(lead):
+        return refused(f"SMS not sent: {BAD_PHONE_REASON}")
     if lead_is_landline(lead):
         return refused(f"SMS not sent: {LANDLINE_REASON}")
     text, missing = text_for(store, lead, (node.get("config") or {}).get("text", ""), ctx.base_url, now)

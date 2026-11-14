@@ -24,7 +24,8 @@ function MappingEditor({ mapping, outcomes, stages, onSave, onReset, busy }) {
   return (
     <div className="card" data-testid="ct-mapping">
       <b>What each DialHalo outcome does here</b>
-      <p className="sub">Outcome names as your callers pick them in DialHalo. Stages only move forward; Unsubscribed is never undone.</p>
+      <p className="sub">Outcome names as your callers pick them in DialHalo. Stages only move forward; Unsubscribed is never undone.
+        <b> Wrong number</b> marks that phone as wrong: Outreach stops calling, WhatsApping and texting that number, but the person, their email and their email sequence are left alone (add the number again, or correct it, to use it). Only <b>Do not call</b> puts the person on the do-not-contact list. A saved mapping of your own is kept as it is; Reset to defaults uses these rules.</p>
       <div className="table-wrap">
         <table>
           <thead><tr><th>DialHalo outcome</th><th>Logged as</th><th>Move stage to</th><th>Stop emails</th><th>Do not contact</th><th /></tr></thead>

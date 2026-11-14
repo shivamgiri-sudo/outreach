@@ -47,7 +47,7 @@ DEFAULT_MAPPING = {
     "call back later": {"outcome": "call_back", "stage": "", "stop_sequence": False, "opt_out": False},
     "converted": {"outcome": "meeting_booked", "stage": "call_done", "stop_sequence": True, "opt_out": False},
     "not interested": {"outcome": "not_interested", "stage": "disqualified", "stop_sequence": True, "opt_out": False},
-    "wrong number": {"outcome": "wrong_number", "stage": "", "stop_sequence": True, "opt_out": True},
+    "wrong number": {"outcome": "wrong_number", "stage": "", "stop_sequence": False, "opt_out": False},   # the PHONE is marked invalid; the person and their email are untouched
     "do not call": {"outcome": "not_interested", "stage": "unsubscribed", "stop_sequence": True, "opt_out": True},
 }
 

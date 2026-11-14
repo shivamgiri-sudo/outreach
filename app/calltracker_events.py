@@ -270,9 +270,16 @@ def act_on_outcome(store, conn: dict, lead_id: str, call: dict, rule: dict, who:
             changes["consent"] = add_consent(l, {"text": f"Said yes on a phone call with {who} (DialHalo)", "at": stamp, "source": "phone call", "channel": "call"})
             changes["consent_withdrawn_at"] = None
             consent["text"] = changes["consent"]["text"]
-        if outcome in ("wrong_number", "inactive_number") and l.get("phone") and ct.norm_phone(l["phone"]) == ct.norm_phone(call.get("number")):
-            changes["phone_status"] = {"status": outcome, "number": l["phone"], "at": stamp, "by": who}
-            events.append({"at": stamp, "kind": "phone_flag", "text": f"Phone {l['phone']} marked {outcome.replace('_', ' ')} ({why})", "by": who})
+        if outcome in ("wrong_number", "inactive_number"):
+            called = ct.norm_phone(call.get("number"))
+            if l.get("phone") and ct.norm_phone(l["phone"]) == called:
+                changes["phone_status"] = {"status": outcome, "number": l["phone"], "at": stamp, "by": who}
+                events.append({"at": stamp, "kind": "phone_flag", "text": f"Phone {l['phone']} marked {outcome.replace('_', ' ')} ({why})", "by": who})
+            else:                                  # the call went to one of the lead's other numbers: flag that one
+                extra = next((p for p in (l.get("phones") or []) if p and ct.norm_phone(p) == called), None)
+                if extra:
+                    changes["bad_numbers"] = {**(l.get("bad_numbers") or {}), extra: {"status": outcome, "at": stamp, "by": who}}
+                    events.append({"at": stamp, "kind": "phone_flag", "text": f"Extra phone {extra} marked {outcome.replace('_', ' ')} ({why})", "by": who})
         cur = l["stage"]
         moved = None
         if target and target in ALL_STAGES and cur != target and cur not in TERMINAL:

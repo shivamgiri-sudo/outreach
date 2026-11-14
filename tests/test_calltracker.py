@@ -287,7 +287,7 @@ def test_call_on_timeline_closes_call_task_moves_stage_records_consent_and_follo
     assert log["total"] == 1
 
 
-def test_not_interested_and_wrong_number_stop_the_sequence(r):
+def test_not_interested_stops_the_sequence_and_wrong_number_only_marks_the_phone(r):
     connect(r)
     beta, cora = r.lead["Beta Ltd"]["id"], r.lead["Cora Inc"]["id"]
     for lid in (beta, cora):
@@ -298,9 +298,45 @@ def test_not_interested_and_wrong_number_stop_the_sequence(r):
     hook(r, conn_id(r), {"id": "e5", "event": "call.outcome", "data": {"callId": 3}})
     b, c = lead(r, "Beta Ltd"), lead(r, "Cora Inc")
     assert b["stage"] == "disqualified" and b["sequence"]["stopped"].startswith("calltracker:")
-    assert c["sequence"]["stopped"] and c["phone_status"]["status"] == "wrong_number"
-    assert c["do_not_contact"] and "tej@cora.io" in r.store.read("suppressed")       # default: wrong number suppresses the contact
-    assert not r.fake.dnc                                                            # never echoed back to DialHalo
+    # default: "Wrong number" marks the PHONE invalid; the person, email and sequence are untouched
+    assert c["phone_status"]["status"] == "wrong_number" and c["phone_status"]["number"] == c["phone"]
+    assert not c["sequence"].get("stopped")
+    assert not c.get("do_not_contact") and "tej@cora.io" not in r.store.read("suppressed")
+    assert not r.fake.dnc                                                            # nothing sent to DialHalo's do-not-call list
+    # and Outreach never calls, WhatsApps or texts that number again
+    from app import rep_workflow as rw
+    from app.contact_rules import phone_is_invalid
+    assert phone_is_invalid(c) and not rw.phone_ok(c)
+    from app.whatsapp import WhatsAppError, send as wa_send
+    r.store.update_lead(cora, lambda l: {**l, "consent": [{"text": "yes", "at": "2026-01-01T00:00:00+00:00", "channel": "whatsapp", "source": "reply"}]})
+    with pytest.raises(WhatsAppError, match="wrong or inactive"):
+        wa_send(r.store, cora, "intro", "", ct.now_utc(), "http://x")
+    # a corrected number counts again
+    r.store.update_lead(cora, lambda l: {**l, "phone": "90000 22222"})
+    assert not phone_is_invalid(lead(r, "Cora Inc")) and rw.phone_ok(lead(r, "Cora Inc"))
+
+
+def test_wrong_number_on_an_extra_phone_flags_that_phone_only(r):
+    connect(r)
+    acme = r.lead["Acme"]["id"]
+    r.store.update_lead(acme, lambda l: {**l, "phones": [l["phone"], "80000 33333"]})
+    r.fake.calls[20] = ct_call(20, number="8000033333", ref=acme, outcome="Wrong number", connected=False)
+    hook(r, conn_id(r), {"id": "e20", "event": "call.outcome", "data": {"callId": 20}})
+    a = lead(r, "Acme")
+    assert "80000 33333" in (a.get("bad_numbers") or {}) and not a.get("phone_status")
+    assert not a.get("do_not_contact")
+
+
+def test_a_custom_mapping_keeps_the_old_wrong_number_behaviour(r):
+    mapping = {"wrong number": {"outcome": "wrong_number", "stage": "", "stop_sequence": True, "opt_out": True}}
+    assert connect(r, mapping=mapping).json()["connection"]["mapping_custom"]
+    cora = r.lead["Cora Inc"]["id"]
+    r.store.update_lead(cora, lambda l: {**l, "stage": "contacted", "sequence": {"step": 1, "stopped": None, "history": []}})
+    r.fake.calls[21] = ct_call(21, number="9000011111", ref=cora, outcome="Wrong number", connected=False)
+    hook(r, conn_id(r), {"id": "e21", "event": "call.outcome", "data": {"callId": 21}})
+    c = lead(r, "Cora Inc")
+    assert c["sequence"]["stopped"] and c["do_not_contact"] and "tej@cora.io" in r.store.read("suppressed")
+    assert connect(r, reset_mapping=True).json()["connection"]["mapping"]["wrong number"] == {"outcome": "wrong_number", "stage": "", "stop_sequence": False, "opt_out": False}
 
 
 def test_converted_books_a_meeting_and_mapping_is_editable_per_workspace(r):
