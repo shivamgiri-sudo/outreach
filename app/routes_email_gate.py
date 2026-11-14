@@ -1,5 +1,7 @@
 """Email checks before the first send: status, switch, "check now" and a manager's approval of one risky address.
 Responses hold counts only (no addresses or names)."""
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
@@ -11,6 +13,7 @@ CHECK_NOW_LIMIT = 100
 class GateBody(BaseModel):
     enabled: bool
     approve_risky: bool = False
+    builtin: Optional[bool] = None             # None = keep what was saved
 
 
 def make_router(store, transports: dict) -> APIRouter:
@@ -25,7 +28,9 @@ def make_router(store, transports: dict) -> APIRouter:
         cfg, info = email_gate.settings_of(store), email_gate.verifier(store)
         status = (store.read("settings") or {}).get("email_gate_status") or {}
         return {"enabled": cfg["enabled"], "approve_risky": cfg["approve_risky"],
-                "verifier": {"connected": info["connected"], "provider": info["provider"], "supported": info["supported"]},
+                "verifier": {"connected": info["connected"], "provider": info["provider"], "supported": info["supported"],
+                             **({"builtin": True} if info.get("builtin") else {})},
+                "builtin": email_gate.builtin_on(store),
                 "counts": email_gate.counts(store, my_leads(request)),
                 "last_run": status.get("at"), "error": status.get("error") or ""}
 
@@ -35,9 +40,10 @@ def make_router(store, transports: dict) -> APIRouter:
 
     @router.put("/api/email-gate")
     def put_gate(body: GateBody, request: Request):
-        store.update("settings", lambda s: {**s, "email_gate": {"enabled": body.enabled, "approve_risky": body.approve_risky}})
+        keep = email_gate.builtin_on(store) if body.builtin is None else body.builtin
+        store.update("settings", lambda s: {**s, "email_gate": {"enabled": body.enabled, "approve_risky": body.approve_risky, "builtin": keep}})
         audit.record(store, getattr(request.state, "user", None), "email_gate.settings",
-                     "email checks before the first send", f"{'on' if body.enabled else 'off'}; risky addresses {'allowed' if body.approve_risky else 'held'}")
+                     "email checks before the first send", f"{'on' if body.enabled else 'off'}; risky addresses {'allowed' if body.approve_risky else 'held'}; built-in checker {'on' if keep else 'off'}")
         return view(request)
 
     @router.post("/api/email-gate/check-now")

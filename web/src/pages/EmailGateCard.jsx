@@ -27,9 +27,11 @@ export default function EmailGateCard() {
     setBusy(false);
   };
   const checkNow = () => run(api.emailGateCheckNow, (r) => (r.error ? "" : `Checked ${r.checked} address(es): ${r.valid} valid, ${r.risky} risky, ${r.invalid} invalid.`));
-  const verifierText = !v.connected ? "No verifier connected: connect one under Integrations so new leads can be checked."
+  const verifierText = v.builtin ? "Using the built-in checker (no paid verifier). It checks the spelling, the domain and what bounced before; it cannot look inside a mailbox."
+    : !v.connected ? "No verifier connected: connect one under Integrations so new leads can be checked."
     : !v.supported ? `The verifier "${v.provider || "unnamed"}" cannot be called automatically yet, so leads wait for a manual check.`
     : `Verifier connected (${v.provider}).`;
+  const paid = v.connected && !v.builtin;
   return (
     <div className="card" style={{ marginBottom: 14 }} data-testid="email-gate">
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
@@ -57,6 +59,16 @@ export default function EmailGateCard() {
             Turning this off sends first emails to addresses nobody has checked, as the app did before. More of them can bounce, and too many bounces pause all sending.
             Risky addresses wait for an owner or admin to approve them on the lead.
           </p>
+          <div style={{ marginTop: 8 }}>
+            <b>Use the built-in checker</b>
+            <div className="tab-chips" role="group" aria-label="Use the built-in checker">
+              <button className={`tab-chip${state.builtin ? " on" : ""}`} disabled={busy || paid} onClick={() => state.builtin || run(() => api.setEmailGate(state.enabled, state.approve_risky, true))}>On</button>
+              <button className={`tab-chip${state.builtin ? "" : " on"}`} disabled={busy || paid} onClick={() => !state.builtin || run(() => api.setEmailGate(state.enabled, state.approve_risky, false))}>Off</button>
+            </div>
+            <p className="sub" style={{ margin: 0 }}>
+              {paid ? "A paid verifier is connected, so it is used instead." : "No paid verifier? Switch this on: the app then checks spelling (gmial.com), throwaway inboxes, shared mailboxes (info@), the domain's mail records and your own bounce history."}
+            </p>
+          </div>
         </div>
       ) : <p className="sub" style={{ margin: "8px 0 0" }}>Only an owner can change this.</p>}
     </div>
