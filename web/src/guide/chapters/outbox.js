@@ -30,7 +30,7 @@ export default {
     ]],
     ["warn", "Real emails go to real people. They still follow the daily cap, [[Warm-up|warm-up]] and business hours, but you cannot take a sent email back. Test in practice mode first."],
     ["h", "Email checks before the first send"],
-    ["p", "Emails to addresses that do not exist bounce, and too many bounces pause all sending. So, once real sending is on, the first email to a lead only goes out after a mailbox check said the address works. The **Email checks before the first send** card shows how many leads are waiting, and how many addresses are valid, invalid, risky or not checked yet."],
+    ["p", "Emails to addresses that do not exist bounce, and too many bounces pause all sending. So an owner can switch this check **On** (it is **Off** until then). When it is on and real sending is on, the first email to a lead only goes out after a mailbox check said the address works. Connect an email verifier under Integrations first, or new leads will wait. The **Email checks before the first send** card shows how many leads are waiting, and how many addresses are valid, invalid, risky or not checked yet."],
     ["ul", [
       "**Valid**: the first email is sent as usual. **Invalid**: it is never sent.",
       "**Not checked yet**: the lead waits, and the app checks it by itself every 15 minutes (up to 100 leads at a time) or when an owner or admin clicks **Check now**. This needs an email verifier connected under {{menu:Integrations}}. With none connected, the card says so and those leads wait.",

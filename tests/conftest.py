@@ -12,7 +12,7 @@ def fixed_enrolment_clock(monkeypatch):
     monkeypatch.setattr(store, "FSYNC", False)
     monkeypatch.setattr(routes_outreach, "_now_iso", lambda: ENROL_TIME)
     monkeypatch.setattr(routes_outreach, "ALLOW_NOW_OVERRIDE", True)
-    monkeypatch.setenv("OUTREACH_EMAIL_GATE_DEFAULT", "0")          # production default is ON (app/email_gate.py); older tests send to never-checked leads
+    monkeypatch.setenv("OUTREACH_EMAIL_GATE_DEFAULT", "0")          # the gate is OFF by default too (app/email_gate.py); this pins it for the whole suite
     for name in ("OUTREACH_SECRET_KEY", "OUTREACH_ALLOW_PRIVATE_HOSTS", "OUTREACH_ENABLE_DOCS"):
         monkeypatch.delenv(name, raising=False)      # tests set these themselves when they need them
 

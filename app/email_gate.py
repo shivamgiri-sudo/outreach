@@ -17,8 +17,8 @@ sequence) and only when switched on. A held lead is looked at again on every run
 day's or the run's send caps.
 
 Switch: settings['email_gate'] = {enabled, approve_risky}. When `enabled` was never saved the default is
-default_enabled(), which is ON in production (env OUTREACH_EMAIL_GATE_DEFAULT unset or not '0'). Tests set OUTREACH_EMAIL_GATE_DEFAULT=0 (tests/conftest.py) so the many
-older tests that send to never-checked leads keep their meaning; the new tests switch the gate on through settings.
+default_enabled(), which is OFF unless env OUTREACH_EMAIL_GATE_DEFAULT is '1': the gate ships switched off so deploying it changes no sending, and an owner switches it on from the
+Outbox card (the saved setting wins) once an email verifier is connected. Tests also set OUTREACH_EMAIL_GATE_DEFAULT=0 (tests/conftest.py); the new tests switch the gate on through settings.
 """
 import os
 from typing import Optional
@@ -34,7 +34,7 @@ STATUSES = ("valid", "invalid", "risky")
 
 def default_enabled() -> bool:
     """Read the env var each time, so a test can flip it."""
-    return os.environ.get("OUTREACH_EMAIL_GATE_DEFAULT", "1") != "0"
+    return os.environ.get("OUTREACH_EMAIL_GATE_DEFAULT", "0") == "1"
 
 
 def settings_of(store) -> dict:

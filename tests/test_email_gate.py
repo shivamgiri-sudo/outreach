@@ -95,15 +95,18 @@ def test_approve_risky_setting_lets_risky_through():
     assert email_gate.decision({"email": "a@x.in", "email_check": check("a@x.in", "risky")}, True, approve_risky=True)[0] == "send"
 
 
-def test_production_default_is_on_without_the_env_var(monkeypatch, tmp_path):
+def test_default_is_off_until_an_owner_switches_it_on(monkeypatch, tmp_path):
+    """Shipping the gate changes no sending: nothing saved and no env var means OFF; the saved setting (or env '1') turns it on."""
     monkeypatch.delenv("OUTREACH_EMAIL_GATE_DEFAULT", raising=False)
     c, store = make(tmp_path, gate=True)
     store.update("settings", lambda s: {k: v for k, v in s.items() if k != "email_gate"})        # nothing saved: the default decides
-    assert email_gate.settings_of(store)["enabled"] is True
-    sender = Sender()
-    assert live_run(store, sender)["sent"] == 0 and sender.to == []
-    monkeypatch.setenv("OUTREACH_EMAIL_GATE_DEFAULT", "0")
     assert email_gate.settings_of(store)["enabled"] is False
+    sender = Sender()
+    assert live_run(store, sender)["sent"] == 2 and sender.to                                    # never-checked leads are emailed, as before
+    monkeypatch.setenv("OUTREACH_EMAIL_GATE_DEFAULT", "1")
+    assert email_gate.settings_of(store)["enabled"] is True
+    store.update("settings", lambda s: {**s, "email_gate": {"enabled": False}})
+    assert email_gate.settings_of(store)["enabled"] is False                                     # the saved choice always wins
 
 
 # ---------- runner ----------
