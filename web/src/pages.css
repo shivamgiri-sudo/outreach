@@ -4,7 +4,7 @@ small { font-size: var(--fs-xs); }
 b, strong { font-weight: 600; }
 
 /* row actions: a text link inside a table or list is a real 32px target; links inside a sentence stay inline */
-td .linkish, td button.link, li .linkish, li button.link, .th-sort, .hbar-row { display: inline-flex; align-items: center; min-height: 32px; }
+td .linkish, td button.link, li .linkish, li button.link, .th-sort, .hbar-row, div > .linkish, div > button.link { display: inline-flex; align-items: center; min-height: 32px; }
 td .linkish, td button.link { max-width: 100%; }
 p .linkish, p button.link, .sub .linkish, .tip .linkish, .empty .linkish { display: inline; min-height: 0; }
 .th-sort { gap: 4px; }
