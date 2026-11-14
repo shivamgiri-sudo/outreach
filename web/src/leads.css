@@ -2,6 +2,7 @@
 .lead-toolbar { display: grid; gap: var(--s3); margin-bottom: var(--s3); }
 .lead-filter-row { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
 .lead-filter-row > select { flex: 0 0 160px; width: 160px; min-width: 0; }
+.lead-filter-row > [data-testid="contact-filter"] { flex-basis: 184px; width: 184px; }
 .lead-search { flex: 1 1 170px; min-width: 170px; }
 .lead-download { margin-left: auto; }
 .lead-view-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
