@@ -23,7 +23,7 @@ function MultiSelect({ label, options, value, onChange }) {
   const toggle = (o) => onChange(value.includes(o) ? value.filter((x) => x !== o) : [...value, o]);
   return (
     <details className="multi-filter">
-      <summary aria-label={`Filter by ${label.toLowerCase()}`}>{value.length ? `${label}: ${value.length}` : `All ${label.toLowerCase()}s`}</summary>
+      <summary aria-label={`Filter by ${label.toLowerCase()}`}>{value.length ? `${label}: ${value.length}` : `All ${/y$/i.test(label) ? label.toLowerCase().slice(0, -1) + "ies" : label.toLowerCase() + "s"}`}</summary>
       <div className="multi-pop" role="group" aria-label={label}>
         {options.length === 0 && <small className="sub">Nothing to pick yet.</small>}
         {options.map((o) => <label key={o} className="row" style={{ margin: 0 }}><input type="checkbox" checked={value.includes(o)} onChange={() => toggle(o)} /> {o}</label>)}
