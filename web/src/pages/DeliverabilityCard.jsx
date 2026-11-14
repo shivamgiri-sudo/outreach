@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, isOwner, isWorkspaceAdmin } from "../api.js";
 import { sourceId, sourceLabel, useSourceRegistry } from "../labels.js";
+import { DataTable } from "../ui/index.js";
 
 const pct = (x) => `${(x * 100).toFixed(1)}%`;
 const VERDICT_COLOR = { good: "var(--ok)", warn: "var(--warn)", bad: "var(--mcn-red)", none: "var(--muted)" };
@@ -25,10 +26,10 @@ function Table({ title, rows, labelOf = (r) => r.key, empty = "Nothing in this p
     <div className="mt-4">
       <b>{title}</b>
       {rows.length ? (
-        <table>
+        <DataTable>
           <thead><tr><th>{title.replace(/^By /, "")}</th><th>Sent</th><th>Bounced</th><th>Bounce rate</th></tr></thead>
           <tbody>{rows.map((r) => <tr key={r.key}><td>{labelOf(r)}</td><td>{r.sent}</td><td>{r.bounced}</td><td>{r.sent ? pct(r.bounce_rate) : "-"}</td></tr>)}</tbody>
-        </table>
+        </DataTable>
       ) : <p className="sub m0">{empty}</p>}
     </div>
   );
@@ -43,7 +44,7 @@ function DayStrip({ days }) {
   return (
     <div className="mt-4">
       <b>By day</b>
-      <svg viewBox={`0 0 ${W} ${H + 14}`} width="100%" role="img" aria-label={`Emails sent and bounced per day, tallest day ${max}`} data-testid="deliv-strip" style={{ display: "block", maxWidth: 720 }}>
+      <svg viewBox={`0 0 ${W} ${H + 14}`} width="100%" role="img" aria-label={`Emails sent and bounced per day, tallest day ${max}`} data-testid="deliv-strip" className="u-block u-maxwidth-720">
         <line x1="0" x2={W} y1={base} y2={base} stroke="var(--line)" />
         {days.map((d, i) => (
           <g key={d.day}>
@@ -71,7 +72,7 @@ function Dns() {
     <div className="mt-5" data-testid="deliv-dns">
       <b>Sending domain records{dns.domain ? `: ${dns.domain}` : ""}</b>
       {!dns.configured ? <p className="sub m0">{dns.message}</p> : (
-        <table>
+        <DataTable>
           <thead><tr><th>Check</th><th>Result</th><th>What it means</th></tr></thead>
           <tbody>{dns.checks.map((c) => (
             <tr key={c.name}>
@@ -79,7 +80,7 @@ function Dns() {
               <td><span className={`pill ${DNS_PILL[c.status]}`}>{DNS_WORD[c.status]}</span></td>
               <td>{c.advice}</td>
             </tr>))}</tbody>
-        </table>
+        </DataTable>
       )}
     </div>
   );

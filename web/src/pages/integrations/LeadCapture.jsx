@@ -6,6 +6,7 @@ import { CopyRow } from "./Fields.jsx";
 import { useDialog } from "./Wizard.jsx";
 import { FieldHint, GuideButton, useTouched } from "../../GuidePanel.jsx";
 import { fieldHelp, useGuides } from "../../guides.js";
+import { DataTable } from "../../ui/index.js";
 
 const OUTCOMES = { new: "New lead", merged: "Added to an existing lead", refused: "Refused (opted out or erased)", replay: "Repeat ignored", error: "Problem" };
 const lines = (v) => (Array.isArray(v) ? v.join("\n") : v || "");
@@ -216,13 +217,13 @@ export default function LeadCapture({ go }) {
       <div className="card table-card u-p0 u-xauto" data-testid="capture-log">
         <h3 className="u-m-16">Recent captures</h3>
         {log.length === 0 ? <p className="empty">Nothing captured yet. Use “Send a test lead” on a connector to try it.</p> : (
-          <table>
+          <DataTable>
             <thead><tr><th>When</th><th>Connector</th><th>What happened</th><th>Detail</th></tr></thead>
             <tbody>{log.slice(0, 25).map((r) => (
               <tr key={r.id}><td data-label="When">{istLabel(r.at)}</td><td data-label="Connector">{r.connector}{r.is_test && <span className="pill warn u-ml-8">Test</span>}</td>
                 <td data-label="What happened">{OUTCOMES[r.outcome] || r.outcome}</td><td data-label="Detail">{r.error || (r.platform_ids && Object.values(r.platform_ids).join(", ")) || ""}</td></tr>
             ))}</tbody>
-          </table>
+          </DataTable>
         )}
       </div>
       {adding && <AddConnector types={cat.types} onClose={() => setAdding(false)} onCreated={(c) => { setAdding(false); setOpen(c); load(); }} />}

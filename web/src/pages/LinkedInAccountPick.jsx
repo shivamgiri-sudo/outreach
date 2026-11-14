@@ -50,7 +50,7 @@ export default function LinkedInAccountPick({ lead, onChanged }) {
     <div className="row u-acenter u-gap-8 u-mb-8" data-testid="linkedin-account-pick">
       <label className="u-m0">Send from LinkedIn account
         <select aria-label="Send from LinkedIn account" value={lead.linkedin_account || ""} disabled={!canWrite() || locked}
-          onChange={(e) => change(e.target.value)} style={{ width: "auto", marginLeft: 6 }}>
+          onChange={(e) => change(e.target.value)} className="u-w-auto u-ml-8">
           <option value="">{how === "owner" ? `Owner's default (${accountName(accounts, current)})` : "Any account (first to take them)"}</option>
           {accounts.map((a) => <option key={a.account} value={a.account}>{accountName(accounts, a.account)}</option>)}
         </select>

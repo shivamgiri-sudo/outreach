@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { Empty, ErrorState } from "../states.jsx";
-import { PageHeader } from "../ui/index.js";
+import { PageHeader, DataTable } from "../ui/index.js";
 
 const PERIODS = [["today", "Today"], ["yesterday", "Yesterday"], ["week", "This week"], ["month", "This month"]];
 const MAX_DAYS = 92;
@@ -88,7 +88,7 @@ export default function Leaderboard() {
       {data && rows.length > 0 && (
         <div className="card" data-testid="leaderboard">
           <div className="table-wrap u-xauto">
-            <table>
+            <DataTable>
               <thead>
                 <tr><th>Rank</th><th>Caller</th><th>Calls</th><th>Connected</th><th>Connect rate</th><th>Interested</th><th>Meetings</th><th>Marked</th><th>Target reached</th></tr>
               </thead>
@@ -115,7 +115,7 @@ export default function Leaderboard() {
                   <td>{t.attainment == null ? "No target" : shown(t.attainment)}</td>
                 </tr>
               </tfoot>
-            </table>
+            </DataTable>
           </div>
           <p className="muted u-mb-0">The change in brackets compares calls with the {data.days} day{data.days === 1 ? "" : "s"} before ({prevLabel}, {t.calls_prev} calls). Targets are set on My day.</p>
         </div>

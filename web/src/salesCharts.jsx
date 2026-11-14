@@ -62,7 +62,7 @@ export function ColumnChart({ rows, format = inrShort, height = 190, label = "Va
          aria-label={`${label}: ${rows.map((r) => `${r.label} ${format(r.value)}`).join(", ") || "no data"}`}>
       {[0, 0.5, 1].map((t) => (
         <g key={t}><line x1={pad.l} x2={width - pad.r} y1={y(max * t)} y2={y(max * t)} stroke="var(--line)" />
-          <text x={pad.l - 6} y={y(max * t) + 4} textAnchor="end" fontSize="10" fill="var(--muted)">{format(Math.round(max * t))}</text></g>
+          <text x={pad.l - 6} y={y(max * t) + 4} textAnchor="end" fontSize="12" fill="var(--muted)">{format(Math.round(max * t))}</text></g>
       ))}
       {rows.map((r, i) => {
         const w = Math.min(46, slot * 0.6), x = pad.l + slot * i + (slot - w) / 2;
@@ -70,7 +70,7 @@ export function ColumnChart({ rows, format = inrShort, height = 190, label = "Va
           <g key={r.key || r.label}>
             <rect x={x} y={y(r.value)} width={w} height={Math.max(1, height - pad.b - y(r.value))} rx="4" fill="var(--brand)" style={{ transition: "y .4s, height .4s" }}>
               <title>{`${r.label}: ${format(r.value)}`}</title></rect>
-            <text x={x + w / 2} y={height - 10} textAnchor="middle" fontSize="10" fill="var(--muted)">{r.label}</text>
+            <text x={x + w / 2} y={height - 10} textAnchor="middle" fontSize="12" fill="var(--muted)">{r.label}</text>
           </g>
         );
       })}
@@ -88,7 +88,7 @@ export function Gauge({ value, caption }) {
         <path d="M20 90 A70 70 0 0 1 160 90" fill="none" stroke="var(--line)" strokeWidth="16" strokeLinecap="round" />
         <path d="M20 90 A70 70 0 0 1 160 90" fill="none" stroke={color} strokeWidth="16" strokeLinecap="round"
               strokeDasharray={`${(v / 100) * c} ${c}`} style={{ transition: "stroke-dasharray .5s" }} />
-        <text x="90" y="82" textAnchor="middle" fontSize="26" fontWeight="800" fill="var(--ink)">{value === null || value === undefined ? "—" : `${value}%`}</text>
+        <text x="90" y="82" textAnchor="middle" fontSize="26" fontWeight="700" fill="var(--ink)">{value === null || value === undefined ? "—" : `${value}%`}</text>
       </svg>
       <small className="sub">{caption}</small>
     </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ops } from "../opsApi.js";
 import { istLabel } from "../time.js";
 import Abbr from "../components/Abbr.jsx";
+import { DataTable } from "../ui/index.js";
 
 const ORIGIN_PILL = { automatic: "", manual: "ok", unknown: "warn" };
 const STATUS_LABEL = { dry_run: "practice", provider_error: "provider problem" };
@@ -34,7 +35,7 @@ export function InternalEmails() {
     <>
       <div className="card u-mb-12 u-p-12">
         <div className="row u-wrap u-gap-8">
-          <select aria-label="Internal email kind" value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Internal email kind" value={kind} onChange={(e) => setKind(e.target.value)} className="u-w-auto">
             <option value="">Every kind</option>{(data?.kinds || []).map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
           </select>
           <small className="sub-inline">Emails the app sends to the team and for sign-in: they never count against the cold-email limit.</small>
@@ -43,7 +44,7 @@ export function InternalEmails() {
       {error && <div className="tip error" role="alert">{error}</div>}
       <div className="card u-p0 u-xauto">
         {!data ? !error && <p className="empty">Loading…</p> : data.items.length === 0 ? <p className="empty">No internal emails yet.</p> : (
-          <table data-testid="internal-table">
+          <DataTable data-testid="internal-table">
             <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>To</th><th>Kind</th><th>Subject</th><th>Why</th><th>Status</th></tr></thead>
             <tbody>{data.items.map((m) => (
               <tr key={m.id || `${m.at}-${m.to}`}>
@@ -58,7 +59,7 @@ export function InternalEmails() {
                   {STATUS_LABEL[m.status] || m.status}</span></td>
               </tr>
             ))}</tbody>
-          </table>
+          </DataTable>
         )}
       </div>
       {data && data.total > data.items.length && <small className="sub-inline">Showing the newest {data.items.length} of {data.total}.</small>}

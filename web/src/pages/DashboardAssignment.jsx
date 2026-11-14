@@ -2,6 +2,7 @@
 // leads wait for an owner. Hidden when the server gives nothing (a login that may not see it, or assignment unused).
 import { useEffect, useState } from "react";
 import { api, isOwner, isWorkspaceAdmin } from "../api.js";
+import { DataTable } from "../ui/index.js";
 
 export default function DashboardAssignment() {
   const [s, setS] = useState(null);
@@ -13,12 +14,12 @@ export default function DashboardAssignment() {
       <h3 id="dash-assign" className="u-mt-0">First touch by person</h3>
       <p className="sub u-mt-0"><b>{s.unassigned ?? 0}</b> lead(s) wait for an owner · <b>{s.reassigned_total ?? 0}</b> moved to someone else for a late first touch.{s.stuck > 0 && <> <b className="err-text" data-testid="dash-stuck">{s.stuck}</b> stuck: moved twice and still no first touch.</>}</p>
       {(s.members || []).length > 0 && (
-        <div className="table-scroll"><table>
+        <div className="table-scroll"><DataTable>
           <thead><tr><th>Person</th><th>Leads given</th><th>Average first touch</th><th>Moved away</th></tr></thead>
           <tbody>{s.members.map((m) => (
             <tr key={m.name}><td>{m.name}</td><td>{m.assigned}</td><td>{m.avg_first_touch_min == null ? "—" : `${Math.round(m.avg_first_touch_min)} min`}</td><td>{m.reassigned_away}</td></tr>))}
           </tbody>
-        </table></div>
+        </DataTable></div>
       )}
     </section>
   );

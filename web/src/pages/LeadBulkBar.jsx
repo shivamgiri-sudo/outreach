@@ -100,29 +100,29 @@ export default function LeadBulkBar({ picked, pageIds, owners, spaces, onDone, o
         <button className="btn ghost" disabled={busy === "li"} onClick={bulkLinkedIn}>{busy === "li" ? "Starting…" : "Start LinkedIn outreach"}</button>
         <BulkLinkedInAccount picked={picked} onDone={onDone} />
         <button className="btn ghost" disabled={busy === "list"} onClick={saveAsList}>Save as list</button>
-        <select aria-label="Change stage of selected leads" value="" onChange={(e) => e.target.value && confirmThen("stage", e.target.value, `Move to ${stageLabel(e.target.value)}?`, "Yes, move them")} style={{ width: "auto" }}>
+        <select aria-label="Change stage of selected leads" value="" onChange={(e) => e.target.value && confirmThen("stage", e.target.value, `Move to ${stageLabel(e.target.value)}?`, "Yes, move them")} className="u-w-auto">
           <option value="">Change stage…</option>
           {Object.keys(STAGE_LABELS).map((k) => <option key={k} value={k}>{stageLabel(k)}</option>)}
         </select>
         <select aria-label="Assign selected leads to" value="" onChange={(e) => e.target.value && confirmThen("owner", e.target.value === "__none" ? "" : e.target.value,
-          e.target.value === "__none" ? `Remove the owner from ${picked.length} lead(s)?` : `Reassign ${picked.length} lead(s) to ${e.target.value}?`, "Yes, assign")} style={{ width: "auto" }}>
+          e.target.value === "__none" ? `Remove the owner from ${picked.length} lead(s)?` : `Reassign ${picked.length} lead(s) to ${e.target.value}?`, "Yes, assign")} className="u-w-auto">
           <option value="">Assign to…</option>
           {owners.map((n) => <option key={n} value={n}>{n}</option>)}
           <option value="__none">Nobody (unassign)</option>
         </select>
         <select aria-label="Add selected leads to a list" value="" onChange={(e) => e.target.value && confirmThen("list_add", e.target.value,
-          `Add ${picked.length} lead(s) to “${lists.find((l) => l.id === e.target.value)?.name || "this list"}”?`, "Yes, add them")} style={{ width: "auto" }}>
+          `Add ${picked.length} lead(s) to “${lists.find((l) => l.id === e.target.value)?.name || "this list"}”?`, "Yes, add them")} className="u-w-auto">
           <option value="">Add to list…</option>
           {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
         </select>
         <span className="row u-gap-4">
-          <input aria-label="Tag for selected leads" placeholder="Tag" maxLength={40} value={tagText} onChange={(e) => setTagText(e.target.value)} style={{ width: 110 }} />
+          <input aria-label="Tag for selected leads" placeholder="Tag" maxLength={40} value={tagText} onChange={(e) => setTagText(e.target.value)} className="u-width-110" />
           <button className="btn ghost" disabled={!tagText.trim() || busy === "tag_add"} onClick={() => tagThen("tag_add")}>Add tag</button>
           <button className="btn ghost" disabled={!tagText.trim() || busy === "tag_remove"} onClick={() => tagThen("tag_remove")}>Remove tag</button>
         </span>
         <button className="btn ghost danger" onClick={() => confirmThen("do_not_contact", null, "Put on the do-not-contact list?", "Yes, never contact them", true)}>Do not contact</button>
         {isOwner() && <button className="btn ghost danger" onClick={() => confirmThen("delete", null, "Delete these leads?", `Yes, delete ${picked.length}`, true)}>Delete</button>}
-        {isOwner() && spaces.length > 1 && <select aria-label="Move selected leads to a workspace" value="" disabled={busy === "ws"} onChange={(e) => e.target.value && moveTo(e.target.value)} style={{ width: "auto" }}>
+        {isOwner() && spaces.length > 1 && <select aria-label="Move selected leads to a workspace" value="" disabled={busy === "ws"} onChange={(e) => e.target.value && moveTo(e.target.value)} className="u-w-auto">
           <option value="">Move to workspace…</option>{spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>}
       </>}
       {isOwner() && <DownloadButton path={exportPath("leads")} body={{ ids: picked }} label="Download CSV" testId="download-leads-picked" />}

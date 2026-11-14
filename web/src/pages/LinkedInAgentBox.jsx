@@ -4,6 +4,7 @@ import { copyText } from "../clipboard.js";
 import { istLabel } from "../time.js";
 import { useConfirm } from "../Dialog.jsx";
 import { GuideButton } from "../GuidePanel.jsx";
+import { DataTable } from "../ui/index.js";
 
 // The LinkedIn agent box, per client account (app/linkedin_scope.py): owners see any account (filter below, or every
 // account read-only) and hold the platform-wide stop; an account's admins run their own account's agent, with caps up to
@@ -82,7 +83,7 @@ export default function LinkedInAgent({ onMessage, onAccount }) {
         left today: {c.connections_left_today} requests, {c.messages_left_today} messages{c.why_not ? ` · ${c.why_not}` : ""}.</p>
       {(st.accounts || []).length > 0 && (
         <div className="table-wrap u-mb-8">
-          <table data-testid="li-agent-accounts"><thead><tr><th>LinkedIn account</th>{st.account_id === null && <th>Client account</th>}<th>Status</th><th>Today</th><th>This week</th><th>People</th><th></th></tr></thead>
+          <DataTable data-testid="li-agent-accounts"><thead><tr><th>LinkedIn account</th>{st.account_id === null && <th>Client account</th>}<th>Status</th><th>Today</th><th>This week</th><th>People</th><th></th></tr></thead>
             <tbody>{st.accounts.map((a) => (
               <tr key={a.account}>
                 <td><b>{a.name || a.account}</b><br /><small>{a.account}</small></td>
@@ -98,7 +99,7 @@ export default function LinkedInAgent({ onMessage, onAccount }) {
                     if (into && await confirm(`${a.account} is the same LinkedIn account as ${into} (its profile link changed)? Its people and counts move over.`))
                       save({ merge_from: a.account, merge_into: into }, `Merged ${a.account} into ${into}.`); }}>
                     <option value="">Same account as…</option>{st.accounts.filter((x) => x.account !== a.account).map((x) => <option key={x.account} value={x.account}>{x.name || x.account}</option>)}</select>}</td>
-              </tr>))}</tbody></table>
+              </tr>))}</tbody></DataTable>
           <small className="sub-inline">Each account has its own daily and weekly caps and its own pause. A person belongs to the account that contacted them first; only that account sends them messages.</small>
         </div>
       )}

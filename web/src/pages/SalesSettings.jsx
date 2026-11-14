@@ -35,9 +35,9 @@ export default function SalesSettings({ owners, onSaved }) {
           {s.targets.length === 0 && <p className="sub">No targets yet. Without a target the coverage ratio shows a dash.</p>}
           {s.targets.map((t, i) => (
             <div className="row" key={i}>
-              <input type="month" aria-label="Month" value={t.month} disabled={!editable} onChange={(e) => setTarget(i, "month", e.target.value)} style={{ width: 160 }} />
-              <input list="sf-owner-list" aria-label="Owner (blank = whole team)" placeholder="Owner (blank = team)" value={t.owner} disabled={!editable} onChange={(e) => setTarget(i, "owner", e.target.value)} style={{ width: 200 }} />
-              <input type="number" min="0" aria-label="Target in rupees" value={t.target} disabled={!editable} onChange={(e) => setTarget(i, "target", e.target.value)} style={{ width: 160 }} />
+              <input type="month" aria-label="Month" value={t.month} disabled={!editable} onChange={(e) => setTarget(i, "month", e.target.value)} className="u-width-160" />
+              <input list="sf-owner-list" aria-label="Owner (blank = whole team)" placeholder="Owner (blank = team)" value={t.owner} disabled={!editable} onChange={(e) => setTarget(i, "owner", e.target.value)} className="u-width-200" />
+              <input type="number" min="0" aria-label="Target in rupees" value={t.target} disabled={!editable} onChange={(e) => setTarget(i, "target", e.target.value)} className="u-width-160" />
               <small className="sub-inline">{inr(Number(t.target) || 0)}</small>
               {editable && <button type="button" className="btn ghost danger" onClick={() => setS({ ...s, targets: s.targets.filter((_, j) => j !== i) })}>Remove</button>}
             </div>

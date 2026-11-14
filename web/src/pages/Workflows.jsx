@@ -64,19 +64,19 @@ export default function Workflows() {
             {Object.entries(TRIGGERS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
           {TRIGGERS[form.tType].options ? (
-            <select style={{ marginTop: 6 }} value={form.tValue} onChange={(e) => set({ tValue: e.target.value })}>
+            <select className="u-mt-8" value={form.tValue} onChange={(e) => set({ tValue: e.target.value })}>
               {TRIGGERS[form.tType].options.map((o) => <option key={o}>{o}</option>)}
             </select>
-          ) : <input style={{ marginTop: 6 }} type="number" min="1" value={form.tValue} onChange={(e) => set({ tValue: e.target.value })} />}
+          ) : <input className="u-mt-8" type="number" min="1" value={form.tValue} onChange={(e) => set({ tValue: e.target.value })} />}
           <label>Then</label>
           <select value={form.aType} onChange={(e) => pickAction(e.target.value)}>
             {Object.entries(ACTIONS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
           {ACTIONS[form.aType].options ? (
-            <select style={{ marginTop: 6 }} value={form.aValue} onChange={(e) => set({ aValue: e.target.value })}>
+            <select className="u-mt-8" value={form.aValue} onChange={(e) => set({ aValue: e.target.value })}>
               {ACTIONS[form.aType].options.map((o) => <option key={o} value={o}>{OPTION_NAMES[o] || o.replace(/_/g, " ")}</option>)}
             </select>
-          ) : <input style={{ marginTop: 6 }} value={form.aValue} onChange={(e) => set({ aValue: e.target.value })} placeholder="e.g. Send pricing to {{company}} ({{first_name}})" />}
+          ) : <input className="u-mt-8" value={form.aValue} onChange={(e) => set({ aValue: e.target.value })} placeholder="e.g. Send pricing to {{company}} ({{first_name}})" />}
           <div className="row u-mt-12">
             <button className="btn" onClick={add}>Add rule</button>
             <button className="btn ghost" onClick={() => api.starterWorkflows().then(() => { setMessage("Suggested rules added."); load(); }, (e) => setMessage(e.message))}>Add suggested rules</button>
@@ -97,7 +97,7 @@ export default function Workflows() {
               </span>
               {!owner && <span className={`pill ${r.enabled ? "ok" : ""}`}>{r.enabled ? "On" : "Off"}</span>}
               {owner && <label className="row u-fw4 u-m0">
-                <input type="checkbox" style={{ width: "auto" }} checked={r.enabled} onChange={(e) => { const enabled = e.target.checked; setRules((all) => all.map((x) => (x.id === r.id ? { ...x, enabled } : x))); api.toggleWorkflow(r.id, enabled).catch(load); }} />
+                <input type="checkbox" className="u-w-auto" checked={r.enabled} onChange={(e) => { const enabled = e.target.checked; setRules((all) => all.map((x) => (x.id === r.id ? { ...x, enabled } : x))); api.toggleWorkflow(r.id, enabled).catch(load); }} />
                 On
               </label>}
               {owner && <button className="btn ghost" onClick={() => api.deleteWorkflow(r.id).then(load).catch(() => load())}>Delete</button>}

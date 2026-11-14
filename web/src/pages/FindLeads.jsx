@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, canWrite, isOwner } from "../api.js";
 import Icon from "../icons.jsx";
 import DrawerShell from "../DrawerShell.jsx";
+import { DataTable } from "../ui/index.js";
 
 const MODES = [
   ["find_new", "Find new decision makers", "Searches Apollo and Google Places for HR, talent and founder contacts at new companies."],
@@ -86,7 +87,7 @@ function PreviewRows({ rows }) {
   if (!rows?.length) return <p className="sub u-mt-12">The preview found nothing to do. Check the notes above.</p>;
   return (
     <div className="card table-card u-mt-12">
-      <table className="leads-table" data-testid="find-preview-table">
+      <DataTable  tableClass="leads-table" data-testid="find-preview-table">
         <thead><tr><th>Company</th><th>Person</th><th>What would happen</th></tr></thead>
         <tbody>
           {rows.map((r, i) => (
@@ -102,7 +103,7 @@ function PreviewRows({ rows }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </div>
   );
 }

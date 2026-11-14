@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getToken, isOwner } from "../api.js";
 import { istLabel } from "../time.js";
 import { GuideButton } from "../GuidePanel.jsx";
-import { PageHeader } from "../ui/index.js";
+import { PageHeader, DataTable } from "../ui/index.js";
 
 const DEFAULT_SAMPLE = 25;
 const MAX_SAMPLE = 100;
@@ -86,7 +86,7 @@ function CompareForm({ list, onDone }) {
         </label>
       ))}
       <label htmlFor="sample-size">How many leads to test</label>
-      <input id="sample-size" type="number" min="1" max={MAX_SAMPLE} value={size} onChange={(e) => setSize(e.target.value)} style={{ maxWidth: 140 }} />
+      <input id="sample-size" type="number" min="1" max={MAX_SAMPLE} value={size} onChange={(e) => setSize(e.target.value)} className="u-maxwidth-140" />
       <div className="row u-mt-12">
         <button className="btn" disabled={busy || picked.length === 0 || !(size >= 1 && size <= MAX_SAMPLE)} onClick={run}>
           {busy ? "Running… this can take a few minutes" : "Run comparison"}
@@ -141,13 +141,13 @@ function Results({ run, onApplied }) {
   return (
     <div className="card u-p0 u-xauto u-mt-16">
       <h3 className="u-m-16">Results for {run.sample_size} leads <small className="sub">({when(run.at)})</small></h3>
-      <table>
+      <DataTable>
         <thead><tr>
           <th>Provider</th><th>Checked</th><th>Found email</th><th>Found phone</th><th>Coverage %</th>
           <th>Credits</th><th>Cost per contact</th><th>Bounced</th><th>Errors</th><th />
         </tr></thead>
         <tbody>{run.providers.map((m) => <ResultRow key={`${run.id}-${m.provider}`}m={m} run={run} onApplied={onApplied} />)}</tbody>
-      </table>
+      </DataTable>
       <p className="sub u-m-16">"Use these results" only fills emails and phones that are empty, and skips unsubscribed or disqualified leads. Bounced grows once sending starts.</p>
     </div>
   );

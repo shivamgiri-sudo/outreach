@@ -3,7 +3,7 @@ import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import IcpCard from "./IcpCard.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
-import { PageHeader } from "../ui/index.js";
+import { PageHeader, DataTable } from "../ui/index.js";
 
 const TRUST_PILL = { confirmed: "ok", published: "ok", published_doubtful: "warn", published_mismatch: "warn", invalid: "warn", guess_mx: "", guess_risky: "warn", guess_rejected: "warn", none: "" };
 const TRUST_SHORT = { confirmed: "Confirmed", published: "Published", published_doubtful: "Doubtful", published_mismatch: "Wrong company?", invalid: "Invalid", guess_mx: "Guess", guess_risky: "Risky guess", guess_rejected: "Rejected", none: "No email" };
@@ -54,7 +54,7 @@ export default function HiringEngine() {
             <div><label>Most paid checks</label><input type="number" min="0" max="500" value={maxCredits} onChange={(e) => setMaxCredits(e.target.value)} /></div>
           </div>
           <label className="row u-fw4 u-m-8-0-0">
-            <input type="checkbox" style={{ width: "auto" }} checked={recheck} onChange={(e) => setRecheck(e.target.checked)} />
+            <input type="checkbox" className="u-w-auto" checked={recheck} onChange={(e) => setRecheck(e.target.checked)} />
             Also re-check guesses that are still unconfirmed (uses paid checks)
           </label>
           <div className="row u-mt-12">
@@ -86,7 +86,7 @@ export default function HiringEngine() {
             </span>
           </div>
           <div className="card u-p0 u-xauto">
-            <table>
+            <DataTable>
               <thead><tr><th>Company</th><th>Open roles</th><th>Posted by</th><th>Decision maker</th><th>Email</th><th>Trust</th></tr></thead>
               <tbody>
                 {data.top.map((r, i) => (
@@ -100,7 +100,7 @@ export default function HiringEngine() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </DataTable>
           </div>
           <p className="sub">Showing the top {data.top.length} of {data.total}. The download has every row.</p>
         </>

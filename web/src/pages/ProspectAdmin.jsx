@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { prospects } from "../prospectsApi.js";
 import { useConfirm } from "../Dialog.jsx";
 import { istDateLabel } from "../time.js";
+import { DataTable } from "../ui/index.js";
 
 function Spend() {
   const [d, setD] = useState(null);
@@ -38,31 +39,31 @@ function Spend() {
           <input id="ps-fresh" inputMode="numeric" value={form.freshness} onChange={(e) => setForm({ ...form, freshness: e.target.value })} /></div>
       </div>
       <div className="table-card u-mt-12">
-        <table className="ps-table">
+        <DataTable  tableClass="ps-table">
           <thead><tr><th>Provider</th><th>On</th><th>Order</th><th>Cost / lookup</th><th>Connected</th></tr></thead>
           <tbody>
             {d.providers.map((p) => (
               <tr key={p.id}>
                 <td>{p.title}<div><small className="sub">{[p.finds && "finds", p.verifies && "verifies"].filter(Boolean).join(", ")}</small></div></td>
                 <td><input type="checkbox" aria-label={`Use ${p.title}`} checked={form.providers[p.id].enabled} onChange={(e) => setP(p.id, "enabled", e.target.checked)} /></td>
-                <td><input aria-label={`Order of ${p.title}`} inputMode="numeric" style={{ width: 70 }} value={form.providers[p.id].priority} onChange={(e) => setP(p.id, "priority", e.target.value)} /></td>
-                <td><input aria-label={`Cost of ${p.title}`} inputMode="decimal" style={{ width: 90 }} value={form.providers[p.id].cost} onChange={(e) => setP(p.id, "cost", e.target.value)} /></td>
+                <td><input aria-label={`Order of ${p.title}`} inputMode="numeric" className="u-width-70" value={form.providers[p.id].priority} onChange={(e) => setP(p.id, "priority", e.target.value)} /></td>
+                <td><input aria-label={`Cost of ${p.title}`} inputMode="decimal" className="u-width-90" value={form.providers[p.id].cost} onChange={(e) => setP(p.id, "cost", e.target.value)} /></td>
                 <td>{p.connected ? <span className="pill ok">Yes</span> : <span className="pill">No</span>}</td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </DataTable>
       </div>
       <div className="row u-mt-12"><button className="btn" onClick={save}>Save spend settings</button>{msg && <span className="sub" role="status">{msg}</span>}</div>
       <h3 className="u-mt-20">Monthly spend and hit rate</h3>
       {d.rows.length === 0 ? <p className="sub">No lookups yet.</p> : (
         <div className="table-card">
-          <table className="ps-table" data-testid="spend-table">
+          <DataTable  tableClass="ps-table" data-testid="spend-table">
             <thead><tr><th>Month</th><th>Provider</th><th>Lookups</th><th>Hits</th><th>Hit rate</th><th>From cache</th><th>Spend</th></tr></thead>
             <tbody>{d.rows.map((r) => (
               <tr key={r.month + r.provider}><td>{r.month}</td><td>{r.provider}</td><td>{r.lookups}</td><td>{r.hits}</td><td>{Math.round(r.hit_rate * 100)}%</td><td>{r.cached}</td><td>{r.spend}</td></tr>
             ))}</tbody>
-          </table>
+          </DataTable>
         </div>
       )}
     </section>
@@ -117,7 +118,7 @@ function OptOuts({ version, onChanged }) {
       <p className="sub">Undo an opt-out made here. Anyone on the do-not-contact, unsubscribe or erased lists always stays suppressed.</p>
       {rows.length === 0 ? <p className="sub">No opt-outs.</p> : (
         <div className="table-card">
-          <table className="ps-table">
+          <DataTable  tableClass="ps-table">
             <thead><tr><th>Email or domain</th><th>Kind</th><th>Reason</th><th>When</th><th /></tr></thead>
             <tbody>{rows.map((r) => (
               <tr key={r.value}>
@@ -127,7 +128,7 @@ function OptOuts({ version, onChanged }) {
                 )}</td>
               </tr>
             ))}</tbody>
-          </table>
+          </DataTable>
         </div>
       )}
       {msg && <p className="sub" role="status">{msg}</p>}

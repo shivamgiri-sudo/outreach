@@ -173,13 +173,13 @@ function ConnectionNotes({ onMessage }) {
       {["A", "B"].map((v) => (
         <div key={v} className="u-mt-12">
           <label htmlFor={`note-${v}`}><b>Note {v}</b></label> <Score s={scores[v]} />
-          <textarea id={`note-${v}`} rows={3} value={draft[v]} maxLength={600} readOnly={!editable} onChange={(e) => setDraft({ ...draft, [v]: e.target.value })} onBlur={(e) => editable && rescore(v, e.target.value)} style={{ width: "100%" }} />
+          <textarea id={`note-${v}`} rows={3} value={draft[v]} maxLength={600} readOnly={!editable} onChange={(e) => setDraft({ ...draft, [v]: e.target.value })} onBlur={(e) => editable && rescore(v, e.target.value)} className="u-w-full" />
         </div>
       ))}
       {editable && <div className="row u-mt-8 u-wrap">
         <button className="btn" onClick={save}>Save notes</button>
         {!isLimitedLogin() && <>
-        <input aria-label="Who you are writing to" placeholder="Optional: who it is for (e.g. CHROs at IT services firms)" value={context} maxLength={500} onChange={(e) => setContext(e.target.value)} style={{ flex: 1, minWidth: 220 }} />
+        <input aria-label="Who you are writing to" placeholder="Optional: who it is for (e.g. CHROs at IT services firms)" value={context} maxLength={500} onChange={(e) => setContext(e.target.value)} className="u-flex1 u-minwidth-220" />
         <button className="btn ghost" onClick={write} disabled={busy}>{busy ? "Writing…" : "Write ideas with Claude"}</button>
         </>}
       </div>}

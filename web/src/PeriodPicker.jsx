@@ -44,9 +44,9 @@ export default function PeriodPicker({ value, onChange, range }) {
         <button className={`btn ${custom ? "" : "ghost"}`} aria-pressed={custom} onClick={() => onChange({ from, to })}>Custom</button>
         {custom && (
           <span className="row u-gap-8 u-wrap">
-            <input type="date" aria-label="From (IST day)" value={from} max={to} onChange={(e) => setFrom(e.target.value)} style={{ width: "auto" }} />
+            <input type="date" aria-label="From (IST day)" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="u-w-auto" />
             <span>to</span>
-            <input type="date" aria-label="To (IST day)" value={to} min={from} max={istDate(0)} onChange={(e) => setTo(e.target.value)} style={{ width: "auto" }} />
+            <input type="date" aria-label="To (IST day)" value={to} min={from} max={istDate(0)} onChange={(e) => setTo(e.target.value)} className="u-w-auto" />
             <button className="btn ghost" disabled={!ok} onClick={apply}>Apply</button>
             {tooLong && <small className="sub-inline" role="alert">Pick at most {MAX_DAYS} days (about two years).</small>}
           </span>

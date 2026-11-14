@@ -59,7 +59,7 @@ function StepRow({ step, index, count, onChange, onRemove, onMove, readOnly, sam
       </div>
       <label htmlFor={`li-text-${index}`}>{connect ? `Connection note (LinkedIn allows ${LIMIT} characters)` : "Message"}</label>
       <textarea id={`li-text-${index}`} rows={connect ? 3 : 5} value={step.text} disabled={readOnly} maxLength={connect ? 600 : 2000}
-        onChange={(e) => set("text", e.target.value)} style={{ width: "100%" }} />
+        onChange={(e) => set("text", e.target.value)} className="u-w-full" />
       <Preview text={step.text} kind={connect ? "connect" : "message"} title={sampleTitle} workspace={workspace} />
     </div>
   );
@@ -124,7 +124,7 @@ export default function LinkedInSequenceEditor({ onMessage }) {
       {!readOnly && steps.length < 10 && <button type="button" className="btn ghost" onClick={addStep}>Add a message</button>}
 
       <h4>Connection note B (<Abbr term="A/B test">A/B test</Abbr>)</h4>
-      <textarea aria-label="Connection note B" rows={3} value={noteB} maxLength={600} disabled={readOnly} onChange={(e) => setNoteB(e.target.value)} style={{ width: "100%" }} />
+      <textarea aria-label="Connection note B" rows={3} value={noteB} maxLength={600} disabled={readOnly} onChange={(e) => setNoteB(e.target.value)} className="u-w-full" />
       <Preview text={noteB} kind="connect" title={sampleTitle} workspace={data.workspace} />
 
       <h4>Personas</h4>

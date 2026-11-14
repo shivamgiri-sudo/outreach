@@ -3,11 +3,11 @@ import { istLabel } from "../time.js";
 import { api, canWrite, isOwner } from "../api.js";
 import { ops } from "../opsApi.js";
 import { ErrorState } from "../states.jsx";
+import { DataTable } from "../ui/index.js";
 
 const when = (iso) => (iso ? istLabel(iso) : "—");
-const GRID = { display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" };
 const role = (k) => ({ chro: "CHRO", ceo_founder: "CEO / founder", ta_head: "TA head", hr_head: "HR head" }[k] || String(k).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()));
-const Stat = ({ n, label, note }) => <div className="card"><b style={{ fontSize: 26 }}>{n ?? "—"}</b><div className="sub">{label}</div>{note && <small className="sub-inline">{note}</small>}</div>;
+const Stat = ({ n, label, note }) => <div className="card"><b className="big-n">{n ?? "—"}</b><div className="sub">{label}</div>{note && <small className="sub-inline">{note}</small>}</div>;
 
 function Bars({ rows, label, value }) {
   const max = Math.max(1, ...rows.map((r) => r[value]));
@@ -38,11 +38,11 @@ export default function Intelligence({ range, embedded = false }) {
       <p className="sub">{range ? "For leads created or active in the chosen period. " : ""}What is working, who replies, when, and where the data needs care. Everything here is worked out from what the team has already done.</p>
 
       <h3>Email</h3>
-      <div style={GRID}>
+      <div className="tile-grid">
         <Stat n={ch.email.sent} label="leads emailed" /><Stat n={ch.email.opened} label="opened" /><Stat n={ch.email.replied} label="replied" note={`${ch.email.reply_rate}% of those emailed`} />
       </div>
       <h3>LinkedIn</h3>
-      <div style={GRID}>
+      <div className="tile-grid">
         <Stat n={ch.linkedin.started} label="started" /><Stat n={ch.linkedin.connect_sent} label="requests sent" />
         <Stat n={ch.linkedin.accepted} label="accepted" note={`${ch.linkedin.accept_rate}% accept`} /><Stat n={ch.linkedin.replied} label="replied" note={`${ch.linkedin.reply_rate}% of accepted`} /><Stat n={ch.linkedin.open_profiles} label="Open Profiles" note="can be messaged without connecting" />
       </div>
@@ -56,15 +56,15 @@ export default function Intelligence({ range, embedded = false }) {
         <div className="card u-xauto">
           <h3 className="u-mt-0">Which roles respond</h3>
           {d.personas.length === 0 ? <p className="empty">No leads yet.</p> : (
-            <table><thead><tr><th>Role</th><th>Leads</th><th>Contacted</th><th>Replied</th><th>Interested</th></tr></thead>
-              <tbody>{d.personas.map((p) => <tr key={p.persona}><td>{role(p.persona)}</td><td>{p.leads}</td><td>{p.contacted}</td><td>{p.replied}{p.contacted > 0 && <small> ({p.reply_rate}%)</small>}</td><td>{p.interested}</td></tr>)}</tbody></table>
+            <DataTable><thead><tr><th>Role</th><th>Leads</th><th>Contacted</th><th>Replied</th><th>Interested</th></tr></thead>
+              <tbody>{d.personas.map((p) => <tr key={p.persona}><td>{role(p.persona)}</td><td>{p.leads}</td><td>{p.contacted}</td><td>{p.replied}{p.contacted > 0 && <small> ({p.reply_rate}%)</small>}</td><td>{p.interested}</td></tr>)}</tbody></DataTable>
           )}
         </div>
       </div>
       <div className="card u-mt-12 u-xauto">
         <b>Connection note test</b> <small className="sub-inline">each new lead gets note A or B, shared evenly</small>
-        <table><thead><tr><th>Note</th><th>Requests sent</th><th>Accepted</th><th>Accept rate</th></tr></thead>
-          <tbody>{["A", "B"].map((v) => { const x = ch.linkedin.variants?.[v] || {}; return <tr key={v}><td>{v}</td><td>{x.sent ?? 0}</td><td>{x.accepted ?? 0}</td><td>{x.accept_rate ?? 0}%</td></tr>; })}</tbody></table>
+        <DataTable><thead><tr><th>Note</th><th>Requests sent</th><th>Accepted</th><th>Accept rate</th></tr></thead>
+          <tbody>{["A", "B"].map((v) => { const x = ch.linkedin.variants?.[v] || {}; return <tr key={v}><td>{v}</td><td>{x.sent ?? 0}</td><td>{x.accepted ?? 0}</td><td>{x.accept_rate ?? 0}%</td></tr>; })}</tbody></DataTable>
         <small className="sub-inline">Wait for 30+ requests per note before trusting the gap.</small>
       </div>
       {note && <p className="sub u-mt-12" role="status" >{note}</p>}
@@ -73,8 +73,8 @@ export default function Intelligence({ range, embedded = false }) {
         <div className="card u-xauto">
           <h3 className="u-mt-0">Companies that engage</h3>
           {d.companies.length === 0 ? <p className="empty">Nobody has been contacted yet.</p> : (
-            <table><thead><tr><th>Company</th><th>Leads</th><th>Replied</th><th>Interested</th><th>Last touch</th></tr></thead>
-              <tbody>{d.companies.map((c) => <tr key={c.company}><td><b>{c.company}</b></td><td>{c.leads}</td><td>{c.replied}</td><td>{c.interested}</td><td><small>{when(c.last_touch)}</small></td></tr>)}</tbody></table>
+            <DataTable><thead><tr><th>Company</th><th>Leads</th><th>Replied</th><th>Interested</th><th>Last touch</th></tr></thead>
+              <tbody>{d.companies.map((c) => <tr key={c.company}><td><b>{c.company}</b></td><td>{c.leads}</td><td>{c.replied}</td><td>{c.interested}</td><td><small>{when(c.last_touch)}</small></td></tr>)}</tbody></DataTable>
           )}
         </div>
         <div className="card">
@@ -100,11 +100,11 @@ export default function Intelligence({ range, embedded = false }) {
       </div>
 
       <div className="card u-mt-16">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h3 className="u-mt-0">Change log</h3>{isOwner() && <button className="btn" onClick={exportCsv}>Download CSV</button>}</div>
+        <div className="row u-between"><h3 className="u-m0">Change log</h3>{isOwner() && <button className="btn" onClick={exportCsv}>Download CSV</button>}</div>
         <p className="sub">Every manual correction to a lead: who, when, what it was and what it became.</p>
         {log.length === 0 ? <p className="empty">No corrections yet.</p> : (
-          <div className="table-wrap"><table><thead><tr><th>When</th><th>Who</th><th>Lead</th><th>Field</th><th>Was</th><th>Now</th><th>Why</th></tr></thead>
-            <tbody>{log.map((r, i) => <tr key={i}><td><small>{when(r.at)}</small></td><td>{r.by}</td><td>{r.company}</td><td>{r.label}</td><td>{r.old || "—"}</td><td>{r.new || "—"}</td><td><small>{r.reason}</small></td></tr>)}</tbody></table></div>
+          <div className="table-wrap"><DataTable><thead><tr><th>When</th><th>Who</th><th>Lead</th><th>Field</th><th>Was</th><th>Now</th><th>Why</th></tr></thead>
+            <tbody>{log.map((r, i) => <tr key={i}><td><small>{when(r.at)}</small></td><td>{r.by}</td><td>{r.company}</td><td>{r.label}</td><td>{r.old || "—"}</td><td>{r.new || "—"}</td><td><small>{r.reason}</small></td></tr>)}</tbody></DataTable></div>
         )}
       </div>
     </>

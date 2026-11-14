@@ -29,7 +29,7 @@ export default function LinkedInFinder({ row, onChanged, onMessage }) {
       </ul>}
       {row.status !== "queued" && row.search_url && <p className="u-m-8-0"><a href={row.search_url} target="_blank" rel="noopener noreferrer">Search on LinkedIn</a> for “{row.name} {row.company}”</p>}
       {canWrite() && <div className="row u-mt-4">
-        <input aria-label={`LinkedIn profile link for ${row.name}`} placeholder="Paste their LinkedIn profile link" value={url} onChange={(e) => setUrl(e.target.value)} style={{ minWidth: 220, flex: 1 }} />
+        <input aria-label={`LinkedIn profile link for ${row.name}`} placeholder="Paste their LinkedIn profile link" value={url} onChange={(e) => setUrl(e.target.value)} className="u-minwidth-220 u-flex1" />
         <button className="btn ghost" disabled={busy || !url.trim()} onClick={() => send("link", url.trim(), "Link saved. The LinkedIn sequence has started.")}>Use this link</button>
         <button className="btn ghost" disabled={busy} onClick={() => send("skip", "", "Skipped. Add the link on the lead when you have it.")}>Skip</button>
       </div>}

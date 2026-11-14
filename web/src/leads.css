@@ -12,7 +12,7 @@
 .lead-views-form input { width: 200px; }
 .lead-count { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); }
 .lead-tools { display: inline-flex; flex-wrap: wrap; gap: var(--s2); }
-.lead-tools .btn { min-height: var(--h-ctl-sm); font-size: var(--fs-sm); }
+.lead-tools .btn { min-height: var(--h-ctl-sm); }
 .lead-chips { padding: 0; }
 .ui-pop .check-row { margin: 0; }
 .ui-pop .multi-filter { flex: none; }
@@ -63,7 +63,7 @@
 /* bulk bar and hand-over */
 .bulkbar { position: sticky; top: 64px; z-index: 5; display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); align-items: center; padding: var(--s3) var(--s4); margin-bottom: var(--s3); border-radius: var(--r-md); background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 25%, var(--line)); box-shadow: var(--shadow); }
 .bulkbar select, .bulkbar input:not([type="checkbox"]) { width: auto; min-height: var(--h-ctl-sm); }
-.bulkbar .btn { min-height: var(--h-ctl-sm); font-size: var(--fs-sm); }
+.bulkbar .btn { min-height: var(--h-ctl-sm); }
 [data-testid="handover-panel"] { margin-top: var(--s3); padding: var(--s2) var(--s4); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: none; }
 [data-testid="handover-panel"] > summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; gap: var(--s2); color: var(--ink); }
 [data-testid="handover-panel"] > summary .sub { margin: 0; font-size: var(--fs-sm); }

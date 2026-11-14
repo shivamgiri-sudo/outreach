@@ -59,7 +59,7 @@ export default function LeadFlows({ lead, onChanged }) {
       {isOwner() && runs !== null && startable.length > 0 && (     /* enrolling in a flow is an owner change on the server */
         <div className="row">
           <label htmlFor={`lead-flow-${lead.id}`} className="sr-only">Start a flow</label>
-          <select id={`lead-flow-${lead.id}`} style={{ flex: 1, width: "auto" }} value={pick} onChange={(e) => setPick(e.target.value)}>
+          <select id={`lead-flow-${lead.id}`} className="u-flex1 u-w-auto" value={pick} onChange={(e) => setPick(e.target.value)}>
             <option value="">Start a flow…</option>
             {startable.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>

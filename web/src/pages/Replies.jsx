@@ -141,7 +141,7 @@ export default function Replies() {
         </div>
       )}
       <div className="row u-mb-12 u-wrap">
-        <label className="row u-gap-8"><input type="checkbox" style={{ width: "auto" }} checked={onlyAction} onChange={(e) => setOnlyAction(e.target.checked)} /> Only ones that need a person</label>
+        <label className="row u-gap-8"><input type="checkbox" className="u-w-auto" checked={onlyAction} onChange={(e) => setOnlyAction(e.target.checked)} /> Only ones that need a person</label>
         <select aria-label="Kind of reply" value={label} onChange={(e) => setLabel(e.target.value)}>
           <option value="">All kinds</option>
           {(data?.labels || []).map((l) => <option key={l} value={l}>{LABEL_WORDS[l] || l}{data?.counts[l] ? ` (${data.counts[l]})` : ""}</option>)}

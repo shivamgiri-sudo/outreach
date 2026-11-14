@@ -4,6 +4,7 @@ import { istLabel } from "../time.js";
 import { useConfirm } from "../Dialog.jsx";
 import SuperAdminSecurity from "./SuperAdminSecurity.jsx";
 import Abbr from "../components/Abbr.jsx";
+import { DataTable } from "../ui/index.js";
 
 // Setup > Security. Owners: the "require two-step login" switch, who has it on (with a reset), and every login's
 // history. Workspace admins: the history of their own workspaces' logins only (the server filters it too).
@@ -65,24 +66,24 @@ function LoginHistory() {
       <p className="sub u-m0">Every sign-in attempt, sign-out and password reset (times in <Abbr term="IST">IST</Abbr>). Five failed sign-ins in a row for one login within 15 minutes alert the owners.</p>
       <div className="card u-m-12-0 u-p-12">
         <div className="row u-wrap u-gap-8">
-          <select aria-label="Person" value={f.person} onChange={(e) => set("person", e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Person" value={f.person} onChange={(e) => set("person", e.target.value)} className="u-w-auto">
             <option value="">Everyone</option>{(data?.people || []).map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
-          <select aria-label="Result" value={f.result} onChange={(e) => set("result", e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Result" value={f.result} onChange={(e) => set("result", e.target.value)} className="u-w-auto">
             <option value="">Success or failed</option><option value="success">Success</option><option value="failure">Failed</option><option value="pending">Waiting for code</option>
           </select>
-          <select aria-label="Event" value={f.event} onChange={(e) => set("event", e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Event" value={f.event} onChange={(e) => set("event", e.target.value)} className="u-w-auto">
             <option value="">Every event</option>{Object.entries(EVENTS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
-          <label className="row u-gap-4 u-m0">From <input type="date" aria-label="From (IST day)" value={f.date_from} onChange={(e) => set("date_from", e.target.value)} style={{ width: "auto" }} /></label>
-          <label className="row u-gap-4 u-m0">To <input type="date" aria-label="To (IST day)" value={f.date_to} onChange={(e) => set("date_to", e.target.value)} style={{ width: "auto" }} /></label>
+          <label className="row u-gap-4 u-m0">From <input type="date" aria-label="From (IST day)" value={f.date_from} onChange={(e) => set("date_from", e.target.value)} className="u-w-auto" /></label>
+          <label className="row u-gap-4 u-m0">To <input type="date" aria-label="To (IST day)" value={f.date_to} onChange={(e) => set("date_to", e.target.value)} className="u-w-auto" /></label>
           {Object.values(f).some(Boolean) && <button className="btn ghost" onClick={() => { setF(EMPTY); setOffset(0); }}>Clear</button>}
         </div>
       </div>
       {error && <div className="tip error" role="alert">{error}</div>}
       <div className="card table-card u-p0">
         {!data ? <p className="empty">Loading…</p> : data.items.length === 0 ? <p className="empty">Nothing recorded for these filters.</p> : (
-          <div className="table-scroll"><table data-testid="login-table">
+          <div className="table-scroll"><DataTable data-testid="login-table">
             <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>Login</th><th>Event</th><th>Result</th><th>Two-step</th><th>Address</th><th>Browser</th></tr></thead>
             <tbody>{data.items.map((r) => {
               const [tone, label] = RESULTS[r.result] || ["", r.result];
@@ -98,7 +99,7 @@ function LoginHistory() {
                 </tr>
               );
             })}</tbody>
-          </table></div>
+          </DataTable></div>
         )}
       </div>
       {data && data.total > PAGE && (

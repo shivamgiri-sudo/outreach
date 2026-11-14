@@ -83,7 +83,7 @@ export default function TwoStepCard() {
         <>
           <p className="sub u-m-4-0">{st.recovery_left} of 8 recovery codes left.</p>
           <form className="row u-wrap" onSubmit={(e) => { e.preventDefault(); run(() => api.twoStepRecovery(off.code).then((r) => { setCodes(r.recovery_codes); setOff({ ...off, code: "" }); load(); })); }}>
-            <input aria-label="Code from your app" {...codeInputProps} value={off.code} onChange={(e) => setOff({ ...off, code: e.target.value })} style={{ width: 120 }} />
+            <input aria-label="Code from your app" {...codeInputProps} value={off.code} onChange={(e) => setOff({ ...off, code: e.target.value })} className="u-width-120" />
             <button className="btn ghost" type="submit">Make new recovery codes</button>
           </form>
           {!st.required && (

@@ -16,7 +16,7 @@ export function LeadOwner({ lead, onChanged }) {
     <div className="row u-m-8-0 u-wrap" data-testid="lead-owner">
       <label htmlFor={`owner-${lead.id}`} className="u-m0"><b>Owner</b></label>
       {canEdit ? (
-        <select id={`owner-${lead.id}`} value={lead.owner || ""} onChange={(e) => change(e.target.value)} style={{ width: "auto", minWidth: 160 }}>
+        <select id={`owner-${lead.id}`} value={lead.owner || ""} onChange={(e) => change(e.target.value)} className="u-w-auto u-minwidth-160">
           <option value="">Nobody yet</option>
           {choices.map((n) => <option key={n} value={n}>{n}</option>)}
         </select>

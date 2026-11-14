@@ -36,7 +36,7 @@ function TeamSettings({ onSaved }) {
       ))}
       <button className="btn ghost" onClick={() => setCfg({ ...cfg, team: [...cfg.team, { name: "", email: "", role: "" }] })}>Add a person</button>
       <label className="row u-fw4 u-mt-12">
-        <input type="checkbox" style={{ width: "auto" }} checked={!!cfg.notify_email} onChange={(e) => setCfg({ ...cfg, notify_email: e.target.checked })} />
+        <input type="checkbox" className="u-w-auto" checked={!!cfg.notify_email} onChange={(e) => setCfg({ ...cfg, notify_email: e.target.checked })} />
         Also email each person their reminders (needs an email provider connected under Integrations)
       </label>
       <div className="row u-mt-8"><button className="btn" onClick={save}>Save team</button>{message && <span className="sub">{message}</span>}</div>

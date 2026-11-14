@@ -51,8 +51,8 @@ function Editor({ data, onSaved, onCancel }) {
       <p className="sub u-m0">Use {"{{first_name}}"}, {"{{rep}}"}, {"{{role}}"} and {"{{company}}"}; they are filled in for each lead. Your own details ({"{{my_company}}"}, {"{{my_product}}"}, {"{{my_value_1}}"}…{"{{my_value_3}}"}, {"{{my_cta}}"}) come from Setup → Brand &amp; offer. Only say what is true today.</p>
       {script.map((s, i) => (
         <div key={i} className="row" style={{ alignItems: "flex-start" }}>
-          <input aria-label={`Line ${i + 1} title`} value={s.title} style={{ maxWidth: 160 }} onChange={(e) => set(script, setScript, i, "title", e.target.value)} />
-          <textarea aria-label={`Line ${i + 1} text`} rows={2} value={s.text} style={{ flex: 1 }} onChange={(e) => set(script, setScript, i, "text", e.target.value)} />
+          <input aria-label={`Line ${i + 1} title`} value={s.title} className="u-maxwidth-160" onChange={(e) => set(script, setScript, i, "title", e.target.value)} />
+          <textarea aria-label={`Line ${i + 1} text`} rows={2} value={s.text} className="u-flex1" onChange={(e) => set(script, setScript, i, "text", e.target.value)} />
           <button type="button" className="btn ghost" aria-label={`Remove line ${i + 1}`} onClick={() => setScript(script.filter((_, j) => j !== i))}>Remove</button>
         </div>
       ))}
@@ -60,8 +60,8 @@ function Editor({ data, onSaved, onCancel }) {
       <h4 className="u-m-8-0-0">If they say…</h4>
       {objections.map((o, i) => (
         <div key={i} className="row" style={{ alignItems: "flex-start" }}>
-          <input aria-label={`Objection ${i + 1}`} value={o.q} style={{ maxWidth: 220 }} onChange={(e) => set(objections, setObjections, i, "q", e.target.value)} />
-          <textarea aria-label={`Answer ${i + 1}`} rows={2} value={o.a} style={{ flex: 1 }} onChange={(e) => set(objections, setObjections, i, "a", e.target.value)} />
+          <input aria-label={`Objection ${i + 1}`} value={o.q} className="u-maxwidth-220" onChange={(e) => set(objections, setObjections, i, "q", e.target.value)} />
+          <textarea aria-label={`Answer ${i + 1}`} rows={2} value={o.a} className="u-flex1" onChange={(e) => set(objections, setObjections, i, "a", e.target.value)} />
           <button type="button" className="btn ghost" aria-label={`Remove objection ${i + 1}`} onClick={() => setObjections(objections.filter((_, j) => j !== i))}>Remove</button>
         </div>
       ))}

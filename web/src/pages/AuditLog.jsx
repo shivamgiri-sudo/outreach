@@ -3,6 +3,7 @@ import { ops } from "../opsApi.js";
 import { istLabel } from "../time.js";
 import DownloadButton from "../DownloadButton.jsx";
 import Abbr from "../components/Abbr.jsx";
+import { DataTable } from "../ui/index.js";
 
 // Owner only: who did what and when (stage moves, Send for real, bulk actions, erasures, logins, workspaces, settings).
 const EMPTY = { action: "", by: "", q: "", from: "", to: "" };
@@ -60,22 +61,22 @@ export default function AuditLog() {
       </div>
       <div className="card u-m-12-0 u-p-12">
         <div className="row u-wrap u-gap-8">
-          <select aria-label="Action" value={f.action} onChange={(e) => set("action", e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Action" value={f.action} onChange={(e) => set("action", e.target.value)} className="u-w-auto">
             {GROUPS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
-          <select aria-label="Person" value={f.by} onChange={(e) => set("by", e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Person" value={f.by} onChange={(e) => set("by", e.target.value)} className="u-w-auto">
             <option value="">Anyone</option>{(data?.people || []).map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
           <input aria-label="Search what or detail" placeholder="Search what changed" value={f.q} onChange={(e) => set("q", e.target.value)} style={{ flex: "1 1 160px" }} />
-          <label className="row u-gap-4 u-m0">From <input type="date" aria-label="From (IST day)" value={f.from} onChange={(e) => set("from", e.target.value)} style={{ width: "auto" }} /></label>
-          <label className="row u-gap-4 u-m0">To <input type="date" aria-label="To (IST day)" value={f.to} onChange={(e) => set("to", e.target.value)} style={{ width: "auto" }} /></label>
+          <label className="row u-gap-4 u-m0">From <input type="date" aria-label="From (IST day)" value={f.from} onChange={(e) => set("from", e.target.value)} className="u-w-auto" /></label>
+          <label className="row u-gap-4 u-m0">To <input type="date" aria-label="To (IST day)" value={f.to} onChange={(e) => set("to", e.target.value)} className="u-w-auto" /></label>
           {Object.values(f).some(Boolean) && <button className="btn ghost" onClick={() => { setF(EMPTY); setOffset(0); }}>Clear</button>}
         </div>
       </div>
       {error && <div className="tip error" role="alert">{error}</div>}
       <div className="card table-card u-p0">
         {!data ? <p className="empty">Loading…</p> : data.items.length === 0 ? <p className="empty">Nothing recorded for these filters.</p> : (
-          <div className="table-scroll"><table data-testid="audit-table">
+          <div className="table-scroll"><DataTable data-testid="audit-table">
             <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>Who</th><th>Action</th><th>What</th><th>Detail</th></tr></thead>
             <tbody>{data.items.map((r, i) => (
               <tr key={`${r.at}-${i}`}>
@@ -86,7 +87,7 @@ export default function AuditLog() {
                 <td data-label="Detail"><small>{r.detail}</small></td>
               </tr>
             ))}</tbody>
-          </table></div>
+          </DataTable></div>
         )}
       </div>
       {data && data.total > PAGE && (

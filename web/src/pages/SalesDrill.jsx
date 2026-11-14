@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import DrawerShell from "../DrawerShell.jsx";
 import { sales } from "../salesApi.js";
 import { inr } from "../salesFormat.js";
+import { DataTable } from "../ui/index.js";
 
 export default function SalesDrill({ drillKey, title, filters, onClose }) {
   const [state, setState] = useState({ loading: true });
@@ -25,7 +26,7 @@ export default function SalesDrill({ drillKey, title, filters, onClose }) {
       {state.error && <div className="tip error" role="alert">{state.error}</div>}
       {state.rows && (state.rows.length === 0 ? <p className="empty">No leads behind this number.</p> : (
         <div className="table-card u-xauto">
-          <table data-testid="sf-drill-table">
+          <DataTable data-testid="sf-drill-table">
             <thead><tr><th>ID</th><th>Company</th><th>Owner</th><th>Stage</th><th className="u-right">Value / month</th></tr></thead>
             <tbody>
               {state.rows.map((r) => (
@@ -36,7 +37,7 @@ export default function SalesDrill({ drillKey, title, filters, onClose }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         </div>
       ))}
     </DrawerShell>

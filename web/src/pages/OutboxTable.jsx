@@ -5,6 +5,7 @@ import { istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import { OriginPill, WhyList } from "./SendWhy.jsx";
 import Abbr from "../components/Abbr.jsx";
+import { DataTable } from "../ui/index.js";
 
 const STATUS_PILL = { sent: "ok", delivered: "ok", dry_run: "", failed: "warn", provider_error: "warn" };
 const STATUS_LABEL = { dry_run: "practice", provider_error: "provider problem" };
@@ -100,7 +101,7 @@ export default function OutboxTable({ refreshKey }) {
         {!data ? <p className="empty">Loading…</p> : data.items.length === 0 ? (
           <p className="empty">{any ? "No emails match these filters." : "Nothing queued yet. Start a sequence from a lead, then click Run."}</p>
         ) : (
-          <table data-testid="outbox-table">
+          <DataTable data-testid="outbox-table">
             <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>To</th><th>Step</th><th>Subject</th><th>Sent by</th><th>Status</th><th /></tr></thead>
             <tbody>{data.items.map((m) => (
               <Fragment key={m.key}>
@@ -122,7 +123,7 @@ export default function OutboxTable({ refreshKey }) {
               {why === m.key && <tr data-testid="why-row"><td colSpan={7}><b>Why it was sent</b><WhyList lines={m.why} /></td></tr>}
               </Fragment>
             ))}</tbody>
-          </table>
+          </DataTable>
         )}
       </div>
       {data && data.total > 0 && (

@@ -88,7 +88,7 @@ export function SplitDialog({ list, onClose, onDone }) {
                 <input type="checkbox" checked={picked.includes(n)} onChange={() => toggle(n)} /> {n}
               </label>
               {mode === "count" && picked.includes(n) && (
-                <input type="number" min="0" aria-label={`Leads for ${n}`} style={{ width: 90 }} value={counts[n] ?? ""} onChange={(e) => setCounts({ ...counts, [n]: e.target.value })} />
+                <input type="number" min="0" aria-label={`Leads for ${n}`} className="u-width-90" value={counts[n] ?? ""} onChange={(e) => setCounts({ ...counts, [n]: e.target.value })} />
               )}
             </div>
           ))}

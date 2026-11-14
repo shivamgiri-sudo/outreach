@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "../api.js";
 import DownloadButton from "../DownloadButton.jsx";
 import { useConfirm } from "../Dialog.jsx";
+import { DataTable } from "../ui/index.js";
 
 const NAMES = {
   leads: "Leads", outbox: "Emails sent or practised", inbox: "Replies received", tasks: "Tasks", activities: "Logged calls, meetings, notes",
@@ -19,14 +20,14 @@ function Summary({ plan }) {
         {" "}Connection keys and login passwords included: <b>{plan.backup.includes_secrets ? "yes" : "no"}</b>.
       </p>
       <div className="table-card">
-        <table className="stack-table" data-testid="restore-summary">
+        <DataTable  tableClass="stack-table" data-testid="restore-summary">
           <thead><tr><th>What</th><th>Now</th><th>After the restore</th></tr></thead>
           <tbody>
             {plan.collections.filter((c) => c.now || c.after).map((c) => (
               <tr key={c.name}><td data-label="What">{NAMES[c.name] || c.name}</td><td data-label="Now">{c.now}</td><td data-label="After the restore">{c.after}</td></tr>
             ))}
           </tbody>
-        </table>
+        </DataTable>
       </div>
       <p className="sub u-m-8-0-4">{plan.will_replace} {plan.pre_restore_copy}</p>
       <ul className="steps">{plan.notes.map((n) => <li key={n}>{n}</li>)}</ul>

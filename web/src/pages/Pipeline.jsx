@@ -4,6 +4,7 @@ import { ErrorState } from "../states.jsx";
 import { sourceLabel, stageLabel } from "../labels.js";
 import { Donut, HBars, SERIES, TrendChart } from "../charts.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
+import { DataTable } from "../ui/index.js";
 
 // Where every lead stands now: total -> enriched -> attempted -> connected, what the connected ones said, call
 // outcomes, channels, stages, a daily trend, and the same funnel per owner and per source. Every number opens its leads.
@@ -23,7 +24,7 @@ function GroupTable({ title, rows, nameOf, onPick, testid }) {
     <div className="card table-card u-p0 u-mt-16">
       <h3 className="u-m-16-16-8">{title}</h3>
       {rows.length === 0 ? <p className="empty">No leads.</p> : (
-        <div className="table-scroll"><table data-testid={testid}>
+        <div className="table-scroll"><DataTable data-testid={testid}>
           <thead><tr><th>{title.replace("By ", "")}</th>{COLS.map((c) => <th key={c}>{STEP[c].replace("Asked for follow-up", "Follow-up")}</th>)}</tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={r.name}><td><b>{nameOf(r.name)}</b></td>
@@ -31,7 +32,7 @@ function GroupTable({ title, rows, nameOf, onPick, testid }) {
                 {r.rates[c] !== undefined && r[c] > 0 && <small className="sub-inline"> {r.rates[c]}%</small>}</td>)}
             </tr>
           ))}</tbody>
-        </table></div>
+        </DataTable></div>
       )}
     </div>
   );
@@ -53,13 +54,13 @@ function Drill({ pick, period, added, onClose }) {
       {error && <ErrorState message="Could not load these leads." detail={error} onRetry={load} />}
       {!data && !error && <p className="empty">Loading…</p>}
       {data && (data.leads.length === 0 ? <p className="empty">No leads.</p> : (
-        <div className="table-scroll"><table>
+        <div className="table-scroll"><DataTable>
           <thead><tr><th>Company</th><th>Name</th><th>Phone</th><th>Email</th><th>Stage</th><th>Owner</th></tr></thead>
           <tbody>{data.leads.map((l) => (
             <tr key={l.id}><td><button className="link" onClick={() => setLead(l.id)}>{l.company || "—"}</button></td><td>{l.name}</td>
               <td>{l.phone}</td><td>{l.email}</td><td>{stageLabel(l.stage)}</td><td>{l.owner || "—"}</td></tr>
           ))}</tbody>
-        </table></div>
+        </DataTable></div>
       ))}
       {data && data.count > data.leads.length && <p className="sub">Showing the newest {data.leads.length} of {data.count}.</p>}
       {lead && <LeadDrawer id={lead} ids={data.leads.map((l) => l.id)} onClose={() => setLead(null)} />}

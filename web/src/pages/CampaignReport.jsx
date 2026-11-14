@@ -1,4 +1,5 @@
 import { istLabel } from "../time.js";
+import { DataTable } from "../ui/index.js";
 
 export const STATUS = {
   draft: ["", "Draft"], running: ["ok", "Runs every weekday"], paused: ["warn", "Paused"], done: ["", "Done"],
@@ -64,7 +65,7 @@ export function PreviewTable({ rows }) {
   if (!rows?.length) return <p className="sub u-mt-12">The preview found no companies. Check the errors above or add sources.</p>;
   return (
     <div className="card table-card u-mt-12">
-      <table className="leads-table" data-testid="preview-table">
+      <DataTable  tableClass="leads-table" data-testid="preview-table">
         <thead><tr><th>Company</th><th>Contact</th><th>Found by</th><th>Score</th><th>What would happen</th><th>Ready for email?</th></tr></thead>
         <tbody>
           {rows.map((r, i) => (
@@ -81,7 +82,7 @@ export function PreviewTable({ rows }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </div>
   );
 }

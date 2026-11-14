@@ -68,11 +68,11 @@ export function HandoverPanel({ owners, onDone }) {
     <details className="card" style={{ padding: "8px 12px", marginBottom: 12 }} data-testid="handover-panel">
       <summary className="u-pointer"><b>Hand over a person’s leads</b> <span className="sub">(someone is leaving or changing role)</span></summary>
       <div className="row u-gap-8 u-mt-8 u-wrap">
-        <select aria-label="Take leads from" value={from} onChange={(e) => { setFrom(e.target.value); reset(); }} style={{ width: "auto" }}>
+        <select aria-label="Take leads from" value={from} onChange={(e) => { setFrom(e.target.value); reset(); }} className="u-w-auto">
           <option value="">Leads of…</option>{owners.map((n) => <option key={n} value={n}>{n}</option>)}</select>
-        <select aria-label="Give leads to" value={to} onChange={(e) => { setTo(e.target.value); reset(); }} style={{ width: "auto" }}>
+        <select aria-label="Give leads to" value={to} onChange={(e) => { setTo(e.target.value); reset(); }} className="u-w-auto">
           <option value="">Give to…</option>{owners.filter((n) => n !== from).map((n) => <option key={n} value={n}>{n}</option>)}</select>
-        <select aria-label="Only this stage" value={stage} onChange={(e) => { setStage(e.target.value); reset(); }} style={{ width: "auto" }}>
+        <select aria-label="Only this stage" value={stage} onChange={(e) => { setStage(e.target.value); reset(); }} className="u-w-auto">
           <option value="">Every stage</option>{Object.keys(STAGE_LABELS).map((k) => <option key={k} value={k}>{stageLabel(k)}</option>)}</select>
         <label className="check-row u-m0"><input type="checkbox" checked={untouched} onChange={(e) => { setUntouched(e.target.checked); reset(); }} /> Only leads not yet contacted</label>
         <button className="btn ghost" disabled={!from || !to || busy} onClick={check}>{busy && !plan ? "Checking…" : "Check how many"}</button>

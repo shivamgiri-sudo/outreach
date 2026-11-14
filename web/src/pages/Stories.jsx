@@ -25,7 +25,7 @@ export default function Stories() {
           <label>Result (real numbers only)</label><textarea rows={3} value={form.result} onChange={(e) => set("result", e.target.value)} />
           <label>Quote (optional)</label><input value={form.quote} onChange={(e) => set("quote", e.target.value)} />
           <label className="row u-fw4">
-            <input type="checkbox" style={{ width: "auto" }} checked={form.permission} onChange={(e) => set("permission", e.target.checked)} />
+            <input type="checkbox" className="u-w-auto" checked={form.permission} onChange={(e) => set("permission", e.target.checked)} />
             The customer allowed us to share this
           </label>
           <button className="btn" disabled={!form.title.trim()} onClick={add}>Save story</button>

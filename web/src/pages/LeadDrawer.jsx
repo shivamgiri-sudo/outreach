@@ -200,7 +200,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
       {isLandline(lead) && <div className="tip" data-testid="wa-landline">This lead's phone is a landline: call it, but WhatsApp and SMS are not sent to it.</div>}
       {canWrite() && <>
       <div className="row">
-        <select aria-label="WhatsApp message" value={waTemplate} onChange={(e) => setWaTemplate(e.target.value)} style={{ flex: 1 }}>
+        <select aria-label="WhatsApp message" value={waTemplate} onChange={(e) => setWaTemplate(e.target.value)} className="u-flex1">
           <option value="first_after_yes">First message after yes</option>
           <option value="first_after_yes_hinglish">First message after yes (Hinglish)</option>
           <option value="nudge_demo_not_opened">Nudge: demo not opened</option>
@@ -211,7 +211,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
         <button className="btn ghost" onClick={() => act(async () => { const r = await api.sendWhatsapp(id_, waTemplate, waText); setWaText("");
           say(waMode?.mode === "live" ? "WhatsApp sent." : "Practised (not sent): the WhatsApp message is in Outbox → WhatsApp messages."); return r; })}>Send</button>
       </div>
-      {waTemplate === "custom" && <textarea aria-label="Your WhatsApp message" rows={2} style={{ marginTop: 8 }} value={waText} onChange={(e) => setWaText(e.target.value)} placeholder="Your message" />}
+      {waTemplate === "custom" && <textarea aria-label="Your WhatsApp message" rows={2} className="u-mt-8" value={waText} onChange={(e) => setWaText(e.target.value)} placeholder="Your message" />}
       </>}
 
       <h3>LinkedIn</h3>

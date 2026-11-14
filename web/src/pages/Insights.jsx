@@ -4,6 +4,7 @@ import { ops } from "../opsApi.js";
 import { ErrorState } from "../states.jsx";
 import { sourceLabel, stageLabel, useSourceRegistry } from "../labels.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import { DataTable } from "../ui/index.js";
 
 const STAGE_COLUMNS = ["new", "contacted", "engaged", "interested", "call_done", "customer", "unsubscribed", "disqualified"];
 const money = (n) => (n == null ? "—" : `₹${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`);
@@ -70,24 +71,24 @@ export default function Insights({ range, embedded = false }) {
         <div className="card u-p0 u-xauto">
           <h3 className="u-m-16">By lead source</h3>
           {d.by_source.length === 0 ? <p className="empty">No data yet.</p> : (
-            <table>
+            <DataTable>
               <thead><tr><th>Source</th><th>Leads</th><th>Replied</th><th>Interested</th><th>Customers</th><th>Cost per lead</th><th>Cost per customer</th></tr></thead>
               <tbody>{d.by_source.map((s) => (
                 <tr key={s.source}><td>{sourceLabel(s.source)}</td><td>{s.leads}</td><td>{s.replied}</td><td>{s.interested}</td><td>{s.customers}</td>
                   <td>{money(s.cost_per_lead)}</td><td>{money(s.cost_per_customer)}</td></tr>
               ))}</tbody>
-            </table>
+            </DataTable>
           )}
         </div>
         <div className="card u-p0 u-xauto" data-testid="stage-by-source">
           <h3 className="u-m-16">Stage by source</h3>
           {d.by_source.length === 0 ? <p className="empty">No data yet.</p> : (
-            <table>
+            <DataTable>
               <thead><tr><th>Source</th>{STAGE_COLUMNS.map((st) => <th key={st}>{stageLabel(st)}</th>)}</tr></thead>
               <tbody>{d.by_source.map((s) => (
                 <tr key={s.source}><td>{sourceLabel(s.source)}</td>{STAGE_COLUMNS.map((st) => <td key={st}>{s.stages?.[st] || 0}</td>)}</tr>
               ))}</tbody>
-            </table>
+            </DataTable>
           )}
         </div>
         <div className="card">
@@ -104,10 +105,10 @@ export default function Insights({ range, embedded = false }) {
         <div className="card u-p0 u-xauto">
           <h3 className="u-m-16">Top leads right now</h3>
           {d.top_leads.length === 0 ? <p className="empty">No leads yet.</p> : (
-            <table>
+            <DataTable>
               <thead><tr><th>Company</th><th>Score</th><th>Stage</th></tr></thead>
               <tbody>{d.top_leads.map((l) => <tr key={l.id}><td>{l.company}</td><td>{l.score}</td><td>{l.stage}</td></tr>)}</tbody>
-            </table>
+            </DataTable>
           )}
         </div>
       </div>

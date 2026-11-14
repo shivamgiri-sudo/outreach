@@ -134,7 +134,7 @@ export default function Templates() {
           <p className="sub">Each email goes out designed (logo, layout) with the same words, plus a plain-text version. Pick the sequence when you start a lead (contact panel); lists and campaigns use the default.</p>
           <div className="row u-wrap u-gap-8 u-mb-12">
             {(isOwner() || isWorkspaceAdmin()) && <button className="btn" onClick={newSequence}>New sequence</button>}
-            <label className="row u-gap-8 u-m0"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} style={{ width: "auto" }} /> Show archived</label>
+            <label className="row u-gap-8 u-m0"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="u-w-auto" /> Show archived</label>
           </div>
           {list.map((s) => <SequenceCard key={s.id} s={s} onOpen={setEditing} onDuplicate={duplicate} onArchive={archive} onPreview={preview} onDefault={makeDefault} />)}
         </>

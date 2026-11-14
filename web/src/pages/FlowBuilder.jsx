@@ -4,7 +4,7 @@ import WorkspaceTag from "./sequences/WorkspaceTag.jsx";
 import { istLabel } from "../time.js";
 import { useConfirm } from "../Dialog.jsx";
 import FlowEditor from "./flows/FlowEditor.jsx";
-import { PageHeader } from "../ui/index.js";
+import { PageHeader, DataTable } from "../ui/index.js";
 
 const STATUS = { active: ["ok", "Active"], paused: ["warn", "Paused"], draft: ["", "Draft"] };
 const TRIGGER_WORDS = {
@@ -63,7 +63,7 @@ function FlowList({ onOpen }) {
       {error && <div className="tip error" role="alert">{error}</div>}
       {maker && <div className="row u-mb-16 u-wrap">
         {isOwner() && spaces.length > 1 && <label className="row u-gap-8 u-m0">Workspace
-          <select aria-label="Workspace of a new flow" value={space} onChange={(e) => setSpace(e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Workspace of a new flow" value={space} onChange={(e) => setSpace(e.target.value)} className="u-w-auto">
             {spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>}
         <button type="button" className="btn" onClick={() => setPicking(!picking)} aria-expanded={picking}>New from template</button>
         <button type="button" className="btn ghost" onClick={() => create(() => api.createFlow({ name: "Untitled flow", ...(into ? { workspace: into } : {}) }))}>Blank flow</button>
@@ -87,7 +87,7 @@ function FlowList({ onOpen }) {
         {flows === null ? <p className="empty">Loading…</p> : flows.length === 0 ? (
           <p className="empty">{maker ? "No flows yet. Start from a template: the cold email one is the same as today's sequence." : "No flows yet."}</p>
         ) : (
-          <table className="stack-table">
+          <DataTable  tableClass="stack-table">
             <thead><tr><th>Flow</th><th>Status</th><th>Starts when</th><th>Active leads</th><th>Last edited</th><th /></tr></thead>
             <tbody>
               {flows.map((f) => {
@@ -106,7 +106,7 @@ function FlowList({ onOpen }) {
                 );
               })}
             </tbody>
-          </table>
+          </DataTable>
         )}
       </div>
     </>

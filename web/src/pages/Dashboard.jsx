@@ -7,7 +7,7 @@ import LeadDrawer from "./LeadDrawer.jsx";
 import FindLeadsDrawer, { FindLeadsCard, setPendingLeadIds } from "./FindLeads.jsx";
 import DashboardPeriod from "./DashboardPeriod.jsx";
 import DashboardAssignment from "./DashboardAssignment.jsx";
-import { Button, CardHeader, PageHeader, Stat } from "../ui/index.js";
+import { Button, CardHeader, PageHeader, Stat, DataTable } from "../ui/index.js";
 
 const KIND_ICON = { problem: "flame", task: "mail", call: "phone", nudge: "gift", start: "send" };
 
@@ -58,7 +58,7 @@ function SourceCard({ data }) {
           <button className="btn ghost" onClick={() => { window.location.hash = "integrations?tab=capture"; }}>Connect lead capture</button></p>
       ) : (
         <div className="table-scroll">
-          <table className="source-table">
+          <DataTable  tableClass="source-table">
             <thead><tr><th>Source</th><th>Leads</th><th>New (7 days)</th><th>Hot</th><th>Customers</th></tr></thead>
             <tbody>
               {rows.map((r) => (
@@ -77,7 +77,7 @@ function SourceCard({ data }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         </div>
       )}
     </div>

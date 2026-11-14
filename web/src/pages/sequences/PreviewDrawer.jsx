@@ -21,7 +21,7 @@ export default function PreviewDrawer({ shown, onClose, onSend }) {
             e.preventDefault();
             onSend(e.target.elements.to.value).then((r) => setNote(`Preview sent to ${r.to}.`)).catch((err) => setNote(err.message));
           }}>
-            <input name="to" type="email" aria-label="Send this preview to" placeholder="Send this preview to (your email)" required style={{ flex: 1, minWidth: 0 }} />
+            <input name="to" type="email" aria-label="Send this preview to" placeholder="Send this preview to (your email)" required className="u-flex1 u-min0" />
             <button className="btn">Send preview</button>
           </form>
         )}

@@ -2,6 +2,7 @@
 // The choice maps to the import's own behaviour: skip those rows, or let the import fill empty fields of the lead you already have.
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
+import { DataTable } from "../ui/index.js";
 
 const KIND = { exists: "Already in the app", in_file: "Repeats an earlier row", likely: "Looks like a lead you have" };
 
@@ -20,13 +21,13 @@ export default function ImportDuplicates({ body, choice, setChoice }) {
       </div>
       {data.flagged === 0 ? <p>No duplicates found.</p> : (
         <>
-          <div className="table-scroll"><table>
+          <div className="table-scroll"><DataTable>
             <thead><tr><th>Row</th><th>What we found</th><th>Matches</th><th>Why</th></tr></thead>
             <tbody>{data.rows.map((r) => (
               <tr key={r.row}><td>{r.row}</td><td>{KIND[r.kind]}</td>
                 <td>{r.match_lead_id ? <a href={`#leads?lead=${r.match_lead_id}`}>{r.match_company || "Open lead"}{r.owner ? ` (${r.owner})` : ""}</a> : r.kind === "in_file" ? `Row ${r.same_as_row}` : "A lead you cannot open"}</td>
                 <td>{r.matched_by || ""}</td></tr>))}</tbody>
-          </table></div>
+          </DataTable></div>
           {data.flagged > data.shown && <p className="sub">Showing the first {data.shown} of {data.flagged}.</p>}
           <fieldset style={{ marginTop: 10, border: 0, padding: 0 }}>
             <legend>What should the import do with them?</legend>

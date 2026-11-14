@@ -48,7 +48,7 @@ export default function PromptGenerator() {
           <label>Do (preferences; cannot relax the honesty rules)</label><input value={spec.dos} onChange={(e) => set("dos", e.target.value)} />
           <label>Don't</label><input value={spec.donts} onChange={(e) => set("donts", e.target.value)} />
           <label className="row u-fw4 u-mt-12">
-            <input type="checkbox" style={{ width: "auto" }} checked={!!spec.use_ai} onChange={(e) => set("use_ai", e.target.checked)} />
+            <input type="checkbox" className="u-w-auto" checked={!!spec.use_ai} onChange={(e) => set("use_ai", e.target.checked)} />
             Write it with Claude (richer wording; the honesty rules are still added by the app)
           </label>
           {canWrite() && <button className="btn u-mt-12" onClick={generate} disabled={busy}>{busy ? "Writing…" : "Generate prompt"}</button>}

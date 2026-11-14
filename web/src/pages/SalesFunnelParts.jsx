@@ -2,6 +2,7 @@
 import { FunnelChart, Gauge } from "../salesCharts.jsx";
 import { changeText, days, hours, inr, inrShort, num, pct } from "../salesFormat.js";
 import Abbr, { Stage } from "../components/Abbr.jsx";
+import { DataTable } from "../ui/index.js";
 
 export function Tile({ label, value, change, previous, money, drill, onDrill, id }) {
   const c = changeText(change);
@@ -49,7 +50,7 @@ export function FunnelHealth({ data, onDrill }) {
         </div>
         <div className="card table-card-inner">
           <h4>Stage conversion</h4>
-          <table data-testid="sf-conversions">
+          <DataTable data-testid="sf-conversions">
             <thead><tr><th>From → to</th><th className="u-right">Count</th><th className="u-right">Rate</th></tr></thead>
             <tbody>
               {data.conversions.map((c) => (
@@ -57,7 +58,7 @@ export function FunnelHealth({ data, onDrill }) {
                   <td className="u-right">{num(c.fromCount)} → {num(c.toCount)}</td><td className="u-right"><b>{pct(c.rate)}</b></td></tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         </div>
       </div>
       <div className="card u-mt-16">
@@ -67,7 +68,7 @@ export function FunnelHealth({ data, onDrill }) {
         </div>
         {!reasons.length ? <p className="empty">No leads were lost in this range.</p> : (
           <div className="table-card u-xauto">
-            <table data-testid="sf-leakage">
+            <DataTable data-testid="sf-leakage">
               <thead><tr><th>Lost at stage</th>{reasons.map((r) => <th key={r} className="u-right">{r}</th>)}</tr></thead>
               <tbody>
                 {Object.keys(rows).map((stage) => (
@@ -78,7 +79,7 @@ export function FunnelHealth({ data, onDrill }) {
                     })}</tr>
                 ))}
               </tbody>
-            </table>
+            </DataTable>
           </div>
         )}
       </div>
@@ -97,8 +98,8 @@ export function SpeedDiscipline({ data, onDrill }) {
           <div className="sf-pair-nums"><div><b>{hours(sp.avgHours)}</b><small>average</small></div><div><b>{hours(sp.medianHours)}</b><small>median</small></div></div>
           <p className="sub">Created to first human contact. {sp.measured} lead{sp.measured === 1 ? "" : "s"} measured.</p>
           {sp.byOwner.length > 0 && (
-            <table><thead><tr><th>Owner</th><th className="u-right">Avg</th><th className="u-right">Median</th></tr></thead>
-              <tbody>{sp.byOwner.map((o) => <tr key={o.owner}><td>{o.owner}</td><td className="u-right">{hours(o.avgHours)}</td><td className="u-right">{hours(o.medianHours)}</td></tr>)}</tbody></table>
+            <DataTable><thead><tr><th>Owner</th><th className="u-right">Avg</th><th className="u-right">Median</th></tr></thead>
+              <tbody>{sp.byOwner.map((o) => <tr key={o.owner}><td>{o.owner}</td><td className="u-right">{hours(o.avgHours)}</td><td className="u-right">{hours(o.medianHours)}</td></tr>)}</tbody></DataTable>
           )}
         </div>
         <div className="card">
@@ -113,10 +114,10 @@ export function SpeedDiscipline({ data, onDrill }) {
           <p className="sub">Open, no activity for more than the configured days; biggest value first.</p>
           {st.rows.length === 0 ? <p className="empty">Nothing is stalled.</p> : (
             <div style={{ maxHeight: 260, overflow: "auto" }}>
-              <table><tbody>{st.rows.slice(0, 50).map((r) => (
+              <DataTable><tbody>{st.rows.slice(0, 50).map((r) => (
                 <tr key={r.id}><td><a href={`#leads?lead=${encodeURIComponent(r.id)}`}>{r.company || r.id}</a><br /><small className="sub-inline">{r.owner || "—"} · <Stage status={r.stage} /></small></td>
                   <td className="u-right">{inr(r.value)}<br /><small className="sub-inline">{days(r.daysIdle)} idle</small></td></tr>
-              ))}</tbody></table>
+              ))}</tbody></DataTable>
             </div>
           )}
         </div>

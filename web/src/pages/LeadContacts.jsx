@@ -54,10 +54,10 @@ export function ContactPoints({ lead, onLead }) {
           : <span className="sub-inline">not added (use Edit details)</span>}</p>
       {edit && (
         <form className="row u-gap-8 u-wrap" onSubmit={add} >
-          <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Add a" style={{ width: "auto" }}>
+          <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Add a" className="u-w-auto">
             <option value="phone">Another phone</option><option value="email">Another email</option>
           </select>
-          <input value={value} onChange={(e) => setValue(e.target.value)} placeholder={kind === "phone" ? "98765 43210" : "name@company.com"} aria-label={kind === "phone" ? "Phone number" : "Email address"} style={{ flex: 1, minWidth: 160 }} />
+          <input value={value} onChange={(e) => setValue(e.target.value)} placeholder={kind === "phone" ? "98765 43210" : "name@company.com"} aria-label={kind === "phone" ? "Phone number" : "Email address"} className="u-flex1 u-minwidth-160" />
           <button className="btn ghost" disabled={!value.trim()}>Add</button>
         </form>
       )}

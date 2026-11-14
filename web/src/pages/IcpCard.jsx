@@ -40,7 +40,7 @@ export default function IcpCard() {
       </label>
       <div className="row u-mt-8">
         <label htmlFor="icp-min">Lowest score allowed
-          <input id="icp-min" type="number" min="0" max="100" value={min} onChange={(e) => setMin(e.target.value)} style={{ width: 90 }} /></label>
+          <input id="icp-min" type="number" min="0" max="100" value={min} onChange={(e) => setMin(e.target.value)} className="u-width-90" /></label>
         <label className="row u-gap-8"><input type="checkbox" checked={gate} onChange={(e) => setGate(e.target.checked)} /> Hold back leads below it</label>
         <button className="btn" disabled={busy} onClick={save}>Save</button>
         <button className="btn ghost" disabled={busy || !text.trim()} onClick={score}>Score 30 leads with AI</button>

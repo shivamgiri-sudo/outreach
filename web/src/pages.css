@@ -48,3 +48,24 @@ p .linkish, p button.link, .sub .linkish, .tip .linkish, .empty .linkish { displ
 .list-members .c-pick { width: 44px; } .list-members .c-lead { width: 230px; } .list-members .c-contact { width: 200px; }
 .list-members td { vertical-align: top; }
 .row-actions .btn, td .row-actions .btn + .btn { margin: 0; }
+
+/* a title sitting on top of a table inside a card */
+.table-title { margin: 0; padding: var(--s4) var(--s4) var(--s2); }
+.page-toolbar .field { flex: 0 0 auto; display: flex; align-items: center; gap: var(--s2); }
+.page-toolbar .field input[type="date"] { width: 150px; margin: 0; }
+.page-toolbar > .field-wrap { flex: 2 1 200px; }
+.page-toolbar > select { flex: 0 1 160px; }
+.clip { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Call log */
+.call-log-table { table-layout: fixed; min-width: 980px; }
+.call-log-table .c-when { width: 170px; } .call-log-table .c-who { width: 110px; } .call-log-table .c-lead { width: 200px; }
+.call-log-table .c-phone { width: 130px; } .call-log-table .c-chan { width: 90px; } .call-log-table .c-out { width: 130px; }
+.call-log-table .c-notes { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+@media (max-width: 760px) {
+  .page-toolbar .field { flex: 1 1 calc(50% - 8px); }
+  .page-toolbar .field input[type="date"] { width: 100%; flex: 1; }
+  .page-toolbar > .field-wrap { flex: 1 1 100%; }
+}
+.tile-grid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+.big-n { display: block; font: 700 var(--fs-2xl)/1.2 var(--font-head); }

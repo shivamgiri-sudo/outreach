@@ -64,7 +64,7 @@ function ColourField({ id, label, value, onChange, checkText }) {
       <div className="row" style={{ flexWrap: "nowrap" }}>
         <input type="color" aria-label={`${label} picker`} value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#0369a1"} style={{ width: 48, padding: 2 }}
           onChange={(e) => onChange(e.target.value)} />
-        <input id={id} value={value} maxLength={7} onChange={(e) => onChange(e.target.value)} style={{ maxWidth: 120 }} />
+        <input id={id} value={value} maxLength={7} onChange={(e) => onChange(e.target.value)} className="u-maxwidth-120" />
       </div>
       {checkText && ratio !== null && (
         <p className="sub" role="status" style={{ margin: "4px 0 0", color: ratio < 3 ? "var(--hot)" : undefined }}>

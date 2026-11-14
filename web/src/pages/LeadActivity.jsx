@@ -167,7 +167,7 @@ export default function LeadActivity({ lead, onChanged }) {
           </p>
           {canWrite() && <div className="row u-wrap u-gap-8" aria-label="Log a call in one click">
             <small className="sub">Log a call{phones.length > 1 ? " to" : ""}:</small>
-            {phones.length > 1 && <select value={to} onChange={(e) => setDialled(e.target.value)} aria-label="Number called" data-testid="call-number" style={{ width: "auto" }}>
+            {phones.length > 1 && <select value={to} onChange={(e) => setDialled(e.target.value)} aria-label="Number called" data-testid="call-number" className="u-w-auto">
               {phones.map((p) => <option key={p} value={p}>{p}{p === lead.phone ? " (main)" : ""}</option>)}</select>}
             {QUICK_CALLS.map(([v, l]) => <button key={v} className={`btn ghost${QUICK_CONFIRM[v] ? " danger" : ""}`} onClick={async () => {
               if (v === "call_back") { setCbFor("call_back"); setCallback(new Date(Date.now() + 390 * 60000).toISOString().slice(0, 16)); return; }

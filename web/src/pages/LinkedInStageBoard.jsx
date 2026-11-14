@@ -3,6 +3,7 @@ import { api, getRole, isOwner } from "../api.js";
 import { istLabel } from "../time.js";
 import { saveBlob } from "../DownloadButton.jsx";
 import { accountName, forgetLinkedinAccounts } from "./LinkedInAccountPick.jsx";
+import { DataTable } from "../ui/index.js";
 
 // Owner setting: each lead owner's default LinkedIn account (a lead with no account of its own uses its owner's).
 function OwnerDefaults({ accounts, onMessage }) {
@@ -23,7 +24,7 @@ function OwnerDefaults({ accounts, onMessage }) {
     <details className="section" data-testid="li-owner-defaults">
       <summary>Default LinkedIn account per lead owner</summary>
       <p className="sub">A lead sends from its owner's account unless a person picked an account for that lead. Leads with neither go to whichever account takes them first.</p>
-      <table><thead><tr><th>Lead owner</th><th>Sends from</th></tr></thead><tbody>
+      <DataTable><thead><tr><th>Lead owner</th><th>Sends from</th></tr></thead><tbody>
         {owners.map((o) => (
           <tr key={o}><td>{o}</td><td>
             <select aria-label={`Default LinkedIn account for ${o}`} value={map[o] || ""} disabled={!isOwner()}
@@ -31,7 +32,7 @@ function OwnerDefaults({ accounts, onMessage }) {
               <option value="">Any account</option>
               {accounts.map((a) => <option key={a.account} value={a.account}>{accountName(accounts, a.account)}</option>)}
             </select></td></tr>))}
-      </tbody></table>
+      </tbody></DataTable>
       {isOwner() && <button className="btn u-mt-8" onClick={save}>Save defaults</button>}
     </details>
   );
@@ -56,7 +57,7 @@ function StageList({ stage, account, owner, accounts, onMessage }) {
     <div className="table-wrap u-mt-8" data-testid="li-stage-list">
       {canExport && <button className="btn ghost" onClick={download} data-testid="li-stage-csv">Download CSV</button>}
       {items.length === 0 ? <p className="sub">Nobody here.</p> : (
-        <table><thead><tr><th>Company</th><th>Person</th><th>Account</th><th>Owner</th><th>Last step</th><th>Next due</th></tr></thead>
+        <DataTable><thead><tr><th>Company</th><th>Person</th><th>Account</th><th>Owner</th><th>Last step</th><th>Next due</th></tr></thead>
           <tbody>{items.map((i) => (
             <tr key={i.lead_id}>
               <td><a href={`#leads?lead=${i.lead_id}`}>{i.company || "—"}</a></td>
@@ -66,7 +67,7 @@ function StageList({ stage, account, owner, accounts, onMessage }) {
               <td>{i.last_step ? `Step ${i.last_step}` : "—"}{i.last_step_at && <><br /><small>{istLabel(i.last_step_at)}</small></>}
                 {i.stopped_reason && <><br /><small>Reason: {i.stopped_reason}</small></>}</td>
               <td>{i.next_due ? istLabel(i.next_due) : "—"}</td>
-            </tr>))}</tbody></table>)}
+            </tr>))}</tbody></DataTable>)}
     </div>
   );
 }
@@ -87,24 +88,24 @@ export default function LinkedInStageBoard({ onMessage }) {
       <div className="row u-between">
         <b>LinkedIn stages <span className="pill">{board.total}</span></b>
         <span className="row">
-          <select aria-label="Stage board account" value={account} onChange={(e) => setAccount(e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Stage board account" value={account} onChange={(e) => setAccount(e.target.value)} className="u-w-auto">
             <option value="">All accounts</option><option value="__none">Not assigned</option>
             {cols.map((a) => <option key={a} value={a}>{accountName(accounts, a)}</option>)}
           </select>
-          <select aria-label="Stage board owner" value={owner} onChange={(e) => setOwner(e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Stage board owner" value={owner} onChange={(e) => setOwner(e.target.value)} className="u-w-auto">
             <option value="">All owners</option><option value="__none">No owner</option>
             {board.owners.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
         </span>
       </div>
       <div className="table-wrap">
-        <table><thead><tr><th>Stage</th><th>Total</th>{cols.map((a) => <th key={a}>{accountName(accounts, a)}</th>)}<th>Not assigned</th><th>Next due</th></tr></thead>
+        <DataTable><thead><tr><th>Stage</th><th>Total</th>{cols.map((a) => <th key={a}>{accountName(accounts, a)}</th>)}<th>Not assigned</th><th>Next due</th></tr></thead>
           <tbody>{board.stages.map((s) => (
             <tr key={s.key} className="click" onClick={() => setOpen(open === s.key ? "" : s.key)} aria-expanded={open === s.key}>
               <td><button className="linkish">{s.label}</button></td><td><b>{s.total}</b></td>
               {cols.map((a) => <td key={a}>{s.by_account[a] || 0}</td>)}<td>{s.by_account[""] || 0}</td>
               <td>{s.next_due ? istLabel(s.next_due) : "—"}</td>
-            </tr>))}</tbody></table>
+            </tr>))}</tbody></DataTable>
       </div>
       {open && <StageList stage={open} account={account} owner={owner} accounts={accounts} onMessage={onMessage} />}
       <OwnerDefaults accounts={accounts} onMessage={onMessage} />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ops } from "../opsApi.js";
 import { istLabel } from "../time.js";
+import { DataTable } from "../ui/index.js";
 
 // Owner only: is everything running? Background jobs, sending, queue, backups, LinkedIn agent, database, version.
 const JOB_LABEL = { autorun: "Background timer (every 15 min)", sequence_run: "Last sequence run", imap_poll: "Reply mailbox check (IMAP)",
@@ -37,7 +38,7 @@ export default function SystemHealth() {
         {h.ok ? "Everything looks fine." : <>Needs a look: {h.problems.join(" ")}</>}
       </div>
       <div className="card table-card u-p0">
-        <div className="table-scroll"><table>
+        <div className="table-scroll"><DataTable>
           <tbody>
             {!h.autorun_enabled && <Row label="Background jobs">Off on this server (OUTREACH_AUTORUN is not 1): sends run only when someone presses Run.</Row>}
             {Object.entries(h.jobs).map(([job, j]) => (
@@ -65,7 +66,7 @@ export default function SystemHealth() {
             <Row label="Database">{h.store.kind}{h.store.secrets_encrypted ? " · saved keys encrypted" : " · saved keys not encrypted (set OUTREACH_SECRET_KEY)"}</Row>
             <Row label="Version">{h.version.commit || "unknown (set OUTREACH_GIT_COMMIT when deploying)"}</Row>
           </tbody>
-        </table></div>
+        </DataTable></div>
       </div>
     </div>
   );

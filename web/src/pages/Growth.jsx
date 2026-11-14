@@ -108,7 +108,7 @@ export default function Growth() {
           {partners.map((p) => (
             <div className="row u-mb-8" key={p.id} >
               <span className="u-flex1"><b>{p.name}</b> <small>{p.kind} · {p.contact}</small></span>
-              {canWrite() ? <select style={{ width: "auto" }} value={p.status} onChange={(e) => api.partnerStatus(p.id, e.target.value).then(load).catch((err) => setMessage(err.message))}>
+              {canWrite() ? <select className="u-w-auto" value={p.status} onChange={(e) => api.partnerStatus(p.id, e.target.value).then(load).catch((err) => setMessage(err.message))}>
                 {PARTNER_STATUSES.map((s) => <option key={s}>{s}</option>)}
               </select> : <span className="pill">{p.status}</span>}
             </div>

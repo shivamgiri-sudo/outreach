@@ -31,7 +31,7 @@ export default function CallRetrySettings() {
         After the most tries, the lead leaves the queue and is marked <b>Retries used up</b>. A connected call (or any real answer) cancels the waiting retry.
         If you choose a call-back time yourself on a dropped call, your time is used instead.</p>
       <label>Most tries per lead (1 to 20)
-        <input type="number" min="1" max="20" value={max} onChange={(e) => setMax(e.target.value)} style={{ width: 90, marginLeft: 6 }} /></label>
+        <input type="number" min="1" max="20" value={max} onChange={(e) => setMax(e.target.value)} className="u-width-90 u-ml-8" /></label>
       {KINDS.map(([k, label]) => (
         <label key={k} className="u-block u-mt-8">{label}: waits in minutes, separated by commas (5 to 10080, up to 6)
           <input value={text[k] || ""} onChange={(e) => setText({ ...text, [k]: e.target.value })} aria-label={`${label} waits in minutes`} placeholder="180, 1440" /></label>

@@ -94,7 +94,7 @@ export default function LeadMeetings({ lead, onChanged }) {
         <form className="inline-form" onSubmit={book}>
           {active.id === "booking_link" && (
             <label className="row u-fw4">
-              <input type="checkbox" style={{ width: "auto" }} checked={!!form.fixed} onChange={(e) => setForm({ ...form, fixed: e.target.checked })} />
+              <input type="checkbox" className="u-w-auto" checked={!!form.fixed} onChange={(e) => setForm({ ...form, fixed: e.target.checked })} />
               Pick a fixed time and email them a calendar invite with this link
             </label>
           )}
@@ -121,7 +121,7 @@ export default function LeadMeetings({ lead, onChanged }) {
                 <p className="field-help">We email the lead a calendar invite (.ics) with the join link. With real sending off it is kept as practice.</p>
               ) : SENDS_OWN.includes(active.id) && (
                 <label className="row u-fw4">
-                  <input type="checkbox" style={{ width: "auto" }} checked={!!form.sendInvite} onChange={(e) => setForm({ ...form, sendInvite: e.target.checked })} />
+                  <input type="checkbox" className="u-w-auto" checked={!!form.sendInvite} onChange={(e) => setForm({ ...form, sendInvite: e.target.checked })} />
                   Send our own invite too ({active.title} already emails them one)
                 </label>
               )}

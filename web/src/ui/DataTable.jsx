@@ -2,7 +2,7 @@
 // maxHeight (css length) makes the header stick inside the box; density="dense" tightens rows.
 export function DataTable({ children, maxHeight, density, className = "", tableClass = "", label, ...rest }) {
   return (
-    <div className={`ui-table-wrap ${className}`} style={maxHeight ? { "--table-max": maxHeight } : undefined} role="region" aria-label={label} tabIndex={0}>
+    <div className={`ui-table-wrap ${className}`} style={maxHeight ? { "--table-max": maxHeight } : undefined} role={label ? "region" : undefined} aria-label={label} tabIndex={0}>
       <table className={`ui-table ${density === "dense" ? "dense" : ""} ${tableClass}`} {...rest}>{children}</table>
     </div>
   );

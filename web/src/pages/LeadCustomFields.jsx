@@ -82,8 +82,8 @@ export function LeadCustomData({ lead, onSaved }) {
         <dl className="kv">
           {fields.map((f) => (
             <div key={f.key} className="row u-between">
-              <dt className="sub" style={{ margin: 0 }}>{f.label}</dt>
-              <dd style={{ margin: 0 }}>{f.type === "url" && lead.custom?.[f.key]
+              <dt className="sub u-m0">{f.label}</dt>
+              <dd className="u-m0">{f.type === "url" && lead.custom?.[f.key]
                 ? <a href={lead.custom[f.key]} target="_blank" rel="noopener noreferrer">{lead.custom[f.key]}</a>
                 : showValue(f, lead.custom?.[f.key]) || <small className="sub">—</small>}</dd>
             </div>
@@ -130,14 +130,14 @@ export function CustomFilters({ fields, value, onChange }) {
       const type = f.type === "number" ? "number" : "date";
       return (
         <span key={f.key} className="row u-gap-4 u-m0">
-          <input type={type} aria-label={`${f.label} from`} placeholder={`${f.label} from`} value={cur.min || ""} style={{ width: 130 }}
+          <input type={type} aria-label={`${f.label} from`} placeholder={`${f.label} from`} value={cur.min || ""} className="u-width-130"
             onChange={(e) => set(f.key, { ...cur, min: e.target.value })} />
-          <input type={type} aria-label={`${f.label} to`} placeholder="to" value={cur.max || ""} style={{ width: 100 }}
+          <input type={type} aria-label={`${f.label} to`} placeholder="to" value={cur.max || ""} className="u-width-100"
             onChange={(e) => set(f.key, { ...cur, max: e.target.value })} />
         </span>
       );
     }
-    return <input key={f.key} aria-label={`Filter by ${f.label}`} placeholder={f.label} value={value[f.key] || ""} style={{ width: 140 }}
+    return <input key={f.key} aria-label={`Filter by ${f.label}`} placeholder={f.label} value={value[f.key] || ""} className="u-width-140"
       onChange={(e) => set(f.key, e.target.value)} />;
   });
 }

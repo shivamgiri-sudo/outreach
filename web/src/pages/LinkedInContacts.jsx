@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
+import { DataTable } from "../ui/index.js";
 
 // Who in this lead's workspace is connected to, or has contacted, this LinkedIn person (app/linkedin_dupes.contacts).
 // Other workspaces never appear: the server only returns the lead's own workspace.
@@ -15,7 +16,7 @@ export default function LinkedInContacts({ lead }) {
   return (
     <div className="card u-m-8-0" data-testid="li-contacts" >
       <b>Who has contacted this person on LinkedIn</b>
-      <table className="table u-mt-8">
+      <DataTable  tableClass="table u-mt-8">
         <thead><tr><th>Teammate</th><th>Workspace</th><th>LinkedIn ID</th><th>Status</th><th>Sent</th><th>Connected</th></tr></thead>
         <tbody>{rows.map((r) => (
           <tr key={r.lead_id}>
@@ -27,7 +28,7 @@ export default function LinkedInContacts({ lead }) {
             <td data-label="Connected">{r.connected_on || "—"}</td>
           </tr>))}
         </tbody>
-      </table>
+      </DataTable>
     </div>
   );
 }

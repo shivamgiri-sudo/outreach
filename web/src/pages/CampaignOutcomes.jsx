@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ops } from "../opsApi.js";
 import { stageLabel } from "../labels.js";
+import { DataTable } from "../ui/index.js";
 
 // What a campaign's leads did: sent, opened, replied, interested, meetings (rates are of the leads emailed).
 export function OutcomeLine({ o }) {
@@ -47,13 +48,13 @@ export function CampaignLeadsTable({ id, onOpen, onTotal, refreshKey }) {
     <>
       <div className="row u-wrap u-gap-8 u-mb-8" data-testid="campaign-lead-filters">
         <input aria-label="Search campaign leads" placeholder="Search company, contact, email" value={f.q} onChange={(e) => set("q", e.target.value)} style={{ flex: "1 1 180px" }} />
-        <select aria-label="Stage" value={f.stage} onChange={(e) => set("stage", e.target.value)} style={{ width: "auto" }}>
+        <select aria-label="Stage" value={f.stage} onChange={(e) => set("stage", e.target.value)} className="u-w-auto">
           <option value="">Any stage</option>{(data?.stages || []).map((s) => <option key={s} value={s}>{stageLabel(s)}</option>)}
         </select>
-        <select aria-label="Outreach state" value={f.state} onChange={(e) => set("state", e.target.value)} style={{ width: "auto" }}>
+        <select aria-label="Outreach state" value={f.state} onChange={(e) => set("state", e.target.value)} className="u-w-auto">
           {STATES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <select aria-label="Sort" value={f.sort} onChange={(e) => set("sort", e.target.value)} style={{ width: "auto" }}>
+        <select aria-label="Sort" value={f.sort} onChange={(e) => set("sort", e.target.value)} className="u-w-auto">
           <option value="score">Highest score first</option><option value="company">Company A–Z</option><option value="recent">Newest first</option>
         </select>
       </div>
@@ -62,7 +63,7 @@ export function CampaignLeadsTable({ id, onOpen, onTotal, refreshKey }) {
         {!data ? <p className="empty">Loading…</p> : data.items.length === 0 ? (
           <p className="empty">{data.all ? "No leads match these filters." : "No leads yet. Run the campaign to find some."}</p>
         ) : (
-          <table className="leads-table" data-testid="campaign-leads">
+          <DataTable  tableClass="leads-table" data-testid="campaign-leads">
             <thead><tr><th>Company</th><th>Contact</th><th>Stage</th><th>Score</th><th>Ready for email?</th></tr></thead>
             <tbody>
               {data.items.map((l) => (
@@ -76,7 +77,7 @@ export function CampaignLeadsTable({ id, onOpen, onTotal, refreshKey }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         )}
       </div>
       {data && data.total > PAGE_SIZE && (

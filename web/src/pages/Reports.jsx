@@ -8,7 +8,7 @@ import LeadDrawer from "./LeadDrawer.jsx";
 import ResponseTimes from "./ResponseTimes.jsx";
 import HelpLink from "../components/HelpLink.jsx";
 import Abbr from "../components/Abbr.jsx";
-import { PageHeader } from "../ui/index.js";
+import { PageHeader, DataTable } from "../ui/index.js";
 
 // Reports: the daily report (what was done each day), each person's numbers, and the full activity log with the exact
 // number / email / LinkedIn profile used. Download as CSV (owners and workspace admins).
@@ -57,7 +57,7 @@ export default function Reports() {
       <PeriodPicker value={period} onChange={setPeriod} range={data?.range} />
       <div className="row u-gap-12 u-wrap u-m-8-0">
         <label className="row u-gap-8 u-m0">Person
-          <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Person" data-testid="report-person" style={{ width: "auto" }}>
+          <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Person" data-testid="report-person" className="u-w-auto">
             <option value="">Everyone</option>
             {(data?.people || []).map((p) => <option key={p} value={p}>{p}</option>)}
           </select></label>
@@ -95,12 +95,12 @@ export default function Reports() {
                 <TrendChart days={[...data.days].reverse()} series={[{ key: "calls", label: "Calls", color: SERIES.blue }, { key: "calls_connected", label: "Connected", color: SERIES.teal },
                   { key: "emails_sent", label: "Emails", color: SERIES.violet }, { key: "interested", label: "Interested", color: SERIES.green }]} /></div>
               <div className="card table-card u-p0 u-mt-16">
-                <div className="table-scroll"><table data-testid="daily-table">
+                <div className="table-scroll"><DataTable data-testid="daily-table">
                   <thead><tr><th>Day</th>{DAY_COLS.map((c) => <th key={c}>{LABEL[c]}</th>)}</tr></thead>
                   <tbody>{data.days.map((d) => (
                     <tr key={d.day}><td><b>{istDay(d.day)}</b></td>{DAY_COLS.map((c) => <td key={c}>{d[c] || <span className="sub-inline">0</span>}</td>)}</tr>
                   ))}</tbody>
-                </table></div>
+                </DataTable></div>
               </div>
             </>
           )}
@@ -110,13 +110,13 @@ export default function Reports() {
                 {data.team.length ? <HBars rows={data.team.map((p) => ({ key: p.who, label: p.who, value: p.actions, color: SERIES.blue }))} onPick={(k) => { setWho(k); setTab("log"); }} />
                   : <p className="empty">Nothing done in this period.</p>}</div>
               <div className="card table-card u-p0 u-mt-16">
-                <div className="table-scroll"><table data-testid="team-report">
+                <div className="table-scroll"><DataTable data-testid="team-report">
                   <thead><tr><th>Person</th><th>Actions</th>{DAY_COLS.map((c) => <th key={c}>{LABEL[c]}</th>)}</tr></thead>
                   <tbody>{data.team.map((p) => (
                     <tr key={p.who}><td><button className="link" onClick={() => { setWho(p.who); setTab("log"); }}>{p.who}</button></td><td>{p.actions}</td>
                       {DAY_COLS.map((c) => <td key={c}>{p[c]}</td>)}</tr>
                   ))}</tbody>
-                </table></div>
+                </DataTable></div>
               </div>
             </>
           )}
@@ -124,13 +124,13 @@ export default function Reports() {
             <div className="card table-card u-p0">
               <div className="row" style={{ padding: "12px 16px", gap: 10, flexWrap: "wrap" }}>
                 <label className="row u-gap-8 u-m0">Show
-                  <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Action type" style={{ width: "auto" }}>
+                  <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Action type" className="u-w-auto">
                     {Object.entries(KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select></label>
                 <small className="sub-inline">{data.log_total} actions{data.log_total > data.log.length ? ` (newest ${data.log.length} shown; download for all)` : ""}</small>
               </div>
               {data.log.length === 0 ? <p className="empty">Nothing in this period.</p> : (
-                <div className="table-scroll"><table data-testid="activity-log">
+                <div className="table-scroll"><DataTable data-testid="activity-log">
                   <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>By</th><th>Lead</th><th>Action</th><th>Outcome</th><th>Number / email / profile used</th><th>Notes</th></tr></thead>
                   <tbody>{data.log.map((r, i) => (
                     <tr key={`${r.at}-${i}`}><td>{istDay(r.day)} {r.time_ist}</td><td>{r.who}</td>
@@ -139,7 +139,7 @@ export default function Reports() {
                       <td className="u-anywhere">{/^https?:\/\//i.test(r.where) ? <a href={r.where} target="_blank" rel="noopener noreferrer">{r.where.replace(/^https?:\/\/(www\.)?/, "")}</a> : r.where}</td>
                       <td><small>{r.notes}</small></td></tr>
                   ))}</tbody>
-                </table></div>
+                </DataTable></div>
               )}
             </div>
           )}

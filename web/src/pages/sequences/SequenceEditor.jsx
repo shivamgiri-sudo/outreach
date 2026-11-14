@@ -3,6 +3,7 @@ import { api, getWorkspace, isOwner, isWorkspaceAdmin } from "../../api.js";
 import StepEditor from "./StepEditor.jsx";
 import { humanDay, lintStep, stepTitle } from "./lint.js";
 import Abbr from "../../components/Abbr.jsx";
+import { DataTable } from "../../ui/index.js";
 
 const MAX_STEPS = 10;
 const UNSUB = "\n\nNot relevant? Unsubscribe: {{unsub_link}}";
@@ -24,7 +25,7 @@ function AbStats({ stats }) {
       <p className="sub">Winner rule: once every version has {r.min_sends_per_variant} real sends, the best reply rate wins if it has at least {r.min_replies} replies,
         leads by {r.min_lead_points}+ points and is {r.win_ratio}× the runner-up. After that only the winner is sent. Opens are shown, never used to decide.</p>
       <div className="table-scroll">
-        <table>
+        <DataTable>
           <thead><tr><th>Step</th><th>Version</th><th>Sent</th><th>Practice</th><th>Opens</th><th>Replies</th><th>Reply rate</th></tr></thead>
           <tbody>
             {tests.flatMap((s) => s.variants.map((v) => (
@@ -35,7 +36,7 @@ function AbStats({ stats }) {
               </tr>
             )))}
           </tbody>
-        </table>
+        </DataTable>
       </div>
     </div>
   );

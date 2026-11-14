@@ -5,7 +5,7 @@ import { istLabel } from "../time.js";
 import LeadQualityCard from "./LeadQualityCard.jsx";
 import DownloadButton from "../DownloadButton.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
-import { PageHeader } from "../ui/index.js";
+import { Button, Cell, DataTable, Field, Input, PageHeader, Segmented, Select } from "../ui/index.js";
 
 const OUTCOMES = ["connected", "no_answer", "busy", "call_back", "interested", "not_interested", "meeting_booked", "wrong_number", "call_disconnected", "inactive_number"];
 const CHANNELS = [["call", "Calls"], ["all", "All contact"], ["email", "Email"], ["whatsapp", "WhatsApp"], ["linkedin", "LinkedIn"]];
@@ -30,7 +30,10 @@ export default function CallLog() {
   useEffect(() => { const t = setTimeout(() => { setPage(1); setF((x) => (x.q === q.trim() ? x : { ...x, q: q.trim() })); }, 300); return () => clearTimeout(t); }, [q]);
 
   const set = (patch) => { setPage(1); setF((x) => ({ ...x, ...patch })); };
-  const preset = (from, to) => set({ from, to });
+  const PRESETS = { today: () => set({ from: today, to: today }), yesterday: () => set({ from: istDaysAgo(1), to: istDaysAgo(1) }),
+    week: () => set({ from: istDaysAgo(6), to: today }), all: () => set({ from: "", to: "" }) };
+  const range = f.from === today && f.to === today ? "today" : f.from === istDaysAgo(1) && f.to === istDaysAgo(1) ? "yesterday"
+    : f.from === istDaysAgo(6) && f.to === today ? "week" : !f.from && !f.to ? "all" : "";
 
   if (error && !data) return <ErrorState message="Could not load the call log" detail={error} onRetry={load} />;
   const rows = data?.rows || [];
@@ -42,39 +45,39 @@ export default function CallLog() {
       <PageHeader title="Call log"
         description={<>Every contact attempt across your leads, with who made it, when (IST), how it ended and the notes. You see only leads you can see.</>} />
 
-      <div className="row u-wrap u-gap-8 u-mb-12">
-        <button className={`tab-chip${f.from === today && f.to === today ? " on" : ""}`} onClick={() => preset(today, today)}>Today</button>
-        <button className={`tab-chip${f.from === istDaysAgo(1) && f.to === istDaysAgo(1) ? " on" : ""}`} onClick={() => preset(istDaysAgo(1), istDaysAgo(1))}>Yesterday</button>
-        <button className={`tab-chip${f.from === istDaysAgo(6) && f.to === today ? " on" : ""}`} onClick={() => preset(istDaysAgo(6), today)}>Last 7 days</button>
-        <button className={`tab-chip${!f.from && !f.to ? " on" : ""}`} onClick={() => preset("", "")}>All time</button>
-        <DownloadButton path={`/api/call-log/export?${exportQuery}`} filename="call-log.csv" label="Download CSV" testId="download-call-log"
-          title="The rows matching these filters, as a CSV that opens in Excel" />
+      <div className="page-toolbar">
+        <Segmented label="Date range" value={range} onChange={(id) => PRESETS[id]()}
+          items={[{ id: "today", label: "Today" }, { id: "yesterday", label: "Yesterday" }, { id: "week", label: "Last 7 days" }, { id: "all", label: "All time" }]} />
+        <span className="count">
+          <DownloadButton path={`/api/call-log/export?${exportQuery}`} filename="call-log.csv" label="Download CSV" testId="download-call-log"
+            title="The rows matching these filters, as a CSV that opens in Excel" />
+        </span>
       </div>
 
-      <div className="row u-wrap u-gap-8 u-mb-12">
-        <label>From <input type="date" aria-label="From date" value={f.from} max={f.to || undefined} onChange={(e) => set({ from: e.target.value })} /></label>
-        <label>To <input type="date" aria-label="To date" value={f.to} min={f.from || undefined} onChange={(e) => set({ to: e.target.value })} /></label>
-        <select aria-label="Caller" value={f.by} onChange={(e) => set({ by: e.target.value })}>
+      <div className="page-toolbar">
+        <Field label="From"><Input type="date" aria-label="From date" value={f.from} max={f.to || undefined} onChange={(e) => set({ from: e.target.value })} /></Field>
+        <Field label="To"><Input type="date" aria-label="To date" value={f.to} min={f.from || undefined} onChange={(e) => set({ to: e.target.value })} /></Field>
+        <Select aria-label="Caller" value={f.by} onChange={(e) => set({ by: e.target.value })}>
           <option value="">All callers</option>
           {(data?.callers || []).map((c) => <option key={c} value={c}>{c}</option>)}
           {f.by && !(data?.callers || []).includes(f.by) && <option value={f.by}>{f.by}</option>}
-        </select>
-        <select aria-label="Outcome" value={f.outcome} onChange={(e) => set({ outcome: e.target.value })}>
+        </Select>
+        <Select aria-label="Outcome" value={f.outcome} onChange={(e) => set({ outcome: e.target.value })}>
           <option value="">Any outcome</option>
           {OUTCOMES.map((o) => <option key={o} value={o}>{label(o)}</option>)}
-        </select>
-        <select aria-label="Channel" value={f.channel} onChange={(e) => set({ channel: e.target.value })}>
+        </Select>
+        <Select aria-label="Channel" value={f.channel} onChange={(e) => set({ channel: e.target.value })}>
           {CHANNELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
-        <input aria-label="Search" placeholder="Search company, name, phone, notes" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
+        </Select>
+        <Input icon="search" aria-label="Search" placeholder="Search company, name, phone, notes" value={q} onChange={(e) => setQ(e.target.value)} onClear={() => setQ("")} />
       </div>
 
       <LeadQualityCard />
       {data && data.summary.length > 0 && (
-        <div className="card u-mb-12" data-testid="call-summary">
-          <h3 className="u-mt-0">By caller</h3>
-          <div className="table-wrap">
-            <table>
+        <div className="card table-card u-mb-12" data-testid="call-summary">
+          <h3 className="table-title">By caller</h3>
+          <div>
+            <DataTable label="Calls by caller">
               <thead><tr><th>Caller</th><th>Calls</th><th>Connected</th><th>Unanswered</th><th>Interested</th><th>Meetings</th><th>Connect rate</th></tr></thead>
               <tbody>
                 {data.summary.map((s) => (
@@ -83,7 +86,7 @@ export default function CallLog() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </DataTable>
           </div>
         </div>
       )}
@@ -92,31 +95,31 @@ export default function CallLog() {
       {error && data && <p className="error" role="alert">{error}</p>}
       {data && rows.length === 0 && <Empty>No calls match these filters.</Empty>}
       {rows.length > 0 && (
-        <div className="card">
-          <div className="table-wrap">
-            <table data-testid="call-log-table">
-              <thead><tr><th>When (IST)</th><th>Caller</th><th>Lead</th><th>Phone</th><th>Channel</th><th>Outcome</th><th>Notes</th></tr></thead>
+        <div className="card table-card">
+          <div>
+            <DataTable tableClass="call-log-table" label="Call log" data-testid="call-log-table">
+              <thead><tr><th className="c-when">When (IST)</th><th className="c-who">Caller</th><th className="c-lead">Lead</th><th className="c-phone">Phone</th><th className="c-chan">Channel</th><th className="c-out">Outcome</th><th>Notes</th></tr></thead>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={r.id || `${r.lead_id}-${r.at}-${i}`} className="u-pointer" onClick={() => setOpen(r.lead_id)} tabIndex={0}
                     onKeyDown={(e) => { if (e.key === "Enter") setOpen(r.lead_id); }}>
-                    <td>{istLabel(r.at)}</td>
+                    <td><small className="clip" title={istLabel(r.at)}>{istLabel(r.at)}</small></td>
                     <td>{r.by || "Unknown"}</td>
-                    <td><b>{r.company || "(no company)"}</b>{r.contact_name ? <div className="sub">{r.contact_name}</div> : null}</td>
+                    <td><Cell title={r.company || "(no company)"} sub={r.contact_name || ""} /></td>
                     <td>{r.phone}</td>
                     <td>{r.channel}</td>
                     <td>{r.outcome ? <span className={`pill ${TONE[r.outcome] || ""}`}>{label(r.outcome)}</span> : ""}</td>
-                    <td style={{ maxWidth: 320, whiteSpace: "normal" }}>{r.notes}</td>
+                    <td className="c-notes" title={r.notes}>{r.notes}</td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </DataTable>
           </div>
-          <div className="row u-between u-mt-8">
+          <div className="pager" role="navigation" aria-label="Pages of calls">
             <span className="sub">{data.total} total · page {page} of {pages}</span>
-            <span className="row u-gap-8">
-              <button className="btn ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
-              <button className="btn ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</button>
+            <span className="row">
+              <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
+              <Button variant="secondary" size="sm" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</Button>
             </span>
           </div>
         </div>

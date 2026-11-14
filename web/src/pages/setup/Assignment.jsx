@@ -14,9 +14,9 @@ function Team({ team, owners, onChange, onRemove }) {
     <div className="card u-mb-12" data-testid="team-card">
       <div className="row u-wrap u-gap-8">
         <label htmlFor={`${id}-n`} className="sr-only">Team name</label>
-        <input id={`${id}-n`} placeholder="Team name" value={team.name} onChange={(e) => onChange({ ...team, name: e.target.value })} style={{ flex: 1, minWidth: 160 }} />
+        <input id={`${id}-n`} placeholder="Team name" value={team.name} onChange={(e) => onChange({ ...team, name: e.target.value })} className="u-flex1 u-minwidth-160" />
         <label className="row u-m0 u-gap-8">Daily cap
-          <input type="number" min="0" aria-label={`Daily cap for ${team.name || "team"}`} style={{ width: 80 }} value={team.daily_cap ?? ""} onChange={(e) => onChange({ ...team, daily_cap: e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0) })} />
+          <input type="number" min="0" aria-label={`Daily cap for ${team.name || "team"}`} className="u-width-80" value={team.daily_cap ?? ""} onChange={(e) => onChange({ ...team, daily_cap: e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0) })} />
         </label>
         <button className="btn ghost" onClick={onRemove} aria-label={`Remove team ${team.name || ""}`}>Remove</button>
       </div>
@@ -24,7 +24,7 @@ function Team({ team, owners, onChange, onRemove }) {
         <legend className="sub">Members</legend>
         <div className="chips">{owners.map((n) => (
           <label key={n} className="pill rec" style={{ cursor: "pointer", opacity: team.members.includes(n) ? 1 : 0.55 }}>
-            <input type="checkbox" checked={team.members.includes(n)} onChange={() => toggle(n)} style={{ marginRight: 4 }} />{n}
+            <input type="checkbox" checked={team.members.includes(n)} onChange={() => toggle(n)} className="u-mr-4" />{n}
           </label>))}
           {owners.length === 0 && <small className="sub">No team members yet. Add them under Team members.</small>}
         </div>
@@ -128,9 +128,9 @@ function AssignmentBody() {
         <p className="sub">The clock runs in working hours. A first touch is an email, WhatsApp or LinkedIn message sent, a call logged, a note or a meeting.</p>
         <div className="row u-wrap u-gap-16">
           <label className="row u-gap-8 u-m0"><input type="checkbox" checked={!!ft.alert} onChange={(e) => setFt({ alert: e.target.checked })} data-testid="ft-alert" /> Alert the owner after
-            <input type="number" min="1" aria-label="Alert after minutes" style={{ width: 80 }} value={ft.alert_minutes ?? ""} onChange={(e) => setFt({ alert_minutes: Math.max(1, parseInt(e.target.value, 10) || 1) })} /> minutes</label>
+            <input type="number" min="1" aria-label="Alert after minutes" className="u-width-80" value={ft.alert_minutes ?? ""} onChange={(e) => setFt({ alert_minutes: Math.max(1, parseInt(e.target.value, 10) || 1) })} /> minutes</label>
           <label className="row u-gap-8 u-m0"><input type="checkbox" checked={!!ft.reassign} onChange={(e) => setFt({ reassign: e.target.checked })} data-testid="ft-reassign" /> Move to the next person after
-            <input type="number" min="1" aria-label="Reassign after minutes" style={{ width: 80 }} value={ft.reassign_minutes ?? ""} onChange={(e) => setFt({ reassign_minutes: Math.max(1, parseInt(e.target.value, 10) || 1) })} /> minutes</label>
+            <input type="number" min="1" aria-label="Reassign after minutes" className="u-width-80" value={ft.reassign_minutes ?? ""} onChange={(e) => setFt({ reassign_minutes: Math.max(1, parseInt(e.target.value, 10) || 1) })} /> minutes</label>
         </div>
       </section>
 

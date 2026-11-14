@@ -5,7 +5,7 @@ import { ErrorState } from "../states.jsx";
 import { leadTerm, stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
-import { PageHeader } from "../ui/index.js";
+import { PageHeader, DataTable } from "../ui/index.js";
 
 const PAGE = 25;
 const SORTS = [["last_touch", "Last touch"], ["contacts", "Contacts"], ["score", "Best score"], ["health", "Company health"], ["name", "Name"]];
@@ -212,7 +212,7 @@ export default function Companies() {
         </div>
       ) : (
         <div className="card u-xauto u-p0">
-          <table data-testid="companies-table">
+          <DataTable data-testid="companies-table">
             <thead><tr><th>Company</th><th>Status</th><th>Contacts</th><th>Touches</th><th>Replies</th><th>Last touch</th><th>{leadTerm("open_roles")}</th><th>LinkedIn accepted</th><th>Owner</th></tr></thead>
             <tbody>
               {items.map((c) => (
@@ -225,7 +225,7 @@ export default function Companies() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         </div>
       ))}
       {total > PAGE && (

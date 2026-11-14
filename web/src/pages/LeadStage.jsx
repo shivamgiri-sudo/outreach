@@ -44,7 +44,7 @@ function ConsentForm({ lead, onSaved, onCancel }) {
       </label>
       {canMove && (
         <label className="row u-fw4 u-gap-8">
-          <input type="checkbox" style={{ width: "auto" }} checked={move} onChange={(e) => { setTouched(true); setMove(e.target.checked); }} />
+          <input type="checkbox" className="u-w-auto" checked={move} onChange={(e) => { setTouched(true); setMove(e.target.checked); }} />
           Move to Interested and create a call task
         </label>
       )}
@@ -84,7 +84,7 @@ export default function LeadStage({ lead, onLead, onError }) {
         {nextOk && <button className="btn" disabled={busy} onClick={() => move(next)}>Move to {stageLabel(next)}</button>}
         {consentChannels(lead).length < CHANNELS.length && <button className="btn ghost" onClick={() => setForm("consent")}>
           {lead.consent ? "Record consent for another channel" : "Record “yes” consent"}</button>}
-        <select aria-label="Move to stage" value={target} onChange={(e) => setTarget(e.target.value)} style={{ minWidth: 180 }}>
+        <select aria-label="Move to stage" value={target} onChange={(e) => setTarget(e.target.value)} className="u-minwidth-180">
           <option value="">Move to any stage…</option>
           {options.filter((o) => o.stage !== "unsubscribed").map((o) => (
             <option key={o.stage} value={o.stage} disabled={!o.allowed}>

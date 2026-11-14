@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, canWrite } from "../api.js";
 import { Modal } from "./setup/common.jsx";
+import { DataTable } from "../ui/index.js";
 
 export default function ImportConflicts({ importId }) {
   const [rows, setRows] = useState([]);
@@ -21,10 +22,10 @@ export default function ImportConflicts({ importId }) {
       </p>
       {open && (
         <Modal title="Rows skipped: already owned" description="These people already belong to someone else. They keep them; nothing was changed." onClose={() => setOpen(false)} testId="import-conflicts">
-          <div className="table-scroll"><table>
+          <div className="table-scroll"><DataTable>
             <thead><tr><th>Row in file</th><th>Lead</th><th>Owned by</th></tr></thead>
             <tbody>{rows.map((c) => <tr key={`${c.row}-${c.lead_id}`}><td>{c.row}</td><td>{c.lead_id}</td><td>{c.owner}</td></tr>)}</tbody>
-          </table></div>
+          </DataTable></div>
           <div className="row u-mt-12 u-end"><button className="btn" onClick={() => setOpen(false)}>Close</button></div>
         </Modal>
       )}

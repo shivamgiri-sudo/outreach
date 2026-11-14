@@ -5,6 +5,7 @@ import { rangeQuery } from "../opsApi.js";
 import { ErrorState } from "../states.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
 import Abbr from "../components/Abbr.jsx";
+import { DataTable } from "../ui/index.js";
 
 // Response times: how fast new leads get a first attempt and replies get an answer, against the targets, with the
 // leads that are waiting right now. Owners set the targets and who gets alerts, and can switch email tracking off.
@@ -49,13 +50,13 @@ function Waiting({ title, rows, unit, onOpen, testid }) {
     <div className="card table-card u-p0">
       <h3 className="u-m-16-16-8">{title} ({rows.length})</h3>
       {rows.length === 0 ? <p className="empty">Nobody is waiting. Well done.</p> : (
-        <div className="table-scroll"><table data-testid={testid}>
+        <div className="table-scroll"><DataTable data-testid={testid}>
           <thead><tr><th>Lead</th><th>Owner</th><th>Since (<Abbr term="IST">IST</Abbr>)</th><th>Waiting</th>{unit === "reply" && <th>Their reply</th>}</tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={`${r.lead_id}-${r.since}`}><td><button className="link" onClick={() => onOpen(r.lead_id)}>{r.company || "—"}</button></td><td>{r.owner}</td>
               <td>{ago(r.since)}</td><td><b>{hrs(r.hours)}</b></td>{unit === "reply" && <td><small>{r.reply}</small></td>}</tr>
           ))}</tbody>
-        </table></div>
+        </DataTable></div>
       )}
     </div>
   );
@@ -87,13 +88,13 @@ export default function ResponseTimes({ period }) {
       </div>
       {data.owners.length > 0 && (
         <div className="card table-card u-p0 u-mt-16">
-          <div className="table-scroll"><table data-testid="sla-owners">
+          <div className="table-scroll"><DataTable data-testid="sla-owners">
             <thead><tr><th>Owner</th><th>Typical first attempt</th><th>On time</th><th>Typical reply answer</th><th>On time</th><th>No attempt</th><th>Waiting replies</th></tr></thead>
             <tbody>{data.owners.map((o) => (
               <tr key={o.owner}><td><b>{o.owner}</b></td><td>{hrs(o.median_first_touch_hours)}</td><td>{o.first_touch_within_pct ?? "—"}{o.first_touch_within_pct != null && "%"}</td>
                 <td>{hrs(o.median_reply_hours)}</td><td>{o.reply_within_pct ?? "—"}{o.reply_within_pct != null && "%"}</td><td>{o.untouched}</td><td>{o.waiting}</td></tr>
             ))}</tbody>
-          </table></div>
+          </DataTable></div>
         </div>
       )}
       {isOwner() && <Settings targets={t} onSaved={load} />}

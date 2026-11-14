@@ -3,6 +3,7 @@ import { api, canAdminister } from "../api.js";
 import { sourceLabel } from "../labels.js";
 import { istLabel } from "../time.js";
 import { useConfirm } from "../Dialog.jsx";
+import { DataTable } from "../ui/index.js";
 
 // Invalid / consultant rates per source and per caller, why leads were rejected, and (managers) the week's marked leads to
 // review and restore. Tells you which data source is bad and which caller marks far more than the team.
@@ -28,20 +29,20 @@ export default function LeadQualityCard() {
       <summary><b>Lead quality</b> · {t.invalid} invalid ({t.invalid_rate}%) · {t.consultant} consultant ({t.consultant_rate}%) of {t.leads} leads
         {outliers.length > 0 && <span className="pill warn u-ml-8" data-testid="quality-outlier">Check {outliers.map((c) => c.caller).join(", ")}</span>}</summary>
       <div className="table-wrap u-mt-8">
-        <table>
+        <DataTable>
           <thead><tr><th>Source</th><th>Leads</th><th>Invalid</th><th>Invalid rate</th><th>Consultant</th><th>Consultant rate</th></tr></thead>
           <tbody>{d.sources.map((s) => <tr key={s.source}><td>{sourceLabel(s.source)}</td><td>{s.leads}</td><td>{s.invalid}</td>
             <td><span className={`pill ${s.invalid_rate >= 20 ? "err" : s.invalid_rate >= 10 ? "warn" : ""}`}>{s.invalid_rate}%</span></td><td>{s.consultant}</td><td>{s.consultant_rate}%</td></tr>)}</tbody>
-        </table>
+        </DataTable>
       </div>
       {d.reasons.length > 0 && <p className="sub u-mb-4">Why leads were rejected: {d.reasons.map((r) => `${d.reason_names[r.reason] || r.reason} ${r.count}`).join(" · ")}</p>}
       {d.callers.length > 0 && (
         <div className="table-wrap">
-          <table data-testid="quality-callers">
+          <DataTable data-testid="quality-callers">
             <thead><tr><th>Marked by</th><th>Invalid</th><th>Consultant</th><th>Calls made</th><th>Marked per call</th></tr></thead>
             <tbody>{d.callers.map((c) => <tr key={c.caller}><td>{c.caller}{c.outlier && <span className="pill warn u-ml-8" title="Marks far more leads than the team does: worth a conversation">High</span>}</td>
               <td>{c.invalid}</td><td>{c.consultant}</td><td>{c.calls}</td><td>{c.calls ? `${c.rate}%` : "—"}</td></tr>)}</tbody>
-          </table>
+          </DataTable>
         </div>
       )}
       {review && (
@@ -50,14 +51,14 @@ export default function LeadQualityCard() {
           {msg && <p className="sub u-m-4-0" role="status" >{msg}</p>}
           {review.rows.length === 0 ? <p className="sub">Nothing to review.</p> : (
             <div className="table-wrap">
-              <table>
+              <DataTable>
                 <thead><tr><th>Lead</th><th>Marked</th><th>Why</th><th>By</th><th>When (IST)</th><th /></tr></thead>
                 <tbody>{review.rows.map((r) => <tr key={r.lead_id}>
                   <td><b>{r.company}</b><div className="sub">{r.contact_name}</div></td><td><span className="pill warn">{r.kind === "invalid" ? "Invalid" : "Consultant"}</span></td>
                   <td>{r.kind === "invalid" ? (review.reason_names[r.reason] || r.reason || "—") : "—"}{r.note ? <div className="sub">{r.note}</div> : null}</td>
                   <td>{r.by}</td><td>{istLabel(r.at)}</td>
                   <td><button className="btn ghost" onClick={() => restore(r)} data-testid="quality-restore">Restore</button></td></tr>)}</tbody>
-              </table>
+              </DataTable>
             </div>
           )}
         </div>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { DOCS, LEGAL_PATHS, placeholdersOf } from "../legal/index.js";
 import "../legal.css";
+import { DataTable } from "../ui/index.js";
 
 const NAMES = { terms: "Terms of Service", privacy: "Privacy Policy", dpa: "Data Processing Agreement" };
 
@@ -10,10 +11,10 @@ function Block({ b }) {
   if (Array.isArray(b)) return <ul>{b.map((x, i) => <li key={i}>{x}</li>)}</ul>;
   return (
     <div className="legal-table-wrap" tabIndex={0} role="region" aria-label="Table, scrolls sideways on small screens">
-      <table>
+      <DataTable>
         <thead><tr>{b.head.map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
         <tbody>{b.rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody>
-      </table>
+      </DataTable>
     </div>
   );
 }

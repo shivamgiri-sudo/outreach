@@ -32,8 +32,8 @@ export function Donut({ parts, size = 150, label, onPick }) {
           offset += len;
           return el;
         })}
-        <text x="50%" y="48%" textAnchor="middle" fontSize="22" fontWeight="700" fill="var(--ink)">{total}</text>
-        <text x="50%" y="62%" textAnchor="middle" fontSize="11" fill="var(--muted)">{label}</text>
+        <text x="50%" y="48%" textAnchor="middle" fontSize="20" fontWeight="700" fill="var(--ink)">{total}</text>
+        <text x="50%" y="62%" textAnchor="middle" fontSize="12" fill="var(--muted)">{label}</text>
       </svg>
       <ul className="legend">
         {parts.map((p) => (
@@ -58,8 +58,8 @@ export function TrendChart({ days, series, height = 180 }) {
     <div>
       <svg viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label={`Daily trend over ${days.length} days: ${totals}`} data-testid="trend-chart">
         {ticks.map((t) => <g key={t}><line x1={pad.l} x2={width - pad.r} y1={y(t)} y2={y(t)} stroke="var(--line)" />
-          <text x={pad.l - 4} y={y(t) + 4} textAnchor="end" fontSize="10" fill="var(--muted)">{t}</text></g>)}
-        {days.map((d, i) => i % every === 0 && <text key={d.day} x={x(i)} y={height - 6} textAnchor="middle" fontSize="10" fill="var(--muted)">{d.day.slice(5)}</text>)}
+          <text x={pad.l - 4} y={y(t) + 4} textAnchor="end" fontSize="12" fill="var(--muted)">{t}</text></g>)}
+        {days.map((d, i) => i % every === 0 && <text key={d.day} x={x(i)} y={height - 6} textAnchor="middle" fontSize="12" fill="var(--muted)">{d.day.slice(5)}</text>)}
         {series.map((s) => (
           <g key={s.key}>
             <polyline fill="none" stroke={s.color} strokeWidth="2" points={days.map((d, i) => `${x(i)},${y(d[s.key] || 0)}`).join(" ")} />

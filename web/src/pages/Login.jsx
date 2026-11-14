@@ -168,7 +168,7 @@ export default function Login({ onSignedIn }) {
           ))}
         </ul>
         <p className="login-for">Built for {brand.is_default ? <img src="/bmi-logo.png" width="145" height="22" alt="BookMyInterview.ai" />
-          : brand.custom_logo ? <img src={brand.logo_url} height="22" style={{ width: "auto", maxWidth: 145 }} alt={brand.product_name} /> : <b>{brand.product_name}</b>}</p>
+          : brand.custom_logo ? <img src={brand.logo_url} height="22" className="u-w-auto u-maxwidth-145" alt={brand.product_name} /> : <b>{brand.product_name}</b>}</p>
       </section>
 
       <footer className="login-foot">© {new Date().getFullYear()} {brand.company_name} · {brand.app_name}</footer>

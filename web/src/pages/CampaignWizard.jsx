@@ -51,7 +51,7 @@ function Ready({ state, go }) {
 function Check({ checked, onChange, children, hint }) {
   return (
     <label className="row" style={{ fontWeight: 400, alignItems: "flex-start", margin: "10px 0 0", flexWrap: "nowrap" }}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ marginTop: 4 }} />
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="u-mt-4" />
       <span className="u-min0">{children}{hint && <small className="sub u-block u-m0">{hint}</small>}</span>
     </label>
   );
@@ -216,7 +216,7 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
           <MoreSources kind="discover" items={[...found].sort((a, b) => Number(!a.free) - Number(!b.free))} picked={s.extra || []} go={go}
             onPick={(v) => set("sources", "extra", v)} params={s.extra_params || {}} onParams={(v) => set("sources", "extra_params", v)} />
           <label htmlFor="camp-max">Most results per paid search, per run</label>
-          <input id="camp-max" type="number" min="1" max="100" style={{ maxWidth: 140 }} value={s.max_results} onChange={(e) => set("sources", "max_results", e.target.value)} />
+          <input id="camp-max" type="number" min="1" max="100" className="u-maxwidth-140" value={s.max_results} onChange={(e) => set("sources", "max_results", e.target.value)} />
           <label>Leads you already imported (optional)</label>
           <LeadPicker picked={s.csv_import_ids} onChange={(v) => set("sources", "csv_import_ids", v)} />
         </div>
@@ -235,7 +235,7 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
             <MoreSources kind="enrich" items={[...enrichers].sort((a, b) => Number(!a.free) - Number(!b.free))} picked={c.enrich.extra || []} go={go}
               onPick={(v) => set("enrich", "extra", v)} params={{}} onParams={() => {}} />
             <label htmlFor="camp-credits">Most credits to spend per run</label>
-            <input id="camp-credits" type="number" min="0" max="5000" style={{ maxWidth: 140 }} value={r.credit_cap ?? 100} onChange={(e) => set("rules", "credit_cap", e.target.value)} />
+            <input id="camp-credits" type="number" min="0" max="5000" className="u-maxwidth-140" value={r.credit_cap ?? 100} onChange={(e) => set("rules", "credit_cap", e.target.value)} />
             <p className="sub u-m-12-0-0">Only empty fields are filled, and each value keeps where it came from. Email check: {status?.email_verifier?.connected ? "your email verifier is used." : "format and business domain only (connect ZeroBounce or NeverBounce for a real check)."}</p>
           </div>
           <div className="card">
@@ -245,7 +245,7 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
             <Check checked={r.require_business_email} onChange={(v) => set("rules", "require_business_email", v)}>Only business emails (no Gmail, Yahoo…)</Check>
             <Check checked={r.skip_role_addresses} onChange={(v) => set("rules", "skip_role_addresses", v)}>Skip shared mailboxes (hr@, info@…)</Check>
             <label htmlFor="camp-cap">Most new leads per run</label>
-            <input id="camp-cap" type="number" min="1" max="200" style={{ maxWidth: 140 }} value={r.max_new_leads_per_run} onChange={(e) => set("rules", "max_new_leads_per_run", e.target.value)} />
+            <input id="camp-cap" type="number" min="1" max="200" className="u-maxwidth-140" value={r.max_new_leads_per_run} onChange={(e) => set("rules", "max_new_leads_per_run", e.target.value)} />
             <label htmlFor="camp-caller">Who gets the update after each run</label>
             <input id="camp-caller" value={r.caller} onChange={(e) => set("rules", "caller", e.target.value)} />
             <Check checked={r.auto_enrol} onChange={(v) => set("rules", "auto_enrol", v)}><b>Start the email sequence automatically for qualifying leads</b></Check>

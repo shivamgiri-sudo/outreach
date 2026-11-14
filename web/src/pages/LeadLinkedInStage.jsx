@@ -55,7 +55,7 @@ export function BulkLinkedInAccount({ picked, onDone }) {
     setBusy(false);
   };
   return (
-    <select aria-label="Send selected leads from LinkedIn account" value="" disabled={busy} style={{ width: "auto" }}
+    <select aria-label="Send selected leads from LinkedIn account" value="" disabled={busy} className="u-w-auto"
       onChange={(e) => e.target.value && run(e.target.value)}>
       <option value="">Send from LinkedIn account…</option>
       {accounts.map((a) => <option key={a.account} value={a.account}>{accountName(accounts, a.account)}</option>)}

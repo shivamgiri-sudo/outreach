@@ -35,7 +35,7 @@ main > h2:first-child + .sub { margin-bottom: var(--s5); }
 .btn.danger:hover { background: var(--danger-bg); }
 .btn.danger-solid { background: var(--danger-solid); color: #fff; }
 .btn.danger-solid:hover { background: color-mix(in srgb, var(--danger-solid) 85%, #000); }
-.btn.sm { min-height: var(--h-ctl-sm); padding: 0 var(--s3); font-size: var(--fs-sm); }
+.btn.sm { min-height: var(--h-ctl-sm); }
 .btn.on, .btn.ghost.on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); font-weight: 600; }   /* a pressed filter button must look pressed */
 .btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: default; box-shadow: none; }
 .icon-btn { display: inline-grid; place-items: center; flex: none; width: var(--h-ctl); height: var(--h-ctl); padding: 0; border: 0; border-radius: var(--r-sm); background: none; color: var(--muted); cursor: pointer; transition: background-color .18s, color .18s; }
@@ -240,7 +240,7 @@ main > .tabs { margin-bottom: var(--s4); }
 .email-frame { width: 100%; height: 65vh; border: 1px solid var(--line); border-radius: var(--r-sm); background: #fff; }
 .card p.sub { margin: 0 0 var(--s3); }
 .card p.sub:last-child { margin-bottom: 0; }
-td .btn, td .btn.ghost { min-height: var(--h-ctl-sm); padding: 0 var(--s3); font-size: var(--fs-sm); }
+td .btn, td .btn.ghost { min-height: var(--h-ctl-sm); }
 td .btn + .btn, td .pill + .btn { margin-left: var(--s1); }
 .progress-bar { margin-top: var(--s2); height: 8px; }
 .check-section { margin-top: var(--s5); display: grid; gap: var(--s2); }

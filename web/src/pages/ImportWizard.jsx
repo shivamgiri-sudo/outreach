@@ -5,6 +5,7 @@ import ImportDuplicates from "./ImportDuplicates.jsx";
 import { api, canWrite, EXCEL_ACCEPT, readLeadFile } from "../api.js";
 import { sourceLabel, sourceOptions, useSourceRegistry } from "../labels.js";
 import Abbr from "../components/Abbr.jsx";
+import { DataTable } from "../ui/index.js";
 
 // Five steps: add the list, check the columns, duplicates found (nothing saved), dry run (nothing saved), import (with undo).
 const STEPS = ["Add your list", "Check the columns", "Duplicates found", "Dry run", "Done"];
@@ -72,7 +73,7 @@ function MappingStep({ preview, mapping, setMapping, remember, setRemember }) {
         {preview.format.saved_mapping && " Your saved column choices for this layout are filled in."}
         {" "}Saved as source “{sourceLabel(preview.source)}”.
       </div>
-      <table className="map-table">
+      <DataTable  tableClass="map-table">
         <thead><tr><th>Column in your file</th><th>Sample values</th><th>Goes to</th><th>Match</th></tr></thead>
         <tbody>
           {preview.columns.map((c) => {
@@ -92,7 +93,7 @@ function MappingStep({ preview, mapping, setMapping, remember, setRemember }) {
             );
           })}
         </tbody>
-      </table>
+      </DataTable>
       <label className="check-row">
         <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Remember these choices for the next file like this
       </label>
@@ -156,7 +157,7 @@ function DryRun({ preview, options, setOptions }) {
       )}
       <details className="section">
         <summary>First rows after clean-up</summary>
-        <table className="stack-table">
+        <DataTable  tableClass="stack-table">
           <thead><tr><th>Row</th><th>Company</th><th>Person</th><th>Email / phone</th><th>Place</th><th>What happens</th></tr></thead>
           <tbody>
             {preview.rows.map((r) => (
@@ -170,7 +171,7 @@ function DryRun({ preview, options, setOptions }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </DataTable>
       </details>
     </>
   );
