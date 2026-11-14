@@ -15,6 +15,7 @@ import LeadToolPanels from "./LeadToolPanels.jsx";
 import LeadSummary from "./LeadSummary.jsx";
 import useLeadFilters from "./useLeadFilters.js";
 import { Button, PageHeader } from "../ui/index.js";
+import HelpLink from "../components/HelpLink.jsx";
 
 // Re-exported because other screens (quick search) import them from here.
 export { phoneMatches, HAS_FIELDS, hasDetail, attributionText } from "./leadFilters.js";
@@ -64,7 +65,7 @@ export default function Leads({ go }) {
   const toggle = (name) => { setPanel(panel === name ? "" : name); setShowWizard(false); };
   return (
     <>
-      <PageHeader title="Leads" help="leads" helpLabel="Leads" description="Sorted by buying-signal score. Click a lead to see what to say."
+      <PageHeader title={<>Leads <HelpLink chapter="leads" label="Leads" /></>} description="Sorted by buying-signal score. Click a lead to see what to say."
         actions={canWrite() && <>
           <Button variant="secondary" onClick={() => toggle("scrape")}>Find contacts on a website</Button>
           <Button variant="secondary" onClick={() => toggle("jobs")}>Read job pages</Button>

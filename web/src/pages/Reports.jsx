@@ -52,7 +52,7 @@ export default function Reports() {
   const t = data?.totals || {};
   return (
     <>
-      <PageHeader title="Reports" help="reports" helpLabel="Reports"
+      <PageHeader title={<>Reports <HelpLink chapter="reports" label="Reports" /></>}
         description="What was done each day and by whom. Times are India Standard Time. Every number comes from the activity log below." />
       <PeriodPicker value={period} onChange={setPeriod} range={data?.range} />
       <div className="row" style={{ gap: 10, flexWrap: "wrap", margin: "8px 0" }}>

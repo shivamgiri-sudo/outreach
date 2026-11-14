@@ -139,7 +139,7 @@ export default function Analytics() {
   };
   return (
     <>
-      <PageHeader title="Analytics" help="analytics" helpLabel="Analytics"
+      <PageHeader title={<>Analytics <HelpLink chapter="analytics" label="Analytics" /></>}
         description={<>What is working, for the period you pick. All days and times are India Standard Time (<Abbr term="IST">IST</Abbr>).</>} />
       <PeriodPicker value={period} onChange={setPeriod} range={data?.range} />
       <div className="tabs scroll" role="tablist" aria-label="Analytics sections">

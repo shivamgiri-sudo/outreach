@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, EXCEL_ACCEPT, readLeadFile } from "../api.js";
+import { api, canWrite, EXCEL_ACCEPT, readLeadFile } from "../api.js";
 import { sourceLabel, sourceOptions } from "../labels.js";
 import { Button, Card, Field, Input, Select } from "../ui/index.js";
 
@@ -60,6 +60,7 @@ export default function LeadToolPanels({ which, onClose, setMessage, load }) {
   const readFile = (file) => file && readLeadFile(file).then((r) => { setCsv(r.csv); if (r.sheet) setMessage(`Read sheet "${r.sheet}" (${r.rows} rows) from ${file.name}.`); })
     .catch((e) => setMessage(e.message));
 
+  if (!canWrite()) return null;           // viewers have no write access
   if (which === "scrape") return (
     <Card className="lead-panel">
       <p className="sub">Reads public contact details from a page (honours robots.txt, keeps the source link). Only public business contacts.</p>

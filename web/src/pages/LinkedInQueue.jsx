@@ -257,7 +257,7 @@ export default function LinkedInQueue() {
 
   return (
     <>
-      <PageHeader title="LinkedIn outreach" help="linkedin" helpLabel="LinkedIn outreach"
+      <PageHeader title={<>LinkedIn outreach <HelpLink chapter="linkedin" label="LinkedIn outreach" /></>}
         description={<>Today's list has every message already written. The LinkedIn agent sends one action at a time, with a fixed gap, inside working hours,
         so a person you start is contacted at the agent's next turn, not at once. Messages only start after they accept, and any reply stops the sequence.</>} />
       <div className="tabs scroll" role="tablist" aria-label="LinkedIn sections">
