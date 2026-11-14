@@ -155,13 +155,10 @@ function Report({ run, onOpenLeads }) {
 export function FindLeadsCard({ onOpen }) {
   if (!isOwner()) return null;                  // the server runs finds (preview too) for owners only
   return (
-    <div className="card find-card" data-testid="find-card">
+    <div className="ui-strip find-strip" data-testid="find-card">
       <span className="stat-icon"><Icon name="search" /></span>
-      <div className="find-card-text">
-        <h3 style={{ margin: 0 }}>Find &amp; enrich leads</h3>
-        <p className="sub" style={{ margin: "4px 0 0" }}>One click: search for HR, talent and founder contacts at new companies, and fill in the emails and phones of leads you already have. Only your connected providers and companies' own public pages are used.</p>
-      </div>
-      <button className="btn cta" onClick={onOpen}>Find &amp; enrich leads</button>
+      <span className="grow"><b>Find &amp; enrich leads</b> Search for HR, talent and founder contacts at new companies and fill in missing emails and phones, from your connected providers and public pages only.</span>
+      <span className="actions"><button className="btn" onClick={onOpen}>Find &amp; enrich leads</button></span>
     </div>
   );
 }

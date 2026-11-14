@@ -5,6 +5,7 @@ import { ErrorState } from "../states.jsx";
 import { leadTerm, stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const PAGE = 25;
 const SORTS = [["last_touch", "Last touch"], ["contacts", "Contacts"], ["score", "Best score"], ["health", "Company health"], ["name", "Name"]];
@@ -186,9 +187,7 @@ export default function Companies() {
   const total = data?.total || 0;
   return (
     <section>
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-        <div><h2>Companies</h2><p className="sub">Every person at one employer together: furthest stage, touches, replies and health. Click a company for its people and full history.</p></div>
-      </div>
+      <PageHeader title="Companies" description={<>Every person at one employer together: furthest stage, touches, replies and health. Click a company for its people and full history.</>} />
       <div className="row" style={{ flexWrap: "wrap", gap: 8, margin: "8px 0 12px" }}>
         <input aria-label="Search companies" placeholder="Search company, domain or person" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: "1 1 220px", minWidth: 0 }} />
         <select aria-label="Sort by" value={sort} onChange={(e) => { setSort(e.target.value); setOffset(0); setOrder(e.target.value === "name" ? "asc" : "desc"); }}>

@@ -23,10 +23,10 @@ label.pf-check span { flex: 1; overflow-wrap: anywhere; }
 .ps-results .pill { margin: 2px 4px 2px 0; }
 .pd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 10px 0; }
 .prov-list { display: flex; flex-direction: column; gap: 6px; }
-.prov-field { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.prov-field { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 10px; }
 .prov-field summary { cursor: pointer; overflow-wrap: anywhere; }
 .prov-val { margin-left: 6px; }
-.prov-table { margin-top: 6px; font-size: 13px; }
+.prov-table { margin-top: 6px; font-size: var(--fs-sm); }
 .prov-table th, .prov-table td { padding: 6px 8px; }
 .prov-table tr.chosen td { background: var(--brand-soft); }
 .ps-admin { display: grid; gap: 16px; }
@@ -51,6 +51,6 @@ label.pf-check span { flex: 1; overflow-wrap: anywhere; }
   .ps-results td.pick { position: absolute; left: 14px; top: 14px; width: auto; }
   .ps-results tr:not(:has(td.pick)) { padding-left: 14px; }
   .prov-table th:nth-child(4), .prov-table td:nth-child(4) { display: none; }
-  .ps-table { font-size: 14px; }
+  .ps-table { font-size: var(--fs-md); }
   .prospects .toolbar select { flex: 1 1 100%; }
 }

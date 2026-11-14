@@ -3,6 +3,7 @@ import { api, canWrite, isOwner } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { istDayLabel, istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
+import { Button, PageHeader } from "../ui/index.js";
 
 const TARGETS = [["calls", "Calls"], ["connects", "Connects"], ["emails", "Emails"], ["linkedin", "LinkedIn"], ["whatsapp", "WhatsApp"]];
 // Buttons wrap under the text on a phone instead of pushing the page sideways.
@@ -95,16 +96,10 @@ export default function MyDay({ go }) {
   const callable = c.callbacks + c.calls_due + c.hot_leads;
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-        <div>
-          <h2 style={{ marginBottom: 2 }}>My day</h2>
-          <p className="sub" style={{ marginTop: 0 }}>{istDayLabel(new Date().toISOString())} · {day.me.name}</p>
-        </div>
-        <div className="row" style={{ gap: 6 }}>
-          <button className="btn" onClick={() => go("calls")} data-testid="myday-start-calling">Start calling{callable ? ` (${callable})` : ""}</button>
-          <button className="btn ghost" onClick={() => go("replies")}>Replies{c.replies ? ` (${c.replies})` : ""}</button>
-        </div>
-      </div>
+      <PageHeader title="My day" description={`${istDayLabel(new Date().toISOString())} · ${day.me.name}`} actions={<>
+        <Button onClick={() => go("calls")} data-testid="myday-start-calling">Start calling{callable ? ` (${callable})` : ""}</Button>
+        <Button variant="secondary" onClick={() => go("replies")}>Replies{c.replies ? ` (${c.replies})` : ""}</Button>
+      </>} />
 
       <div className="kpi-row" data-testid="myday-targets">
         {TARGETS.filter(([k]) => day.targets[k] > 0 || day.today[k] > 0).map(([k, l]) => <Progress key={k} label={l} done={day.today[k] || 0} target={day.targets[k] || 0} />)}

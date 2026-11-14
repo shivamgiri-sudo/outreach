@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { isOwner } from "../api.js";
 import { ops } from "../opsApi.js";
 import { istLabel } from "../time.js";
+import { Badge, Button, Card } from "../ui/index.js";
 
 // "Send for real": its own switch, apart from the settings form. On needs the typed phrase; off is one click.
 export default function LiveSendingSwitch({ onChanged }) {
@@ -23,32 +24,32 @@ export default function LiveSendingSwitch({ onChanged }) {
   };
   const changed = state.changed;
   return (
-    <div className="card" style={{ marginBottom: 14, borderLeft: `4px solid ${state.on ? "var(--ok, #15803d)" : "var(--line)"}` }} data-testid="live-switch">
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+    <Card className={`live-card${state.on ? " is-on" : ""}`} data-testid="live-switch">
+      <div className="ui-card-head">
         <div>
-          <b>Send for real</b> <span className={`pill ${state.on ? "ok" : ""}`}>{state.on ? "On: emails go to real people" : "Off: practice mode"}</span>
-          <div className="sub" style={{ margin: "4px 0 0" }}>
+          <h3>Send for real <Badge tone={state.on ? "success" : "neutral"}>{state.on ? "On: emails go to real people" : "Off: practice mode"}</Badge></h3>
+          <div className="sub">
             {changed ? `Switched ${changed.on ? "on" : "off"} by ${changed.by} on ${istLabel(changed.at)}.` : "Never switched on yet."}
           </div>
         </div>
         {owner && (state.on
-          ? <button className="btn ghost danger" disabled={busy} onClick={() => set(false)}>Switch off</button>
-          : !asking && <button className="btn" disabled={busy || state.blockers.length > 0} onClick={() => setAsking(true)}
-            title={state.blockers.length ? "Finish the steps listed first" : ""}>Switch on…</button>)}
+          ? <Button variant="danger" disabled={busy} onClick={() => set(false)}>Switch off</Button>
+          : !asking && <Button disabled={busy || state.blockers.length > 0} onClick={() => setAsking(true)}
+            title={state.blockers.length ? "Finish the steps listed first" : ""}>Switch on…</Button>)}
       </div>
-      {!state.on && state.blockers.length > 0 && <p className="sub" style={{ margin: "8px 0 0" }}>Finish these first: {state.blockers.join(" ")}</p>}
+      {!state.on && state.blockers.length > 0 && <p className="sub">Finish these first: {state.blockers.join(" ")}</p>}
       {asking && !state.on && (
-        <div className="tip" role="alert" style={{ marginTop: 10 }}>
+        <div className="tip" role="alert">
           Real emails will go to real people, within the daily cap, warm-up and business hours. To confirm, type <b>{phrase}</b>.
-          <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
-            <input aria-label={`Type ${phrase} to confirm`} value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={phrase} style={{ maxWidth: 220 }} autoFocus />
-            <button className="btn" disabled={busy || typed.trim().toUpperCase() !== phrase} onClick={() => set(true)}>Switch on real sending</button>
-            <button className="btn ghost" onClick={() => { setAsking(false); setTyped(""); }}>Cancel</button>
+          <div className="row card-actions">
+            <input aria-label={`Type ${phrase} to confirm`} value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={phrase} className="confirm-input" autoFocus />
+            <Button disabled={busy || typed.trim().toUpperCase() !== phrase} onClick={() => set(true)}>Switch on real sending</Button>
+            <Button variant="secondary" onClick={() => { setAsking(false); setTyped(""); }}>Cancel</Button>
           </div>
         </div>
       )}
-      {!owner && <p className="sub" style={{ margin: "8px 0 0" }}>Only an owner can change this.</p>}
-      {error && <div className="tip error" role="alert" style={{ marginTop: 8 }}>{error}</div>}
-    </div>
+      {!owner && <p className="sub">Only an owner can change this.</p>}
+      {error && <div className="tip error" role="alert">{error}</div>}
+    </Card>
   );
 }

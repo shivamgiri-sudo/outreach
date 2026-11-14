@@ -7,6 +7,7 @@ import GlossaryPage from "../guide/GlossaryPage.jsx";
 import GuideBook from "../guide/GuideBook.jsx";
 import HelpSetupGuides from "./HelpSetupGuides.jsx";
 import "../guide/guide.css";
+import { PageHeader } from "../ui/index.js";
 
 function parse() {
   const raw = window.location.hash.replace(/^#\/?/, "");
@@ -30,8 +31,7 @@ export default function Help({ role }) {
   const ctx = { role: role || getRole(), client: isClient() };
   return (
     <div className="help-centre">
-      <h2>Help centre</h2>
-      <p className="sub">How to use the portal, what the short words mean, and step-by-step guides for connecting other services. Written for people with no technical background.</p>
+      <PageHeader title="Help centre" description="How to use the portal, what the short words mean, and step-by-step guides for connecting other services. Written for people with no technical background." />
       <nav className="g-tabs no-print" aria-label="Help sections">
         {TABS.map(([id, label, href]) => <a key={id} href={href} className={tab === id ? "on" : ""} aria-current={tab === id ? "page" : undefined} data-testid={`help-tab-${id}`}>{label}</a>)}
       </nav>

@@ -6,6 +6,7 @@ import SequenceEditor from "./sequences/SequenceEditor.jsx";
 import Snippets from "./sequences/Snippets.jsx";
 import WorkspaceTag from "./sequences/WorkspaceTag.jsx";
 import { humanDay, stepTitle } from "./sequences/lint.js";
+import { PageHeader } from "../ui/index.js";
 
 const UNSUB = "\n\nPrefer no more emails? {{unsub_link}}";
 const email = (text) => `{{greeting}}\n\n${text}\n\n— {{sender}}${UNSUB}`;
@@ -117,8 +118,8 @@ export default function Templates() {
 
   return (
     <>
-      <h2>Sequences & templates</h2>
-      <p className="sub">Short, human, no hard sell, no invented stories. Words in {"{{double braces}}"} are filled per lead ({"{{greeting}}"}, {"{{first_name}}"}, {"{{company}}"}, {"{{role}}"}, {"{{sender}}"}, {"{{offer_line}}"}, {"{{demo_link}}"}, {"{{unsub_link}}"}); [square brackets] you fill by hand. A sequence stops on a reply. Cold emails carry no link except the unsubscribe link.</p>
+      <PageHeader title={<>Sequences & templates</>}
+        description={<>Short, human, no hard sell, no invented stories. Words in {"{{double braces}}"} are filled per lead ({"{{greeting}}"}, {"{{first_name}}"}, {"{{company}}"}, {"{{role}}"}, {"{{sender}}"}, {"{{offer_line}}"}, {"{{demo_link}}"}, {"{{unsub_link}}"}); [square brackets] you fill by hand. A sequence stops on a reply. Cold emails carry no link except the unsubscribe link.</>} />
       <div className="tabs scroll" role="tablist" aria-label="Template sections">
         {TABS.map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => { setTab(k); setMsg(""); }}>{label}</button>

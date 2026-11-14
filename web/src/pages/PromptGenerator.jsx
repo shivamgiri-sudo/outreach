@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, canWrite } from "../api.js";
 import { copyText } from "../clipboard.js";
+import { PageHeader } from "../ui/index.js";
 
 const START = { use_ai: true, channel: "email", industry: "", role: "", tone: "warm", language: "English", goal: "", story: "", dos: "", donts: "" };
 
@@ -31,8 +32,8 @@ export default function PromptGenerator() {
 
   return (
     <>
-      <h2>Prompt generator</h2>
-      <p className="sub">Build a ready system prompt for any industry, role and channel. The honesty rules are always added last and override everything above them, including your Do and Don't lines: no invented numbers, customers or stories, WhatsApp only after a yes, calls through PD only before 18:55, and an opt-out in every message.</p>
+      <PageHeader title="Prompt generator"
+        description={<>Build a ready system prompt for any industry, role and channel. The honesty rules are always added last and override everything above them, including your Do and Don't lines: no invented numbers, customers or stories, WhatsApp only after a yes, calls through PD only before 18:55, and an opt-out in every message.</>} />
       <div className="grid g2">
         <div className="card">
           <div className="row">

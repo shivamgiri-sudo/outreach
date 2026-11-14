@@ -5,6 +5,7 @@ import { istDayLabel, istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import Abbr from "../components/Abbr.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const STATUS_TONE = { scheduled: "ok", cancelled: "", done: "warm" };
 
@@ -28,10 +29,8 @@ export default function Meetings({ go }) {
 
   return (
     <>
-      <h2>Meetings</h2>
-      <p className="sub">
-        Upcoming demos and calls, in <Abbr term="IST">IST</Abbr>. {active ? <>Booking through <b>{active.title}</b>.</> : "No calendar connected yet."} Book one from a lead's panel.
-      </p>
+      <PageHeader title="Meetings"
+        description={<>Upcoming demos and calls, in <Abbr term="IST">IST</Abbr>. {active ? <>Booking through <b>{active.title}</b>.</> : "No calendar connected yet."} Book one from a lead's panel.</>} />
       {!active && (
         <div className="tip" style={{ marginBottom: 16 }}>
           Connect Google Calendar, Microsoft 365, Zoom or a booking page (Cal.com, Calendly) to book meetings with a video link.
