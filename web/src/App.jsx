@@ -40,6 +40,7 @@ import Help from "./pages/Help.jsx";
 import ProspectSearch from "./pages/ProspectSearch.jsx";
 import { THEMES, getTheme, setTheme } from "./theme.js";
 import { DialogProvider } from "./Dialog.jsx";
+import { ToastProvider } from "./ui/index.js";
 import { useModalFocus } from "./DrawerShell.jsx";
 import { loadBrand, loadPublicBrand, useBrand } from "./brand.js";
 import Onboarding from "./pages/Onboarding.jsx";
@@ -210,7 +211,7 @@ export default function App() {
     return () => { window.removeEventListener("hashchange", on); window.removeEventListener("popstate", on); };
   }, []);
   if (legal) return <Legal doc={legal} key={legal} />;
-  return <DialogProvider><Shell /></DialogProvider>;
+  return <DialogProvider><ToastProvider><Shell /></ToastProvider></DialogProvider>;
 }
 
 function Shell() {
