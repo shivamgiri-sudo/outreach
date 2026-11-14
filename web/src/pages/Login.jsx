@@ -145,7 +145,7 @@ export default function Login({ onSignedIn }) {
             {busy ? <><span className="login-spinner" aria-hidden="true" />Signing in…</> : <>Sign in<Icon name="arrowRight" size={18} /></>}
           </button>
           <OidcButtons intent="login" />
-          <div className="row" style={{ gap: 14, flexWrap: "wrap", marginTop: 8 }}>
+          <div className="row u-gap-16 u-wrap u-mt-8">
             <button type="button" className="link" onClick={() => setMode("forgot")} data-testid="forgot-link">Forgot password?</button>
             <button type="button" className="link" onClick={() => setMode("magic")} data-testid="magic-link">Email me a sign-in link</button>
             {signupOpen && <button type="button" className="link" onClick={() => setMode("signup")} data-testid="signup-link">Create an account</button>}

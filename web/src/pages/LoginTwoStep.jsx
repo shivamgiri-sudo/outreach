@@ -72,7 +72,7 @@ export default function LoginTwoStep({ step, onSignedIn, onBack }) {
       <button className="login-submit" type="submit" disabled={busy || (setupMode && !secret)} aria-busy={busy || undefined}>
         {busy ? <><span className="login-spinner" aria-hidden="true" />Checking…</> : <>{setupMode ? "Turn on and sign in" : "Sign in"}<Icon name="arrowRight" size={18} /></>}
       </button>
-      <button type="button" className="link" onClick={onBack} style={{ marginTop: 8 }}>Back to email and password</button>
+      <button type="button" className="link u-mt-8" onClick={onBack} >Back to email and password</button>
     </form>
   );
 }

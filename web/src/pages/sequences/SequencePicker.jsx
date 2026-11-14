@@ -18,7 +18,7 @@ export default function SequencePicker({ lead, onStart }) {
     catch (err) { setMsg(err.message); }
   };
   return (
-    <div className="row" style={{ flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+    <div className="row u-wrap u-gap-8 u-acenter">
       <select aria-label="Email sequence to start" value={chosen} onChange={(e) => setChosen(e.target.value)} style={{ flex: "1 1 200px", width: "auto", minWidth: 0 }}>
         {(list.length ? list : [{ id: "default", name: "Default (6 emails)", steps: [] }]).map((s) => (
           <option key={s.id} value={s.id}>{s.name}{s.steps.length ? ` · ${s.steps.length} emails` : ""}</option>

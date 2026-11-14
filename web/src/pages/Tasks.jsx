@@ -21,13 +21,13 @@ function TeamSettings({ onSaved }) {
     catch (e) { setMessage(e.message); }
   };
   return (
-    <details className="card" style={{ marginBottom: 14 }}>
+    <details className="card u-mb-16">
       <summary><b>Team &amp; reminders</b> <span className="sub">— who owns tasks, and email reminders</span></summary>
       <label>Caller's name (gets the "call them" tasks when a lead says yes)</label>
       <input value={cfg.caller_name} onChange={(e) => setCfg({ ...cfg, caller_name: e.target.value })} />
-      <p className="sub" style={{ margin: "8px 0 4px" }}>Team members</p>
+      <p className="sub u-m-8-0-4">Team members</p>
       {cfg.team.map((m, i) => (
-        <div className="row" key={i} style={{ marginBottom: 6 }}>
+        <div className="row u-mb-8" key={i} >
           <input aria-label="Name" placeholder="Name" value={m.name} onChange={(e) => setMember(i, "name", e.target.value)} />
           <input aria-label="Email" placeholder="Email for reminders" value={m.email || ""} onChange={(e) => setMember(i, "email", e.target.value)} />
           <input aria-label="Role" placeholder="Role" value={m.role || ""} onChange={(e) => setMember(i, "role", e.target.value)} />
@@ -35,11 +35,11 @@ function TeamSettings({ onSaved }) {
         </div>
       ))}
       <button className="btn ghost" onClick={() => setCfg({ ...cfg, team: [...cfg.team, { name: "", email: "", role: "" }] })}>Add a person</button>
-      <label className="row" style={{ fontWeight: 400, marginTop: 10 }}>
+      <label className="row u-fw4 u-mt-12">
         <input type="checkbox" style={{ width: "auto" }} checked={!!cfg.notify_email} onChange={(e) => setCfg({ ...cfg, notify_email: e.target.checked })} />
         Also email each person their reminders (needs an email provider connected under Integrations)
       </label>
-      <div className="row" style={{ marginTop: 8 }}><button className="btn" onClick={save}>Save team</button>{message && <span className="sub">{message}</span>}</div>
+      <div className="row u-mt-8"><button className="btn" onClick={save}>Save team</button>{message && <span className="sub">{message}</span>}</div>
     </details>
   );
 }
@@ -73,9 +73,9 @@ export default function Tasks() {
         description={<>Everything that needs doing, by due time (<Abbr term="IST">IST</Abbr>). When a lead says yes, a call task is added for the caller automatically.
         Reminders arrive 15 minutes before a task is due, and again if it's an hour overdue.</>} />
       {error && <ErrorState message="Tasks could not load." detail={error} onRetry={load} />}
-      {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
+      {message && <div className="tip u-mb-12" role="status" >{message}</div>}
       {isOwner() && <TeamSettings onSaved={load} />}
-      {canWrite() && <form className="card row" style={{ marginBottom: 14 }} onSubmit={add}>
+      {canWrite() && <form className="card row u-mb-16" onSubmit={add}>
         <input aria-label="New task" placeholder="New task, e.g. Send case study to Acme" value={newTask.title} style={{ flex: 2, minWidth: 200 }}
           onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} />
         <input aria-label="Due (IST)" type="datetime-local" value={newTask.due_at} onChange={(e) => setNewTask({ ...newTask, due_at: e.target.value })} />
@@ -87,12 +87,12 @@ export default function Tasks() {
         </select>
         <button className="btn" type="submit" disabled={!newTask.title.trim()}>Add</button>
       </form>}
-      <div className="row" style={{ marginBottom: 10 }}>
-        <label htmlFor="owner-filter" style={{ margin: 0 }}>Show tasks for</label>
+      <div className="row u-mb-12">
+        <label htmlFor="owner-filter" className="u-m0">Show tasks for</label>
         <select id="owner-filter" value={owner} onChange={(e) => setOwner(e.target.value)}>
           <option value="">Everyone</option>{(board?.team || []).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
         </select>
-        <label htmlFor="task-sort" style={{ margin: 0 }}>Order by</label>
+        <label htmlFor="task-sort" className="u-m0">Order by</label>
         <select id="task-sort" value={sort} onChange={(e) => setSort(e.target.value)}>
           <option value="due">Due time</option><option value="priority">Priority</option>
         </select>
@@ -109,19 +109,19 @@ export default function Tasks() {
           <p>{owner ? `No tasks for ${owner}.` : `No tasks yet.${canWrite() ? " Add one above;" : ""} When a lead says yes, a call task for the caller appears here automatically.`}</p></div>
       )}
       {board && !BUCKETS.every(([key]) => board[key].length === 0) && BUCKETS.map(([key, label]) => (
-        <div key={key} className="card" style={{ marginBottom: 12 }}>
-          <div className="row" style={{ justifyContent: "space-between" }}>
+        <div key={key} className="card u-mb-12">
+          <div className="row u-between">
             <b>{label}</b><span className={`pill ${key === "overdue" && board[key].length ? "warn" : ""}`}>{board[key].length}</span>
           </div>
-          {board[key].length === 0 ? <p className="sub" style={{ margin: "6px 0 0" }}>Nothing here.</p> : (
+          {board[key].length === 0 ? <p className="sub u-m-8-0-0">Nothing here.</p> : (
             <ul className="task-list">
               {board[key].map((t) => (
                 <li key={t.id} className={key === "overdue" ? "overdue" : ""}>
                   <div>
                     <b>{t.title}</b>{t.company && <> · <button className="link" onClick={() => setLead(t.lead_id)}>{t.company}</button></>}
-                    {t.priority === "high" && <span className="pill warn" style={{ marginLeft: 6 }}>High</span>}
-                    {t.priority === "low" && <span className="pill" style={{ marginLeft: 6 }}>Low</span>}
-                    {t.lead_stage === "unsubscribed" && <span className="pill" style={{ marginLeft: 6 }}>lead unsubscribed</span>}
+                    {t.priority === "high" && <span className="pill warn u-ml-8">High</span>}
+                    {t.priority === "low" && <span className="pill u-ml-8">Low</span>}
+                    {t.lead_stage === "unsubscribed" && <span className="pill u-ml-8">lead unsubscribed</span>}
                   </div>
                   <div className="sub">
                     {t.due_at ? istLabel(t.due_at) : "No due time"}{t.owner ? ` · ${t.owner}` : ""}{t.text ? ` · ${t.text.slice(0, 140)}` : ""}

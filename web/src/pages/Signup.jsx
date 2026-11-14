@@ -62,7 +62,7 @@ export function OidcButtons({ intent = "login" }) {
 
 function Terms({ accept, setAccept, terms }) {
   return (
-    <label className="check-row" style={{ margin: "6px 0 10px", display: "block" }}>
+    <label className="check-row u-m-8-0-12 u-block">
       <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} data-testid="signup-accept" required />
       {" "}I accept the <a href="/terms" target="_blank" rel="noreferrer">Terms</a>, the <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a> and
       the <a href="/dpa" target="_blank" rel="noreferrer">Data Processing Agreement</a>{terms ? ` (version ${terms.terms})` : ""}.
@@ -129,7 +129,7 @@ export function SignupForm({ onBack }) {
       <div className="login-error" role="alert">{error && <span>{error}</span>}</div>
       <button className="login-submit" type="submit" disabled={busy}>{busy ? "Sending…" : "Create account"}</button>
       <OidcButtons intent="signup" />
-      <button type="button" className="link" onClick={onBack} style={{ marginTop: 10 }}>I already have a login</button>
+      <button type="button" className="link u-mt-12" onClick={onBack} >I already have a login</button>
     </form>
   );
 }
@@ -170,7 +170,7 @@ export function MagicForm({ onBack, initialEmail = "" }) {
       <Field id="mg-email" label="Work email"><input id="mg-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" /></Field>
       {msg && <p className="login-note" role="status">{msg}</p>}
       <button className="login-submit" type="submit" disabled={busy || !email.trim()}>{busy ? "Sending…" : "Email me a link"}</button>
-      <button type="button" className="link" onClick={onBack} style={{ marginTop: 10 }}>Back to sign in</button>
+      <button type="button" className="link u-mt-12" onClick={onBack} >Back to sign in</button>
     </form>
   );
 }

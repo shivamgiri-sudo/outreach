@@ -48,7 +48,7 @@ function CampaignDetail({ id, go, onBack, onEdit }) {
   if (!campaign) return error ? <div className="tip error" role="alert">{error}</div> : <p className="empty">Loading…</p>;
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between" }}>
+      <div className="row u-between">
         <div><h2>{campaign.name}</h2><p className="sub"><StatusPill status={campaign.status} /> {campaign.stats?.leads_added || 0} leads added, {campaign.stats?.enrolled || 0} started in the sequence over {campaign.stats?.runs || 0} run(s).</p></div>
         <button className="btn ghost" onClick={onBack}>All campaigns</button>
       </div>
@@ -61,7 +61,7 @@ function CampaignDetail({ id, go, onBack, onEdit }) {
         <button className="btn ghost" onClick={() => onEdit(campaign)}>Edit</button>
         <button className="btn ghost danger" disabled={!!busy} onClick={() => act("delete")}>Delete</button>
       </div>}
-      {error && <div className="tip error" role="alert" style={{ marginTop: 12 }}>{error}</div>}
+      {error && <div className="tip error u-mt-12" role="alert" >{error}</div>}
       <h3>Outcomes</h3>
       <OutcomeTiles o={campaign.outcomes} />
       {result && <><RunReport report={result} />{result.dry_run && <PreviewTable rows={result.preview} />}</>}
@@ -78,14 +78,14 @@ function CampaignDetail({ id, go, onBack, onEdit }) {
           title="Every run's numbers and problems, one row per run" testId="download-campaign-runs" />
       </div>
       <div className="card">
-        {runs.length === 0 ? <p className="sub" style={{ margin: 0 }}>No runs yet.</p> : runs.map((r) => (
+        {runs.length === 0 ? <p className="sub u-m0">No runs yet.</p> : runs.map((r) => (
           <details key={r.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
             <summary>{istLabel(r.started_at)}{r.trigger === "auto" ? " (automatic)" : ""}: {r.new} new, {r.qualified} ready, {r.enrolled} enrolled{r.errors?.length ? `, ${r.errors.length} problem(s)` : ""}</summary>
             <RunReport report={r} />
           </details>
         ))}
       </div>
-      <p className="sub" style={{ marginTop: 12 }}>Emails go out only through the sequence: practice mode until "Send for real" is on, with daily caps, warm-up and business hours. <button className="linkish" onClick={() => go("outbox")}>Open Outbox</button></p>
+      <p className="sub u-mt-12">Emails go out only through the sequence: practice mode until "Send for real" is on, with daily caps, warm-up and business hours. <button className="linkish" onClick={() => go("outbox")}>Open Outbox</button></p>
       {open && <LeadDrawer id={open} onClose={() => { setOpen(null); load(); }} />}
     </>
   );
@@ -117,11 +117,11 @@ export default function Campaigns({ go }) {
         <div className="grid g2">
           {list.map((c) => (
             <div className="card" key={c.id} data-testid="campaign-card">
-              <div className="row" style={{ justifyContent: "space-between" }}><b>{c.name}</b><StatusPill status={c.status} /></div>
-              <p className="sub" style={{ margin: "6px 0 4px" }}>{lastRunText(c.last_run)}</p>
-              <div style={{ marginBottom: 6 }}><OutcomeLine o={c.outcomes} /></div>
+              <div className="row u-between"><b>{c.name}</b><StatusPill status={c.status} /></div>
+              <p className="sub u-m-8-0-4">{lastRunText(c.last_run)}</p>
+              <div className="u-mb-8"><OutcomeLine o={c.outcomes} /></div>
               <small className="sub-inline">{[c.target?.industries?.join(", "), c.target?.cities?.join(", "), c.target?.roles_hiring?.length ? `hiring ${c.target.roles_hiring.join(", ")}` : ""].filter(Boolean).join(" · ")}</small>
-              <div className="row" style={{ marginTop: 10 }}>
+              <div className="row u-mt-12">
                 <button className="btn ghost" onClick={() => setOpenId(c.id)}>Open</button>
               </div>
             </div>

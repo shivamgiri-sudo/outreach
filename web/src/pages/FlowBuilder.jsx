@@ -61,21 +61,21 @@ function FlowList({ onOpen }) {
         LinkedIn tasks, calls and meetings. Every message keeps the app's rules: consent before WhatsApp, practice mode, caps,
         business hours and the do-not-contact list.</>} />
       {error && <div className="tip error" role="alert">{error}</div>}
-      {maker && <div className="row" style={{ marginBottom: 16, flexWrap: "wrap" }}>
-        {isOwner() && spaces.length > 1 && <label className="row" style={{ gap: 6, margin: 0 }}>Workspace
+      {maker && <div className="row u-mb-16 u-wrap">
+        {isOwner() && spaces.length > 1 && <label className="row u-gap-8 u-m0">Workspace
           <select aria-label="Workspace of a new flow" value={space} onChange={(e) => setSpace(e.target.value)} style={{ width: "auto" }}>
             {spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>}
         <button type="button" className="btn" onClick={() => setPicking(!picking)} aria-expanded={picking}>New from template</button>
         <button type="button" className="btn ghost" onClick={() => create(() => api.createFlow({ name: "Untitled flow", ...(into ? { workspace: into } : {}) }))}>Blank flow</button>
-        <label className="btn ghost" style={{ cursor: "pointer" }}>Import a flow
+        <label className="btn ghost u-pointer">Import a flow
           <input type="file" accept="application/json,.json" hidden onChange={(e) => { importFile(e.target.files?.[0]); e.target.value = ""; }} /></label>
       </div>}
       {picking && maker && (
-        <div className="grid g2" style={{ marginBottom: 16 }} data-testid="flow-templates">
+        <div className="grid g2 u-mb-16" data-testid="flow-templates">
           {templates.map((t) => (
             <div key={t.key} className="card">
-              <h3 style={{ marginTop: 0 }}>{t.name}</h3>
-              <p className="sub" style={{ marginBottom: 12 }}>{t.description}</p>
+              <h3 className="u-mt-0">{t.name}</h3>
+              <p className="sub u-mb-12">{t.description}</p>
               <button type="button" className="btn" onClick={() => create(() => api.flowFromTemplate(t.key, into))} aria-label={`Use template: ${t.name}`}>
                 Use this template
               </button>

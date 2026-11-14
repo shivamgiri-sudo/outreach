@@ -39,9 +39,9 @@ export function ContactPoints({ lead, onLead }) {
     try { onLead(await api.addContactPoint(lead.id, kind, value)); setValue(""); setMsg(`Added ${kind}.`); } catch (err) { setMsg(err.message); }
   };
   return (
-    <section className="card" style={{ margin: "12px 0" }} aria-label="Contact details" data-testid="contact-points">
+    <section className="card u-m-12-0" aria-label="Contact details" data-testid="contact-points">
       <b>Contact details</b>
-      <div className="grid g2" style={{ gap: 10, marginTop: 6 }}>
+      <div className="grid g2 u-gap-12 u-mt-8">
         <div><small className="sub-inline">Phones</small>
           <ul className="plain-list">{phones.length ? phones.map((p) => <Point key={p} kind="phone" value={p} main={p === lead.phone} bad={p === lead.phone ? mainBad : bad[p]} lead={lead} onLead={onLead} setMsg={setMsg} />)
             : <li className="sub-inline">No phone</li>}</ul></div>
@@ -49,11 +49,11 @@ export function ContactPoints({ lead, onLead }) {
           <ul className="plain-list">{emails.length ? emails.map((m) => <Point key={m} kind="email" value={m} main={m === lead.email} lead={lead} onLead={onLead} setMsg={setMsg} />)
             : <li className="sub-inline">No email</li>}</ul></div>
       </div>
-      <p style={{ margin: "6px 0" }}><small className="sub-inline">LinkedIn profile: </small>
-        {isUrl(lead.linkedin_url) ? <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer" data-testid="linkedin-url" style={{ overflowWrap: "anywhere" }}>{lead.linkedin_url}</a>
+      <p className="u-m-8-0"><small className="sub-inline">LinkedIn profile: </small>
+        {isUrl(lead.linkedin_url) ? <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer" data-testid="linkedin-url" className="u-anywhere">{lead.linkedin_url}</a>
           : <span className="sub-inline">not added (use Edit details)</span>}</p>
       {edit && (
-        <form className="row" onSubmit={add} style={{ gap: 6, flexWrap: "wrap" }}>
+        <form className="row u-gap-8 u-wrap" onSubmit={add} >
           <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Add a" style={{ width: "auto" }}>
             <option value="phone">Another phone</option><option value="email">Another email</option>
           </select>
@@ -88,19 +88,19 @@ export function LeadPeople({ lead, onLead }) {
   const run = async (fn, done) => { setMsg(""); try { onLead(await fn()); setForm(null); setMsg(done); } catch (e) { setMsg(e.message); } };
   if (!people.length && !edit) return null;
   return (
-    <section className="card" style={{ margin: "12px 0" }} aria-label="People on this record" data-testid="lead-people">
-      <div className="row" style={{ justifyContent: "space-between" }}><b>More people at {lead.company || "this company"} ({people.length})</b>
+    <section className="card u-m-12-0" aria-label="People on this record" data-testid="lead-people">
+      <div className="row u-between"><b>More people at {lead.company || "this company"} ({people.length})</b>
         {edit && form !== "new" && <button className="btn ghost" onClick={() => setForm("new")}>Add person</button>}</div>
       {form === "new" && <PersonForm label="Add person" onCancel={() => setForm(null)} onSave={(v) => run(() => api.addPerson(lead.id, v), `${v.contact_name} added.`)} />}
       <ul className="plain-list">{people.map((p) => (
         <li key={p._id} style={{ padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
           {form === p._id ? <PersonForm label="Save" start={p} onCancel={() => setForm(null)} onSave={(v) => run(() => api.changePerson(lead.id, p._id, v), "Saved.")} /> : (
-            <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
-              <span style={{ minWidth: 0 }}><b>{p.contact_name || "Unnamed"}</b>{p.title && <small className="sub-inline"> · {p.title}</small>}<br />
+            <div className="row u-between u-wrap u-gap-8">
+              <span className="u-min0"><b>{p.contact_name || "Unnamed"}</b>{p.title && <small className="sub-inline"> · {p.title}</small>}<br />
                 <small>{p.phone && <a href={dial(p.phone)}>{p.phone}</a>}{p.phone && p.email && " · "}{p.email && <a href={`mailto:${p.email}`}>{p.email}</a>}
                   {isUrl(p.linkedin_url) && <> · <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer">LinkedIn</a></>}</small>
                 {p.added_by && <small className="sub-inline"> · added by {p.added_by}</small>}</span>
-              {edit && <span className="row" style={{ gap: 6 }}><button className="link" onClick={() => setForm(p._id)}>Edit</button>
+              {edit && <span className="row u-gap-8"><button className="link" onClick={() => setForm(p._id)}>Edit</button>
                 <button className="link danger" onClick={async () => (await confirm({ message: `Remove ${p.contact_name || "this person"}?`, confirmLabel: "Remove", danger: true }))
                   && run(() => api.removePerson(lead.id, p._id), "Removed.")}>Remove</button></span>}
             </div>

@@ -24,7 +24,7 @@ export function CardHeader({ title, description, actions }) {
   return (
     <div className="ui-card-head">
       <div><h3>{title}</h3>{description && <p className="sub">{description}</p>}</div>
-      {actions && <div className="row" style={{ gap: 8 }}>{actions}</div>}
+      {actions && <div className="row u-gap-8">{actions}</div>}
     </div>
   );
 }

@@ -19,7 +19,7 @@ function AccountFilter({ value, onChange }) {
   useEffect(() => { api.accounts().then((r) => setList(Array.isArray(r) ? r : r.accounts || [])).catch(() => {}); }, []);
   if (list.length < 2) return null;
   return (
-    <label className="row" style={{ gap: 6, margin: 0 }}>Account
+    <label className="row u-gap-8 u-m0">Account
       <select data-testid="li-account-filter" value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">Picked in the header</option>
         <option value="all">All accounts (overview)</option>
@@ -57,8 +57,8 @@ export default function LinkedInAgent({ onMessage, onAccount }) {
   const command = `node tools/linkedin_agent.mjs --portal ${window.location.origin} --token PASTE_THE_TOKEN`;
   const pill = st.kill ? ["err", "Stopped by the platform admin"] : !st.config.enabled ? ["", "Switched off"] : st.dry ? ["warn", "DRY RUN: it only looks, nothing is sent"] : st.online ? ["ok", `Running · ${st.state || "online"}`] : ["warn", "On, but the agent program is not running"];
   return (
-    <section className="card" style={{ marginBottom: 14 }} data-testid="linkedin-agent">
-      <div className="row" style={{ justifyContent: "space-between" }}>
+    <section className="card u-mb-16" data-testid="linkedin-agent">
+      <div className="row u-between">
         <b>LinkedIn agent{st.account_name ? <span className="sub" data-testid="li-agent-account"> · {st.account_name}</span> : null}</b>
         <span className="row">
           {st.is_owner && <AccountFilter value={acct} onChange={pick} />}
@@ -68,7 +68,7 @@ export default function LinkedInAgent({ onMessage, onAccount }) {
             : <button className="btn" onClick={() => save({ enabled: true }, "Switched on. Start the agent program on your computer if it is not running.")}>Switch on</button>}
         </span>
       </div>
-      {st.is_owner && <p className="row" style={{ gap: 8 }}>
+      {st.is_owner && <p className="row u-gap-8">
         {st.kill ? <><span className="pill err" data-testid="li-kill-on">Every LinkedIn agent is stopped ({st.kill.by}, {istLabel(st.kill.at)})</span>
           <button className="btn ghost" onClick={() => kill(false)}>Let agents run again</button></>
           : <button className="btn ghost" data-testid="li-kill" onClick={() => kill(true)}>Stop every LinkedIn agent (all accounts)</button>}</p>}
@@ -81,7 +81,7 @@ export default function LinkedInAgent({ onMessage, onAccount }) {
       <p className="sub">Today: {c.counts.connect_today} connection requests, {c.counts.message_today} messages · this week: {c.counts.connect_week} requests ·
         left today: {c.connections_left_today} requests, {c.messages_left_today} messages{c.why_not ? ` · ${c.why_not}` : ""}.</p>
       {(st.accounts || []).length > 0 && (
-        <div className="table-wrap" style={{ marginBottom: 8 }}>
+        <div className="table-wrap u-mb-8">
           <table data-testid="li-agent-accounts"><thead><tr><th>LinkedIn account</th>{st.account_id === null && <th>Client account</th>}<th>Status</th><th>Today</th><th>This week</th><th>People</th><th></th></tr></thead>
             <tbody>{st.accounts.map((a) => (
               <tr key={a.account}>
@@ -135,14 +135,14 @@ export default function LinkedInAgent({ onMessage, onAccount }) {
         <label className="check-row"><input type="checkbox" data-testid="li-find-profiles" checked={form.find_profiles !== false} onChange={(e) => setForm({ ...form, find_profiles: e.target.checked })} /> Find profiles automatically: when someone has no LinkedIn link, search LinkedIn once for their name and company, and start only if exactly one profile matches (otherwise a person picks)</label>
         <label className="check-row"><input type="checkbox" checked={!!form.check_replies} onChange={(e) => setForm({ ...form, check_replies: e.target.checked })} /> Check the LinkedIn messages for replies</label>
         {st.account_id !== "mcn" && <label className="check-row"><input type="checkbox" checked={!!form.auto_start} onChange={(e) => setForm({ ...form, auto_start: e.target.checked })} /> Start the sequence automatically each working day for people with a LinkedIn link, up to the daily limit</label>}
-        <button className="btn" style={{ marginTop: 8 }} data-testid="li-save-limits" onClick={() => save({ ...form, enabled: undefined,
+        <button className="btn u-mt-8" data-testid="li-save-limits" onClick={() => save({ ...form, enabled: undefined,
           ...(st.account_id === "mcn" ? { daily_connections: undefined, auto_start: undefined } : {}) }, "Limits saved.")}>Save limits</button>
       </details>}
       {st.today && st.account_id != null && (
-        <div className="card" data-testid="li-today" style={{ margin: "10px 0" }}>
+        <div className="card u-m-12-0" data-testid="li-today" >
           <b>Today</b> {st.today.online ? <span className="pill ok">agent online</span>
             : <span className="pill err" data-testid="li-offline">agent NOT running{st.today.last_seen ? ` — last seen ${istLabel(st.today.last_seen)}` : " — never seen"}</span>}
-          <div className="sub" style={{ marginTop: 4 }}>
+          <div className="sub u-mt-4">
             {st.today.queued} waiting to be sent · {st.today.connect} connection requests sent · {st.today.message} messages sent ·{" "}
             <b>{st.today.confirmed}</b> confirmed on LinkedIn{st.today.unconfirmed > 0 && <b> · {st.today.unconfirmed} NOT confirmed</b>} ·{" "}
             {st.today.accepted} accepted · {st.today.replied} replied · {st.today.problems} problems

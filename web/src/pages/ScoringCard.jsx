@@ -32,9 +32,9 @@ export default function ScoringCard() {
   };
 
   return (
-    <div className="card" style={{ marginBottom: 16 }} data-testid="scoring-card">
+    <div className="card u-mb-16" data-testid="scoring-card">
       <b>Lead scoring</b>
-      <p className="sub" style={{ margin: "2px 0 8px" }}>
+      <p className="sub u-m-4-0-8">
         Points for each buying signal (the score is capped at 100). Open roles count on a log scale, so 80 roles beat 10; there is no upper company-size limit.
       </p>
       <form className="inline-form" onSubmit={submit}>

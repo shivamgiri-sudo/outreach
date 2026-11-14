@@ -22,12 +22,12 @@ export function LeadConsent({ lead }) {
     api.leadConsent(lead.id).then(setData).catch((e) => setError(e.message));
   }, [lead.id, lead.consent, lead.stage, lead.do_not_contact]);
   return (
-    <details className="card" style={{ padding: 10, margin: "10px 0" }} data-testid="lead-consent">
+    <details className="card u-p-12 u-m-12-0" data-testid="lead-consent">
       <summary><b>Consent</b>{data && <small className="sub-inline"> · {Object.values(data.status).filter((s) => s.status === "opted_in").map((s) => s.label).join(", ") || "no channel opted in"}</small>}</summary>
       {error && <div className="tip error" role="alert">{error}</div>}
       {!data ? !error && <p className="empty">Loading…</p> : (
         <>
-          <div className="row" style={{ flexWrap: "wrap", gap: 6, margin: "8px 0" }}>
+          <div className="row u-wrap u-gap-8 u-m-8-0">
             {Object.values(data.status).map((s) => (
               <span key={s.channel} className={`pill ${STATUS[s.status]?.[0] || ""}`} title={s.why + (s.since ? ` (${istLabel(s.since)})` : "")}>
                 {s.label}: {STATUS[s.status]?.[1] || s.status}
@@ -51,7 +51,7 @@ export function LeadConsent({ lead }) {
 export function LeadAuditPack({ lead }) {
   if (!isOwner()) return null;
   return (
-    <p className="sub" style={{ marginTop: 12 }}>
+    <p className="sub u-mt-12">
       <DownloadButton path={ops.auditPackPath({ lead_id: lead.id })} label="Download audit pack" filename={`audit-pack-${lead.id}.zip`} testId="lead-audit-pack" />
       {" "}Messages, change log, consent events and the change-log check for this lead (zip of CSVs).
     </p>

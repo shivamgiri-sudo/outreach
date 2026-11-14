@@ -89,7 +89,7 @@ function Standardise({ count, onChanged }) {
   };
   return (
     <>
-      <p className="sub" style={{ margin: "0 0 8px" }}>
+      <p className="sub u-m-0-0-8">
         Applies the import clean-up to leads saved earlier: names, company names (legal suffix kept separately), titles, phones (+91),
         website domains, city, state and country. Emails, stages and consent are never changed. {count} lead(s) would change.
       </p>
@@ -99,7 +99,7 @@ function Standardise({ count, onChanged }) {
         <>
           <ul>
             {plan.changes.slice(0, 30).map((c) => (
-              <li key={c.lead_id} style={{ overflowWrap: "anywhere" }}><b>{c.company || c.lead_id}</b>:{" "}
+              <li key={c.lead_id} className="u-anywhere"><b>{c.company || c.lead_id}</b>:{" "}
                 {Object.entries(c.fields).map(([f, v]) => `${f} “${Array.isArray(v.from) ? v.from.join(", ") : v.from ?? ""}” → “${Array.isArray(v.to) ? v.to.join(", ") : v.to}”`).join("; ")}
               </li>
             ))}
@@ -144,9 +144,9 @@ export default function Hygiene({ go }) {
   return (
     <>
       <PageHeader title="Data hygiene" description={<>Find gaps, duplicates and differing values across every source, and fix them in one place.</>} actions={<>{go && <button className="btn ghost" onClick={() => go("leads")}>Back to leads</button>}</>} />
-      {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message} <button className="linkish" aria-label="Dismiss message" onClick={() => setMessage("")}>✕</button></div>}
-      <div className="card" style={{ marginBottom: 14 }}>
-        <h3 style={{ marginTop: 0 }}>Overview of {report.total} leads</h3>
+      {message && <div className="tip u-mb-12" role="status" >{message} <button className="linkish" aria-label="Dismiss message" onClick={() => setMessage("")}>✕</button></div>}
+      <div className="card u-mb-16">
+        <h3 className="u-mt-0">Overview of {report.total} leads</h3>
         <div className="kpi-row">
           <Kpi n={m.email} label="no email" /><Kpi n={m.phone} label="no phone" /><Kpi n={m.decision_maker} label="no decision maker" />
           <Kpi n={m.website} label="no website" /><Kpi n={e.invalid} label="invalid emails" /><Kpi n={e.role} label="shared inboxes (info@, hr@)" />
@@ -155,26 +155,26 @@ export default function Hygiene({ go }) {
           <Kpi n={report.duplicate_clusters} label="groups of duplicates" /><Kpi n={report.conflicts} label="values to check" />
         </div>
       </div>
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card u-mb-16">
         <div className="row dl-head">
-          <h3 style={{ marginTop: 0 }}>Duplicates ({report.duplicate_clusters})</h3>
+          <h3 className="u-mt-0">Duplicates ({report.duplicate_clusters})</h3>
           <DownloadButton path={exportPath("duplicates")} label="Download duplicates" disabled={!report.duplicate_clusters}
             title="Every duplicate group, one row per lead, with why they match" testId="download-duplicates" />
         </div>
-        <p className="sub" style={{ margin: "0 0 8px" }}>Each group shows why the leads match. Pick the one to keep; nothing is lost from the others.</p>
+        <p className="sub u-m-0-0-8">Each group shows why the leads match. Pick the one to keep; nothing is lost from the others.</p>
         <Clusters clusters={report.clusters} onMerge={merge} busy={busy} />
       </div>
-      <div className="card" style={{ marginBottom: 14 }}>
-        <h3 style={{ marginTop: 0 }}>Different values to check ({report.conflicts})</h3>
+      <div className="card u-mb-16">
+        <h3 className="u-mt-0">Different values to check ({report.conflicts})</h3>
         <Conflicts items={report.conflict_list} onResolve={resolve} busy={busy} />
       </div>
       <div className="card" style={isOwner() ? { marginBottom: 14 } : undefined}>
-        <h3 style={{ marginTop: 0 }}>Standardise existing leads</h3>
+        <h3 className="u-mt-0">Standardise existing leads</h3>
         <Standardise count={report.needs_standardising} onChanged={(text) => { setMessage(text); load(); }} />
       </div>
       {isOwner() && (
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Restore landlines</h3>
+          <h3 className="u-mt-0">Restore landlines</h3>
           <RestoreLandlines onChanged={(text) => { setMessage(text); load(); }} />
         </div>
       )}

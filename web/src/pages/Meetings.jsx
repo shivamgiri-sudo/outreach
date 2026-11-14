@@ -32,13 +32,13 @@ export default function Meetings({ go }) {
       <PageHeader title="Meetings"
         description={<>Upcoming demos and calls, in <Abbr term="IST">IST</Abbr>. {active ? <>Booking through <b>{active.title}</b>.</> : "No calendar connected yet."} Book one from a lead's panel.</>} />
       {!active && (
-        <div className="tip" style={{ marginBottom: 16 }}>
+        <div className="tip u-mb-16">
           Connect Google Calendar, Microsoft 365, Zoom or a booking page (Cal.com, Calendly) to book meetings with a video link.
-          <div className="row" style={{ marginTop: 8 }}><button className="btn" onClick={() => go?.("integrations")}>Open Integrations</button></div>
+          <div className="row u-mt-8"><button className="btn" onClick={() => go?.("integrations")}>Open Integrations</button></div>
         </div>
       )}
       <div className="row dl-head">
-        <label className="row" style={{ fontWeight: 400 }}>
+        <label className="row u-fw4">
           <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} /> Show cancelled
         </label>
         <DownloadButton path={exportPath("meetings")} label="Download all meetings" testId="download-meetings"
@@ -46,8 +46,8 @@ export default function Meetings({ go }) {
       </div>
       {shown.length === 0 && <Empty>No upcoming meetings.</Empty>}
       {days.map((day) => (
-        <div key={day} className="card" style={{ marginBottom: 12 }}>
-          <h3 style={{ marginTop: 0 }}>{day}</h3>
+        <div key={day} className="card u-mb-12">
+          <h3 className="u-mt-0">{day}</h3>
           <ul className="today-list">
             {shown.filter((m) => istDayLabel(m.start) === day).map((m) => (
               <li key={m.id} className="today-item meet-item" data-testid="meeting-row">

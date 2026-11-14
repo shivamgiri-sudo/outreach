@@ -35,15 +35,15 @@ export default function PeriodPicker({ value, onChange, range }) {
   const ok = from && to && from <= to && !tooLong;
   const apply = () => { if (ok) onChange({ from, to }); };
   return (
-    <div className="card" style={{ marginBottom: 14, padding: 12 }} data-testid="period-picker">
-      <div className="row" style={{ flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-        <b style={{ marginRight: 4 }}>Period</b>
+    <div className="card u-mb-16 u-p-12" data-testid="period-picker">
+      <div className="row u-wrap u-gap-8 u-acenter">
+        <b className="u-mr-4">Period</b>
         {[7, 30, 90].map((d) => (
           <button key={d} className={`btn ${value.days === d ? "" : "ghost"}`} aria-pressed={value.days === d} onClick={() => onChange({ days: d })}>Last {d} days</button>
         ))}
         <button className={`btn ${custom ? "" : "ghost"}`} aria-pressed={custom} onClick={() => onChange({ from, to })}>Custom</button>
         {custom && (
-          <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+          <span className="row u-gap-8 u-wrap">
             <input type="date" aria-label="From (IST day)" value={from} max={to} onChange={(e) => setFrom(e.target.value)} style={{ width: "auto" }} />
             <span>to</span>
             <input type="date" aria-label="To (IST day)" value={to} min={from} max={istDate(0)} onChange={(e) => setTo(e.target.value)} style={{ width: "auto" }} />
@@ -52,7 +52,7 @@ export default function PeriodPicker({ value, onChange, range }) {
           </span>
         )}
       </div>
-      {range && <small className="sub-inline" style={{ display: "block", marginTop: 6 }}>{rangeText(range)}</small>}
+      {range && <small className="sub-inline u-block u-mt-8">{rangeText(range)}</small>}
     </div>
   );
 }

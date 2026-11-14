@@ -27,11 +27,11 @@ export function ForgotForm({ onBack, initialEmail = "" }) {
         <label htmlFor="fe">Work email</label>
         <div className="login-input"><input id="fe" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" /></div>
       </div>
-      <label className="check-row" style={{ margin: "4px 0 8px" }}><input type="checkbox" checked={recovery} onChange={(e) => setRecovery(e.target.checked)} data-testid="super-recovery" />
+      <label className="check-row u-m-4-0-8"><input type="checkbox" checked={recovery} onChange={(e) => setRecovery(e.target.checked)} data-testid="super-recovery" />
         {" "}I am a super admin (the link also needs my authenticator code or a recovery code)</label>
       {msg && <p className="login-note" role="status">{msg}</p>}
       <button className="login-submit" type="submit" disabled={busy || !email.trim()}>{busy ? "Sending…" : "Email me a reset link"}</button>
-      <button type="button" className="link" onClick={onBack} style={{ marginTop: 10 }}>Back to sign in</button>
+      <button type="button" className="link u-mt-12" onClick={onBack} >Back to sign in</button>
     </form>
   );
 }
@@ -76,7 +76,7 @@ export function ResetForm({ token, onDone }) {
       {info && !info.valid && <p className="login-error" role="alert">This reset link has expired or was already used. Ask for a new one.</p>}
       {msg && <p className="login-error" role="alert">{msg}</p>}
       <button className="login-submit" type="submit" disabled={busy || pw.length < 10 || (info?.needs_code && !code.trim())}>{busy ? "Saving…" : "Set new password"}</button>
-      <button type="button" className="link" onClick={back} style={{ marginTop: 10 }}>Back to sign in</button>
+      <button type="button" className="link u-mt-12" onClick={back} >Back to sign in</button>
     </form>
   );
 }

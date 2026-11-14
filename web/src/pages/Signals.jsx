@@ -33,7 +33,7 @@ export default function Signals() {
       <PageHeader title="Buying signals"
         description={<>Watch keywords, competitors or companies and see fresh public news about them: hiring drives, new centres, expansion. You choose which company becomes a lead. This reads only the public news feed, never LinkedIn.</>} />
       {error && <ErrorState message="Signals could not load." detail={error} onRetry={load} />}
-      <section className="card" style={{ marginBottom: 14 }}>
+      <section className="card u-mb-16">
         {isOwner() && <div className="row">
           <select aria-label="What to watch" value={kind} onChange={(e) => setKind(e.target.value)}>
             {Object.entries(KIND_WORDS).map(([k, w]) => <option key={k} value={k}>{w}</option>)}
@@ -45,29 +45,29 @@ export default function Signals() {
           <button className="btn ghost" disabled={busy || !(data?.watch || []).length}
             onClick={() => act(() => api.runSignals(), (r) => `${r.new} new article(s)${r.errors?.length ? `, ${r.errors.length} feed(s) failed` : ""}.`)}>Check now</button>
         </div>}
-        <div className="chips" style={{ marginTop: 8 }}>
+        <div className="chips u-mt-8">
           {(data?.watch || []).map((w) => (
             <span key={w.id} className="chip">{KIND_WORDS[w.kind]}: {w.text}{" "}
               {isOwner() && <button type="button" className="link" aria-label={`Stop watching ${w.text}`} onClick={() => act(() => api.dropWatch(w.id), "Removed.")}>×</button>}</span>
           ))}
           {data && data.watch.length === 0 && <span className="sub">Nothing watched yet.</span>}
         </div>
-        {data?.last_run && <p className="sub" style={{ marginBottom: 0 }}>Last checked {istLabel(data.last_run)}.</p>}
+        {data?.last_run && <p className="sub u-mb-0">Last checked {istLabel(data.last_run)}.</p>}
         {msg && <p role="status" className="sub">{msg}</p>}
       </section>
-      <div className="row" style={{ marginBottom: 10 }}>
+      <div className="row u-mb-12">
         <select aria-label="Show" value={show} onChange={(e) => setShow(e.target.value)}>
           <option value="new">New</option><option value="added">Made into leads</option><option value="dismissed">Dismissed</option><option value="all">All</option>
         </select>
       </div>
       {data && items.length === 0 && <p className="empty">No articles here.{isOwner() ? " Add something to watch and press Check now." : ""}</p>}
       {items.map((i) => (
-        <div key={i.id} className="card" style={{ marginBottom: 10 }}>
+        <div key={i.id} className="card u-mb-12">
           <div><a href={i.link} target="_blank" rel="noopener noreferrer">{i.title}</a></div>
           <div className="sub">{i.source}{i.published ? ` · ${istDateLabel(i.published)}` : ""} · {KIND_WORDS[i.kind]}: {i.watch}
             {i.status === "added" && <> · <span className="pill ok">lead made</span></>}</div>
           {i.status === "new" && canWrite() && (
-            <div className="row" style={{ marginTop: 6 }}>
+            <div className="row u-mt-8">
               <input aria-label="Company name" placeholder="Company this is about" value={nameFor(i)} maxLength={80}
                 onChange={(e) => setNames({ ...names, [i.id]: e.target.value })} />
               <button className="btn" disabled={busy || nameFor(i).trim().length < 2}

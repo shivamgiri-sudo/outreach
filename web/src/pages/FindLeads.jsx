@@ -62,20 +62,20 @@ function Connections({ status, go }) {
 }
 
 function Num({ label, value }) {
-  return <div className="card stat" style={{ padding: 12 }}><span className="sub-inline">{label}</span><b style={{ fontSize: 24, marginTop: 2 }}>{value ?? 0}</b></div>;
+  return <div className="card stat u-p-12"><span className="sub-inline">{label}</span><b style={{ fontSize: 24, marginTop: 2 }}>{value ?? 0}</b></div>;
 }
 
 function Progress({ run }) {
   const pct = run.total ? Math.min(100, Math.round((run.done / run.total) * 100)) : (run.status === "done" ? 100 : 5);
   return (
-    <div className="card" data-testid="find-progress" style={{ marginTop: 14 }}>
-      <div className="row" style={{ justifyContent: "space-between" }}>
+    <div className="card u-mt-16" data-testid="find-progress" >
+      <div className="row u-between">
         <b>{run.phase}</b><span className="sub-inline">{run.done} of {run.total || "…"}</span>
       </div>
       <div className="find-track" role="progressbar" aria-label="Progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
         <div className="find-fill" style={{ width: `${pct}%` }} />
       </div>
-      <p className="sub" style={{ margin: "8px 0 0" }}>
+      <p className="sub u-m-8-0-0">
         {run.found} new leads · {run.enriched} existing leads completed · {run.credits} of {run.credit_limit} credits used. You can close this window; the run keeps going.
       </p>
     </div>
@@ -83,9 +83,9 @@ function Progress({ run }) {
 }
 
 function PreviewRows({ rows }) {
-  if (!rows?.length) return <p className="sub" style={{ marginTop: 12 }}>The preview found nothing to do. Check the notes above.</p>;
+  if (!rows?.length) return <p className="sub u-mt-12">The preview found nothing to do. Check the notes above.</p>;
   return (
-    <div className="card table-card" style={{ marginTop: 12 }}>
+    <div className="card table-card u-mt-12">
       <table className="leads-table" data-testid="find-preview-table">
         <thead><tr><th>Company</th><th>Person</th><th>What would happen</th></tr></thead>
         <tbody>
@@ -120,8 +120,8 @@ function Report({ run, onOpenLeads }) {
     setBusy(false);
   };
   return (
-    <div className="card" data-testid="find-report" style={{ marginTop: 14 }}>
-      <h3 style={{ margin: 0 }}>{r.dry_run ? "Preview: nothing was saved" : run.status === "done" ? "Done" : "Run report"}</h3>
+    <div className="card u-mt-16" data-testid="find-report" >
+      <h3 className="u-m0">{r.dry_run ? "Preview: nothing was saved" : run.status === "done" ? "Done" : "Run report"}</h3>
       <div className="grid g4" style={{ marginTop: 12, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 130px), 1fr))" }}>
         <Num label={r.dry_run ? "New leads it would add" : "New leads added"} value={r.new_leads} />
         <Num label={r.dry_run ? "Leads it would check" : "Existing leads completed"} value={r.dry_run ? r.checked || run.enriched : r.existing_completed} />
@@ -131,22 +131,22 @@ function Report({ run, onOpenLeads }) {
         {!r.dry_run && <Num label="Ready for email" value={r.qualified_ids.length} />}
         <Num label={`Credits used (limit ${r.credit_limit})`} value={r.credits_used} />
       </div>
-      {r.stopped_reason && <div className="tip" style={{ marginTop: 10 }} role="status">{r.stopped_reason}</div>}
+      {r.stopped_reason && <div className="tip u-mt-12" role="status">{r.stopped_reason}</div>}
       {run.errors?.length > 0 && (
-        <div className="tip" style={{ marginTop: 10 }} role="status">
+        <div className="tip u-mt-12" role="status">
           <b>What didn't work</b>
-          <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{run.errors.map((e, i) => <li key={i} style={{ overflowWrap: "anywhere" }}><b>{e.source}:</b> {e.message}</li>)}</ul>
+          <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{run.errors.map((e, i) => <li key={i} className="u-anywhere"><b>{e.source}:</b> {e.message}</li>)}</ul>
         </div>
       )}
       {!r.dry_run && r.lead_ids.length > 0 && (
-        <div className="row" style={{ marginTop: 12 }}>
+        <div className="row u-mt-12">
           <button className="btn" onClick={() => onOpenLeads(r.lead_ids)}>Open these leads</button>
           {isOwner() && r.qualified_ids.length > 0 && (
             <button className="btn ghost" disabled={busy} onClick={enrol}>{busy ? "Starting…" : `Start the email sequence for ${r.qualified_ids.length} qualified lead${r.qualified_ids.length === 1 ? "" : "s"}`}</button>
           )}
         </div>
       )}
-      {message && <div className="tip" role="status" style={{ marginTop: 10 }}>{message}</div>}
+      {message && <div className="tip u-mt-12" role="status" >{message}</div>}
       {run.preview && <PreviewRows rows={run.preview} />}
     </div>
   );
@@ -209,16 +209,16 @@ export default function FindLeadsDrawer({ onClose, go, onOpenLeads }) {
     <DrawerShell onClose={onClose} className="wizard" labelledBy="find-title" testId="find-drawer">
         <div className="drawer-head">
           <div><h2 id="find-title" tabIndex={-1}>Find &amp; enrich leads</h2>
-            <p className="sub" style={{ margin: 0 }}>Plain steps: choose, preview, run. Nothing is emailed from here.</p></div>
+            <p className="sub u-m0">Plain steps: choose, preview, run. Nothing is emailed from here.</p></div>
           <button className="btn ghost" onClick={onClose}>Close</button>
         </div>
 
         <fieldset className="find-modes" disabled={live} style={{ border: 0, padding: 0, margin: 0 }}>
-          <legend className="sub" style={{ padding: 0 }}>What should it do?</legend>
+          <legend className="sub u-p0">What should it do?</legend>
           {MODES.map(([id, label, hint]) => (
-            <label key={id} className="check-row" style={{ fontWeight: 400 }}>
+            <label key={id} className="check-row u-fw4">
               <input type="radio" name="find-mode" checked={mode === id} onChange={() => setMode(id)} />
-              <span><b>{label}</b><small className="sub" style={{ display: "block", margin: 0 }}>{hint}</small></span>
+              <span><b>{label}</b><small className="sub u-block u-m0">{hint}</small></span>
             </label>
           ))}
         </fieldset>
@@ -234,7 +234,7 @@ export default function FindLeadsDrawer({ onClose, go, onOpenLeads }) {
             <label>Credit limit (Apollo, Hunter, Firecrawl)<input type="number" min="0" max="500" value={limits.max_credits} onChange={(e) => setLimits({ ...limits, max_credits: e.target.value })} /></label>
           </div>
           {mode !== "enrich_existing" && (
-            <details style={{ marginTop: 8 }}>
+            <details className="u-mt-8">
               <summary>More options for finding new companies</summary>
               <Chips label="Industries" values={industries} examples={["BPO", "IT services", "Retail", "Logistics", "Staffing"]} onChange={setIndustries} />
               <label htmlFor="find-careers">Careers page links (optional, one per line)</label>
@@ -244,7 +244,7 @@ export default function FindLeadsDrawer({ onClose, go, onOpenLeads }) {
         </fieldset>
 
         {estimate && !live && (
-          <div className="tip" style={{ marginTop: 12 }} data-testid="find-estimate">
+          <div className="tip u-mt-12" data-testid="find-estimate">
             {fill && <div>Leads to fill in: <b>{fill.will_check}</b> ({fill.with_website} with a website, {fill.name_only} with only a company name; {fill.available} waiting in all).</div>}
             {find && <div>{find.runnable ? <>New leads: up to <b>{find.new_cap}</b> from {find.searches.join(", ")}.</> : find.problems.map((p) => <div key={p}>{p}</div>)}</div>}
             <div>Provider credits this run could use: up to <b>{estimate.credits_estimate_max}</b> of your limit of {estimate.credit_limit}.
@@ -252,18 +252,18 @@ export default function FindLeadsDrawer({ onClose, go, onOpenLeads }) {
           </div>
         )}
 
-        {error && <div className="tip error" role="alert" style={{ marginTop: 12 }}>{error}</div>}
-        <div className="row" style={{ marginTop: 14 }}>
+        {error && <div className="tip error u-mt-12" role="alert" >{error}</div>}
+        <div className="row u-mt-16">
           {owner && <button className="btn ghost" disabled={live} onClick={() => start(true)}>Preview</button>}
           {owner
             ? <button className="btn cta" disabled={live} onClick={() => start(false)}>{live ? "Working…" : "Run now"}</button>
             : <span className="sub">Only the owner can preview or start a run.</span>}
         </div>
-        <p className="sub" style={{ margin: "8px 0 0" }}>Preview shows what would happen and saves nothing. It may search with Apollo or Google Places, which can use credits.</p>
+        <p className="sub u-m-8-0-0">Preview shows what would happen and saves nothing. It may search with Apollo or Google Places, which can use credits.</p>
 
         {run && live && <Progress run={run} />}
-        {run && !live && run.status === "interrupted" && <div className="tip error" role="alert" style={{ marginTop: 14 }}>This run was interrupted because the app restarted. Run it again: leads already checked are skipped.</div>}
-        {run && !live && run.status === "failed" && <div className="tip error" role="alert" style={{ marginTop: 14 }}>The run stopped because of a problem. {run.errors?.map((e) => e.message).join(" ")}</div>}
+        {run && !live && run.status === "interrupted" && <div className="tip error u-mt-16" role="alert" >This run was interrupted because the app restarted. Run it again: leads already checked are skipped.</div>}
+        {run && !live && run.status === "failed" && <div className="tip error u-mt-16" role="alert" >The run stopped because of a problem. {run.errors?.map((e) => e.message).join(" ")}</div>}
         {run && !live && run.report && <Report run={run} onOpenLeads={openLeads} />}
     </DrawerShell>
   );

@@ -127,7 +127,7 @@ export function EditDetails({ lead, onSaved }) {
         <input value={reason} placeholder="e.g. wrong number on the card" onChange={(e) => setReason(e.target.value)} />
       </label>
       {msg && <div className="tip error" role="alert">{msg}</div>}
-      <p className="sub" style={{ margin: 0 }}>Saved with your name, the time, the old and the new value.</p>
+      <p className="sub u-m0">Saved with your name, the time, the old and the new value.</p>
       <div className="row">
         <button className="btn" type="submit" disabled={busy || !Object.keys(changed).length}>{busy ? "Saving…" : `Save ${Object.keys(changed).length || ""} change${Object.keys(changed).length === 1 ? "" : "s"}`}</button>
         <button className="btn ghost" type="button" onClick={() => setOpen(false)}>Cancel</button>
@@ -161,7 +161,7 @@ export function PrivacyActions({ lead, onErased }) {
         <div className="tip error" role="alert">
           This deletes the lead, its emails, replies, messages, tasks and notes for good. Only a scrambled fingerprint of
           the email and phone is kept, so they are never imported or contacted again.
-          <div className="row" style={{ marginTop: 8 }}>
+          <div className="row u-mt-8">
             <button className="btn danger-solid" onClick={erase}>Yes, erase everything</button>
             <button className="btn ghost" onClick={() => setConfirming(false)}>Cancel</button>
           </div>

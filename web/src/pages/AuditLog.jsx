@@ -48,18 +48,18 @@ export default function AuditLog() {
   const label = (a) => data?.actions?.[a] || a;
   return (
     <div data-testid="audit-log">
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-        <div><h3 style={{ margin: 0 }}>Audit log</h3>
-          <p className="sub" style={{ margin: "4px 0 0" }}>Who did what, and when (<Abbr term="IST">IST</Abbr>). Settings changes show old → new values; secrets are shown as (hidden). Rows are hash-chained so edits and deletions show up in the check.</p></div>
-        <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+      <div className="row u-between u-wrap">
+        <div><h3 className="u-m0">Audit log</h3>
+          <p className="sub u-m-4-0-0">Who did what, and when (<Abbr term="IST">IST</Abbr>). Settings changes show old → new values; secrets are shown as (hidden). Rows are hash-chained so edits and deletions show up in the check.</p></div>
+        <span className="row u-gap-8 u-wrap">
           <ChainCheck />
           <DownloadButton path={ops.auditCsvPath(f)} label="Download CSV" filename="audit-log.csv" testId="download-audit" />
           <DownloadButton path={ops.auditPackPath({ from: f.from, to: f.to })} label="Audit pack (zip)" filename="audit-pack.zip" testId="download-audit-pack"
             disabled={!f.from && !f.to} title={f.from || f.to ? "Messages, change log, consent and logins for these days" : "Pick a From / To day first"} />
         </span>
       </div>
-      <div className="card" style={{ margin: "10px 0", padding: 12 }}>
-        <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+      <div className="card u-m-12-0 u-p-12">
+        <div className="row u-wrap u-gap-8">
           <select aria-label="Action" value={f.action} onChange={(e) => set("action", e.target.value)} style={{ width: "auto" }}>
             {GROUPS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
@@ -67,13 +67,13 @@ export default function AuditLog() {
             <option value="">Anyone</option>{(data?.people || []).map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
           <input aria-label="Search what or detail" placeholder="Search what changed" value={f.q} onChange={(e) => set("q", e.target.value)} style={{ flex: "1 1 160px" }} />
-          <label className="row" style={{ gap: 4, margin: 0 }}>From <input type="date" aria-label="From (IST day)" value={f.from} onChange={(e) => set("from", e.target.value)} style={{ width: "auto" }} /></label>
-          <label className="row" style={{ gap: 4, margin: 0 }}>To <input type="date" aria-label="To (IST day)" value={f.to} onChange={(e) => set("to", e.target.value)} style={{ width: "auto" }} /></label>
+          <label className="row u-gap-4 u-m0">From <input type="date" aria-label="From (IST day)" value={f.from} onChange={(e) => set("from", e.target.value)} style={{ width: "auto" }} /></label>
+          <label className="row u-gap-4 u-m0">To <input type="date" aria-label="To (IST day)" value={f.to} onChange={(e) => set("to", e.target.value)} style={{ width: "auto" }} /></label>
           {Object.values(f).some(Boolean) && <button className="btn ghost" onClick={() => { setF(EMPTY); setOffset(0); }}>Clear</button>}
         </div>
       </div>
       {error && <div className="tip error" role="alert">{error}</div>}
-      <div className="card table-card" style={{ padding: 0 }}>
+      <div className="card table-card u-p0">
         {!data ? <p className="empty">Loading…</p> : data.items.length === 0 ? <p className="empty">Nothing recorded for these filters.</p> : (
           <div className="table-scroll"><table data-testid="audit-table">
             <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>Who</th><th>Action</th><th>What</th><th>Detail</th></tr></thead>
@@ -90,9 +90,9 @@ export default function AuditLog() {
         )}
       </div>
       {data && data.total > PAGE && (
-        <div className="row" style={{ justifyContent: "space-between", marginTop: 8 }}>
+        <div className="row u-between u-mt-8">
           <small className="sub-inline">{offset + 1}–{Math.min(offset + PAGE, data.total)} of {data.total}</small>
-          <span className="row" style={{ gap: 6 }}>
+          <span className="row u-gap-8">
             <button className="btn ghost" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>Newer</button>
             <button className="btn ghost" disabled={offset + PAGE >= data.total} onClick={() => setOffset(offset + PAGE)}>Older</button>
           </span>

@@ -5,5 +5,5 @@ export const isLandline = (lead) => !!lead?.phone && (lead.phone_type === "landl
 
 export default function PhoneTag({ lead }) {
   if (!isLandline(lead)) return null;
-  return <span className="pill" data-testid="landline-tag" title="Office landline: callable, no WhatsApp or SMS" style={{ marginLeft: 6 }}>Landline</span>;
+  return <span className="pill u-ml-8" data-testid="landline-tag" title="Office landline: callable, no WhatsApp or SMS" >Landline</span>;
 }

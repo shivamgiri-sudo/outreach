@@ -14,11 +14,11 @@ export default function LinkedInWhy({ lead }) {
   }
   if (!lead.linkedin_seq && !lead.linkedin_url) return null;
   return (
-    <div style={{ margin: "6px 0" }} data-testid="li-why">
+    <div className="u-m-8-0" data-testid="li-why">
       <button className="btn ghost" onClick={open}>{data ? "Refresh: why not sent?" : "Why not sent?"}</button>
       {err && <span className="sub" style={{ color: "#b91c1c", marginLeft: 8 }}>{err}</span>}
       {data && (
-        <div className="card" style={{ marginTop: 6 }}>
+        <div className="card u-mt-8">
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {data.reasons.map((r, i) => <li key={i} style={{ color: COLOUR[r.severity] }}>{r.text}</li>)}
           </ul>
@@ -29,7 +29,7 @@ export default function LinkedInWhy({ lead }) {
                 <summary>Step {s.step} to {s.to} {s.mismatch ? "- WRONG PERSON" : s.unverified ? "- page not verified" : "- verified"} ({istLabel(s.at)})</summary>
                 {s.observed_name && <div className="sub">Agent saw: {s.observed_name} {s.observed_url}{s.chat_title ? `, chat "${s.chat_title}"` : ""}</div>}
                 {s.mismatch_why && <div className="sub" style={{ color: "#b91c1c" }}>{s.mismatch_why}</div>}
-                <pre style={{ whiteSpace: "pre-wrap" }}>{s.text_sent || "(the agent did not report the text)"}</pre>
+                <pre className="u-prewrap">{s.text_sent || "(the agent did not report the text)"}</pre>
               </details>))}
           </>}
         </div>)}

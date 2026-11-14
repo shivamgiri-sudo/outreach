@@ -32,8 +32,8 @@ export function InternalEmails() {
   useEffect(() => { setError(""); ops.outboxInternal({ kind }).then(setData).catch((e) => setError(e.message)); }, [kind]);
   return (
     <>
-      <div className="card" style={{ marginBottom: 10, padding: 12 }}>
-        <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+      <div className="card u-mb-12 u-p-12">
+        <div className="row u-wrap u-gap-8">
           <select aria-label="Internal email kind" value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: "auto" }}>
             <option value="">Every kind</option>{(data?.kinds || []).map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
           </select>
@@ -41,7 +41,7 @@ export function InternalEmails() {
         </div>
       </div>
       {error && <div className="tip error" role="alert">{error}</div>}
-      <div className="card" style={{ padding: 0, overflowX: "auto" }}>
+      <div className="card u-p0 u-xauto">
         {!data ? !error && <p className="empty">Loading…</p> : data.items.length === 0 ? <p className="empty">No internal emails yet.</p> : (
           <table data-testid="internal-table">
             <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>To</th><th>Kind</th><th>Subject</th><th>Why</th><th>Status</th></tr></thead>

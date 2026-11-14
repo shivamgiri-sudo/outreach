@@ -32,7 +32,7 @@ function OwnerDefaults({ accounts, onMessage }) {
               {accounts.map((a) => <option key={a.account} value={a.account}>{accountName(accounts, a.account)}</option>)}
             </select></td></tr>))}
       </tbody></table>
-      {isOwner() && <button className="btn" style={{ marginTop: 8 }} onClick={save}>Save defaults</button>}
+      {isOwner() && <button className="btn u-mt-8" onClick={save}>Save defaults</button>}
     </details>
   );
 }
@@ -53,7 +53,7 @@ function StageList({ stage, account, owner, accounts, onMessage }) {
   };
   if (!items) return <p className="sub">Loading…</p>;
   return (
-    <div className="table-wrap" style={{ marginTop: 8 }} data-testid="li-stage-list">
+    <div className="table-wrap u-mt-8" data-testid="li-stage-list">
       {canExport && <button className="btn ghost" onClick={download} data-testid="li-stage-csv">Download CSV</button>}
       {items.length === 0 ? <p className="sub">Nobody here.</p> : (
         <table><thead><tr><th>Company</th><th>Person</th><th>Account</th><th>Owner</th><th>Last step</th><th>Next due</th></tr></thead>
@@ -83,8 +83,8 @@ export default function LinkedInStageBoard({ onMessage }) {
   if (!board) return null;
   const cols = board.accounts;
   return (
-    <section className="card" style={{ marginBottom: 14 }} data-testid="li-stage-board">
-      <div className="row" style={{ justifyContent: "space-between" }}>
+    <section className="card u-mb-16" data-testid="li-stage-board">
+      <div className="row u-between">
         <b>LinkedIn stages <span className="pill">{board.total}</span></b>
         <span className="row">
           <select aria-label="Stage board account" value={account} onChange={(e) => setAccount(e.target.value)} style={{ width: "auto" }}>

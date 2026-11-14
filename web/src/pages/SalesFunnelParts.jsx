@@ -50,31 +50,31 @@ export function FunnelHealth({ data, onDrill }) {
         <div className="card table-card-inner">
           <h4>Stage conversion</h4>
           <table data-testid="sf-conversions">
-            <thead><tr><th>From → to</th><th style={{ textAlign: "right" }}>Count</th><th style={{ textAlign: "right" }}>Rate</th></tr></thead>
+            <thead><tr><th>From → to</th><th className="u-right">Count</th><th className="u-right">Rate</th></tr></thead>
             <tbody>
               {data.conversions.map((c) => (
                 <tr key={c.to}><td><Stage status={c.from} full /> → <Stage status={c.to.replace(" (overall)", "")} full />{c.to.includes("overall") && <small className="sub-inline"> overall</small>}</td>
-                  <td style={{ textAlign: "right" }}>{num(c.fromCount)} → {num(c.toCount)}</td><td style={{ textAlign: "right" }}><b>{pct(c.rate)}</b></td></tr>
+                  <td className="u-right">{num(c.fromCount)} → {num(c.toCount)}</td><td className="u-right"><b>{pct(c.rate)}</b></td></tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <h4 style={{ margin: 0 }}>Funnel leakage: Closed Lost by the stage it was lost at</h4>
+      <div className="card u-mt-16">
+        <div className="row u-between">
+          <h4 className="u-m0">Funnel leakage: Closed Lost by the stage it was lost at</h4>
           <button type="button" className="linkish" disabled={!data.lost.count} onClick={() => onDrill(data.lost.drill, "Closed Lost leads")} data-testid="sf-lost-total">{data.lost.count} lost</button>
         </div>
         {!reasons.length ? <p className="empty">No leads were lost in this range.</p> : (
-          <div className="table-card" style={{ overflowX: "auto" }}>
+          <div className="table-card u-xauto">
             <table data-testid="sf-leakage">
-              <thead><tr><th>Lost at stage</th>{reasons.map((r) => <th key={r} style={{ textAlign: "right" }}>{r}</th>)}</tr></thead>
+              <thead><tr><th>Lost at stage</th>{reasons.map((r) => <th key={r} className="u-right">{r}</th>)}</tr></thead>
               <tbody>
                 {Object.keys(rows).map((stage) => (
                   <tr key={stage}><td><Stage status={stage} full /></td>
                     {reasons.map((r) => {
                       const c = cell(stage, r);
-                      return <td key={r} style={{ textAlign: "right" }}>{c ? <button type="button" className="linkish" onClick={() => onDrill(c.drill, `Lost at ${statusShort(stage)}: ${r}`)}>{c.count}</button> : "—"}</td>;
+                      return <td key={r} className="u-right">{c ? <button type="button" className="linkish" onClick={() => onDrill(c.drill, `Lost at ${statusShort(stage)}: ${r}`)}>{c.count}</button> : "—"}</td>;
                     })}</tr>
                 ))}
               </tbody>
@@ -97,8 +97,8 @@ export function SpeedDiscipline({ data, onDrill }) {
           <div className="sf-pair-nums"><div><b>{hours(sp.avgHours)}</b><small>average</small></div><div><b>{hours(sp.medianHours)}</b><small>median</small></div></div>
           <p className="sub">Created to first human contact. {sp.measured} lead{sp.measured === 1 ? "" : "s"} measured.</p>
           {sp.byOwner.length > 0 && (
-            <table><thead><tr><th>Owner</th><th style={{ textAlign: "right" }}>Avg</th><th style={{ textAlign: "right" }}>Median</th></tr></thead>
-              <tbody>{sp.byOwner.map((o) => <tr key={o.owner}><td>{o.owner}</td><td style={{ textAlign: "right" }}>{hours(o.avgHours)}</td><td style={{ textAlign: "right" }}>{hours(o.medianHours)}</td></tr>)}</tbody></table>
+            <table><thead><tr><th>Owner</th><th className="u-right">Avg</th><th className="u-right">Median</th></tr></thead>
+              <tbody>{sp.byOwner.map((o) => <tr key={o.owner}><td>{o.owner}</td><td className="u-right">{hours(o.avgHours)}</td><td className="u-right">{hours(o.medianHours)}</td></tr>)}</tbody></table>
           )}
         </div>
         <div className="card">
@@ -106,8 +106,8 @@ export function SpeedDiscipline({ data, onDrill }) {
           <Gauge value={sla.pct} caption={`First response within ${sla.hours} h: ${sla.within} of ${sla.measured}`} />
         </div>
         <div className="card" data-testid="sf-stalled">
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <h4 style={{ margin: 0 }}><Abbr term="Stalled lead">Stalled leads</Abbr></h4>
+          <div className="row u-between">
+            <h4 className="u-m0"><Abbr term="Stalled lead">Stalled leads</Abbr></h4>
             <button type="button" className="linkish" disabled={!st.total} onClick={() => onDrill(st.drill, "Stalled leads")} data-testid="sf-stalled-total">{st.total} stalled</button>
           </div>
           <p className="sub">Open, no activity for more than the configured days; biggest value first.</p>
@@ -115,7 +115,7 @@ export function SpeedDiscipline({ data, onDrill }) {
             <div style={{ maxHeight: 260, overflow: "auto" }}>
               <table><tbody>{st.rows.slice(0, 50).map((r) => (
                 <tr key={r.id}><td><a href={`#leads?lead=${encodeURIComponent(r.id)}`}>{r.company || r.id}</a><br /><small className="sub-inline">{r.owner || "—"} · <Stage status={r.stage} /></small></td>
-                  <td style={{ textAlign: "right" }}>{inr(r.value)}<br /><small className="sub-inline">{days(r.daysIdle)} idle</small></td></tr>
+                  <td className="u-right">{inr(r.value)}<br /><small className="sub-inline">{days(r.daysIdle)} idle</small></td></tr>
               ))}</tbody></table>
             </div>
           )}

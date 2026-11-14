@@ -43,18 +43,18 @@ export default function SuperAdminSecurity() {
   };
   const login = data.admin_login;
   return (
-    <div className="card" style={{ marginBottom: 16 }} data-testid="super-admin-security">
+    <div className="card u-mb-16" data-testid="super-admin-security">
       <b>Super admin</b>
-      <p className="sub" style={{ margin: "2px 0 8px" }}>Only super admins see this. Owners and super admins must use two-step login.</p>
+      <p className="sub u-m-4-0-8">Only super admins see this. Owners and super admins must use two-step login.</p>
 
-      <h4 style={{ margin: "10px 0 4px" }}>Recovery codes</h4>
+      <h4 className="u-m-12-0-4">Recovery codes</h4>
       {data.recovery.available ? <>
-        <p className="sub" style={{ margin: "2px 0 6px" }}>
+        <p className="sub u-m-4-0-8">
           Lost your phone or password? One code, together with a reset link to your email, resets your password and your two-step login.
           {" "}{left ? `${left} unused code(s)${data.recovery.made_at ? `, made ${istLabel(data.recovery.made_at)}` : ""}.` : "You have no codes yet."}
         </p>
         {codes.length > 0 && (
-          <div className="tip" data-testid="super-recovery-codes" style={{ margin: "8px 0" }}>
+          <div className="tip u-m-8-0" data-testid="super-recovery-codes" >
             <b>Save these codes now: they are not shown again.</b> Keep them offline (printed or in a safe).
             <ul style={{ columns: 2, margin: "6px 0", fontFamily: "monospace" }}>{codes.map((c) => <li key={c}>{c}</li>)}</ul>
             <span className="row">
@@ -64,7 +64,7 @@ export default function SuperAdminSecurity() {
             </span>
           </div>
         )}
-        <form className="row" style={{ flexWrap: "wrap", gap: 8 }} onSubmit={make}>
+        <form className="row u-wrap u-gap-8" onSubmit={make}>
           <input type="password" aria-label="Your password" placeholder="Your password" autoComplete="current-password" value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })} />
           <input aria-label="Authenticator code" placeholder="Authenticator code" inputMode="numeric" autoComplete="one-time-code" maxLength={12}
@@ -74,23 +74,23 @@ export default function SuperAdminSecurity() {
       </> : <p className="sub">Recovery codes belong to a super admin's own login. Sign in with your email to make them.</p>}
       {message && <p className="sub" role="alert">{message}</p>}
 
-      <h4 style={{ margin: "14px 0 4px" }}>Owners' two-step login</h4>
+      <h4 className="u-m-16-0-4">Owners' two-step login</h4>
       <ul className="today-list" data-testid="owners-two-step">
         {data.owners.map((o) => (
-          <li key={o.email} className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-            <span><b>{o.name}</b> <small>{o.email}</small>{o.super_admin && <span className="pill ok" style={{ marginLeft: 6 }}>Super admin</span>}</span>
+          <li key={o.email} className="row u-between u-wrap">
+            <span><b>{o.name}</b> <small>{o.email}</small>{o.super_admin && <span className="pill ok u-ml-8">Super admin</span>}</span>
             <span className={`pill ${o.two_step_on ? "ok" : "warn"}`}>{o.two_step_on ? "Two-step on" : "Sets it up at next sign-in"}</span>
           </li>
         ))}
         {!data.owners.length && <li className="sub">No owner logins yet.</li>}
       </ul>
 
-      <h4 style={{ margin: "14px 0 4px" }}>Super admins</h4>
-      <p className="sub" style={{ margin: "2px 0" }}>{data.super_admins.length ? data.super_admins.join(", ") : "None named: every owner counts as one."}
+      <h4 className="u-m-16-0-4">Super admins</h4>
+      <p className="sub u-m-4-0">{data.super_admins.length ? data.super_admins.join(", ") : "None named: every owner counts as one."}
         {" "}Set on the server (OUTREACH_SUPER_ADMIN, comma-separated); it cannot be changed here.</p>
 
-      <h4 style={{ margin: "14px 0 4px" }}>Server admin password sign-in</h4>
-      <p className="sub" style={{ margin: "2px 0" }} data-testid="admin-login-status">
+      <h4 className="u-m-16-0-4">Server admin password sign-in</h4>
+      <p className="sub u-m-4-0" data-testid="admin-login-status">
         {!login.password_set ? "Off: no OUTREACH_ADMIN_PASSWORD is set on the server."
           : login.mode === "off" ? "Off. To use it in an emergency, set OUTREACH_ADMIN_LOGIN=1 on the server and sign in through an SSH tunnel."
           : login.local_only ? "On, from the server itself only (SSH tunnel). Never over the internet. Every use alerts the super admins."

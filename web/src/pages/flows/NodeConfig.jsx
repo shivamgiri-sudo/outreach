@@ -272,8 +272,8 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
 
   return (
     <section className="fb-config card" ref={panelRef} tabIndex={-1} aria-labelledby="fb-config-title" data-testid="node-config">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h3 id="fb-config-title" style={{ margin: 0 }}>{titleOf(node)}</h3>
+      <div className="row u-between">
+        <h3 id="fb-config-title" className="u-m0">{titleOf(node)}</h3>
         <span className="pill">{labelOf(node.type)}</span>
       </div>
       <p className="field-help">{helpOf(node.type)}</p>
@@ -301,7 +301,7 @@ export default function NodeConfig({ flowId, node, nodes, edges, catalog, proble
           })}
         </fieldset>
       )}
-      <div className="row" style={{ marginTop: 12 }}>
+      <div className="row u-mt-12">
         {onDuplicate && !isTrigger(node.type) && <button type="button" className="btn ghost" onClick={onDuplicate}>Duplicate (Ctrl+D)</button>}
         {onDelete && <button type="button" className="btn ghost danger" onClick={onDelete}>Delete this step</button>}
       </div>

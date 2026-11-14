@@ -18,9 +18,9 @@ export default function ConfirmDialog({ title, children, confirmLabel = "Yes, go
       <div className="scrim" onClick={onCancel} />
       <div className="palette" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" data-testid={testId}
         style={{ padding: "18px 20px", left: 16, right: 16, width: "auto", maxWidth: 560, margin: "0 auto", transform: "none", animation: "fade .2s ease both" }}>
-        <h3 id="confirm-title" style={{ marginTop: 0 }}>{title}</h3>
+        <h3 id="confirm-title" className="u-mt-0">{title}</h3>
         <div className="sub" style={{ color: "inherit" }}>{children}</div>
-        <div className="row" style={{ marginTop: 14, justifyContent: "flex-end" }}>
+        <div className="row u-mt-16 u-end">
           <button className="btn ghost" onClick={onCancel}>Cancel</button>
           <button ref={yes} className={danger ? "btn danger-solid" : "btn"} disabled={busy} onClick={onConfirm}>{busy ? "Working…" : confirmLabel}</button>
         </div>

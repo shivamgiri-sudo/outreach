@@ -1,0 +1,69 @@
+/* Utility classes generated from the old inline styles. !important so they behave like the inline styles they replace. */
+.u-acenter { align-items:center !important; }
+.u-aend { align-items:flex-end !important; }
+.u-anywhere { overflow-wrap:anywhere !important; }
+.u-between { justify-content:space-between !important; }
+.u-block { display:block !important; }
+.u-breakall { word-break:break-all !important; }
+.u-end { justify-content:flex-end !important; }
+.u-flex1 { flex:1 1 0;min-width:0 !important; }
+.u-fw4 { font-weight:400 !important; }
+.u-gap-12 { gap:12px !important; }
+.u-gap-16 { gap:16px !important; }
+.u-gap-4 { gap:4px !important; }
+.u-gap-8 { gap:8px !important; }
+.u-m-0-0-4 { margin:0 0 4px !important; }
+.u-m-0-0-8 { margin:0 0 8px !important; }
+.u-m-12-0 { margin:12px 0 !important; }
+.u-m-12-0-0 { margin:12px 0 0 !important; }
+.u-m-12-0-4 { margin:12px 0 4px !important; }
+.u-m-12-0-8 { margin:12px 0 8px !important; }
+.u-m-16 { margin:16px !important; }
+.u-m-16-0-0 { margin:16px 0 0 !important; }
+.u-m-16-0-4 { margin:16px 0 4px !important; }
+.u-m-16-0-8 { margin:16px 0 8px !important; }
+.u-m-16-16-8 { margin:16px 16px 8px !important; }
+.u-m-4-0 { margin:4px 0 !important; }
+.u-m-4-0-0 { margin:4px 0 0 !important; }
+.u-m-4-0-12 { margin:4px 0 12px !important; }
+.u-m-4-0-8 { margin:4px 0 8px !important; }
+.u-m-8-0 { margin:8px 0 !important; }
+.u-m-8-0-0 { margin:8px 0 0 !important; }
+.u-m-8-0-12 { margin:8px 0 12px !important; }
+.u-m-8-0-4 { margin:8px 0 4px !important; }
+.u-m0 { margin:0 !important; }
+.u-maxwidth-120 { max-width:120px !important; }
+.u-maxwidth-320 { max-width:320px !important; }
+.u-maxwidth-560 { max-width:560px !important; }
+.u-maxwidth-720 { max-width:720px !important; }
+.u-mb-0 { margin-bottom:0px !important; }
+.u-mb-12 { margin-bottom:12px !important; }
+.u-mb-16 { margin-bottom:16px !important; }
+.u-mb-4 { margin-bottom:4px !important; }
+.u-mb-8 { margin-bottom:8px !important; }
+.u-min0 { min-width:0 !important; }
+.u-minwidth-120 { min-width:120px !important; }
+.u-minwidth-130 { min-width:130px !important; }
+.u-minwidth-160 { min-width:160px !important; }
+.u-minwidth-200 { min-width:200px !important; }
+.u-minwidth-220 { min-width:220px !important; }
+.u-ml-12 { margin-left:12px !important; }
+.u-ml-24 { margin-left:24px !important; }
+.u-ml-4 { margin-left:4px !important; }
+.u-ml-8 { margin-left:8px !important; }
+.u-mr-4 { margin-right:4px !important; }
+.u-mr-8 { margin-right:8px !important; }
+.u-mt-0 { margin-top:0px !important; }
+.u-mt-12 { margin-top:12px !important; }
+.u-mt-16 { margin-top:16px !important; }
+.u-mt-20 { margin-top:20px !important; }
+.u-mt-4 { margin-top:4px !important; }
+.u-mt-8 { margin-top:8px !important; }
+.u-p-12 { padding:12px !important; }
+.u-p-16 { padding:16px !important; }
+.u-p0 { padding:0 !important; }
+.u-pointer { cursor:pointer !important; }
+.u-prewrap { white-space:pre-wrap !important; }
+.u-right { text-align:right !important; }
+.u-wrap { flex-wrap:wrap !important; }
+.u-xauto { overflow-x:auto !important; }

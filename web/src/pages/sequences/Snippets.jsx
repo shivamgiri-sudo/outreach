@@ -41,8 +41,8 @@ export default function Snippets() {
   return (
     <section aria-label="Snippet library">
       <p className="sub">Reusable messages for one-off emails (pick them in a contact's “Write an email”), WhatsApp, LinkedIn and SMS. One-off emails always get an unsubscribe line added.</p>
-      <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <div className="row" role="group" aria-label="Filter by channel" style={{ flexWrap: "wrap", gap: 6 }}>
+      <div className="row u-wrap u-gap-8 u-mb-12">
+        <div className="row u-wrap u-gap-8" role="group" aria-label="Filter by channel" >
           <button type="button" className={`chip${filter === "" ? " on" : ""}`} onClick={() => setFilter("")}>All</button>
           {CHANNELS.map(([k, label]) => <button type="button" key={k} className={`chip${filter === k ? " on" : ""}`} onClick={() => setFilter(k)}>{label}</button>)}
         </div>
@@ -67,10 +67,10 @@ export default function Snippets() {
       )}
       {!shown.length && <p className="sub">No snippets yet{filter ? " for this channel" : ""}.</p>}
       {shown.map((s) => (
-        <div key={s.id} className="card" style={{ marginBottom: 12 }}>
-          <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <div key={s.id} className="card u-mb-12">
+          <div className="row u-between u-wrap u-gap-8">
             <b>{s.name} <span className="pill">{CHANNELS.find(([k]) => k === s.channel)?.[1] || s.channel}</span> <WorkspaceTag row={s} /></b>
-            <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+            <span className="row u-gap-8 u-wrap">
               <button type="button" className="btn ghost" onClick={() => copy(s)}>{copied === s.id ? "Copied" : "Copy"}</button>
               {mayChange(s) && <button type="button" className="btn ghost" onClick={() => setForm({ ...EMPTY, ...s })}>Edit</button>}
               {mayChange(s) && <button type="button" className="btn ghost" onClick={() => remove(s)}>Delete</button>}
@@ -78,7 +78,7 @@ export default function Snippets() {
           </div>
           {s.subject && <p><b>Subject:</b> {s.subject}</p>}
           <pre>{s.body}</pre>
-          <p className="sub" style={{ margin: 0 }}>By {s.created_by || "someone"}</p>
+          <p className="sub u-m0">By {s.created_by || "someone"}</p>
         </div>
       ))}
     </section>

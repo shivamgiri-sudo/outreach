@@ -21,7 +21,7 @@ export function OutcomeTiles({ o }) {
   return (
     <div className="grid g4" style={{ margin: "12px 0", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 130px), 1fr))" }} data-testid="campaign-outcome-tiles">
       {tiles.map(([label, value, note]) => (
-        <div className="card stat" style={{ padding: 12 }} key={label}>
+        <div className="card stat u-p-12" key={label}>
           <span className="sub-inline">{label}</span><b style={{ fontSize: 24, marginTop: 2 }}>{value ?? 0}</b>{note && <small className="sub-inline">{note}</small>}
         </div>
       ))}
@@ -45,7 +45,7 @@ export function CampaignLeadsTable({ id, onOpen, onTotal, refreshKey }) {
   const set = (k, v) => { setF({ ...f, [k]: v }); setPage(1); };
   return (
     <>
-      <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: 8 }} data-testid="campaign-lead-filters">
+      <div className="row u-wrap u-gap-8 u-mb-8" data-testid="campaign-lead-filters">
         <input aria-label="Search campaign leads" placeholder="Search company, contact, email" value={f.q} onChange={(e) => set("q", e.target.value)} style={{ flex: "1 1 180px" }} />
         <select aria-label="Stage" value={f.stage} onChange={(e) => set("stage", e.target.value)} style={{ width: "auto" }}>
           <option value="">Any stage</option>{(data?.stages || []).map((s) => <option key={s} value={s}>{stageLabel(s)}</option>)}
@@ -80,9 +80,9 @@ export function CampaignLeadsTable({ id, onOpen, onTotal, refreshKey }) {
         )}
       </div>
       {data && data.total > PAGE_SIZE && (
-        <div className="row" style={{ justifyContent: "space-between", marginTop: 8 }}>
+        <div className="row u-between u-mt-8">
           <small className="sub-inline">{data.total} leads · page {data.page} of {data.pages}</small>
-          <span className="row" style={{ gap: 6 }}>
+          <span className="row u-gap-8">
             <button className="btn ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
             <button className="btn ghost" disabled={page >= data.pages} onClick={() => setPage(page + 1)}>Next</button>
           </span>

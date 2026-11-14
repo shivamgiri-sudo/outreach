@@ -31,13 +31,13 @@ function Spend() {
         <div><small className="sub">Monthly budget</small><div style={{ fontSize: 20, fontWeight: 700 }}>{d.budget ?? "No cap"}</div></div>
         <div><small className="sub">Left</small><div style={{ fontSize: 20, fontWeight: 700 }}>{d.left ?? "—"}</div></div>
       </div>
-      <div className="row" style={{ alignItems: "flex-end" }}>
+      <div className="row u-aend">
         <div style={{ flex: "1 1 160px" }}><label htmlFor="ps-budget">Monthly budget (blank = no cap)</label>
           <input id="ps-budget" inputMode="decimal" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} /></div>
         <div style={{ flex: "1 1 160px" }}><label htmlFor="ps-fresh">Reuse stored emails for (days)</label>
           <input id="ps-fresh" inputMode="numeric" value={form.freshness} onChange={(e) => setForm({ ...form, freshness: e.target.value })} /></div>
       </div>
-      <div className="table-card" style={{ marginTop: 12 }}>
+      <div className="table-card u-mt-12">
         <table className="ps-table">
           <thead><tr><th>Provider</th><th>On</th><th>Order</th><th>Cost / lookup</th><th>Connected</th></tr></thead>
           <tbody>
@@ -53,8 +53,8 @@ function Spend() {
           </tbody>
         </table>
       </div>
-      <div className="row" style={{ marginTop: 10 }}><button className="btn" onClick={save}>Save spend settings</button>{msg && <span className="sub" role="status">{msg}</span>}</div>
-      <h3 style={{ marginTop: 18 }}>Monthly spend and hit rate</h3>
+      <div className="row u-mt-12"><button className="btn" onClick={save}>Save spend settings</button>{msg && <span className="sub" role="status">{msg}</span>}</div>
+      <h3 className="u-mt-20">Monthly spend and hit rate</h3>
       {d.rows.length === 0 ? <p className="sub">No lookups yet.</p> : (
         <div className="table-card">
           <table className="ps-table" data-testid="spend-table">
@@ -89,7 +89,7 @@ function Sources({ onChanged }) {
         ))}
       </div>
       <label className="pf-check"><input type="checkbox" checked={purge} onChange={(e) => setPurge(e.target.checked)} /><span>Also remove values already stored from switched-off sources</span></label>
-      <div className="row" style={{ marginTop: 8 }}><button className="btn" onClick={save}>Save sources</button>{msg && <span className="sub" role="status">{msg}</span>}</div>
+      <div className="row u-mt-8"><button className="btn" onClick={save}>Save sources</button>{msg && <span className="sub" role="status">{msg}</span>}</div>
     </section>
   );
 }
@@ -150,7 +150,7 @@ function Tools({ onChanged }) {
       <textarea id="pi-text" rows={4} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder="company,contact_name,title,email,website" />
       <label htmlFor="pi-src">Source name</label>
       <input id="pi-src" value={source} onChange={(e) => setSource(e.target.value)} />
-      <div className="row" style={{ marginTop: 8 }}>
+      <div className="row u-mt-8">
         <button className="btn" disabled={!csv.trim()} onClick={() => run(async () => { const r = await prospects.importCsv(csv, source || "csv"); setCsv(""); return `Imported ${r.people} people and ${r.companies} companies from ${r.rows} rows.`; })}>Import into prospects</button>
         <button className="btn ghost" onClick={() => run(async () => { const r = await prospects.syncCrm(false); return r.busy ? "A sync is already running." : `Synced ${r.synced} changed leads (${r.unchanged} unchanged).`; })}>Sync from my leads now</button>
       </div>

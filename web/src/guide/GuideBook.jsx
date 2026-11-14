@@ -115,7 +115,7 @@ export default function GuideBook({ chapterId, topic, ctx }) {
           : (
             <>
               <div className="g-bar no-print">
-                <label className="row" style={{ gap: 6, margin: 0 }}><input type="checkbox" checked={printAll} onChange={(e) => setPrintAll(e.target.checked)} /> Include every chapter</label>
+                <label className="row u-gap-8 u-m0"><input type="checkbox" checked={printAll} onChange={(e) => setPrintAll(e.target.checked)} /> Include every chapter</label>
                 <button type="button" className="btn ghost" onClick={print} data-testid="guide-print">Print / save as PDF</button>
               </div>
               {(printAll ? chapters : [chapter]).map((c) => (

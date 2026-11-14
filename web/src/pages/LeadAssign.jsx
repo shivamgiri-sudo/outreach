@@ -13,8 +13,8 @@ export function LeadOwner({ lead, onChanged }) {
     try { onChanged(await api.setLeadOwner(lead.id, owner)); } catch (e) { setError(e.message); }
   };
   return (
-    <div className="row" style={{ margin: "6px 0", flexWrap: "wrap" }} data-testid="lead-owner">
-      <label htmlFor={`owner-${lead.id}`} style={{ margin: 0 }}><b>Owner</b></label>
+    <div className="row u-m-8-0 u-wrap" data-testid="lead-owner">
+      <label htmlFor={`owner-${lead.id}`} className="u-m0"><b>Owner</b></label>
       {canEdit ? (
         <select id={`owner-${lead.id}`} value={lead.owner || ""} onChange={(e) => change(e.target.value)} style={{ width: "auto", minWidth: 160 }}>
           <option value="">Nobody yet</option>
@@ -38,19 +38,19 @@ export function LeadTags({ lead, onChanged }) {
   };
   const submit = (e) => { e.preventDefault(); if (text.trim()) run([text.trim()], []); };
   return (
-    <div style={{ margin: "6px 0" }} data-testid="lead-tags">
-      <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+    <div className="u-m-8-0" data-testid="lead-tags">
+      <div className="row u-wrap u-gap-8">
         <b>Tags</b>
-        {tags.length === 0 && <small className="sub" style={{ margin: 0 }}>none</small>}
+        {tags.length === 0 && <small className="sub u-m0">none</small>}
         {tags.map((t) => (
           <span key={t} className="pill rec">
             {t}
-            {canEdit && <button type="button" className="linkish" aria-label={`Remove tag ${t}`} style={{ marginLeft: 6 }} onClick={() => run([], [t])}>✕</button>}
+            {canEdit && <button type="button" className="linkish u-ml-8" aria-label={`Remove tag ${t}`} onClick={() => run([], [t])}>✕</button>}
           </span>
         ))}
       </div>
       {canEdit && (
-        <form className="row" onSubmit={submit} style={{ marginTop: 6 }}>
+        <form className="row u-mt-8" onSubmit={submit} >
           <input aria-label="New tag" placeholder="Add a tag, e.g. Noida BPO" maxLength={40} value={text} onChange={(e) => setText(e.target.value)} style={{ flex: "1 1 160px", width: "auto" }} />
           <button className="btn ghost" type="submit" disabled={!text.trim()}>Add tag</button>
         </form>

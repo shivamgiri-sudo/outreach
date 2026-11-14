@@ -23,7 +23,7 @@ function Settings({ cfg, onSave }) {
   const [form, setForm] = useState(cfg);
   useEffect(() => setForm(cfg), [cfg]);
   return (
-    <details className="card" style={{ marginBottom: 14 }}>
+    <details className="card u-mb-16">
       <summary><b>LinkedIn settings</b> <span className="sub">— daily limit, who sends, case-study link</span></summary>
       <fieldset className="ro-fieldset" disabled={!isOwner()}>
       <label>New connection requests per day (start with 10–15)
@@ -34,7 +34,7 @@ function Settings({ cfg, onSave }) {
         <input value={form.case_study_url} placeholder="https://…" onChange={(e) => setForm({ ...form, case_study_url: e.target.value })} /></label>
       <label className="check-row"><input type="checkbox" data-testid="li-auto-start" checked={!!form.linkedin_auto_start} onChange={(e) => setForm({ ...form, linkedin_auto_start: e.target.checked })} /> Start the sequence automatically: each working day the agent puts the suggested people (with a LinkedIn link, not contacted yet) on the sequence, up to the daily limit above</label>
       </fieldset>
-      {isOwner() && <button className="btn" style={{ marginTop: 8 }} onClick={() => onSave({ ...form, linkedin_daily_connections: Number(form.linkedin_daily_connections) })}>Save</button>}
+      {isOwner() && <button className="btn u-mt-8" onClick={() => onSave({ ...form, linkedin_daily_connections: Number(form.linkedin_daily_connections) })}>Save</button>}
     </details>
   );
 }
@@ -51,9 +51,9 @@ function ToolBridge({ onDone }) {
     if (file.current) file.current.value = "";
   };
   return (
-    <section className="card" style={{ marginBottom: 14 }} aria-labelledby="li-tool-title">
-      <h3 id="li-tool-title" style={{ marginTop: 0 }}>Use a LinkedIn tool</h3>
-      <p className="sub" style={{ marginTop: 0 }}>Export the people who have a LinkedIn link, with the connection note and follow-up messages already written, and load the file into a
+    <section className="card u-mb-16" aria-labelledby="li-tool-title">
+      <h3 id="li-tool-title" className="u-mt-0">Use a LinkedIn tool</h3>
+      <p className="sub u-mt-0">Export the people who have a LinkedIn link, with the connection note and follow-up messages already written, and load the file into a
         tool such as Waalaxy, Dux-Soup or PhantomBuster. When it has run, import its results file here to mark who accepted or replied.</p>
       <div className="row">
         {isOwner() && <DownloadButton path={exportPath("linkedin_tool")} label="Export list for a LinkedIn tool" testId="download-linkedin-tool"
@@ -61,17 +61,17 @@ function ToolBridge({ onDone }) {
         {canWrite() && <button type="button" className="btn ghost" data-testid="import-linkedin-results" onClick={() => file.current?.click()}>Import its results</button>}
         {canWrite() && <input ref={file} type="file" accept=".csv,text/csv" hidden aria-label="Results file from the LinkedIn tool" onChange={(e) => pick(e.target.files?.[0])} />}
       </div>
-      <div className="tip" style={{ marginTop: 10 }} role="note">
+      <div className="tip u-mt-12" role="note">
         Automating LinkedIn is against LinkedIn's terms and can get an account restricted. If you use a tool, that is your own decision and risk;
         use a separate LinkedIn account, not the one you rely on. The portal only logs in to LinkedIn if you add a cloud account above; otherwise the LinkedIn agent below works from your own computer in a window you log in to yourself.
       </div>
-      {error && <div className="tip error" role="alert" style={{ marginTop: 10 }}>{error}</div>}
+      {error && <div className="tip error u-mt-12" role="alert" >{error}</div>}
       {result && (
-        <div className="tip" role="status" style={{ marginTop: 10 }} data-testid="linkedin-results">
+        <div className="tip u-mt-12" role="status" data-testid="linkedin-results">
           Read {result.rows} row(s): {result.matched} matched, {result.accepted} marked accepted, {result.replied} marked replied,
           {" "}{result.unmatched} not found in your leads.
           {result.problems.map((p) => <div key={p}>{p}</div>)}
-          {result.unmatched_links.length > 0 && <details><summary>Links not found</summary>{result.unmatched_links.map((u) => <div key={u} style={{ overflowWrap: "anywhere" }}>{u}</div>)}</details>}
+          {result.unmatched_links.length > 0 && <details><summary>Links not found</summary>{result.unmatched_links.map((u) => <div key={u} className="u-anywhere">{u}</div>)}</details>}
         </div>
       )}
     </section>
@@ -116,7 +116,7 @@ function ChromeAssistant({ onMessage }) {
     try { await api.extensionRevoke(id); if (fresh && fresh.id === id) setFresh(null); onMessage("Pairing token revoked."); load(); } catch (e) { onMessage(e.message); }
   };
   return (
-    <details className="card" style={{ marginBottom: 14 }} data-testid="chrome-assistant">
+    <details className="card u-mb-16" data-testid="chrome-assistant">
       <summary><b>Chrome assistant</b> <span className="sub">— shows these messages next to the LinkedIn profile you have open</span></summary>
       <p className="sub">A Chrome extension reads the one profile you open, shows the ready message and lets you insert it. You press LinkedIn's Send
         yourself and confirm in the panel. It never clicks, scrolls or sends for you. Install steps: <code>extensions/linkedin-assistant/README.md</code> in the project.</p>
@@ -126,9 +126,9 @@ function ChromeAssistant({ onMessage }) {
         <button className="btn" onClick={create}>Create pairing token</button>
       </div>
       {fresh && (
-        <div className="tip" role="status" data-testid="pair-token-box" style={{ marginTop: 8 }}>
+        <div className="tip u-mt-8" role="status" data-testid="pair-token-box" >
           <b>Copy this token now. It is shown only once.</b>
-          <p className="trail-text" data-testid="pair-token" style={{ wordBreak: "break-all" }}>{fresh.token}</p>
+          <p className="trail-text u-breakall" data-testid="pair-token" >{fresh.token}</p>
           <button className="btn ghost" onClick={() => copyText(fresh.token).then(() => onMessage("Token copied. Paste it into the extension's settings."))}>Copy token</button>
           <button className="btn ghost" onClick={() => setFresh(null)}>I have copied it</button>
         </div>
@@ -166,17 +166,17 @@ function ConnectionNotes({ onMessage }) {
   // Main's notes: owners (and callers with every workspace, as before); a workspace's: owners and its own admins.
   const editable = !!cur.can_edit && (isOwner() || isWorkspaceAdmin());   // templates: owners and workspace admins only
   return (
-    <details className="card" style={{ marginBottom: 12 }}>
+    <details className="card u-mb-12">
       <summary><b>Connection notes A / B</b> <small className="sub-inline">each new lead gets one of the two; compare accept rates on the Intelligence page
         {(isOwner() || cur.workspace !== "main") && <> · <span className="pill">{cur.workspace_name}</span></>}</small></summary>
       {!editable && <p className="sub">Read-only: only an owner or an admin of this workspace changes these notes.</p>}
       {["A", "B"].map((v) => (
-        <div key={v} style={{ marginTop: 10 }}>
+        <div key={v} className="u-mt-12">
           <label htmlFor={`note-${v}`}><b>Note {v}</b></label> <Score s={scores[v]} />
           <textarea id={`note-${v}`} rows={3} value={draft[v]} maxLength={600} readOnly={!editable} onChange={(e) => setDraft({ ...draft, [v]: e.target.value })} onBlur={(e) => editable && rescore(v, e.target.value)} style={{ width: "100%" }} />
         </div>
       ))}
-      {editable && <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
+      {editable && <div className="row u-mt-8 u-wrap">
         <button className="btn" onClick={save}>Save notes</button>
         {!isLimitedLogin() && <>
         <input aria-label="Who you are writing to" placeholder="Optional: who it is for (e.g. CHROs at IT services firms)" value={context} maxLength={500} onChange={(e) => setContext(e.target.value)} style={{ flex: 1, minWidth: 220 }} />
@@ -185,10 +185,10 @@ function ConnectionNotes({ onMessage }) {
       </div>}
       {cur.changed_at && <small className="sub-inline">Last changed by {cur.changed_by} · {istLabel(cur.changed_at)}. Accept rates before this date belong to the old notes.</small>}
       {ideas && (
-        <div style={{ marginTop: 10 }}>
+        <div className="u-mt-12">
           <small className="sub-inline">{ideas.source === "claude" ? "Written by Claude, scored by simple rules:" : "Claude is not connected; built-in ideas, scored:"}</small>
           {ideas.candidates.map((c, i) => (
-            <div key={i} className="trail-text" style={{ marginTop: 6 }}>
+            <div key={i} className="trail-text u-mt-8">
               <div>{c.text}</div><Score s={c} />
               <div className="row"><button className="btn ghost" onClick={() => { setDraft({ ...draft, A: c.text }); setScores((x) => ({ ...x, A: c })); }}>Use as A</button>
                 <button className="btn ghost" onClick={() => { setDraft({ ...draft, B: c.text }); setScores((x) => ({ ...x, B: c })); }}>Use as B</button></div>
@@ -293,9 +293,9 @@ export default function LinkedInQueue() {
       {q && q.due.length === 0 && <p className="empty">Nothing due. Start some people from the suggestions below.</p>}
       {q && q.due.length > 0 && <p className="sub">The agent works through this list by itself, oldest first. You can also send one by hand: copy the message, send it on LinkedIn, then press Mark sent.</p>}
       {q && q.due.map((d) => (
-        <div className="card" key={d.task_id} style={{ marginBottom: 10 }}>
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <b>{d.name || "Contact"} · {d.company}{d.open_profile && <span className="pill" title="Premium member who accepts messages from anyone" style={{ marginLeft: 6 }}>Open Profile: message without connecting</span>}</b>
+        <div className="card u-mb-12" key={d.task_id} >
+          <div className="row u-between">
+            <b>{d.name || "Contact"} · {d.company}{d.open_profile && <span className="pill u-ml-8" title="Premium member who accepts messages from anyone" >Open Profile: message without connecting</span>}</b>
             <span className="sub">Step {d.step} · {PERSONA[d.persona] || d.persona || ""}{d.due_at ? ` · ${istLabel(d.due_at)}` : ""}</span>
           </div>
           <p className="trail-text">{d.message}</p>
@@ -316,7 +316,7 @@ export default function LinkedInQueue() {
         <h3>Finding their LinkedIn profile <span className="pill">{q.finding.length}</span></h3>
         <p className="sub">These people had no LinkedIn link. The agent searches for one person at a time and starts the sequence only when exactly one profile matches the name and the company.</p>
         {q.finding.map((f) => (
-          <div className="card" key={f.lead_id} style={{ marginBottom: 10 }} data-testid="li-finding-row">
+          <div className="card u-mb-12" key={f.lead_id} data-testid="li-finding-row">
             <b>{f.name || "Contact"} · {f.company}</b>
             <LinkedInFinder row={f} onChanged={load} onMessage={setMessage} />
           </div>))}

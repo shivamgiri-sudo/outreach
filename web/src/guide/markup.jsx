@@ -50,7 +50,7 @@ export function Blocks({ chapter }) {
       case "tip": return <div key={i} className="tip g-note" role="note"><strong>Tip: </strong><Inline text={a} /></div>;
       case "warn": return <div key={i} className="tip error g-note" role="note"><strong>Careful: </strong><Inline text={a} /></div>;
       case "table": return (
-        <div key={i} className="g-table table-card" style={{ overflowX: "auto" }}>
+        <div key={i} className="g-table table-card u-xauto">
           <table><thead><tr>{a.head.map((h, j) => <th key={j} scope="col">{h}</th>)}</tr></thead>
             <tbody>{a.rows.map((r, j) => <tr key={j}>{r.map((c, k) => (k === 0 ? <th key={k} scope="row"><Inline text={c} /></th> : <td key={k}><Inline text={c} /></td>))}</tr>)}</tbody></table>
         </div>);

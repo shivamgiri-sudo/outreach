@@ -20,7 +20,7 @@ export default function CallTrackerFunnel({ from, to }) {
   }, [from, to]);
   if (!data || (!data.connected_workspaces && !data.sent_total && !data.calls)) return null;
   return (
-    <section className="card" data-testid="ct-funnel" style={{ marginTop: 16 }}>
+    <section className="card u-mt-16" data-testid="ct-funnel" >
       <b>Calls from Call Tracker</b>
       <p className="sub">Real calls synced from callers' phones{from || to ? ` (${from || "start"} to ${to || "today"}, IST)` : ""}.</p>
       <div className="grid g4">

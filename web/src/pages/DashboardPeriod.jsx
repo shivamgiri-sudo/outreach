@@ -10,7 +10,7 @@ export default function DashboardPeriod({ go }) {
   useEffect(() => { setError(""); ops.overview(period).then(setData).catch((e) => setError(e.message)); }, [JSON.stringify(period)]);
   const k = data?.kpis;
   return (
-    <section style={{ marginTop: 16 }} data-testid="dashboard-period">
+    <section className="u-mt-16" data-testid="dashboard-period">
       <PeriodPicker value={period} onChange={setPeriod} range={data?.range} />
       {error && <div className="tip error" role="alert">{error}</div>}
       {k && (
@@ -21,7 +21,7 @@ export default function DashboardPeriod({ go }) {
           <DeltaTile label="Meetings" kpi={k.meetings} tone="tone-green" />
         </div>
       )}
-      {go && <p className="sub" style={{ marginTop: 6 }}><button className="linkish" onClick={() => go("analytics")}>See all numbers in Analytics</button></p>}
+      {go && <p className="sub u-mt-8"><button className="linkish" onClick={() => go("analytics")}>See all numbers in Analytics</button></p>}
     </section>
   );
 }

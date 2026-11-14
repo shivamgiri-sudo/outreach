@@ -65,14 +65,14 @@ export default function Leaderboard() {
         <button className={`tab-chip${period === "custom" ? " on" : ""}`} aria-pressed={period === "custom"} data-testid="chip-custom" onClick={() => setPeriod("custom")}>Custom</button>
       </div>
       {period === "custom" && (
-        <div className="row" style={{ gap: 8, marginBottom: 8, alignItems: "center", flexWrap: "wrap" }} data-testid="custom-range">
+        <div className="row u-gap-8 u-mb-8 u-acenter u-wrap" data-testid="custom-range">
           <label>From <input type="date" aria-label="From date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} /></label>
           <label>To <input type="date" aria-label="To date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} /></label>
           <span className="muted">IST days, up to {MAX_DAYS} days.</span>
           {rangeErr && <div className="tip error" role="alert" data-testid="range-error">{rangeErr}</div>}
         </div>
       )}
-      <div className="row" style={{ gap: 8, marginBottom: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="row u-gap-8 u-mb-12 u-acenter u-wrap">
         <label>Rank by{" "}
           <select aria-label="Rank by" value={rankBy} onChange={(e) => setRankBy(e.target.value)}>
             {MEASURES.map(([id, text]) => <option key={id} value={id}>{text}</option>)}
@@ -87,7 +87,7 @@ export default function Leaderboard() {
       )}
       {data && rows.length > 0 && (
         <div className="card" data-testid="leaderboard">
-          <div className="table-wrap" style={{ overflowX: "auto" }}>
+          <div className="table-wrap u-xauto">
             <table>
               <thead>
                 <tr><th>Rank</th><th>Caller</th><th>Calls</th><th>Connected</th><th>Connect rate</th><th>Interested</th><th>Meetings</th><th>Marked</th><th>Target reached</th></tr>
@@ -117,7 +117,7 @@ export default function Leaderboard() {
               </tfoot>
             </table>
           </div>
-          <p className="muted" style={{ marginBottom: 0 }}>The change in brackets compares calls with the {data.days} day{data.days === 1 ? "" : "s"} before ({prevLabel}, {t.calls_prev} calls). Targets are set on My day.</p>
+          <p className="muted u-mb-0">The change in brackets compares calls with the {data.days} day{data.days === 1 ? "" : "s"} before ({prevLabel}, {t.calls_prev} calls). Targets are set on My day.</p>
         </div>
       )}
     </>

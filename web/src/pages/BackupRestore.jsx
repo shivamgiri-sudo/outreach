@@ -14,7 +14,7 @@ const NAMES = {
 function Summary({ plan }) {
   return (
     <>
-      <p className="sub" style={{ margin: "10px 0 6px" }}>
+      <p className="sub u-m-12-0-8">
         Backup made {plan.backup.created_at_ist || plan.backup.created_at}{plan.backup.app_commit ? ` (app version ${plan.backup.app_commit})` : ""}.
         {" "}Connection keys and login passwords included: <b>{plan.backup.includes_secrets ? "yes" : "no"}</b>.
       </p>
@@ -28,7 +28,7 @@ function Summary({ plan }) {
           </tbody>
         </table>
       </div>
-      <p className="sub" style={{ margin: "8px 0 4px" }}>{plan.will_replace} {plan.pre_restore_copy}</p>
+      <p className="sub u-m-8-0-4">{plan.will_replace} {plan.pre_restore_copy}</p>
       <ul className="steps">{plan.notes.map((n) => <li key={n}>{n}</li>)}</ul>
     </>
   );
@@ -57,14 +57,14 @@ export default function BackupRestore() {
 
   return (
     <>
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card u-mb-16">
         <b>Download a backup</b>
-        <p className="sub" style={{ margin: "2px 0 8px" }}>
+        <p className="sub u-m-4-0-8">
           One file with everything: leads, messages, replies, tasks, campaigns, settings. Keep it to move to your own server
           or to go back to today's state. For spreadsheets, use the download buttons on each page instead.
         </p>
         <DownloadButton path="/api/backup?include_secrets=0" filename="outreach-backup.json.gz" label="Download backup" className="btn" testId="download-backup" />
-        <p className="sub" style={{ margin: "6px 0 0" }}>
+        <p className="sub u-m-8-0-0">
           Without connection keys, login password hashes or pairing tokens: after a restore you enter the keys again on the
           Integrations page. Team logins already on the server keep their passwords.
         </p>
@@ -73,11 +73,11 @@ export default function BackupRestore() {
           <span>Also include connection keys, login password hashes, tokens and secrets</span>
         </label>
         {withSecrets && (
-          <div className="tip error" role="alert" style={{ marginTop: 8 }}>
+          <div className="tip error u-mt-8" role="alert" >
             <b>Careful: this file will hold your API keys, mailbox passwords, calendar tokens, team login password hashes and the server secret in plain text.</b>{" "}
             Anyone who gets it can send email and WhatsApp as you and read your replies. Store it like a password (an encrypted
             drive or password manager). Never email it, chat it or put it in a shared folder. Delete it once you have moved.
-            <div className="row" style={{ marginTop: 8 }}>
+            <div className="row u-mt-8">
               <DownloadButton path="/api/backup?include_secrets=1" filename="outreach-backup-WITH-SECRETS.json.gz"
                 label="Download backup with keys" className="btn danger-solid" testId="download-backup-secrets" />
             </div>
@@ -87,10 +87,10 @@ export default function BackupRestore() {
 
       <div className="card">
         <b>Restore from a backup</b>
-        <p className="sub" style={{ margin: "2px 0 8px" }}>
+        <p className="sub u-m-4-0-8">
           Replaces everything in this app with the file. First you see what would change; nothing happens until you confirm.
         </p>
-        <p className="sub" style={{ margin: "0 0 8px" }}>
+        <p className="sub u-m-0-0-8">
           Team logins (passwords and two-step login), the server secret and pairing tokens are never taken from a backup
           file: everyone keeps the login they have here. Logins that exist only in the backup are not restored; add them
           again on the Team page. Keys in a backup are used only when this server made and signed it. Only the super admin
@@ -99,24 +99,24 @@ export default function BackupRestore() {
         <label htmlFor="restore-file">Backup file (.json.gz)</label>
         <input id="restore-file" type="file" accept=".gz,.json,application/gzip,application/json"
           onChange={(e) => { setFile(e.target.files[0] || null); setPlan(null); setDone(null); setError(""); }} />
-        <div className="row" style={{ marginTop: 10 }}>
+        <div className="row u-mt-12">
           <button className="btn ghost" disabled={!file || !!busy} onClick={check}>{busy === "check" ? "Checking…" : "Check this file"}</button>
         </div>
-        {error && <div className="tip error" role="alert" style={{ marginTop: 10 }}>{error}</div>}
+        {error && <div className="tip error u-mt-12" role="alert" >{error}</div>}
         {plan && (
-          <div className="tip" role="status" style={{ marginTop: 10 }} data-testid="restore-plan">
+          <div className="tip u-mt-12" role="status" data-testid="restore-plan">
             <b>{plan.message}</b>
             <Summary plan={plan} />
-            <div className="row" style={{ marginTop: 8 }}>
+            <div className="row u-mt-8">
               <button className="btn danger-solid" disabled={!!busy} onClick={restore}>{busy === "restore" ? "Restoring…" : "Replace everything with this backup"}</button>
               <button className="btn ghost" disabled={!!busy} onClick={() => setPlan(null)}>Cancel</button>
             </div>
           </div>
         )}
         {done && (
-          <div className="tip" role="status" style={{ marginTop: 10 }} data-testid="restore-done">
+          <div className="tip u-mt-12" role="status" data-testid="restore-done">
             <b>Restored.</b> {done.message}
-            {done.notes.slice(1).map((n) => <p key={n} className="sub" style={{ margin: "6px 0 0" }}>{n}</p>)}
+            {done.notes.slice(1).map((n) => <p key={n} className="sub u-m-8-0-0">{n}</p>)}
           </div>
         )}
       </div>

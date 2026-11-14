@@ -11,11 +11,11 @@ function Team({ team, owners, onChange, onRemove }) {
   const id = useId();
   const toggle = (n) => onChange({ ...team, members: team.members.includes(n) ? team.members.filter((x) => x !== n) : [...team.members, n] });
   return (
-    <div className="card" style={{ marginBottom: 10 }} data-testid="team-card">
-      <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+    <div className="card u-mb-12" data-testid="team-card">
+      <div className="row u-wrap u-gap-8">
         <label htmlFor={`${id}-n`} className="sr-only">Team name</label>
         <input id={`${id}-n`} placeholder="Team name" value={team.name} onChange={(e) => onChange({ ...team, name: e.target.value })} style={{ flex: 1, minWidth: 160 }} />
-        <label className="row" style={{ margin: 0, gap: 6 }}>Daily cap
+        <label className="row u-m0 u-gap-8">Daily cap
           <input type="number" min="0" aria-label={`Daily cap for ${team.name || "team"}`} style={{ width: 80 }} value={team.daily_cap ?? ""} onChange={(e) => onChange({ ...team, daily_cap: e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0) })} />
         </label>
         <button className="btn ghost" onClick={onRemove} aria-label={`Remove team ${team.name || ""}`}>Remove</button>
@@ -35,8 +35,8 @@ function Team({ team, owners, onChange, onRemove }) {
 
 function Rule({ rule, index, last, teams, onChange, onMove, onRemove }) {
   return (
-    <div className="card" style={{ marginBottom: 10 }} data-testid="rule-card">
-      <div className="row" style={{ flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
+    <div className="card u-mb-12" data-testid="rule-card">
+      <div className="row u-wrap u-gap-8 u-aend">
         <b style={{ minWidth: 24 }}>{index + 1}.</b>
         {WHEN.map(([k, label]) => (
           <label key={k} style={{ flex: "1 1 120px", margin: 0 }}>{label}
@@ -94,16 +94,16 @@ function AssignmentBody() {
   return (
     <div className="setup-stack" data-testid="assignment-setup">
       <section className="card setup-card">
-        <h3 style={{ marginTop: 0 }}>Assign new leads</h3>
-        <label className="row" style={{ gap: 8 }}><input type="checkbox" checked={!!cfg.on} onChange={(e) => set({ on: e.target.checked })} data-testid="assignment-on" /> Give every new lead an owner automatically (first matching rule, then round-robin inside the team)</label>
+        <h3 className="u-mt-0">Assign new leads</h3>
+        <label className="row u-gap-8"><input type="checkbox" checked={!!cfg.on} onChange={(e) => set({ on: e.target.checked })} data-testid="assignment-on" /> Give every new lead an owner automatically (first matching rule, then round-robin inside the team)</label>
         <p className="sub">A lead that matches no rule goes to the default team. {cfg.unowned ?? 0} lead(s) have no owner now.</p>
-        <div className="row" style={{ flexWrap: "wrap" }}>
+        <div className="row u-wrap">
           <button className="btn ghost" disabled={busy || !cfg.unowned} onClick={runUnowned} data-testid="run-unowned">Run on unowned leads</button>
         </div>
       </section>
 
       <section className="card setup-card" aria-labelledby="as-teams">
-        <h3 id="as-teams" style={{ marginTop: 0 }}>Teams</h3>
+        <h3 id="as-teams" className="u-mt-0">Teams</h3>
         {teams.map((t, i) => (
           <div key={t.id}>
             <Team team={t} owners={owners} onChange={(x) => setTeam(i, x)} onRemove={() => set({ teams: teams.filter((_, j) => j !== i), rules: rules.filter((r) => r.team !== t.id) })} />
@@ -114,7 +114,7 @@ function AssignmentBody() {
       </section>
 
       <section className="card setup-card" aria-labelledby="as-rules">
-        <h3 id="as-rules" style={{ marginTop: 0 }}>Rules</h3>
+        <h3 id="as-rules" className="u-mt-0">Rules</h3>
         <p className="sub">Checked from top to bottom; the first rule whose filled boxes all match decides the team. Empty boxes match anything.</p>
         {rules.map((r, i) => (
           <Rule key={r.id} rule={r} index={i} last={i === rules.length - 1} teams={teams}
@@ -124,17 +124,17 @@ function AssignmentBody() {
       </section>
 
       <section className="card setup-card" aria-labelledby="as-ft">
-        <h3 id="as-ft" style={{ marginTop: 0 }}>First touch</h3>
+        <h3 id="as-ft" className="u-mt-0">First touch</h3>
         <p className="sub">The clock runs in working hours. A first touch is an email, WhatsApp or LinkedIn message sent, a call logged, a note or a meeting.</p>
-        <div className="row" style={{ flexWrap: "wrap", gap: 16 }}>
-          <label className="row" style={{ gap: 8, margin: 0 }}><input type="checkbox" checked={!!ft.alert} onChange={(e) => setFt({ alert: e.target.checked })} data-testid="ft-alert" /> Alert the owner after
+        <div className="row u-wrap u-gap-16">
+          <label className="row u-gap-8 u-m0"><input type="checkbox" checked={!!ft.alert} onChange={(e) => setFt({ alert: e.target.checked })} data-testid="ft-alert" /> Alert the owner after
             <input type="number" min="1" aria-label="Alert after minutes" style={{ width: 80 }} value={ft.alert_minutes ?? ""} onChange={(e) => setFt({ alert_minutes: Math.max(1, parseInt(e.target.value, 10) || 1) })} /> minutes</label>
-          <label className="row" style={{ gap: 8, margin: 0 }}><input type="checkbox" checked={!!ft.reassign} onChange={(e) => setFt({ reassign: e.target.checked })} data-testid="ft-reassign" /> Move to the next person after
+          <label className="row u-gap-8 u-m0"><input type="checkbox" checked={!!ft.reassign} onChange={(e) => setFt({ reassign: e.target.checked })} data-testid="ft-reassign" /> Move to the next person after
             <input type="number" min="1" aria-label="Reassign after minutes" style={{ width: 80 }} value={ft.reassign_minutes ?? ""} onChange={(e) => setFt({ reassign_minutes: Math.max(1, parseInt(e.target.value, 10) || 1) })} /> minutes</label>
         </div>
       </section>
 
-      <div className="row" style={{ flexWrap: "wrap" }}>
+      <div className="row u-wrap">
         <button className="btn" disabled={busy || invalid} onClick={save} data-testid="assignment-save">Save assignment</button>
         {invalid && <small className="sub">Give every team a name and every rule a team.</small>}
         {msg && <span className={`tip${msg.error ? " error" : ""}`} role={msg.error ? "alert" : "status"}>{msg.text}</span>}

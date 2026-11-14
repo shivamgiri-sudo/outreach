@@ -43,7 +43,7 @@ export default function NodePicker({ open, onClose, onPick, heading = "Add a ste
         <input ref={input} className="fb-picker-search" type="search" placeholder="Search steps: email, wait, Claude, switch…" value={query}
           onChange={(e) => { setQuery(e.target.value); setCursor(0); }} aria-label="Search steps" />
         <div className="fb-picker-list" ref={list} role="listbox" aria-label="Steps">
-          {items.length === 0 && <p className="empty" style={{ padding: 16 }}>No step matches “{query}”.</p>}
+          {items.length === 0 && <p className="empty u-p-16">No step matches “{query}”.</p>}
           {GROUPS.map(([group, heading2]) => {
             const mine = items.filter((i) => i.group === group);
             if (!mine.length) return null;

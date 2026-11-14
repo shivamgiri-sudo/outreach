@@ -19,11 +19,11 @@ export function BulkNotice({ notice, onUndone, onClose }) {
     setBusy(false);
   };
   return (
-    <div className="tip" role="status" style={{ marginBottom: 12 }} data-testid="bulk-notice">
+    <div className="tip u-mb-12" role="status" data-testid="bulk-notice">
       {undone || notice.text}{" "}
       {notice.undoId && !undone && <button className="btn ghost" disabled={busy} onClick={undo} data-testid="bulk-undo">{busy ? "Undoing…" : "Undo"}</button>}{" "}
       <button className="linkish" aria-label="Dismiss message" onClick={onClose}>✕</button>
-      {notice.undoId && !undone && <span className="sub" style={{ display: "block", margin: "4px 0 0" }}>Undo works for 24 hours and only on leads nobody has changed since.</span>}
+      {notice.undoId && !undone && <span className="sub u-block u-m-4-0-0">Undo works for 24 hours and only on leads nobody has changed since.</span>}
     </div>
   );
 }
@@ -66,23 +66,23 @@ export function HandoverPanel({ owners, onDone }) {
 
   return (
     <details className="card" style={{ padding: "8px 12px", marginBottom: 12 }} data-testid="handover-panel">
-      <summary style={{ cursor: "pointer" }}><b>Hand over a person’s leads</b> <span className="sub">(someone is leaving or changing role)</span></summary>
-      <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+      <summary className="u-pointer"><b>Hand over a person’s leads</b> <span className="sub">(someone is leaving or changing role)</span></summary>
+      <div className="row u-gap-8 u-mt-8 u-wrap">
         <select aria-label="Take leads from" value={from} onChange={(e) => { setFrom(e.target.value); reset(); }} style={{ width: "auto" }}>
           <option value="">Leads of…</option>{owners.map((n) => <option key={n} value={n}>{n}</option>)}</select>
         <select aria-label="Give leads to" value={to} onChange={(e) => { setTo(e.target.value); reset(); }} style={{ width: "auto" }}>
           <option value="">Give to…</option>{owners.filter((n) => n !== from).map((n) => <option key={n} value={n}>{n}</option>)}</select>
         <select aria-label="Only this stage" value={stage} onChange={(e) => { setStage(e.target.value); reset(); }} style={{ width: "auto" }}>
           <option value="">Every stage</option>{Object.keys(STAGE_LABELS).map((k) => <option key={k} value={k}>{stageLabel(k)}</option>)}</select>
-        <label className="check-row" style={{ margin: 0 }}><input type="checkbox" checked={untouched} onChange={(e) => { setUntouched(e.target.checked); reset(); }} /> Only leads not yet contacted</label>
+        <label className="check-row u-m0"><input type="checkbox" checked={untouched} onChange={(e) => { setUntouched(e.target.checked); reset(); }} /> Only leads not yet contacted</label>
         <button className="btn ghost" disabled={!from || !to || busy} onClick={check}>{busy && !plan ? "Checking…" : "Check how many"}</button>
       </div>
       {err && <p className="sub" role="alert" style={{ color: "var(--danger, #b42318)" }}>{err}</p>}
       {plan && (
-        <div style={{ marginTop: 8 }} data-testid="handover-plan">
-          <p style={{ margin: "0 0 6px" }}><b>{plan.will_move}</b> lead(s) would move from <b>{plan.from_owner}</b> to <b>{plan.to_owner}</b>
+        <div className="u-mt-8" data-testid="handover-plan">
+          <p className="u-m-0-0-8"><b>{plan.will_move}</b> lead(s) would move from <b>{plan.from_owner}</b> to <b>{plan.to_owner}</b>
             {plan.skipped > 0 && <>; {plan.skipped} left out ({reasonLine(plan)})</>}. Nothing has changed yet.</p>
-          {plan.sample.length > 0 && <p className="sub" style={{ margin: "0 0 6px" }}>For example: {plan.sample.map((s) => s.company).join(", ")}{plan.will_move > plan.sample.length ? " …" : ""}</p>}
+          {plan.sample.length > 0 && <p className="sub u-m-0-0-8">For example: {plan.sample.map((s) => s.company).join(", ")}{plan.will_move > plan.sample.length ? " …" : ""}</p>}
           <button className="btn" disabled={busy || plan.will_move === 0} onClick={run}>Reassign {plan.will_move}…</button>
         </div>
       )}

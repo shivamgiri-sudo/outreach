@@ -9,9 +9,9 @@ export default function DashboardAssignment() {
   useEffect(() => { if (allowed) api.assignmentStats().then(setS).catch(() => {}); }, [allowed]);
   if (!allowed || !s || (!(s.members || []).length && !s.unassigned && !s.reassigned_total && !s.stuck)) return null;
   return (
-    <section className="card" style={{ marginTop: 16 }} aria-labelledby="dash-assign" data-testid="dash-assignment">
-      <h3 id="dash-assign" style={{ marginTop: 0 }}>First touch by person</h3>
-      <p className="sub" style={{ marginTop: 0 }}><b>{s.unassigned ?? 0}</b> lead(s) wait for an owner · <b>{s.reassigned_total ?? 0}</b> moved to someone else for a late first touch.{s.stuck > 0 && <> <b className="err-text" data-testid="dash-stuck">{s.stuck}</b> stuck: moved twice and still no first touch.</>}</p>
+    <section className="card u-mt-16" aria-labelledby="dash-assign" data-testid="dash-assignment">
+      <h3 id="dash-assign" className="u-mt-0">First touch by person</h3>
+      <p className="sub u-mt-0"><b>{s.unassigned ?? 0}</b> lead(s) wait for an owner · <b>{s.reassigned_total ?? 0}</b> moved to someone else for a late first touch.{s.stuck > 0 && <> <b className="err-text" data-testid="dash-stuck">{s.stuck}</b> stuck: moved twice and still no first touch.</>}</p>
       {(s.members || []).length > 0 && (
         <div className="table-scroll"><table>
           <thead><tr><th>Person</th><th>Leads given</th><th>Average first touch</th><th>Moved away</th></tr></thead>

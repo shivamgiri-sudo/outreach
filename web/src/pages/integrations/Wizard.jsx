@@ -102,7 +102,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
           <div>
             <h2 id="wizard-title" tabIndex={-1}>{provider.title}</h2>
             <span className="sub-inline">{channel.title}</span> <StatusPill status={provider.status} oauth={provider.oauth} saved={provider.saved} />
-            {provider.active && <span className="pill ok" style={{ marginLeft: 6 }}>Active</span>}
+            {provider.active && <span className="pill ok u-ml-8">Active</span>}
           </div>
           <button className="btn ghost" onClick={onClose}>Close</button>
         </div>
@@ -132,7 +132,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
             {legacy && provider.modes?.length > 1 && (
               <div className="row">
                 {provider.modes.map((m) => (
-                  <label key={m} className="row" style={{ fontWeight: 400, margin: 0 }}>
+                  <label key={m} className="row u-fw4 u-m0">
                     <input type="radio" checked={mode === m} onChange={() => setMode(m)} />
                     {m === "api" ? "Connect directly (API)" : "Manual (CSV / copy-paste)"}
                   </label>
@@ -158,7 +158,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
             {meta.public_base_url?.includes("localhost") && (
               <p className="field-help">This uses a localhost address, which only works on this computer. Set your public web address in Setup first for a shared server.</p>
             )}
-            {owner && <button className="btn" disabled={busy || !provider.saved} onClick={connect} style={{ marginTop: 12 }}>
+            {owner && <button className="btn u-mt-12" disabled={busy || !provider.saved} onClick={connect} >
               {provider.oauth_connected ? "Reconnect" : "Connect"} {provider.title.split(" ")[0]}
             </button>}
             {!provider.saved && <p className="field-help">Save your details in step 2 first.</p>}
@@ -208,7 +208,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
             {provider.id === "custom_webhook" ? (
               <p>Use <b>Preview what the app reads</b> in step 2 with a sample payload to check the mapping.</p>
             ) : owner && (
-              <div className="row" style={{ marginTop: 10 }}>
+              <div className="row u-mt-12">
                 <button className="btn" disabled={busy || !provider.saved} onClick={runTest} data-testid="run-test">{busy ? "Testing…" : "Run test"}</button>
                 {provider.id === "imap" && provider.saved && (
                   <button className="btn ghost" disabled={busy} onClick={() => act(async () => setTest({ ...test, result: await api.pollImap() }))}>Check for replies now</button>
@@ -219,7 +219,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
             {test.result && (
               <div className={`tip ${test.result.ok ? "" : "error"}`} role="status" style={{ marginTop: 10 }} data-testid="test-result">
                 <b className={`result ${test.result.ok ? "ok" : "bad"}`}>{test.result.ok ? "✓ Works. " : "✗ Not yet. "}</b>{test.result.message}
-                <p style={{ margin: "6px 0 0" }}>
+                <p className="u-m-8-0-0">
                   {test.result.ok ? (canActivate ? "Next: make it the active provider below." : "All set.") : "Next: check the details in step 2 and try again."}
                 </p>
                 {test.result.preview && <><b>Request sent</b><pre>{`${test.result.preview.method} ${test.result.preview.url}\n${Object.entries(test.result.preview.headers || {}).map(([k, v]) => `${k}: ${v}`).join("\n")}${test.result.preview.body ? `\n\n${test.result.preview.body}` : ""}`}</pre></>}
@@ -230,7 +230,7 @@ export default function Wizard({ channel, provider: start, meta, onClose, onChan
               <p className="field-help">Last test {istLabel(provider.last_test.at)}: {provider.last_test.ok ? "worked" : "failed"} — {provider.last_test.message}</p>
             )}
             {owner && canActivate && (
-              <button className="btn cta" style={{ marginTop: 12 }} disabled={busy} onClick={() => act(() => api.setActiveChannel(channel.id, provider.id))}>
+              <button className="btn cta u-mt-12" disabled={busy} onClick={() => act(() => api.setActiveChannel(channel.id, provider.id))}>
                 Make this the active provider for {channel.title}
               </button>
             )}

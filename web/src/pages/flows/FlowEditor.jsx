@@ -240,7 +240,7 @@ export default function FlowEditor({ flowId, catalog, onBack }) {
       </div>
       {leaving && (
         <div className="tip error" role="alert">You have unsaved changes.
-          <div className="row" style={{ marginTop: 8 }}>
+          <div className="row u-mt-8">
             <button type="button" className="btn" onClick={async () => { if (await save()) onBack(); }}>Save and leave</button>
             <button type="button" className="btn ghost" onClick={onBack}>Leave without saving</button>
             <button type="button" className="btn ghost" onClick={() => setLeaving(false)}>Stay</button>

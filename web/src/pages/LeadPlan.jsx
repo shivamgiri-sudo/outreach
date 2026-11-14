@@ -24,18 +24,18 @@ export default function LeadPlan({ lead }) {
   if (!plan) return null;
   const { linkedin: li, email, follow_ups: tasks, automatic } = plan;
   return (
-    <details className="card" open style={{ margin: "10px 0" }} data-testid="lead-plan">
+    <details className="card u-m-12-0" open data-testid="lead-plan">
       <summary><b>Communication plan</b> <span className="sub">— what is done, what is next, what the system did</span></summary>
       <div className="split-2">
         <div data-testid="plan-email">
-          <h4 style={{ margin: "8px 0 4px" }}>Email {email?.practice && <span className="pill">practice</span>}</h4>
+          <h4 className="u-m-8-0-4">Email {email?.practice && <span className="pill">practice</span>}</h4>
           {!email ? <p className="sub">Not on an email sequence.</p> : <>
             {email.stopped && <p className="sub">Stopped: {email.stopped}</p>}
             <ul className="plain-list">{email.steps.map((r) => <Step key={r.day} label={`Day ${r.day}: ${r.subject || r.name}`} row={r} />)}</ul>
           </>}
         </div>
         <div data-testid="plan-linkedin">
-          <h4 style={{ margin: "8px 0 4px" }}>LinkedIn</h4>
+          <h4 className="u-m-8-0-4">LinkedIn</h4>
           {!li ? <p className="sub">Not on the LinkedIn sequence.</p> : <>
             <p className="sub">{li.status_text}{li.stopped ? `: ${li.stopped}` : ""}{li.account ? ` · account ${li.account}` : ""}
               <br />Started {when(li.started_at)}{li.auto_started ? " (automatically)" : ""}{li.accepted_at ? ` · accepted ${when(li.accepted_at)}` : ""}</p>
@@ -43,11 +43,11 @@ export default function LeadPlan({ lead }) {
           </>}
         </div>
       </div>
-      <h4 style={{ margin: "10px 0 4px" }}>Follow-ups to do ({tasks.length})</h4>
+      <h4 className="u-m-12-0-4">Follow-ups to do ({tasks.length})</h4>
       {tasks.length === 0 ? <p className="sub">Nothing open.</p> : (
         <ul className="plain-list" data-testid="plan-followups">{tasks.map((t, i) => <li key={i}>{t.title} <small className="sub-inline">— due {day(t.due_at) || "now"}{t.owner ? ` · ${t.owner}` : ""}</small></li>)}</ul>
       )}
-      <h4 style={{ margin: "10px 0 4px" }}>Done automatically by the system ({automatic.length})</h4>
+      <h4 className="u-m-12-0-4">Done automatically by the system ({automatic.length})</h4>
       {automatic.length === 0 ? <p className="sub">Nothing yet.</p> : (
         <ul className="plain-list" data-testid="plan-automatic">{automatic.slice(0, 15).map((a, i) => <li key={i}><small className="sub-inline">{when(a.at)} · {a.who}:</small> {a.what}</li>)}</ul>
       )}

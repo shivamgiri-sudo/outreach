@@ -29,14 +29,14 @@ export default function SystemHealth() {
   const s = h.sending;
   return (
     <div data-testid="system-health">
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-        <div><h3 style={{ margin: 0 }}>System health</h3><p className="sub" style={{ margin: "4px 0 0" }}>Checked {istLabel(h.checked_at)}.</p></div>
+      <div className="row u-between u-wrap">
+        <div><h3 className="u-m0">System health</h3><p className="sub u-m-4-0-0">Checked {istLabel(h.checked_at)}.</p></div>
         <button className="btn ghost" onClick={load}>Check again</button>
       </div>
       <div className={`tip ${h.ok ? "" : "error"}`} role="status" style={{ margin: "10px 0" }}>
         {h.ok ? "Everything looks fine." : <>Needs a look: {h.problems.join(" ")}</>}
       </div>
-      <div className="card table-card" style={{ padding: 0 }}>
+      <div className="card table-card u-p0">
         <div className="table-scroll"><table>
           <tbody>
             {!h.autorun_enabled && <Row label="Background jobs">Off on this server (OUTREACH_AUTORUN is not 1): sends run only when someone presses Run.</Row>}

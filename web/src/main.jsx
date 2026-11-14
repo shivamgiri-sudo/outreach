@@ -8,5 +8,6 @@ import "./ux.css";
 import "./leads.css";
 import "./calls.css";
 import "./pages.css";
+import "./utilities.css";
 
 createRoot(document.getElementById("root")).render(<App />);

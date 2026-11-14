@@ -17,7 +17,7 @@ export function useAgeingRules() {
 
 export function AgedPill({ lead, rules }) {
   if (!lead.ageing) return null;
-  return <span className="pill warn" style={{ marginLeft: 6 }} data-testid="aged-pill" title={WHY(rules)[lead.ageing]}>Aged</span>;
+  return <span className="pill warn u-ml-8" data-testid="aged-pill" title={WHY(rules)[lead.ageing]}>Aged</span>;
 }
 
 export function AgeingFilter({ leads, value, onChange, rules }) {
@@ -44,7 +44,7 @@ function Rules({ rules, onSaved }) {
             <label key={k}>{label}<input type="number" min="1" max="3650" value={draft[k]} onChange={(e) => setDraft({ ...draft, [k]: e.target.value })} /></label>
           ))}
           {err && <div className="tip error" role="alert">{err}</div>}
-          <div className="row" style={{ marginTop: 12, justifyContent: "flex-end" }}>
+          <div className="row u-mt-12 u-end">
             <button className="btn ghost" onClick={() => setOpen(false)}>Cancel</button><button className="btn" onClick={save}>Save</button>
           </div>
         </Modal>
@@ -84,17 +84,17 @@ function DuplicatesReport({ onClose }) {
         <>
           <p className="sub">{data.total_groups} group{data.total_groups === 1 ? "" : "s"}{data.shown < data.total_groups ? `, showing the first ${data.shown}` : ""}.</p>
           {data.groups.map((g, i) => (
-            <div key={i} className="card" style={{ marginBottom: 8 }}>
+            <div key={i} className="card u-mb-8">
               <small>{g.reasons.join(", ")} · {g.size} leads</small>
               {g.leads.map((l) => (
-                <p key={l.id} style={{ margin: "4px 0" }}><a href={`#leads?lead=${l.id}`} onClick={onClose}><b>{l.company || l.contact_name || l.id}</b></a> {l.contact_name} {l.email || l.phone} <small>({l.stage}{l.owner ? `, ${l.owner}` : ""})</small></p>
+                <p key={l.id} className="u-m-4-0"><a href={`#leads?lead=${l.id}`} onClick={onClose}><b>{l.company || l.contact_name || l.id}</b></a> {l.contact_name} {l.email || l.phone} <small>({l.stage}{l.owner ? `, ${l.owner}` : ""})</small></p>
               ))}
               <MergeGroup group={g} onMerged={reload} />
             </div>
           ))}
         </>
       )}
-      <div className="row" style={{ marginTop: 12, justifyContent: "flex-end" }}><button className="btn" onClick={onClose}>Close</button></div>
+      <div className="row u-mt-12 u-end"><button className="btn" onClick={onClose}>Close</button></div>
     </Modal>
   );
 }

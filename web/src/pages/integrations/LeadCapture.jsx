@@ -95,7 +95,7 @@ function ConnectorPanel({ connector: start, type, onClose, onChanged, go }) {
         {(type.fields || []).map((f) => (
           <div className="field" key={f.key}>
             {f.kind === "bool" ? (
-              <label className="row" style={{ fontWeight: 400 }}><input type="checkbox" checked={!!form[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.checked })} />{f.label}</label>
+              <label className="row u-fw4"><input type="checkbox" checked={!!form[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.checked })} />{f.label}</label>
             ) : (
               <>
                 <label htmlFor={`cap-${f.key}`}>{f.label}</label>
@@ -195,8 +195,8 @@ export default function LeadCapture({ go }) {
   const typeOf = (id) => cat.types.find((t) => t.id === id) || cat.types[0];
   return (
     <section aria-labelledby="capture-heading">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div><h3 id="capture-heading" style={{ margin: 0 }}>Lead capture</h3>
+      <div className="row u-between">
+        <div><h3 id="capture-heading" className="u-m0">Lead capture</h3>
           <p className="sub">Leads from ads, forms and other tools land in your lead list the moment they arrive, with where they came from. Nothing is sent to them automatically.</p></div>
         <button className="btn cta" onClick={() => setAdding(true)} data-testid="add-capture">Add connector</button>
       </div>
@@ -213,13 +213,13 @@ export default function LeadCapture({ go }) {
           </div>
         ))}
       </div>
-      <div className="card table-card" style={{ padding: 0, overflowX: "auto" }} data-testid="capture-log">
-        <h3 style={{ margin: 16 }}>Recent captures</h3>
+      <div className="card table-card u-p0 u-xauto" data-testid="capture-log">
+        <h3 className="u-m-16">Recent captures</h3>
         {log.length === 0 ? <p className="empty">Nothing captured yet. Use “Send a test lead” on a connector to try it.</p> : (
           <table>
             <thead><tr><th>When</th><th>Connector</th><th>What happened</th><th>Detail</th></tr></thead>
             <tbody>{log.slice(0, 25).map((r) => (
-              <tr key={r.id}><td data-label="When">{istLabel(r.at)}</td><td data-label="Connector">{r.connector}{r.is_test && <span className="pill warn" style={{ marginLeft: 6 }}>Test</span>}</td>
+              <tr key={r.id}><td data-label="When">{istLabel(r.at)}</td><td data-label="Connector">{r.connector}{r.is_test && <span className="pill warn u-ml-8">Test</span>}</td>
                 <td data-label="What happened">{OUTCOMES[r.outcome] || r.outcome}</td><td data-label="Detail">{r.error || (r.platform_ids && Object.values(r.platform_ids).join(", ")) || ""}</td></tr>
             ))}</tbody>
           </table>

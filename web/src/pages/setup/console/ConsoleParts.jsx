@@ -41,7 +41,7 @@ export function StopAllSwitch({ stop, onChanged }) {
   };
   return (
     <section className="card" data-testid="stop-all" style={{ marginBottom: 14, borderLeft: `4px solid ${stop ? "#b91c1c" : "#16a34a"}` }}>
-      <div className="row" style={{ gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+      <div className="row u-gap-12 u-wrap u-acenter">
         <div style={{ flex: "1 1 280px" }}>
           <b>Stop all sending</b>
           <div className="hint">{stop ? `ON since ${istDate(stop.at)} by ${stop.by}${stop.reason ? ` — ${stop.reason}` : ""}. Nothing goes out for any account.`
@@ -67,7 +67,7 @@ export function SignupSwitch({ open, onChanged }) {
   };
   return (
     <section className="card" data-testid="signup-switch" style={{ marginBottom: 14, borderLeft: `4px solid ${open ? "#b45309" : "#16a34a"}` }}>
-      <div className="row" style={{ gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+      <div className="row u-gap-12 u-wrap u-acenter">
         <div style={{ flex: "1 1 280px" }}>
           <b>Public sign-up</b>
           <div className="hint">{open ? "OPEN. The sign-in page shows “Create an account”; every new account still waits for your approval."
@@ -82,7 +82,7 @@ export function SignupSwitch({ open, onChanged }) {
 
 export function StatusFilter({ value, onChange }) {
   return (
-    <label className="row" style={{ gap: 6, alignItems: "center" }}>Show
+    <label className="row u-gap-8 u-acenter">Show
       <select aria-label="Filter by status" value={value} onChange={(e) => onChange(e.target.value)} data-testid="status-filter">
         <option value="">All accounts</option><option value="pending">Pending</option><option value="active">Active</option><option value="suspended">Suspended</option>
       </select>

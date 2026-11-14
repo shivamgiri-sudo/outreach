@@ -47,15 +47,15 @@ export default function LinkedInAccountPick({ lead, onChanged }) {
   };
   const why = how === "owner" ? ` (default for ${lead.owner})` : how === "taken" ? " (this account has taken the person)" : "";
   return (
-    <div className="row" style={{ alignItems: "center", gap: 8, marginBottom: 8 }} data-testid="linkedin-account-pick">
-      <label style={{ margin: 0 }}>Send from LinkedIn account
+    <div className="row u-acenter u-gap-8 u-mb-8" data-testid="linkedin-account-pick">
+      <label className="u-m0">Send from LinkedIn account
         <select aria-label="Send from LinkedIn account" value={lead.linkedin_account || ""} disabled={!canWrite() || locked}
           onChange={(e) => change(e.target.value)} style={{ width: "auto", marginLeft: 6 }}>
           <option value="">{how === "owner" ? `Owner's default (${accountName(accounts, current)})` : "Any account (first to take them)"}</option>
           {accounts.map((a) => <option key={a.account} value={a.account}>{accountName(accounts, a.account)}</option>)}
         </select>
       </label>
-      <small className="sub" style={{ margin: 0 }}>
+      <small className="sub u-m0">
         {current ? `Now: ${accountName(accounts, current)}${why}.` : "Now: any account."}
         {locked && " The connection request was sent, so the person stays with this account."}
       </small>

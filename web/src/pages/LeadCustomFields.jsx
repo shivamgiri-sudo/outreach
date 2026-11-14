@@ -61,7 +61,7 @@ export function LeadCustomData({ lead, onSaved }) {
   };
   return (
     <section data-testid="lead-custom-fields">
-      <div className="row" style={{ justifyContent: "space-between" }}>
+      <div className="row u-between">
         <h3>Details</h3>
         {canWrite() && canEditContacts() && !editing && <button type="button" className="btn ghost" onClick={() => setEditing(true)}>Edit details</button>}
       </div>
@@ -73,7 +73,7 @@ export function LeadCustomData({ lead, onSaved }) {
               <FieldInput id={`cf-${f.key}`} field={f} value={draft[f.key]} onChange={(v) => setDraft({ ...draft, [f.key]: v })} />
             </label>
           ))}
-          <div className="row" style={{ marginTop: 8 }}>
+          <div className="row u-mt-8">
             <button className="btn" type="submit">Save details</button>
             <button className="btn ghost" type="button" onClick={() => { setDraft({ ...(lead.custom || {}) }); setEditing(false); }}>Cancel</button>
           </div>
@@ -81,7 +81,7 @@ export function LeadCustomData({ lead, onSaved }) {
       ) : (
         <dl className="kv">
           {fields.map((f) => (
-            <div key={f.key} className="row" style={{ justifyContent: "space-between" }}>
+            <div key={f.key} className="row u-between">
               <dt className="sub" style={{ margin: 0 }}>{f.label}</dt>
               <dd style={{ margin: 0 }}>{f.type === "url" && lead.custom?.[f.key]
                 ? <a href={lead.custom[f.key]} target="_blank" rel="noopener noreferrer">{lead.custom[f.key]}</a>
@@ -129,7 +129,7 @@ export function CustomFilters({ fields, value, onChange }) {
       const cur = value[f.key] || {};
       const type = f.type === "number" ? "number" : "date";
       return (
-        <span key={f.key} className="row" style={{ gap: 4, margin: 0 }}>
+        <span key={f.key} className="row u-gap-4 u-m0">
           <input type={type} aria-label={`${f.label} from`} placeholder={`${f.label} from`} value={cur.min || ""} style={{ width: 130 }}
             onChange={(e) => set(f.key, { ...cur, min: e.target.value })} />
           <input type={type} aria-label={`${f.label} to`} placeholder="to" value={cur.max || ""} style={{ width: 100 }}

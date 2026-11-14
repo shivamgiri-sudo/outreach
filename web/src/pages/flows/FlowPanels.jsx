@@ -25,7 +25,7 @@ export function SimulatePanel({ leads, result, busy, onRun, onClear }) {
           {ASSUME.map((a) => <option key={a} value={a}>{a === "timeout" ? "No reply" : BRANCH_HEADINGS[a]?.replace(/^If (they )?/, "") || a}</option>)}
         </select>
       </label>
-      <div className="row" style={{ marginTop: 10 }}>
+      <div className="row u-mt-12">
         <button type="button" className="btn" disabled={!leadId || busy} onClick={() => onRun(leadId, assume)}>Run simulation</button>
         {result && <button type="button" className="btn ghost" onClick={onClear}>Clear</button>}
       </div>
@@ -36,7 +36,7 @@ export function SimulatePanel({ leads, result, busy, onRun, onClear }) {
               <li key={`${p.node}-${i}`} className={p.ok === false ? "bad" : ""}><b>{p.title}</b>: {p.result}</li>
             ))}
           </ol>
-          <p className="sub" style={{ margin: 0 }}>{result.ended}</p>
+          <p className="sub u-m0">{result.ended}</p>
         </div>
       )}
     </section>
@@ -92,12 +92,12 @@ export function RunsPanel({ flowId, refreshKey }) {
   useEffect(() => { load(); }, [flowId, refreshKey]);
   return (
     <section className="card fb-panel" aria-labelledby="fb-runs-title">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h3 id="fb-runs-title" style={{ margin: 0 }}>Leads in this flow ({rows.length})</h3>
+      <div className="row u-between">
+        <h3 id="fb-runs-title" className="u-m0">Leads in this flow ({rows.length})</h3>
         <button type="button" className="btn ghost" onClick={load}>Refresh</button>
       </div>
       {rows.length === 0 ? <p className="field-help">No leads yet.</p> : (
-        <ul className="meet-mini" style={{ marginTop: 10 }}>
+        <ul className="meet-mini u-mt-12">
           {rows.slice(0, 30).map((r) => (
             <li key={r.id}>
               <div>

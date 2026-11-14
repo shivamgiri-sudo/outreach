@@ -35,9 +35,9 @@ function TargetEditor({ day, onSaved, onCancel }) {
   };
   return (
     <form className="inline-form" onSubmit={save} aria-label="Daily targets">
-      <div className="row" style={{ flexWrap: "wrap" }}>
+      <div className="row u-wrap">
         {TARGETS.map(([k, l]) => (
-          <label key={k} style={{ maxWidth: 120 }}>{l}<input type="number" min="0" max="1000" value={values[k] ?? 0} onChange={(e) => setValues({ ...values, [k]: e.target.value })} /></label>
+          <label key={k} className="u-maxwidth-120">{l}<input type="number" min="0" max="1000" value={values[k] ?? 0} onChange={(e) => setValues({ ...values, [k]: e.target.value })} /></label>
         ))}
       </div>
       {isOwner() && <label>Save for<select value={scope} onChange={(e) => setScope(e.target.value)}>
@@ -72,7 +72,7 @@ function Item({ title, sub, item, onOpen, go, overdue }) {
 function Section({ title, count, empty, children, testId }) {
   return (
     <div className="card" data-testid={testId}>
-      <h3 style={{ marginTop: 0 }}>{title} {count > 0 && <span className="pill">{count}</span>}</h3>
+      <h3 className="u-mt-0">{title} {count > 0 && <span className="pill">{count}</span>}</h3>
       {count === 0 ? <p className="sub">{empty}</p> : <ul className="today-list">{children}</ul>}
     </div>
   );
@@ -104,7 +104,7 @@ export default function MyDay({ go }) {
       <div className="kpi-row" data-testid="myday-targets">
         {TARGETS.filter(([k]) => day.targets[k] > 0 || day.today[k] > 0).map(([k, l]) => <Progress key={k} label={l} done={day.today[k] || 0} target={day.targets[k] || 0} />)}
       </div>
-      <p className="sub" style={{ marginTop: 0 }}>
+      <p className="sub u-mt-0">
         This week: {day.week.calls} calls, {day.week.connects} connects, {day.week.emails} emails, {day.week.linkedin} LinkedIn, {day.week.whatsapp} WhatsApp, {day.week.tasks_done} tasks done.
         {canWrite() && <>{" "}<button className="link" onClick={() => setEditing(!editing)}>{editing ? "Close targets" : "Change targets"}</button></>}
         {!day.personal_targets && " (team targets)"}

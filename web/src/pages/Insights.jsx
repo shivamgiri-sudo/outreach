@@ -21,9 +21,9 @@ function SourceSpend({ rows, saved, onSaved }) {
     } catch (e) { setState(e.message); }
   };
   return (
-    <details className="card" style={{ marginTop: 14 }}>
+    <details className="card u-mt-16">
       <summary><b>Cost per lead and per customer</b> <small className="sub-inline">type what you spend on each source per month</small></summary>
-      <div className="grid g2" style={{ marginTop: 10 }}>
+      <div className="grid g2 u-mt-12">
         {rows.map((r) => (
           <div className="field" key={r.source}>
             <label htmlFor={`spend-${r.source}`}>{sourceLabel(r.source)}: monthly spend (₹)</label>
@@ -50,7 +50,7 @@ export default function Insights({ range, embedded = false }) {
 
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between" }}>
+      <div className="row u-between">
         <div>{!embedded && <h2>Insights</h2>}<p className="sub">{range ? "Leads created and emails sent in the chosen period. " : ""}What is working. Rates are of leads we have emailed.</p></div>
         <DownloadButton path={exportPath("insights")} label="Download insights" testId="download-insights"
           title="Every number on this page as one table: section, item, measure, value" />
@@ -66,9 +66,9 @@ export default function Insights({ range, embedded = false }) {
         <div className="card stat"><b>{d.by_band.hot} / {d.by_band.warm} / {d.by_band.cold}</b><span>Hot / warm / cold</span></div>
       </div>
 
-      <div className="grid gw" style={{ marginTop: 14 }}>
-        <div className="card" style={{ padding: 0, overflowX: "auto" }}>
-          <h3 style={{ margin: 16 }}>By lead source</h3>
+      <div className="grid gw u-mt-16">
+        <div className="card u-p0 u-xauto">
+          <h3 className="u-m-16">By lead source</h3>
           {d.by_source.length === 0 ? <p className="empty">No data yet.</p> : (
             <table>
               <thead><tr><th>Source</th><th>Leads</th><th>Replied</th><th>Interested</th><th>Customers</th><th>Cost per lead</th><th>Cost per customer</th></tr></thead>
@@ -79,8 +79,8 @@ export default function Insights({ range, embedded = false }) {
             </table>
           )}
         </div>
-        <div className="card" style={{ padding: 0, overflowX: "auto" }} data-testid="stage-by-source">
-          <h3 style={{ margin: 16 }}>Stage by source</h3>
+        <div className="card u-p0 u-xauto" data-testid="stage-by-source">
+          <h3 className="u-m-16">Stage by source</h3>
           {d.by_source.length === 0 ? <p className="empty">No data yet.</p> : (
             <table>
               <thead><tr><th>Source</th>{STAGE_COLUMNS.map((st) => <th key={st}>{stageLabel(st)}</th>)}</tr></thead>
@@ -91,7 +91,7 @@ export default function Insights({ range, embedded = false }) {
           )}
         </div>
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>By sector</h3>
+          <h3 className="u-mt-0">By sector</h3>
           {d.by_sector.length === 0 && <p className="empty">No data yet.</p>}
           {d.by_sector.map((s) => (
             <div className="funnel-row" key={s.sector}>
@@ -101,8 +101,8 @@ export default function Insights({ range, embedded = false }) {
             </div>
           ))}
         </div>
-        <div className="card" style={{ padding: 0, overflowX: "auto" }}>
-          <h3 style={{ margin: 16 }}>Top leads right now</h3>
+        <div className="card u-p0 u-xauto">
+          <h3 className="u-m-16">Top leads right now</h3>
           {d.top_leads.length === 0 ? <p className="empty">No leads yet.</p> : (
             <table>
               <thead><tr><th>Company</th><th>Score</th><th>Stage</th></tr></thead>

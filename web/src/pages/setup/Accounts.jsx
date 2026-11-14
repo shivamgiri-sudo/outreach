@@ -46,7 +46,7 @@ export default function Accounts() {
       {cons && <SignupSwitch open={!!cons.signup_open} onChanged={load} />}
       {cons && <AlertsStrip alerts={cons.alerts} />}
       {cons && <PendingQueue rows={cons.accounts} onAction={action} onDetails={(a) => setDialog({ kind: "detail", row: a })} />}
-      {cons && <div className="row" style={{ justifyContent: "flex-end", marginBottom: 8 }}><StatusFilter value={filter} onChange={setFilter} /></div>}
+      {cons && <div className="row u-end u-mb-8"><StatusFilter value={filter} onChange={setFilter} /></div>}
       {!data ? <p className="hint">Loading…</p> : (
         <div className="table-wrap">
           <table className="setup-table">

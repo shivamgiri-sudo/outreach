@@ -40,7 +40,7 @@ export default function HiringEngine() {
         description="One pass that turns a company's hiring signal into the right person and an email, and says honestly how far each result can be trusted." />
       <IcpCard />
       {error && <ErrorState message="The hiring engine could not load." detail={error} onRetry={load} />}
-      <div className="grid gw" style={{ marginBottom: 14 }}>
+      <div className="grid gw u-mb-16">
         <div className="card">
           <b>How it works</b>
           <ol className="steps">{STEPS.map(([n, title, text]) => <li key={n}><b>{title}.</b> {text}</li>)}</ol>
@@ -53,16 +53,16 @@ export default function HiringEngine() {
             <div><label>Also verify this many published emails</label><input type="number" min="0" max="1000" value={checkPublished} onChange={(e) => setCheckPublished(e.target.value)} /></div>
             <div><label>Most paid checks</label><input type="number" min="0" max="500" value={maxCredits} onChange={(e) => setMaxCredits(e.target.value)} /></div>
           </div>
-          <label className="row" style={{ fontWeight: 400, margin: "8px 0 0" }}>
+          <label className="row u-fw4 u-m-8-0-0">
             <input type="checkbox" style={{ width: "auto" }} checked={recheck} onChange={(e) => setRecheck(e.target.checked)} />
             Also re-check guesses that are still unconfirmed (uses paid checks)
           </label>
-          <div className="row" style={{ marginTop: 10 }}>
+          <div className="row u-mt-12">
             <button className="btn ghost" disabled={busy} onClick={() => run(true)}>Preview (changes nothing)</button>
             <button className="btn" disabled={busy} onClick={() => run(false)}>{busy ? "Working…" : "Run the engine"}</button>
           </div>
           {report && (
-            <p className="tip" role="status" style={{ marginTop: 10 }}>
+            <p className="tip u-mt-12" role="status" >
               {report.dry ? "Preview: " : ""}checked {report.checked} leads · {report.employers} employers, {report.agencies} agencies ·
               {" "}{report.guessed} addresses built · {report.confirmed} confirmed, {report.kept_as_guess} kept as guesses, {report.rejected} rejected
               {report.skipped_no_name_or_domain ? ` · ${report.skipped_no_name_or_domain} have no decision maker name yet (run Find & enrich first)` : ""}
@@ -75,7 +75,7 @@ export default function HiringEngine() {
       </div>
       {data && (
         <>
-          <div className="row" style={{ marginBottom: 10 }}>
+          <div className="row u-mb-12">
             {Object.keys(data.labels).map((k) => (
               <span key={k} className={`pill ${TRUST_PILL[k]}`} title={data.labels[k]}>{TRUST_SHORT[k]}: {data.trust[k]}</span>
             ))}
@@ -85,7 +85,7 @@ export default function HiringEngine() {
                 title="One row per company with the decision maker, email and a trust column" />
             </span>
           </div>
-          <div className="card" style={{ padding: 0, overflowX: "auto" }}>
+          <div className="card u-p0 u-xauto">
             <table>
               <thead><tr><th>Company</th><th>Open roles</th><th>Posted by</th><th>Decision maker</th><th>Email</th><th>Trust</th></tr></thead>
               <tbody>

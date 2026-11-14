@@ -25,7 +25,7 @@ export default function ImportConflicts({ importId }) {
             <thead><tr><th>Row in file</th><th>Lead</th><th>Owned by</th></tr></thead>
             <tbody>{rows.map((c) => <tr key={`${c.row}-${c.lead_id}`}><td>{c.row}</td><td>{c.lead_id}</td><td>{c.owner}</td></tr>)}</tbody>
           </table></div>
-          <div className="row" style={{ marginTop: 12, justifyContent: "flex-end" }}><button className="btn" onClick={() => setOpen(false)}>Close</button></div>
+          <div className="row u-mt-12 u-end"><button className="btn" onClick={() => setOpen(false)}>Close</button></div>
         </Modal>
       )}
     </>

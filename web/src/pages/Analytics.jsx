@@ -37,7 +37,7 @@ function Overview({ data }) {
         <DeltaTile label="Customers" kpi={k.customers} tone="tone-green" />
         <DeltaTile label="Unsubscribed" kpi={k.unsubscribed} lowerIsBetter />
       </div>
-      <p className="sub" style={{ marginTop: 10 }}>Counts are of things that happened in the period (a lead counts once per step). Opens are counted for leads emailed in the period.</p>
+      <p className="sub u-mt-12">Counts are of things that happened in the period (a lead counts once per step). Opens are counted for leads emailed in the period.</p>
     </>
   );
 }
@@ -62,12 +62,12 @@ function Funnel({ data }) {
     <>
       <div className="grid g2">
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Funnel</h3>
+          <h3 className="u-mt-0">Funnel</h3>
           <p className="sub">Leads first contacted in this period, and how far they have got by now. Rates are of those contacted.</p>
           {f.overall.contacted === 0 ? <p className="empty">Nobody was first contacted in this period.</p> : <FunnelBars row={f.overall} steps={f.steps} />}
         </div>
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Stage velocity</h3>
+          <h3 className="u-mt-0">Stage velocity</h3>
           <p className="sub">Median days between steps, for leads that reached the later step in this period.</p>
           <table><thead><tr><th>Step</th><th>Median days</th><th>Leads</th></tr></thead>
             <tbody>{f.velocity.steps.map((s) => <tr key={s.to}><td>{STEP_LABEL[s.from]} → {STEP_LABEL[s.to]}</td><td>{s.median_days ?? "—"}</td><td>{s.samples}</td></tr>)}</tbody></table>
@@ -80,10 +80,10 @@ function Funnel({ data }) {
           )}
         </div>
       </div>
-      <div className="card" style={{ marginTop: 14 }}>
-        <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-          <h3 style={{ margin: 0 }}>Funnel by {GROUP_LABEL[group].toLowerCase()}</h3>
-          <label className="row" style={{ gap: 6, margin: 0 }}>Group by
+      <div className="card u-mt-16">
+        <div className="row u-between u-wrap">
+          <h3 className="u-m0">Funnel by {GROUP_LABEL[group].toLowerCase()}</h3>
+          <label className="row u-gap-8 u-m0">Group by
             <select value={group} onChange={(e) => setGroup(e.target.value)} aria-label="Group the funnel by" style={{ width: "auto" }}>
               {Object.entries(GROUP_LABEL).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
@@ -105,7 +105,7 @@ function Funnel({ data }) {
 
 function Team({ data }) {
   return (
-    <div className="card table-card" style={{ padding: 0 }}>
+    <div className="card table-card u-p0">
       {data.team.length === 0 ? <p className="empty">Nobody did anything with their name on it in this period.</p> : (
         <div className="table-scroll"><table data-testid="team-table">
           <thead><tr><th>Person</th><th>Actions</th><th>Stage moves</th><th>Calls</th><th>Notes</th><th>Other</th></tr></thead>

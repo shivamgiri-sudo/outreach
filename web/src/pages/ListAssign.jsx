@@ -15,7 +15,7 @@ export function useMembers() {
 
 function Actions({ busy, label, disabled, onClose, onGo }) {
   return (
-    <div className="row" style={{ marginTop: 14, justifyContent: "flex-end" }}>
+    <div className="row u-mt-16 u-end">
       <button type="button" className="btn ghost" onClick={onClose}>Close</button>
       <button type="button" className="btn" disabled={busy || disabled} onClick={onGo}>{busy ? "Working…" : label}</button>
     </div>
@@ -42,7 +42,7 @@ export function AssignDialog({ list, onClose, onDone }) {
         <option value="">Admin pool (nobody)</option>
         {(list.assigned_to && !members.includes(list.assigned_to) ? [list.assigned_to, ...members] : members).map((n) => <option key={n} value={n}>{n}</option>)}
       </select>
-      <label className="row" style={{ margin: "10px 0 0", gap: 8 }}>
+      <label className="row u-m-12-0-0 u-gap-8">
         <input type="checkbox" checked={takeOver} onChange={(e) => setTakeOver(e.target.checked)} />
         Also take over leads that someone else already owns
       </label>
@@ -84,7 +84,7 @@ export function SplitDialog({ list, onClose, onDone }) {
         <div style={{ maxHeight: 220, overflow: "auto" }}>
           {members.map((n) => (
             <div key={n} className="row" style={{ gap: 8, padding: "4px 0", flexWrap: "wrap" }}>
-              <label className="row" style={{ gap: 8, margin: 0, flex: 1, minWidth: 160 }}>
+              <label className="row u-gap-8 u-m0 u-flex1 u-minwidth-160">
                 <input type="checkbox" checked={picked.includes(n)} onChange={() => toggle(n)} /> {n}
               </label>
               {mode === "count" && picked.includes(n) && (
@@ -97,8 +97,8 @@ export function SplitDialog({ list, onClose, onDone }) {
       </fieldset>
       <fieldset style={{ border: 0, padding: 0, margin: "10px 0 0" }}>
         <legend><b>How to cut it</b></legend>
-        <label className="row" style={{ gap: 8, margin: 0 }}><input type="radio" name="split-mode" checked={mode === "even"} onChange={() => setMode("even")} /> Evenly</label>
-        <label className="row" style={{ gap: 8, margin: 0 }}><input type="radio" name="split-mode" checked={mode === "count"} onChange={() => setMode("count")} /> A set number each</label>
+        <label className="row u-gap-8 u-m0"><input type="radio" name="split-mode" checked={mode === "even"} onChange={() => setMode("even")} /> Evenly</label>
+        <label className="row u-gap-8 u-m0"><input type="radio" name="split-mode" checked={mode === "count"} onChange={() => setMode("count")} /> A set number each</label>
       </fieldset>
       {mode === "count" && <p className="sub" role="status">{sum} of {total} lead(s) given out{sum > total ? ". That is more than the list has." : "."}</p>}
       {error && <div className="tip error" role="alert">{error}</div>}

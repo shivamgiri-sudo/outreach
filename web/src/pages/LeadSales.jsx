@@ -41,7 +41,7 @@ export default function LeadSales({ lead, onChanged }) {
   return (
     <section className="ls-panel" aria-labelledby="ls-title" data-testid="lead-sales">
       <h3 id="ls-title">Sales stage <span className="pill rec" data-testid="lead-sales-status"><Stage status={d.status} /></span> <HelpLink chapter="funnel" topic="update-stage" label="Sales stage" /></h3>
-      <p className="sub" style={{ margin: "0 0 8px" }}>Where this deal stands in the sales funnel; the outreach stage above is unchanged. Probability {d.prob}%{d.tcv ? <> · Total contract value (<Abbr term="TCV">TCV</Abbr>) {inr(d.tcv)}</> : ""}. Stages: <Abbr term="MQL">MQL</Abbr>, <Abbr term="SAL">SAL</Abbr>, <Abbr term="SQL">SQL</Abbr>.</p>
+      <p className="sub u-m-0-0-8">Where this deal stands in the sales funnel; the outreach stage above is unchanged. Probability {d.prob}%{d.tcv ? <> · Total contract value (<Abbr term="TCV">TCV</Abbr>) {inr(d.tcv)}</> : ""}. Stages: <Abbr term="MQL">MQL</Abbr>, <Abbr term="SAL">SAL</Abbr>, <Abbr term="SQL">SQL</Abbr>.</p>
       <form onSubmit={save} aria-label="Sales stage">
         <div className="ls-grid">
           <label>Status
@@ -64,11 +64,11 @@ export default function LeadSales({ lead, onChanged }) {
           )}
         </div>
         {msg.text && <div className={`tip ${msg.ok ? "" : "error"}`} role={msg.ok ? "status" : "alert"} style={{ marginTop: 8 }} data-testid="lead-sales-msg">{msg.text}</div>}
-        {writable && <button className="btn" type="submit" disabled={busy} style={{ marginTop: 8 }} data-testid="lead-sales-save">{busy ? "Saving…" : "Save sales stage"}</button>}
+        {writable && <button className="btn u-mt-8" type="submit" disabled={busy} data-testid="lead-sales-save">{busy ? "Saving…" : "Save sales stage"}</button>}
       </form>
-      {d.backfilled.length > 0 && <p className="sub" style={{ margin: "8px 0 0" }}>Back-filled stages (no real date): {d.backfilled.join(", ")}.</p>}
+      {d.backfilled.length > 0 && <p className="sub u-m-8-0-0">Back-filled stages (no real date): {d.backfilled.join(", ")}.</p>}
       {d.history.length > 0 && (
-        <details style={{ marginTop: 8 }}>
+        <details className="u-mt-8">
           <summary>History ({d.history.length})</summary>
           <ul className="ls-history" data-testid="lead-sales-history">{d.history.map((h, i) => <li key={i}>{istLabel(h.at)}: <Stage status={h.from} full /> → <b><Stage status={h.to} full /></b> by {h.by || "—"}</li>)}</ul>
         </details>

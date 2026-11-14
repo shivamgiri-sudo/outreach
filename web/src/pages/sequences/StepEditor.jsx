@@ -40,8 +40,8 @@ export default function StepEditor({ step, index, prev, readOnly, onChange, onRe
   };
   const checks = lintStep(step, prev);
   return (
-    <div className="card" style={{ marginBottom: 12, padding: 16 }}>
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+    <div className="card u-mb-12 u-p-16">
+      <div className="row u-between u-wrap u-gap-8">
         <b>Step {index + 1} · Day {humanDay(step.day)}</b>
         {!readOnly && canRemove && <button type="button" className="btn ghost" onClick={onRemove}>Remove step</button>}
       </div>
@@ -57,7 +57,7 @@ export default function StepEditor({ step, index, prev, readOnly, onChange, onRe
         <textarea ref={bodyRef} disabled={readOnly} rows={10} value={step.body || ""} onChange={(e) => set({ body: e.target.value })} />
       </label>
       {!readOnly && (
-        <div className="row" style={{ flexWrap: "wrap", gap: 6, margin: "4px 0 8px" }} aria-label="Insert a placeholder">
+        <div className="row u-wrap u-gap-8 u-m-4-0-8" aria-label="Insert a placeholder">
           {[...PLACEHOLDERS, ...customFields.map((f) => `custom.${f.key}`)].map((p) => <button type="button" key={p} className="chip" onClick={() => insert(p)}>{`{{${p}}}`}</button>)}
         </div>
       )}
@@ -76,7 +76,7 @@ export default function StepEditor({ step, index, prev, readOnly, onChange, onRe
         ))}
         {!readOnly && variants.length < MAX_VARIANTS && <button type="button" className="btn ghost" onClick={addVariant}>Add a variant</button>}
       </details>
-      <div className="row" style={{ flexWrap: "wrap", gap: 6, marginTop: 8 }} role="group" aria-label="Preview version">
+      <div className="row u-wrap u-gap-8 u-mt-8" role="group" aria-label="Preview version">
         <span className="sub">Preview:</span>
         {["A", ...variants.map((v) => v.name)].map((n) => (
           <button type="button" key={n} className={`chip${previewVariant === n ? " on" : ""}`} onClick={() => onPreviewVariant(n)}>{n}</button>

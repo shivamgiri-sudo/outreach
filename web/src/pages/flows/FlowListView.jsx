@@ -39,7 +39,7 @@ export default function FlowListView({ nodes, edges, problems, highlight, caller
   const { steps, loose } = flowTree(nodes, edges);
   return (
     <div className="fb-list card" data-testid="flow-list-view">
-      <h3 style={{ marginTop: 0 }}>Steps</h3>
+      <h3 className="u-mt-0">Steps</h3>
       {steps.length === 0 ? <p className="sub">Add a trigger to start the flow.</p>
         : <Steps steps={steps} problems={problems} highlight={highlight} caller={caller} onEdit={onEdit} />}
       {loose.length > 0 && (

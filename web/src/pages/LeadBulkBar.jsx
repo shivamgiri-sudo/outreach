@@ -22,7 +22,7 @@ const offPage = (picked, pageIds) => picked.filter((id) => !pageIds.includes(id)
 function CountLine({ picked, pageIds }) {
   const away = offPage(picked, pageIds);
   return (
-    <p style={{ margin: "0 0 6px" }} data-testid="confirm-count">
+    <p className="u-m-0-0-8" data-testid="confirm-count">
       This is for <b>{picked.length}</b> selected lead(s).
       {away > 0 && <> <b>{away}</b> of them are on other pages of this filter, not on screen now.</>}
     </p>
@@ -115,7 +115,7 @@ export default function LeadBulkBar({ picked, pageIds, owners, spaces, onDone, o
           <option value="">Add to list…</option>
           {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
         </select>
-        <span className="row" style={{ gap: 4 }}>
+        <span className="row u-gap-4">
           <input aria-label="Tag for selected leads" placeholder="Tag" maxLength={40} value={tagText} onChange={(e) => setTagText(e.target.value)} style={{ width: 110 }} />
           <button className="btn ghost" disabled={!tagText.trim() || busy === "tag_add"} onClick={() => tagThen("tag_add")}>Add tag</button>
           <button className="btn ghost" disabled={!tagText.trim() || busy === "tag_remove"} onClick={() => tagThen("tag_remove")}>Remove tag</button>
@@ -131,14 +131,14 @@ export default function LeadBulkBar({ picked, pageIds, owners, spaces, onDone, o
         <ConfirmDialog title={ask.title} confirmLabel={ask.label} danger={ask.danger} busy={Boolean(busy)}
           onCancel={() => { setAsk(null); setForce(false); }} onConfirm={() => (ask.action === "workspace" ? doMove(ask.value) : run(ask.action, ask.value))}>
           <CountLine picked={picked} pageIds={pageIds} />
-          {ask.action === "enroll" && <p style={{ margin: 0 }}>Leads with no email, already in the sequence, unsubscribed or on the do-not-contact list are skipped. Sending still follows your daily cap, business hours and practice mode.</p>}
-          {ask.action === "stage" && <p style={{ margin: 0 }}>Leads that can’t make this move (for example Interested without recorded consent) are left as they are.</p>}
+          {ask.action === "enroll" && <p className="u-m0">Leads with no email, already in the sequence, unsubscribed or on the do-not-contact list are skipped. Sending still follows your daily cap, business hours and practice mode.</p>}
+          {ask.action === "stage" && <p className="u-m0">Leads that can’t make this move (for example Interested without recorded consent) are left as they are.</p>}
           {ask.action === "stage" && isOwner() && <label className="check-row"><input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} /> Skip the normal step order (owner). Consent and unsubscribes are still respected.</label>}
-          {["owner", "stage", "list_add"].includes(ask.action) && <p style={{ margin: 0 }}>You can undo this for 24 hours. Leads changed by someone else in the meantime are not touched by the undo.</p>}
-          {ask.action === "list_add" && <p style={{ margin: 0 }}>Leads already in the list or in another workspace are left out.</p>}
-          {ask.action === "do_not_contact" && <p style={{ margin: 0 }}>Their emails go on the suppression list and any running email sequence stops. This is not undone here.</p>}
-          {ask.action === "delete" && <p style={{ margin: 0 }}>Deleted leads are gone for everyone; the deletion is written to the Change log.</p>}
-          {ask.action === "workspace" && <p style={{ margin: 0 }}>It is logged on each lead.</p>}
+          {["owner", "stage", "list_add"].includes(ask.action) && <p className="u-m0">You can undo this for 24 hours. Leads changed by someone else in the meantime are not touched by the undo.</p>}
+          {ask.action === "list_add" && <p className="u-m0">Leads already in the list or in another workspace are left out.</p>}
+          {ask.action === "do_not_contact" && <p className="u-m0">Their emails go on the suppression list and any running email sequence stops. This is not undone here.</p>}
+          {ask.action === "delete" && <p className="u-m0">Deleted leads are gone for everyone; the deletion is written to the Change log.</p>}
+          {ask.action === "workspace" && <p className="u-m0">It is logged on each lead.</p>}
         </ConfirmDialog>
       )}
     </div>

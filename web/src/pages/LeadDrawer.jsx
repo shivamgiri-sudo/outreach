@@ -113,7 +113,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
       <ContactPoints lead={lead} onLead={setLead} />
       <div className="tip">
         <b>Suggested next step ({s.priority} priority, via {s.channel}):</b> {s.action}
-        {s.pitch && <p style={{ margin: "6px 0 0" }}><b>What to say:</b> {s.pitch}</p>}
+        {s.pitch && <p className="u-m-8-0-0"><b>What to say:</b> {s.pitch}</p>}
       </div>
       <LeadStage lead={lead} onLead={setLead} onError={setError} />
       <LeadSales lead={lead} onChanged={load} />
@@ -131,7 +131,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
       {canWrite() && <>
         <label htmlFor="note-box">Quick note</label>
         <textarea id="note-box" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
-        <button className="btn" style={{ marginTop: 8 }} disabled={!note.trim()}
+        <button className="btn u-mt-8" disabled={!note.trim()}
           onClick={() => act(async () => { const r = await api.note(id_, note); setNote(""); return r; })}>Save note</button>
       </>}
     </>
@@ -181,7 +181,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
         try { setDraft(await api.draftReply(id_, reply)); } catch (e) { setError(e.message); }
       }}>Suggest a reply</button>
       {draft && (
-        <div className="tip" style={{ marginTop: 8 }}>
+        <div className="tip u-mt-8">
           <b>Draft ({draft.source}, they sound: {draft.label})</b>
           {draft.escalate
             ? <p><b>Needs you:</b> {draft.escalate_reason || draft.note}</p>
@@ -189,7 +189,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
           {draft.needs_demo_link && <p>Create the demo link first (Product tab), then ask for a new draft.</p>}
           <small>{draft.note}</small>
           {draft.draft && !draft.escalate && (
-            <div><button className="btn ghost" style={{ marginTop: 6 }} onClick={() => copyText(draft.draft)}>Copy draft</button></div>
+            <div><button className="btn ghost u-mt-8" onClick={() => copyText(draft.draft)}>Copy draft</button></div>
           )}
         </div>
       )}
@@ -219,7 +219,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
         ? `On the LinkedIn sequence: ${String(lead.linkedin_seq.status || "").replace(/_/g, " ")}${(lead.linkedin_seq.done || []).length ? `, steps done ${lead.linkedin_seq.done.join(", ")}` : ""}${lead.linkedin_seq.variant ? `, note ${lead.linkedin_seq.variant}` : ""}${lead.linkedin_seq.account ? `, handled by ${lead.linkedin_seq.account}` : ""}. The LinkedIn agent or a person sends each step from the LinkedIn page.`
         : "Not on the LinkedIn sequence yet. Press Start LinkedIn outreach below, or copy a draft and send it yourself."}
         {/^https?:\/\//i.test(lead.linkedin_url || "") && <> <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer">Open profile</a></>}
-        {lead.linkedin_profile?.open_profile && <span className="pill" style={{ marginLeft: 6 }}>Open Profile</span>}</p>
+        {lead.linkedin_profile?.open_profile && <span className="pill u-ml-8">Open Profile</span>}</p>
       {!lead.linkedin_seq && lead.linkedin_dup_of && <p className="sub" style={{ color: "#b45309" }} data-testid="linkedin-dup">
         {lead.linkedin_dup_reason || "This person was already contacted on LinkedIn through another lead."} It will not be contacted again.</p>}
       {!lead.linkedin_seq && lead.linkedin_lookup && ["queued", "ambiguous", "not_found", "manual"].includes(lead.linkedin_lookup.status) && !lead.linkedin_lookup.skipped_by
@@ -229,9 +229,9 @@ export default function LeadDrawer({ id, ids, onClose }) {
       {(isOwner() || isWorkspaceAdmin()) && <LinkedInWhy lead={lead} />}
       <LinkedInAccountPick lead={lead} onChanged={load} />
       {linkedinDrafts(lead).map(([title, text]) => (
-        <div className="tip" key={title} style={{ marginBottom: 8 }}>
+        <div className="tip u-mb-8" key={title} >
           <b>{title}</b> <small>({text.length} characters)</small>
-          <p style={{ margin: "4px 0" }}>{text}</p>
+          <p className="u-m-4-0">{text}</p>
           <button className="btn ghost" onClick={() => copyText(text)}>Copy</button>
         </div>
       ))}
@@ -252,7 +252,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
         </>
       ) : <p className="sub">No demo link yet.</p>}
       {canWrite() && <>
-      <div className="row" style={{ marginTop: 8 }}>
+      <div className="row u-mt-8">
         <button className="btn ghost" onClick={async () => {
           try {
             const l = await api.demoLink(id_);
@@ -317,7 +317,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
   return shell(
     <>
       <div className="drawer-head">
-        <div style={{ minWidth: 0 }}>
+        <div className="u-min0">
           <h2 id="drawer-title" tabIndex={-1}>{lead.company || lead.domain || lead.contact_name}</h2>
           <span className={`pill ${lead.band}`}>{lead.score} · {lead.band}</span> <span className="pill" data-testid="drawer-stage">{stageLabel(lead.stage)}</span>
         </div>

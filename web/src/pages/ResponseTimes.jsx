@@ -29,7 +29,7 @@ function Settings({ targets, onSaved }) {
   };
   if (!s) return null;
   return (
-    <form className="card inline-form" onSubmit={save} style={{ marginTop: 14 }} data-testid="sla-settings">
+    <form className="card inline-form u-mt-16" onSubmit={save} data-testid="sla-settings">
       <b>Targets, alerts and tracking</b>
       <div className="split-2">
         <label>First attempt within (hours)<input type="number" min="0.25" step="0.25" value={first} onChange={(e) => setFirst(e.target.value)} /></label>
@@ -46,8 +46,8 @@ function Settings({ targets, onSaved }) {
 
 function Waiting({ title, rows, unit, onOpen, testid }) {
   return (
-    <div className="card table-card" style={{ padding: 0 }}>
-      <h3 style={{ margin: "14px 16px 6px" }}>{title} ({rows.length})</h3>
+    <div className="card table-card u-p0">
+      <h3 className="u-m-16-16-8">{title} ({rows.length})</h3>
       {rows.length === 0 ? <p className="empty">Nobody is waiting. Well done.</p> : (
         <div className="table-scroll"><table data-testid={testid}>
           <thead><tr><th>Lead</th><th>Owner</th><th>Since (<Abbr term="IST">IST</Abbr>)</th><th>Waiting</th>{unit === "reply" && <th>Their reply</th>}</tr></thead>
@@ -81,12 +81,12 @@ export default function ResponseTimes({ period }) {
         <div className="card stat"><b>{data.reply.breaches}</b><span className="sub-inline">Replies waiting, past target</span></div>
       </div>
       <p className="sub">Clock hours. Owners and managers get one alert per lead when a target is missed. "Typical" is the median.</p>
-      <div className="grid g2" style={{ marginTop: 10 }}>
+      <div className="grid g2 u-mt-12">
         <Waiting title="Replies waiting for an answer" rows={data.waiting} unit="reply" onOpen={setLead} testid="sla-waiting" />
         <Waiting title="New leads with no attempt yet" rows={data.untouched} unit="lead" onOpen={setLead} testid="sla-untouched" />
       </div>
       {data.owners.length > 0 && (
-        <div className="card table-card" style={{ padding: 0, marginTop: 14 }}>
+        <div className="card table-card u-p0 u-mt-16">
           <div className="table-scroll"><table data-testid="sla-owners">
             <thead><tr><th>Owner</th><th>Typical first attempt</th><th>On time</th><th>Typical reply answer</th><th>On time</th><th>No attempt</th><th>Waiting replies</th></tr></thead>
             <tbody>{data.owners.map((o) => (

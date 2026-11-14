@@ -34,11 +34,11 @@ export default function LinkedInStartStop({ lead, onLead, say }) {
     say("LinkedIn outreach stopped for this person.");
   });
   if (seq && !ENDED.has(seq.status)) {
-    return <div className="row" style={{ marginBottom: 8 }}><button type="button" className="btn ghost" disabled={busy} data-testid="drawer-li-stop" onClick={stop}>{busy ? "Working…" : "Stop LinkedIn outreach"}</button></div>;
+    return <div className="row u-mb-8"><button type="button" className="btn ghost" disabled={busy} data-testid="drawer-li-stop" onClick={stop}>{busy ? "Working…" : "Stop LinkedIn outreach"}</button></div>;
   }
   if (seq || lead.linkedin_dup_of || lookingUp) return null;
   return (
-    <div className="row" style={{ marginBottom: 8 }}>
+    <div className="row u-mb-8">
       <button type="button" className="btn" disabled={busy} data-testid="drawer-li-start" onClick={start}>{busy ? "Starting…" : "Start LinkedIn outreach"}</button>
       {!/linkedin\.com\/(in|pub)\//i.test(lead.linkedin_url || "") && <small className="sub">No LinkedIn link yet: the agent looks the profile up first.</small>}
     </div>

@@ -14,7 +14,7 @@ export default function ImportDuplicates({ body, choice, setChoice }) {
   const c = data.counts;
   return (
     <div data-testid="import-duplicates">
-      <p className="sub" style={{ margin: "0 0 8px" }}>Checked {data.total} rows. Nothing has been saved.</p>
+      <p className="sub u-m-0-0-8">Checked {data.total} rows. Nothing has been saved.</p>
       <div className="kpi-row">
         {Object.keys(KIND).map((k) => <div key={k} className="kpi"><b>{c[k]}</b><span>{KIND[k]}</span></div>)}
       </div>
@@ -30,8 +30,8 @@ export default function ImportDuplicates({ body, choice, setChoice }) {
           {data.flagged > data.shown && <p className="sub">Showing the first {data.shown} of {data.flagged}.</p>}
           <fieldset style={{ marginTop: 10, border: 0, padding: 0 }}>
             <legend>What should the import do with them?</legend>
-            <label className="row" style={{ margin: "4px 0" }}><input type="radio" name="dup-choice" checked={choice === "skip"} onChange={() => setChoice("skip")} data-testid="dup-skip" /> Skip duplicates (recommended)</label>
-            <label className="row" style={{ margin: "4px 0" }}><input type="radio" name="dup-choice" checked={choice === "fill"} onChange={() => setChoice("fill")} data-testid="dup-fill" /> Update empty fields of the existing lead (nothing already filled in is changed)</label>
+            <label className="row u-m-4-0"><input type="radio" name="dup-choice" checked={choice === "skip"} onChange={() => setChoice("skip")} data-testid="dup-skip" /> Skip duplicates (recommended)</label>
+            <label className="row u-m-4-0"><input type="radio" name="dup-choice" checked={choice === "fill"} onChange={() => setChoice("fill")} data-testid="dup-fill" /> Update empty fields of the existing lead (nothing already filled in is changed)</label>
             <small className="sub">Rows marked "Looks like a lead you have" are never skipped, because the email is different.</small>
           </fieldset>
         </>

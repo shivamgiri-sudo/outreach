@@ -29,16 +29,16 @@ function Thread({ leadId }) {
   if (!t) return <p className="sub">Loading the conversation…</p>;
   if (!t.messages.length) return <p className="sub">No emails or messages yet.</p>;
   return (
-    <ol className="trail" data-testid="reply-thread" style={{ marginTop: 8 }}>
+    <ol className="trail u-mt-8" data-testid="reply-thread" >
       {t.messages.map((m, i) => (
         <li key={i} className={`trail-item ${m.direction}`}>
           <span className="trail-icon" aria-hidden="true">{m.direction === "in" ? "↩" : "✉"}</span>
           <div className="trail-body">
-            <div className="row" style={{ justifyContent: "space-between", gap: 6 }}>
+            <div className="row u-between u-gap-8">
               <b>{m.direction === "in" ? "They wrote" : "We sent"}{m.title ? ` · ${m.title}` : ""}</b><span className="sub">{istLabel(m.at)}</span>
             </div>
             <div className="sub">{CHANNEL_WORDS[m.type] || m.type}{m.status ? ` · ${String(m.status).replace(/_/g, " ")}` : ""}{m.detail ? ` · ${m.detail}` : ""}</div>
-            {m.body && <p className="trail-text" style={{ whiteSpace: "pre-wrap" }}>{m.body}</p>}
+            {m.body && <p className="trail-text u-prewrap">{m.body}</p>}
           </div>
         </li>
       ))}
@@ -63,13 +63,13 @@ function ReplyRow({ r, team, onChanged, onOpen, setMessage }) {
   const quoted = `{{greeting}}\n\n\n\n— On ${istLabel(r.at)} you wrote:\n> ${r.text.split("\n").join("\n> ")}`;
   return (
     <div className={`card reply-card${r.read ? "" : " unread"}`} data-testid="reply-row" style={{ marginBottom: 10, borderLeft: r.read ? undefined : "4px solid var(--brand)" }}>
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
-        <div style={{ minWidth: 0 }}>
+      <div className="row u-between u-wrap u-gap-8">
+        <div className="u-min0">
           <b title="Score: how much it deserves a person's time now">{r.score}</b>{" "}
           <button className="link" onClick={() => onOpen(r.lead_id)}><b>{r.company || r.contact || "Lead"}</b></button>
           <span className="sub"> {r.contact}{r.title ? ` · ${r.title}` : ""}</span>
         </div>
-        <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+        <div className="row u-gap-8 u-wrap">
           <span className={`pill ${LABEL_PILL[r.label] || ""}`} title={r.label_overridden ? `Corrected by a person (was ${LABEL_WORDS[r.guessed_label] || r.guessed_label})` : "Detected"}>
             {LABEL_WORDS[r.label] || r.label}{r.label_overridden ? " ✎" : ""}</span>
           <span className="sub">{CHANNEL_WORDS[r.channel] || r.channel} · {when(r.age_hours)}</span>
@@ -78,9 +78,9 @@ function ReplyRow({ r, team, onChanged, onOpen, setMessage }) {
           {r.assignee && <span className="pill">→ {r.assignee}</span>}
         </div>
       </div>
-      <p style={{ margin: "6px 0" }}>{r.text.slice(0, 400)}{r.text.length > 400 ? "…" : ""}</p>
-      <p className="sub" style={{ margin: "0 0 6px" }}>Next step: {r.next_step}</p>
-      <div className="row" style={{ flexWrap: "wrap", gap: 6 }} aria-label="Reply actions">
+      <p className="u-m-8-0">{r.text.slice(0, 400)}{r.text.length > 400 ? "…" : ""}</p>
+      <p className="sub u-m-0-0-8">Next step: {r.next_step}</p>
+      <div className="row u-wrap u-gap-8" aria-label="Reply actions">
         {canWrite() && <button className="btn" onClick={() => toggle("reply")}>Reply</button>}
         <button className="btn ghost" onClick={() => toggle("thread")} aria-expanded={panel === "thread"}>{panel === "thread" ? "Hide thread" : "Thread"}</button>
         {canWrite() && <>{r.handled
@@ -96,8 +96,8 @@ function ReplyRow({ r, team, onChanged, onOpen, setMessage }) {
         </select></>}
       </div>
       {panel === "snooze" && canWrite() && (
-        <form className="row" style={{ marginTop: 8 }} onSubmit={(e) => { e.preventDefault(); run("snooze", { until: withIst(until) }, "Snoozed; a task will remind you then.").then(() => setPanel("")); }}>
-          <label className="row" style={{ gap: 6 }}>Remind me at (IST)<input type="datetime-local" required value={until} onChange={(e) => setUntil(e.target.value)} /></label>
+        <form className="row u-mt-8" onSubmit={(e) => { e.preventDefault(); run("snooze", { until: withIst(until) }, "Snoozed; a task will remind you then.").then(() => setPanel("")); }}>
+          <label className="row u-gap-8">Remind me at (IST)<input type="datetime-local" required value={until} onChange={(e) => setUntil(e.target.value)} /></label>
           <button className="btn" type="submit">Snooze</button><button className="btn ghost" type="button" onClick={() => setPanel("")}>Cancel</button>
         </form>
       )}
@@ -140,8 +140,8 @@ export default function Replies() {
           <div className="kpi"><b>{data.total}</b><span>replies in all</span></div>
         </div>
       )}
-      <div className="row" style={{ marginBottom: 10, flexWrap: "wrap" }}>
-        <label className="row" style={{ gap: 6 }}><input type="checkbox" style={{ width: "auto" }} checked={onlyAction} onChange={(e) => setOnlyAction(e.target.checked)} /> Only ones that need a person</label>
+      <div className="row u-mb-12 u-wrap">
+        <label className="row u-gap-8"><input type="checkbox" style={{ width: "auto" }} checked={onlyAction} onChange={(e) => setOnlyAction(e.target.checked)} /> Only ones that need a person</label>
         <select aria-label="Kind of reply" value={label} onChange={(e) => setLabel(e.target.value)}>
           <option value="">All kinds</option>
           {(data?.labels || []).map((l) => <option key={l} value={l}>{LABEL_WORDS[l] || l}{data?.counts[l] ? ` (${data.counts[l]})` : ""}</option>)}
@@ -155,7 +155,7 @@ export default function Replies() {
           {(data?.team || []).map((n) => <option key={n} value={n}>{n} (and unassigned)</option>)}
         </select>
       </div>
-      {message && <div className="tip" role="status" style={{ marginBottom: 10 }}>{message}</div>}
+      {message && <div className="tip u-mb-12" role="status" >{message}</div>}
       {data && data.replies.length === 0 && (
         <p className="empty">{onlyAction ? "Nothing needs a person right now." : "No replies yet."} Replies appear here when they are read from your inbox, LinkedIn agent or pasted on a lead.</p>
       )}

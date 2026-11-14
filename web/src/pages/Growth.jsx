@@ -46,11 +46,11 @@ export default function Growth() {
     <>
       <PageHeader title="Free experience"
         description="Let employers try it first. Give a real, capped taste, track whether they reach a result, and talk about paying only after." />
-      {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
+      {message && <div className="tip u-mb-12" role="status" >{message}</div>}
 
       <div className="grid g2">
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>The free offer</h3>
+          <h3 className="u-mt-0">The free offer</h3>
           <fieldset className="ro-fieldset" disabled={!isOwner()}>
           {OFFER_FIELDS.map(([key, label]) => (
             <div key={key}><label>{label}</label><input type="number" min="0" value={offer[key]} onChange={(e) => num(key, e.target.value)} /></div>
@@ -58,14 +58,14 @@ export default function Growth() {
           <label>Where “Use this draft” sends them</label>
           <input value={offer.claim_url} onChange={(e) => setOffer({ ...offer, claim_url: e.target.value })} />
           </fieldset>
-          {isOwner() && <button className="btn" style={{ marginTop: 12 }} onClick={saveOffer}>Save offer</button>}
-          <p className="sub" style={{ marginTop: 10 }}>
+          {isOwner() && <button className="btn u-mt-12" onClick={saveOffer}>Save offer</button>}
+          <p className="sub u-mt-12">
             These numbers appear in emails and demo pages. The limits themselves must also be set inside {getBrand().public.product_name}, or free use has no ceiling.
           </p>
         </div>
 
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Did they reach a result?</h3>
+          <h3 className="u-mt-0">Did they reach a result?</h3>
           {Object.entries(STEP_LABELS).map(([step, label]) => (
             <div className="funnel-row" key={step}>
               <span>{label}</span>
@@ -76,13 +76,13 @@ export default function Growth() {
         </div>
 
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Do today</h3>
+          <h3 className="u-mt-0">Do today</h3>
           {g.nudges.length === 0 && <p className="empty">Nobody is waiting on a nudge.</p>}
           {g.nudges.map((n) => <p key={n.lead_id}><b>{n.company}</b> — {n.text}</p>)}
         </div>
 
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Time for an honest heads-up</h3>
+          <h3 className="u-mt-0">Time for an honest heads-up</h3>
           {g.conversion_due.length === 0 && <p className="empty">No one is near the end of the free allowance.</p>}
           {g.conversion_due.map((c) => (
             <p key={c.lead_id}><b>{c.company}</b> <span className="pill warn">{c.reason}</span><br />{c.text}</p>
@@ -90,24 +90,24 @@ export default function Growth() {
         </div>
 
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>How many emails can we safely send?</h3>
+          <h3 className="u-mt-0">How many emails can we safely send?</h3>
           <fieldset className="ro-fieldset row" disabled={!isOwner()}>
-            <div style={{ flex: 1 }}><label>Mailboxes</label><input type="number" min="0" value={offer.mailboxes} onChange={(e) => num("mailboxes", e.target.value)} /></div>
-            <div style={{ flex: 1 }}><label>Emails per mailbox per day</label><input type="number" min="0" value={offer.per_mailbox_per_day} onChange={(e) => num("per_mailbox_per_day", e.target.value)} /></div>
-            <div style={{ flex: 1 }}><label>Leads to reach</label><input type="number" min="0" value={offer.target_leads} onChange={(e) => num("target_leads", e.target.value)} /></div>
+            <div className="u-flex1"><label>Mailboxes</label><input type="number" min="0" value={offer.mailboxes} onChange={(e) => num("mailboxes", e.target.value)} /></div>
+            <div className="u-flex1"><label>Emails per mailbox per day</label><input type="number" min="0" value={offer.per_mailbox_per_day} onChange={(e) => num("per_mailbox_per_day", e.target.value)} /></div>
+            <div className="u-flex1"><label>Leads to reach</label><input type="number" min="0" value={offer.target_leads} onChange={(e) => num("target_leads", e.target.value)} /></div>
           </fieldset>
-          {isOwner() && <button className="btn ghost" style={{ marginTop: 10 }} onClick={saveOffer}>Recalculate</button>}
+          {isOwner() && <button className="btn ghost u-mt-12" onClick={saveOffer}>Recalculate</button>}
           <p><b>{g.capacity.daily}</b> a day, <b>{g.capacity.monthly}</b> a month.
             {g.capacity.days_needed && <> About <b>{g.capacity.days_needed}</b> working days to reach {offer.target_leads} leads.</>}</p>
           {g.capacity.warning && <p style={{ color: "var(--hot)" }}>{g.capacity.warning}</p>}
         </div>
 
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Partners and communities ({partners.length})</h3>
+          <h3 className="u-mt-0">Partners and communities ({partners.length})</h3>
           <p className="sub">Staffing agencies, HR groups, associations. Referrals so far: {g.referrals}.</p>
           {partners.map((p) => (
-            <div className="row" key={p.id} style={{ marginBottom: 6 }}>
-              <span style={{ flex: 1 }}><b>{p.name}</b> <small>{p.kind} · {p.contact}</small></span>
+            <div className="row u-mb-8" key={p.id} >
+              <span className="u-flex1"><b>{p.name}</b> <small>{p.kind} · {p.contact}</small></span>
               {canWrite() ? <select style={{ width: "auto" }} value={p.status} onChange={(e) => api.partnerStatus(p.id, e.target.value).then(load).catch((err) => setMessage(err.message))}>
                 {PARTNER_STATUSES.map((s) => <option key={s}>{s}</option>)}
               </select> : <span className="pill">{p.status}</span>}

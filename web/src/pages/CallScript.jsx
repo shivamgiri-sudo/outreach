@@ -48,7 +48,7 @@ function Editor({ data, onSaved, onCancel }) {
   };
   return (
     <form className="inline-form" onSubmit={save} aria-label="Edit the call script">
-      <p className="sub" style={{ margin: 0 }}>Use {"{{first_name}}"}, {"{{rep}}"}, {"{{role}}"} and {"{{company}}"}; they are filled in for each lead. Your own details ({"{{my_company}}"}, {"{{my_product}}"}, {"{{my_value_1}}"}…{"{{my_value_3}}"}, {"{{my_cta}}"}) come from Setup → Brand &amp; offer. Only say what is true today.</p>
+      <p className="sub u-m0">Use {"{{first_name}}"}, {"{{rep}}"}, {"{{role}}"} and {"{{company}}"}; they are filled in for each lead. Your own details ({"{{my_company}}"}, {"{{my_product}}"}, {"{{my_value_1}}"}…{"{{my_value_3}}"}, {"{{my_cta}}"}) come from Setup → Brand &amp; offer. Only say what is true today.</p>
       {script.map((s, i) => (
         <div key={i} className="row" style={{ alignItems: "flex-start" }}>
           <input aria-label={`Line ${i + 1} title`} value={s.title} style={{ maxWidth: 160 }} onChange={(e) => set(script, setScript, i, "title", e.target.value)} />
@@ -57,7 +57,7 @@ function Editor({ data, onSaved, onCancel }) {
         </div>
       ))}
       <button type="button" className="btn ghost" onClick={() => setScript([...script, { title: "", text: "" }])}>Add a line</button>
-      <h4 style={{ margin: "8px 0 0" }}>If they say…</h4>
+      <h4 className="u-m-8-0-0">If they say…</h4>
       {objections.map((o, i) => (
         <div key={i} className="row" style={{ alignItems: "flex-start" }}>
           <input aria-label={`Objection ${i + 1}`} value={o.q} style={{ maxWidth: 220 }} onChange={(e) => set(objections, setObjections, i, "q", e.target.value)} />
@@ -81,8 +81,8 @@ export default function CallScript({ data, lead, rep, onChanged }) {
   if (editing) return <Editor data={data} onCancel={() => setEditing(false)} onSaved={(d) => { setEditing(false); onChanged(d); }} />;
   return (
     <div data-testid="call-script">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h3 style={{ margin: 0 }}>Call script{lead ? ` for ${lead.contact_name || lead.company}` : ""}</h3>
+      <div className="row u-between">
+        <h3 className="u-m0">Call script{lead ? ` for ${lead.contact_name || lead.company}` : ""}</h3>
         {canWrite() && <button className="btn ghost" onClick={() => setEditing(true)}>Edit script</button>}
       </div>
       {data.script.map((s, i) => <p key={i}><Line label={<><b>{s.title}:</b> </>} text={s.text} lead={lead} rep={rep} data={data} /></p>)}

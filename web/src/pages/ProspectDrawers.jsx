@@ -39,7 +39,7 @@ function Provenance({ provenance }) {
               <tbody>
                 {f.entries.map((e, i) => (
                   <tr key={i} className={e.chosen ? "chosen" : ""}>
-                    <td style={{ overflowWrap: "anywhere" }}>{String(e.value)}{e.chosen && <span className="pill ok" style={{ marginLeft: 6 }}>shown</span>}{e.disabled && <span className="pill">source off</span>}</td>
+                    <td className="u-anywhere">{String(e.value)}{e.chosen && <span className="pill ok u-ml-8">shown</span>}{e.disabled && <span className="pill">source off</span>}</td>
                     <td>{e.source}{e.status ? ` (${label(e.status)})` : ""}</td><td>{when(e.seen_at)}</td><td>{e.confidence ?? "—"}</td>
                   </tr>
                 ))}
@@ -66,14 +66,14 @@ export function PersonDrawer({ id, onClose, onCompany, onChanged }) {
       {!p ? <p>{error || "Loading…"}</p> : (
         <>
           <div className="drawer-head">
-            <div style={{ minWidth: 0 }}>
-              <h2 id="pp-title" tabIndex={-1} style={{ overflowWrap: "anywhere" }}>{p.full_name || p.email || "Unnamed"}</h2>
+            <div className="u-min0">
+              <h2 id="pp-title" tabIndex={-1} className="u-anywhere">{p.full_name || p.email || "Unnamed"}</h2>
               <div className="sub">{p.title || "No title"}{p.company && <> · <button className="linkish" onClick={() => onCompany(p.company.id)}>{p.company.name || p.company.domain}</button></>}</div>
             </div>
             <button className="btn ghost" onClick={onClose}>Close</button>
           </div>
           <div className="pd-grid">
-            <div><small className="sub">Email</small><div style={{ overflowWrap: "anywhere" }}>{p.email || "—"} <StatusBadge status={p.email_status} confidence={p.email_confidence} /></div></div>
+            <div><small className="sub">Email</small><div className="u-anywhere">{p.email || "—"} <StatusBadge status={p.email_status} confidence={p.email_confidence} /></div></div>
             <div><small className="sub">Phone</small><div>{(p.phones || []).join(", ") || "—"}</div></div>
             <div><small className="sub">Seniority · department</small><div>{label(p.seniority) || "—"} · {label(p.department) || "—"}</div></div>
             <div><small className="sub">Location</small><div>{[p.city, p.state, p.country].filter(Boolean).join(", ") || "—"}</div></div>
@@ -86,7 +86,7 @@ export function PersonDrawer({ id, onClose, onCompany, onChanged }) {
           <h3>Where did this come from</h3>
           <Provenance provenance={p.provenance} />
           {isOwner() && (
-            <div className="row" style={{ marginTop: 16 }}>
+            <div className="row u-mt-16">
               {p.email && !p.suppressed && <button className="btn ghost" onClick={() => act(() => prospects.suppress(p.email, "opt-out"), "Suppressed.")}>Suppress (opt-out)</button>}
               <button className="btn ghost" onClick={async () => {
                 if (await confirm({ message: "Erase this person from the prospect database? Their contacts are kept only as hashes so no source can add them back.", danger: true, confirmLabel: "Erase" })) {
@@ -111,8 +111,8 @@ export function CompanyDrawer({ id, onClose, onPerson }) {
       {!c ? <p>{error || "Loading…"}</p> : (
         <>
           <div className="drawer-head">
-            <div style={{ minWidth: 0 }}>
-              <h2 id="pc-title" tabIndex={-1} style={{ overflowWrap: "anywhere" }}>{c.name || c.domain}</h2>
+            <div className="u-min0">
+              <h2 id="pc-title" tabIndex={-1} className="u-anywhere">{c.name || c.domain}</h2>
               <div className="sub">{[c.domain, c.industry, c.hq_city].filter(Boolean).join(" · ")}</div>
             </div>
             <button className="btn ghost" onClick={onClose}>Close</button>
@@ -125,7 +125,7 @@ export function CompanyDrawer({ id, onClose, onPerson }) {
             <div><small className="sub">Last updated</small><div>{when(c.last_seen)}</div></div>
             <div><small className="sub">Sources</small><div>{(c.sources || []).join(", ") || "—"}</div></div>
           </div>
-          {c.description && <p style={{ overflowWrap: "anywhere" }}>{c.description}</p>}
+          {c.description && <p className="u-anywhere">{c.description}</p>}
           {c.website && <p><a href={c.website} target="_blank" rel="noreferrer noopener">{c.website}</a></p>}
           {c.technologies?.length > 0 && <><h3>Technologies</h3><div className="chips">{c.technologies.map((t) => <span key={t} className="pill">{t}</span>)}</div></>}
           <h3>Signals ({c.signals.length})</h3>
@@ -141,7 +141,7 @@ export function CompanyDrawer({ id, onClose, onPerson }) {
           <div data-testid="company-people">
             {c.people.length === 0 ? <p className="sub">No people stored yet.</p> : c.people.map((p) => (
               <div key={p.id} className="row" style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-                <div style={{ minWidth: 0 }}>
+                <div className="u-min0">
                   <button className="linkish" onClick={() => onPerson(p.id)}><b>{p.full_name || p.email}</b></button>
                   <div><small className="sub">{p.title || "—"}</small></div>
                 </div>

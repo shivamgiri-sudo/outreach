@@ -30,7 +30,7 @@ export default function RestoreLandlines({ onChanged }) {
   const skipped = Object.entries(plan?.skipped || {}).filter(([, n]) => n);
   return (
     <>
-      <p className="sub" style={{ margin: "0 0 8px" }}>
+      <p className="sub u-m-0-0-8">
         Older campaign, Google Places, OpenStreetMap and prospect leads dropped office landlines from the phone field but kept the
         number elsewhere on the lead (company phone, other numbers, a custom phone field). This puts a landline with its STD code back
         as the phone, only where the phone is empty. Landlines can be called, never WhatsApp or SMS.
@@ -47,7 +47,7 @@ export default function RestoreLandlines({ onChanged }) {
           {plan.sample.length > 0 && (
             <ul>
               {plan.sample.map((c) => (
-                <li key={c.lead_id} style={{ overflowWrap: "anywhere" }}>
+                <li key={c.lead_id} className="u-anywhere">
                   <b>{c.company || c.contact_name || c.lead_id}</b>{c.contact_name && c.company ? ` (${c.contact_name})` : ""}: {c.phone} from {c.from.replace(/^custom:/, "custom field ").replace(/_/g, " ")} “{c.raw}”
                 </li>
               ))}

@@ -39,7 +39,7 @@ function OwnershipModeBody() {
   const allPicked = mism.length > 0 && picked.length === mism.length;
   return (
     <section className="card setup-card" aria-labelledby={`${id}-h`} data-testid="ownership-mode">
-      <h3 id={`${id}-h`} style={{ marginTop: 0 }}>Ownership mode</h3>
+      <h3 id={`${id}-h`} className="u-mt-0">Ownership mode</h3>
       <p className="sub">When on, a person sees and sends only the leads they own, plus lists assigned or shared with them. Admins see everything. Review the report below before turning it on.</p>
       <p><span className={`pill ${mode.on ? "ok" : ""}`} data-testid="ownership-state">{mode.on ? "On" : "Off"}</span> <small className="sub">{mode.unowned} lead(s) have no owner.</small></p>
       {report && (
@@ -52,13 +52,13 @@ function OwnershipModeBody() {
       )}
       {preview && preview.members.length > 0 && (
         <div data-testid="ownership-preview">
-          <h4 style={{ marginBottom: 4 }}>{mode.on ? "What each person sees now" : "What each person would see once it is on"}</h4>
+          <h4 className="u-mb-4">{mode.on ? "What each person sees now" : "What each person would see once it is on"}</h4>
           <div className="table-scroll"><table>
-            <thead><tr><th>Person</th><th>Role</th><th style={{ textAlign: "right" }}>Leads</th><th style={{ textAlign: "right" }}>Lists</th><th>Sees</th></tr></thead>
+            <thead><tr><th>Person</th><th>Role</th><th className="u-right">Leads</th><th className="u-right">Lists</th><th>Sees</th></tr></thead>
             <tbody>{preview.members.map((m) => (
               <tr key={m.email} data-testid="ownership-preview-row">
                 <td><b>{m.name}</b><br /><small>{m.email}</small></td><td>{m.role}</td>
-                <td style={{ textAlign: "right" }}>{m.leads}</td><td style={{ textAlign: "right" }}>{m.lists}</td><td><small>{m.sees}</small></td>
+                <td className="u-right">{m.leads}</td><td className="u-right">{m.lists}</td><td><small>{m.sees}</small></td>
               </tr>))}
             </tbody>
           </table></div>
@@ -66,12 +66,12 @@ function OwnershipModeBody() {
         </div>
       )}
       {needAck && (
-        <label className="row tip" style={{ gap: 8 }}>
+        <label className="row tip u-gap-8">
           <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} data-testid="ownership-ack" />
           I understand {mode.unowned} lead(s) have no owner and only admins will see them until they are assigned.
         </label>
       )}
-      <div className="row" style={{ marginTop: 10 }}>
+      <div className="row u-mt-12">
         <button className="btn" disabled={busy || (needAck && !ack)} onClick={flip} data-testid="ownership-toggle">{mode.on ? "Turn ownership mode off" : "Turn ownership mode on"}</button>
       </div>
       {msg && <div className={`tip${msg.error ? " error" : ""}`} role={msg.error ? "alert" : "status"} style={{ marginTop: 10 }}>{msg.text}</div>}
@@ -90,7 +90,7 @@ function OwnershipModeBody() {
               </tr>))}
             </tbody>
           </table></div>
-          <div className="row" style={{ marginTop: 10, flexWrap: "wrap" }}>
+          <div className="row u-mt-12 u-wrap">
             <button className="btn" disabled={busy || !picked.length} onClick={() => fix(picked)}>Fix owners for {picked.length} selected</button>
             <button className="btn ghost" disabled={busy} onClick={() => fix(mism.map((m) => m.lead_id))}>Fix owners for all {mism.length}</button>
           </div>

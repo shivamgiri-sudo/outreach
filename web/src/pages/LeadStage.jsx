@@ -43,7 +43,7 @@ function ConsentForm({ lead, onSaved, onCancel }) {
         <select value={channel} onChange={(e) => pick(e.target.value)}>{(open.length ? open : CHANNELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       </label>
       {canMove && (
-        <label className="row" style={{ fontWeight: 400, gap: 8 }}>
+        <label className="row u-fw4 u-gap-8">
           <input type="checkbox" style={{ width: "auto" }} checked={move} onChange={(e) => { setTouched(true); setMove(e.target.checked); }} />
           Move to Interested and create a call task
         </label>
@@ -80,7 +80,7 @@ export default function LeadStage({ lead, onLead, onError }) {
   return (
     <section aria-label="Stage">
       <h3>Stage: {stageLabel(lead.stage)}</h3>
-      {canWrite() && <div className="row" style={{ flexWrap: "wrap" }}>
+      {canWrite() && <div className="row u-wrap">
         {nextOk && <button className="btn" disabled={busy} onClick={() => move(next)}>Move to {stageLabel(next)}</button>}
         {consentChannels(lead).length < CHANNELS.length && <button className="btn ghost" onClick={() => setForm("consent")}>
           {lead.consent ? "Record consent for another channel" : "Record “yes” consent"}</button>}
@@ -96,7 +96,7 @@ export default function LeadStage({ lead, onLead, onError }) {
       </div>}
       {chosen && canWrite() && (
         <form className="inline-form" onSubmit={(e) => { e.preventDefault(); move(chosen.stage, reason.trim(), chosen.rule === "owner"); }}>
-          {chosen.why && <p className="sub" style={{ margin: 0 }}>{chosen.why}</p>}
+          {chosen.why && <p className="sub u-m0">{chosen.why}</p>}
           {needsReason && <label>Why? (saved on the lead with your name)
             <input autoFocus required value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. moved by mistake / they called back" /></label>}
           <div className="row">
@@ -109,7 +109,7 @@ export default function LeadStage({ lead, onLead, onError }) {
       {form === "unsubscribe" && canWrite() && (
         <div className="tip error" role="alert">
           This stops every email and WhatsApp to them for good and cannot be undone here.
-          <div className="row" style={{ marginTop: 8 }}>
+          <div className="row u-mt-8">
             <button className="btn danger-solid" onClick={() => move("unsubscribed")}>Yes, unsubscribe them</button>
             <button className="btn ghost" onClick={() => setForm("")}>Cancel</button>
           </div>

@@ -36,9 +36,9 @@ export function LeadAssignedBy({ lead }) {
   const waiting = isWaiting(lead) || lead.first_touch_stuck;
   if (!text && !waiting) return null;
   return (
-    <div className="row" style={{ margin: "6px 0", flexWrap: "wrap", gap: 8 }} data-testid="lead-assigned-by">
-      {text && <small className="sub" style={{ margin: 0 }}>{text}</small>}
-      {waiting && <><small className="sub" style={{ margin: 0 }}>First touch:</small><FirstTouchTimer lead={lead} /></>}
+    <div className="row u-m-8-0 u-wrap u-gap-8" data-testid="lead-assigned-by">
+      {text && <small className="sub u-m0">{text}</small>}
+      {waiting && <><small className="sub u-m0">First touch:</small><FirstTouchTimer lead={lead} /></>}
     </div>
   );
 }

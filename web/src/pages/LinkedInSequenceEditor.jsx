@@ -19,9 +19,9 @@ function Preview({ text, kind, title, workspace }) {
   if (!p) return null;
   const over = kind === "connect" && p.longest_length > LIMIT;
   return (
-    <div className="trail-text" style={{ marginTop: 6 }} data-testid="li-preview">
+    <div className="trail-text u-mt-8" data-testid="li-preview">
       <small className="sub-inline">Preview for a sample lead ({title || "Founder"}):</small>
-      <div style={{ whiteSpace: "pre-wrap" }}>{p.text}</div>
+      <div className="u-prewrap">{p.text}</div>
       {kind === "connect" && <small className={over ? "pill err" : "sub-inline"}>{p.length} / {LIMIT} characters · {p.longest_length} with a long name and company</small>}
       {p.problem && <small className="pill err">{p.problem}</small>}
     </div>
@@ -32,25 +32,25 @@ function StepRow({ step, index, count, onChange, onRemove, onMove, readOnly, sam
   const connect = index === 0;
   const set = (key, value) => onChange({ ...step, [key]: value });
   return (
-    <div className="card" style={{ marginBottom: 8 }} data-testid={`li-step-${index + 1}`}>
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+    <div className="card u-mb-8" data-testid={`li-step-${index + 1}`}>
+      <div className="row u-between u-wrap">
         <b>Step {index + 1}: {connect ? "connection request" : "message"}</b>
         {!readOnly && !connect && (
-          <span className="row" style={{ gap: 4 }}>
+          <span className="row u-gap-4">
             <button type="button" className="btn ghost" disabled={index < 2} onClick={() => onMove(-1)} aria-label={`Move step ${index + 1} up`}>↑</button>
             <button type="button" className="btn ghost" disabled={index === count - 1} onClick={() => onMove(1)} aria-label={`Move step ${index + 1} down`}>↓</button>
             <button type="button" className="btn ghost" onClick={onRemove}>Remove</button>
           </span>
         )}
       </div>
-      <div className="row" style={{ flexWrap: "wrap" }}>
+      <div className="row u-wrap">
         <label style={{ flex: 2, minWidth: 180 }}>Purpose
           <input value={step.purpose || ""} maxLength={120} disabled={readOnly} onChange={(e) => set("purpose", e.target.value)} />
         </label>
-        {!connect && <label style={{ flex: 1, minWidth: 120 }}>Days later
+        {!connect && <label className="u-flex1 u-minwidth-120">Days later
           <input type="number" min={0} max={60} value={step.days} disabled={readOnly} onChange={(e) => set("days", Number(e.target.value))} />
         </label>}
-        {!connect && <label style={{ flex: 1, minWidth: 160 }}>After
+        {!connect && <label className="u-flex1 u-minwidth-160">After
           <select value={step.after} disabled={readOnly || index === 1} onChange={(e) => set("after", e.target.value)}>
             <option value="accepted">they accept the connection</option>
             <option value="previous">the previous message</option>
@@ -104,7 +104,7 @@ export default function LinkedInSequenceEditor({ onMessage }) {
   const setPersona = (i, key, value) => setPersonas(personas.map((p, j) => (i === j ? { ...p, [key]: value } : p)));
 
   return (
-    <details className="card" style={{ marginBottom: 12 }} data-testid="li-sequence-editor">
+    <details className="card u-mb-12" data-testid="li-sequence-editor">
       <summary><b>Steps &amp; personas</b> <small className="sub-inline">
         {inherited ? "Main's steps" : data.builtin ? "built-in steps" : `your steps · version ${data.version}`} · {steps.length} steps · {personas.length} personas
         {(isOwner() || data.workspace !== "main") && <> · <span className="pill" data-testid="li-ws">{data.workspace_name}</span></>}</small></summary>
@@ -114,7 +114,7 @@ export default function LinkedInSequenceEditor({ onMessage }) {
       {!inherited && !data.can_edit && <p className="sub">Read-only: only an owner or an admin of this workspace changes these steps.</p>}
       <p className="sub">Placeholders: {"{first_name}"}, {"{hook}"} (the persona line below), {"{company}"}, {"{case_study_url}"} and any email placeholder such as {"{{my_company}}"} or {"{{custom.<field>}}"}.
         Changing days, the number of steps or the order while people are part-way creates a new version; they finish on the old one.</p>
-      <label style={{ maxWidth: 320 }}>Preview as a person whose title is
+      <label className="u-maxwidth-320">Preview as a person whose title is
         <input value={sampleTitle} onChange={(e) => setSampleTitle(e.target.value)} maxLength={120} />
       </label>
       {steps.map((s, i) => (
@@ -130,9 +130,9 @@ export default function LinkedInSequenceEditor({ onMessage }) {
       <h4>Personas</h4>
       <p className="sub">Matched on the person's job title, top to bottom; the first match gives the {"{hook}"} line. The pattern is a regular expression (for example <code>{"\\b(founder|ceo)\\b"}</code>).</p>
       {personas.map((p, i) => (
-        <div key={i} className="row" style={{ flexWrap: "wrap", alignItems: "flex-end", marginBottom: 6 }}>
+        <div key={i} className="row u-wrap u-aend u-mb-8">
           <label style={{ flex: "0 0 120px" }}>Key<input value={p.key} disabled={readOnly} maxLength={30} onChange={(e) => setPersona(i, "key", e.target.value)} /></label>
-          <label style={{ flex: 1, minWidth: 160 }}>Title pattern<input value={p.pattern} disabled={readOnly} maxLength={300} onChange={(e) => setPersona(i, "pattern", e.target.value)} /></label>
+          <label className="u-flex1 u-minwidth-160">Title pattern<input value={p.pattern} disabled={readOnly} maxLength={300} onChange={(e) => setPersona(i, "pattern", e.target.value)} /></label>
           <label style={{ flex: 2, minWidth: 200 }}>Hook<input value={p.hook} disabled={readOnly} maxLength={400} onChange={(e) => setPersona(i, "hook", e.target.value)} /></label>
           {!readOnly && <button type="button" className="btn ghost" onClick={() => setPersonas(personas.filter((_, j) => j !== i))} aria-label={`Remove persona ${p.key}`}>Remove</button>}
         </div>
@@ -140,7 +140,7 @@ export default function LinkedInSequenceEditor({ onMessage }) {
       {!readOnly && personas.length < 20 && <button type="button" className="btn ghost" onClick={() => setPersonas([...personas, { key: `persona_${personas.length + 1}`, pattern: "", hook: "" }])}>Add a persona</button>}
       <label>Hook for everyone else<input value={hook} disabled={readOnly} maxLength={400} onChange={(e) => setHook(e.target.value)} /></label>
       {!readOnly && (
-        <div className="row" style={{ marginTop: 10 }}>
+        <div className="row u-mt-12">
           <button type="button" className="btn" onClick={save}>Save LinkedIn steps</button>
           {data.workspace === "main" && !data.builtin && <button type="button" className="btn ghost" onClick={reset}>Use the built-in steps</button>}
           {data.workspace !== "main" && <button type="button" className="btn ghost" onClick={reset}>Use Main's steps again</button>}

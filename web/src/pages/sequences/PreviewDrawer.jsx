@@ -13,11 +13,11 @@ export default function PreviewDrawer({ shown, onClose, onSend }) {
   return (
     <>
       <div className="scrim" onClick={onClose} aria-hidden="true" />
-      <div className="drawer" role="dialog" aria-modal="true" aria-label={`Designed email: ${shown.name}`} style={{ maxWidth: 720 }}>
-        <div className="row" style={{ justifyContent: "space-between" }}><b>{shown.name}</b><button className="btn ghost" onClick={onClose}>Close</button></div>
+      <div className="drawer u-maxwidth-720" role="dialog" aria-modal="true" aria-label={`Designed email: ${shown.name}`} >
+        <div className="row u-between"><b>{shown.name}</b><button className="btn ghost" onClick={onClose}>Close</button></div>
         <p className="sub">Subject: <b>{shown.subject}</b> · sample person: Alex Example, Example Retail</p>
         {isOwner() && onSend && (
-          <form className="row" style={{ marginBottom: 8 }} onSubmit={(e) => {
+          <form className="row u-mb-8" onSubmit={(e) => {
             e.preventDefault();
             onSend(e.target.elements.to.value).then((r) => setNote(`Preview sent to ${r.to}.`)).catch((err) => setNote(err.message));
           }}>

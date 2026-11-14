@@ -93,13 +93,13 @@ export default function LeadMeetings({ lead, onChanged }) {
       {canWrite() && active && form && (
         <form className="inline-form" onSubmit={book}>
           {active.id === "booking_link" && (
-            <label className="row" style={{ fontWeight: 400 }}>
+            <label className="row u-fw4">
               <input type="checkbox" style={{ width: "auto" }} checked={!!form.fixed} onChange={(e) => setForm({ ...form, fixed: e.target.checked })} />
               Pick a fixed time and email them a calendar invite with this link
             </label>
           )}
           {linkBased ? (
-            <p style={{ margin: 0 }}>
+            <p className="u-m0">
               You get a link to your booking page ({active.title}); the lead picks a slot.{" "}
               {active.webhook ? "Their booking then appears here by itself." : "This page does not report bookings back, so check your calendar."}
             </p>
@@ -120,7 +120,7 @@ export default function LeadMeetings({ lead, onChanged }) {
               {OWN_INVITE.includes(active.id) ? (
                 <p className="field-help">We email the lead a calendar invite (.ics) with the join link. With real sending off it is kept as practice.</p>
               ) : SENDS_OWN.includes(active.id) && (
-                <label className="row" style={{ fontWeight: 400 }}>
+                <label className="row u-fw4">
                   <input type="checkbox" style={{ width: "auto" }} checked={!!form.sendInvite} onChange={(e) => setForm({ ...form, sendInvite: e.target.checked })} />
                   Send our own invite too ({active.title} already emails them one)
                 </label>
@@ -135,7 +135,7 @@ export default function LeadMeetings({ lead, onChanged }) {
           {link && (
             <div className="tip" role="status">
               Send this link to the lead: <code>{link}</code>
-              <div><button type="button" className="btn ghost" style={{ marginTop: 6 }} onClick={() => copyText(link)}>Copy link</button></div>
+              <div><button type="button" className="btn ghost u-mt-8" onClick={() => copyText(link)}>Copy link</button></div>
             </div>
           )}
         </form>

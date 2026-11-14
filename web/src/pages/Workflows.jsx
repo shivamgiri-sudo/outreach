@@ -52,11 +52,11 @@ export default function Workflows() {
       <PageHeader title="Simple rules"
         description={<>When something happens, do one thing. Each rule runs once per lead. WhatsApp actions still respect consent.
         For several steps, waits and branches, use the Flow builder.</>} />
-      {message && <div className="tip" style={{ marginBottom: 12 }}>{message}</div>}
+      {message && <div className="tip u-mb-12">{message}</div>}
 
       <div className="grid g2">
         {owner && <div className="card">
-          <h3 style={{ marginTop: 0 }}>New rule</h3>
+          <h3 className="u-mt-0">New rule</h3>
           <label>Name</label>
           <input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Yes by email → WhatsApp" />
           <label>When</label>
@@ -77,26 +77,26 @@ export default function Workflows() {
               {ACTIONS[form.aType].options.map((o) => <option key={o} value={o}>{OPTION_NAMES[o] || o.replace(/_/g, " ")}</option>)}
             </select>
           ) : <input style={{ marginTop: 6 }} value={form.aValue} onChange={(e) => set({ aValue: e.target.value })} placeholder="e.g. Send pricing to {{company}} ({{first_name}})" />}
-          <div className="row" style={{ marginTop: 12 }}>
+          <div className="row u-mt-12">
             <button className="btn" onClick={add}>Add rule</button>
             <button className="btn ghost" onClick={() => api.starterWorkflows().then(() => { setMessage("Suggested rules added."); load(); }, (e) => setMessage(e.message))}>Add suggested rules</button>
           </div>
         </div>}
 
         <div className="card">
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <h3 style={{ margin: 0 }}>Your rules ({rules.length})</h3>
+          <div className="row u-between">
+            <h3 className="u-m0">Your rules ({rules.length})</h3>
             {owner && <button className="btn ghost" onClick={async () => { const r = await api.runTimeRules(); setMessage(`Checked time-based rules: ${r.ran} ran.`); }}>Check time-based rules now</button>}
           </div>
           {rules.length === 0 && <p className="empty">{owner ? "No rules yet. Add the suggested ones to start." : "No rules yet."}</p>}
           {rules.map((r) => (
-            <div key={r.id} className="row" style={{ justifyContent: "space-between", margin: "10px 0" }}>
-              <span style={{ flex: 1 }}>
+            <div key={r.id} className="row u-between u-m-12-0">
+              <span className="u-flex1">
                 <b>{r.name}</b><br />
                 <small>{describe("when", r.trigger, TRIGGERS)} → {describe("then", r.action, ACTIONS)}</small>
               </span>
               {!owner && <span className={`pill ${r.enabled ? "ok" : ""}`}>{r.enabled ? "On" : "Off"}</span>}
-              {owner && <label className="row" style={{ fontWeight: 400, margin: 0 }}>
+              {owner && <label className="row u-fw4 u-m0">
                 <input type="checkbox" style={{ width: "auto" }} checked={r.enabled} onChange={(e) => { const enabled = e.target.checked; setRules((all) => all.map((x) => (x.id === r.id ? { ...x, enabled } : x))); api.toggleWorkflow(r.id, enabled).catch(load); }} />
                 On
               </label>}

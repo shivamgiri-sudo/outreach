@@ -44,10 +44,10 @@ function Alert({ text }) {
 function ProviderList({ list, go }) {
   return (
     <div className="card">
-      <h3 style={{ marginTop: 0 }}>Providers</h3>
+      <h3 className="u-mt-0">Providers</h3>
       {list.map((p) => (
         <div className="row" key={p.id} style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-          <span style={{ flex: 1, minWidth: 220 }}>
+          <span className="u-flex1 u-minwidth-220">
             <b>{p.title}</b><br /><small className="sub">{p.configured ? p.cost_note : p.reason}</small>
           </span>
           <span className="row">
@@ -77,17 +77,17 @@ function CompareForm({ list, onDone }) {
 
   return (
     <div className="card">
-      <h3 style={{ marginTop: 0 }}>Compare</h3>
-      <p className="sub" style={{ margin: "0 0 8px" }}>Each ticked provider looks up the same leads. Nothing is saved to your leads until you choose.</p>
+      <h3 className="u-mt-0">Compare</h3>
+      <p className="sub u-m-0-0-8">Each ticked provider looks up the same leads. Nothing is saved to your leads until you choose.</p>
       {list.map((p) => (
-        <label key={p.id} className="row" style={{ fontWeight: 400, margin: "6px 0" }}>
+        <label key={p.id} className="row u-fw4 u-m-8-0">
           <input type="checkbox" checked={picked.includes(p.id)} onChange={() => toggle(p.id)} />
-          {p.title}{!p.configured && <small className="sub" style={{ margin: 0 }}> (not set up, will be skipped)</small>}
+          {p.title}{!p.configured && <small className="sub u-m0"> (not set up, will be skipped)</small>}
         </label>
       ))}
       <label htmlFor="sample-size">How many leads to test</label>
       <input id="sample-size" type="number" min="1" max={MAX_SAMPLE} value={size} onChange={(e) => setSize(e.target.value)} style={{ maxWidth: 140 }} />
-      <div className="row" style={{ marginTop: 12 }}>
+      <div className="row u-mt-12">
         <button className="btn" disabled={busy || picked.length === 0 || !(size >= 1 && size <= MAX_SAMPLE)} onClick={run}>
           {busy ? "Running… this can take a few minutes" : "Run comparison"}
         </button>
@@ -139,8 +139,8 @@ function ResultRow({ m, run, onApplied }) {
 function Results({ run, onApplied }) {
   if (!run) return null;
   return (
-    <div className="card" style={{ padding: 0, overflowX: "auto", marginTop: 16 }}>
-      <h3 style={{ margin: 16 }}>Results for {run.sample_size} leads <small className="sub">({when(run.at)})</small></h3>
+    <div className="card u-p0 u-xauto u-mt-16">
+      <h3 className="u-m-16">Results for {run.sample_size} leads <small className="sub">({when(run.at)})</small></h3>
       <table>
         <thead><tr>
           <th>Provider</th><th>Checked</th><th>Found email</th><th>Found phone</th><th>Coverage %</th>
@@ -148,7 +148,7 @@ function Results({ run, onApplied }) {
         </tr></thead>
         <tbody>{run.providers.map((m) => <ResultRow key={`${run.id}-${m.provider}`}m={m} run={run} onApplied={onApplied} />)}</tbody>
       </table>
-      <p className="sub" style={{ margin: 16 }}>"Use these results" only fills emails and phones that are empty, and skips unsubscribed or disqualified leads. Bounced grows once sending starts.</p>
+      <p className="sub u-m-16">"Use these results" only fills emails and phones that are empty, and skips unsubscribed or disqualified leads. Bounced grows once sending starts.</p>
     </div>
   );
 }
@@ -175,18 +175,18 @@ function ImportCard() {
 
   return (
     <div className="card">
-      <h3 style={{ marginTop: 0 }}>Import from the website contact scraper</h3>
-      <p className="sub" style={{ margin: "0 0 8px" }}>Run the open-source scraper on your computer (homepage or key pages only, no proxies), then paste or upload its JSON.</p>
+      <h3 className="u-mt-0">Import from the website contact scraper</h3>
+      <p className="sub u-m-0-0-8">Run the open-source scraper on your computer (homepage or key pages only, no proxies), then paste or upload its JSON.</p>
       <label htmlFor="scraper-file">JSON file</label>
       <input id="scraper-file" type="file" accept=".json,application/json" onChange={readFile} />
       <label htmlFor="scraper-json">Or paste the JSON</label>
       <textarea id="scraper-json" rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder='[{"domain": "example.in", "emails": [...], "phones": [...]}]' />
-      <div className="row" style={{ marginTop: 12 }}>
+      <div className="row u-mt-12">
         <button className="btn" disabled={busy || !text.trim()} onClick={send}>{busy ? "Importing…" : "Import"}</button>
       </div>
       <Alert text={error} />
       {result && (
-        <div className="tip" style={{ marginTop: 12 }}>
+        <div className="tip u-mt-12">
           Matched <b>{result.matched}</b> leads. Added <b>{result.filled_emails}</b> emails and <b>{result.filled_phones}</b> phones.
           {result.unmatched_domains.length > 0 && <><br /><small>No lead for: {result.unmatched_domains.join(", ")}</small></>}
         </div>
@@ -197,12 +197,12 @@ function ImportCard() {
 
 function History({ runs, current, onShow }) {
   return (
-    <div className="card" style={{ marginTop: 16 }}>
-      <h3 style={{ marginTop: 0 }}>Past comparisons</h3>
-      {runs.length === 0 && <p className="sub" style={{ margin: 0 }}>No comparisons yet.</p>}
+    <div className="card u-mt-16">
+      <h3 className="u-mt-0">Past comparisons</h3>
+      {runs.length === 0 && <p className="sub u-m0">No comparisons yet.</p>}
       {runs.map((r) => (
         <div className="row" key={r.id} style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-          <span style={{ flex: 1, minWidth: 220 }}>
+          <span className="u-flex1 u-minwidth-220">
             <b>{when(r.at)}</b> · {r.sample_size} leads<br />
             <small className="sub">
               {r.providers.map((m) => (m.skipped ? `${m.title}: skipped` : `${m.title}: ${m.coverage_pct}%`)).join(" · ")}
@@ -249,7 +249,7 @@ export default function DataSources({ go }) {
         {isOwner() && <CompareForm list={list} onDone={(run) => { setCurrent(run); refresh(run.id); }} />}
       </div>
       <Results run={current} onApplied={() => current && refresh(current.id)} />
-      {isOwner() && <div className="grid g2" style={{ marginTop: 16 }}>
+      {isOwner() && <div className="grid g2 u-mt-16">
         <ImportCard />
       </div>}
       <History runs={runs} current={current} onShow={setCurrent} />

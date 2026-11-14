@@ -42,7 +42,7 @@ export default function CallLog() {
       <PageHeader title="Call log"
         description={<>Every contact attempt across your leads, with who made it, when (IST), how it ended and the notes. You see only leads you can see.</>} />
 
-      <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+      <div className="row u-wrap u-gap-8 u-mb-12">
         <button className={`tab-chip${f.from === today && f.to === today ? " on" : ""}`} onClick={() => preset(today, today)}>Today</button>
         <button className={`tab-chip${f.from === istDaysAgo(1) && f.to === istDaysAgo(1) ? " on" : ""}`} onClick={() => preset(istDaysAgo(1), istDaysAgo(1))}>Yesterday</button>
         <button className={`tab-chip${f.from === istDaysAgo(6) && f.to === today ? " on" : ""}`} onClick={() => preset(istDaysAgo(6), today)}>Last 7 days</button>
@@ -51,7 +51,7 @@ export default function CallLog() {
           title="The rows matching these filters, as a CSV that opens in Excel" />
       </div>
 
-      <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+      <div className="row u-wrap u-gap-8 u-mb-12">
         <label>From <input type="date" aria-label="From date" value={f.from} max={f.to || undefined} onChange={(e) => set({ from: e.target.value })} /></label>
         <label>To <input type="date" aria-label="To date" value={f.to} min={f.from || undefined} onChange={(e) => set({ to: e.target.value })} /></label>
         <select aria-label="Caller" value={f.by} onChange={(e) => set({ by: e.target.value })}>
@@ -71,14 +71,14 @@ export default function CallLog() {
 
       <LeadQualityCard />
       {data && data.summary.length > 0 && (
-        <div className="card" style={{ marginBottom: 12 }} data-testid="call-summary">
-          <h3 style={{ marginTop: 0 }}>By caller</h3>
+        <div className="card u-mb-12" data-testid="call-summary">
+          <h3 className="u-mt-0">By caller</h3>
           <div className="table-wrap">
             <table>
               <thead><tr><th>Caller</th><th>Calls</th><th>Connected</th><th>Unanswered</th><th>Interested</th><th>Meetings</th><th>Connect rate</th></tr></thead>
               <tbody>
                 {data.summary.map((s) => (
-                  <tr key={s.caller} style={{ cursor: "pointer" }} onClick={() => set({ by: f.by === s.caller ? "" : s.caller })} title="Show only this caller">
+                  <tr key={s.caller} className="u-pointer" onClick={() => set({ by: f.by === s.caller ? "" : s.caller })} title="Show only this caller">
                     <td><b>{s.caller}</b></td><td>{s.calls}</td><td>{s.connected}</td><td>{s.unanswered}</td><td>{s.interested}</td><td>{s.meetings}</td><td>{s.connect_rate}%</td>
                   </tr>
                 ))}
@@ -98,7 +98,7 @@ export default function CallLog() {
               <thead><tr><th>When (IST)</th><th>Caller</th><th>Lead</th><th>Phone</th><th>Channel</th><th>Outcome</th><th>Notes</th></tr></thead>
               <tbody>
                 {rows.map((r, i) => (
-                  <tr key={r.id || `${r.lead_id}-${r.at}-${i}`} style={{ cursor: "pointer" }} onClick={() => setOpen(r.lead_id)} tabIndex={0}
+                  <tr key={r.id || `${r.lead_id}-${r.at}-${i}`} className="u-pointer" onClick={() => setOpen(r.lead_id)} tabIndex={0}
                     onKeyDown={(e) => { if (e.key === "Enter") setOpen(r.lead_id); }}>
                     <td>{istLabel(r.at)}</td>
                     <td>{r.by || "Unknown"}</td>
@@ -112,9 +112,9 @@ export default function CallLog() {
               </tbody>
             </table>
           </div>
-          <div className="row" style={{ justifyContent: "space-between", marginTop: 8 }}>
+          <div className="row u-between u-mt-8">
             <span className="sub">{data.total} total · page {page} of {pages}</span>
-            <span className="row" style={{ gap: 8 }}>
+            <span className="row u-gap-8">
               <button className="btn ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
               <button className="btn ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</button>
             </span>

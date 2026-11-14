@@ -13,19 +13,19 @@ export function PendingApproval({ me, onSignOut }) {
       <h2>Waiting for approval</h2>
       <p className="sub">Thanks{me?.name ? `, ${me.name}` : ""}. The account for <b>{info?.account || "your company"}</b> was created and our team is
         reviewing it. You will get an email the moment it is approved; until then nothing can be imported or sent.</p>
-      <section className="card" style={{ marginTop: 16 }}>
+      <section className="card u-mt-16">
         <h3>What happens next</h3>
         <ol>{(info?.steps || []).map((s) => <li key={s.label}>{s.done ? "✓ " : "… "}{s.label}</li>)}</ol>
         {info?.submitted_at && <p className="hint">Submitted {new Date(info.submitted_at).toLocaleString()}</p>}
       </section>
       {(info?.questions || []).length > 0 && (
-        <section className="card" style={{ marginTop: 16 }} data-testid="pending-questions">
+        <section className="card u-mt-16" data-testid="pending-questions">
           <h3>We need a few details</h3>
           {info.questions.map((q) => <p key={q.at}>{q.message} <span className="hint">— reply to our email with the answer.</span></p>)}
         </section>
       )}
-      <section className="setup-stack" style={{ marginTop: 16 }}><OwnPassword /><TwoStepCard /></section>
-      <p style={{ marginTop: 16 }}><button className="btn ghost" onClick={onSignOut}>Sign out</button></p>
+      <section className="setup-stack u-mt-16"><OwnPassword /><TwoStepCard /></section>
+      <p className="u-mt-16"><button className="btn ghost" onClick={onSignOut}>Sign out</button></p>
     </main>
   );
 }

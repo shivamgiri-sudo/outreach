@@ -69,17 +69,17 @@ function Slot({ s, onDone, onMessage, overview }) {
   const showForm = s.state !== "needs_code" && (login || (s.enabled && ["needs_login", "needs_manual", "error"].includes(s.state)));
   useEffect(() => { if (s.state === "connected" || s.state === "logging_in") setLogin(false); }, [s.state]);
   return (
-    <div className="card" style={{ marginBottom: 10 }} data-testid="cloud-slot">
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+    <div className="card u-mb-12" data-testid="cloud-slot">
+      <div className="row u-between u-wrap">
         <b>{s.label}{overview && s.account_name ? <span className="sub"> · {s.account_name}</span> : null}</b>
         <span className={`pill ${tone}`} data-testid="cloud-state">{words}</span>
       </div>
-      {s.note && <p className="sub" style={{ marginBottom: 4 }}>{s.note}</p>}
-      <p className="sub" style={{ marginTop: 0 }}>{s.last_seen ? `Last heard from ${istLabel(s.last_seen)}` : "Not heard from yet"}{s.account ? ` · LinkedIn: ${s.account}` : ""}</p>
+      {s.note && <p className="sub u-mb-4">{s.note}</p>}
+      <p className="sub u-mt-0">{s.last_seen ? `Last heard from ${istLabel(s.last_seen)}` : "Not heard from yet"}{s.account ? ` · LinkedIn: ${s.account}` : ""}</p>
       {s.state === "needs_code" && <CodeForm slot={s} onDone={onDone} onMessage={onMessage} />}
       {s.state === "needs_app_approval" && <p className="tip" role="status">Open the LinkedIn app on the phone of this account and tap <b>Yes</b> to approve the sign-in. The agent waits up to 3 minutes.</p>}
       {showForm && <LoginForm slot={s} onDone={(r) => { setLogin(false); onDone(r); }} onMessage={onMessage} />}
-      <div className="row" style={{ flexWrap: "wrap" }}>
+      <div className="row u-wrap">
         {!showForm && !["connected", "needs_code", "logging_in"].includes(s.state) && <button className="btn ghost" onClick={() => setLogin(true)}>Log in</button>}
         {s.enabled
           ? <button className="btn ghost" onClick={() => act(() => api.changeLinkedinCloud(s.id, { enabled: false }), `${s.label} switched off. Its browser stops within a minute.`)}>Switch off</button>
@@ -127,16 +127,16 @@ export default function LinkedInCloud({ onMessage }) {
     catch (e) { onMessage(e.message); }
   };
   return (
-    <section className="card" style={{ marginBottom: 14 }} data-testid="linkedin-cloud" aria-labelledby="li-cloud-title">
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-        <h3 id="li-cloud-title" style={{ margin: 0 }}>LinkedIn agent run from this portal</h3>
+    <section className="card u-mb-16" data-testid="linkedin-cloud" aria-labelledby="li-cloud-title">
+      <div className="row u-between u-wrap">
+        <h3 id="li-cloud-title" className="u-m0">LinkedIn agent run from this portal</h3>
         {!office && st.slots.length > 0 && !st.supervisor.running && <span className="pill warn" data-testid="cloud-runner-off">The cloud runner is not running on the server</span>}
       </div>
       <p className="sub">Add a LinkedIn account, log it in here once, and the agent sends the connection requests and follow-up messages, one at a time, inside the working
         hours and caps set in the agent box below. You do everything from this page.</p>
-      {owner && <div className="row" style={{ flexWrap: "wrap", alignItems: "center", gap: 8, margin: "4px 0 10px" }}>
-        <span className="sub" style={{ margin: 0 }}>Where the LinkedIn browser runs:</span>
-        <div className="tab-chips" role="radiogroup" aria-label="Where the LinkedIn browser runs" style={{ margin: 0 }} data-testid="cloud-where">
+      {owner && <div className="row u-wrap u-acenter u-gap-8 u-m-4-0-12">
+        <span className="sub u-m0">Where the LinkedIn browser runs:</span>
+        <div className="tab-chips u-m0" role="radiogroup" aria-label="Where the LinkedIn browser runs" data-testid="cloud-where">
           <button type="button" role="radio" aria-checked={office} className={`tab-chip${office ? " on" : ""}`} onClick={() => where("office")}>Office computer (recommended)</button>
           <button type="button" role="radio" aria-checked={!office} className={`tab-chip${!office ? " on" : ""}`} onClick={() => where("server")}>Portal server</button>
         </div>
@@ -150,7 +150,7 @@ export default function LinkedInCloud({ onMessage }) {
         Use an account you can afford to lose.</p>
       {st.slots.map((s) => <Slot key={s.id} s={s} onDone={setSt} onMessage={onMessage} overview={overview} />)}
       {overview ? null : full ? <p className="sub">{st.max === 0 ? "LinkedIn accounts are switched off here." : `${office ? "The office computer" : "This server"} runs ${st.max} LinkedIn account${st.max === 1 ? "" : "s"} at most (each needs its own browser).`}</p> : (
-        <form className="row" onSubmit={add} style={{ flexWrap: "wrap" }}>
+        <form className="row u-wrap" onSubmit={add} >
           <input aria-label="Name for the LinkedIn account" placeholder="Name, e.g. Sales LinkedIn" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} />
           <button className="btn" type="submit" data-testid="cloud-add">Add LinkedIn account</button>
         </form>

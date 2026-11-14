@@ -67,7 +67,7 @@ function MappingStep({ preview, mapping, setMapping, remember, setRemember }) {
   const fields = Object.entries(preview.fields);
   return (
     <>
-      <div className="tip" style={{ marginBottom: 12 }}>
+      <div className="tip u-mb-12">
         This looks like: <b>{preview.format.name}</b>.
         {preview.format.saved_mapping && " Your saved column choices for this layout are filled in."}
         {" "}Saved as source “{sourceLabel(preview.source)}”.
@@ -106,7 +106,7 @@ function DryRun({ preview, options, setOptions }) {
   const warnings = Object.entries(s.warnings || {});
   return (
     <>
-      <p className="sub" style={{ margin: "0 0 8px" }}>Nothing has been saved yet. This is what importing would do with {s.rows} rows.</p>
+      <p className="sub u-m-0-0-8">Nothing has been saved yet. This is what importing would do with {s.rows} rows.</p>
       <div className="kpi-row">
         <Kpi n={s.create} label="new leads" /><Kpi n={s.merge} label="existing leads get new details" />
         <Kpi n={s.duplicates_in_file} label="duplicates inside this file" /><Kpi n={s.unchanged} label="already here, nothing new" />
@@ -126,7 +126,7 @@ function DryRun({ preview, options, setOptions }) {
         <details className="section" open>
           <summary>Added to leads you already have ({s.merge})</summary>
           {preview.merges.slice(0, 50).map((m) => (
-            <p key={m.row} style={{ margin: "6px 0" }}>
+            <p key={m.row} className="u-m-8-0">
               Row {m.row} → <b>{m.company || "a lead"}</b> <span className="sub-inline">({m.matched_by})</span>:{" "}
               {m.filled.length ? `fills ${m.filled.join(", ")}` : "no empty fields to fill"}
               {m.added_contact && `; adds ${m.added_contact} as another contact`}
@@ -138,13 +138,13 @@ function DryRun({ preview, options, setOptions }) {
       {preview.duplicates.length > 0 && (
         <details className="section">
           <summary>Duplicates inside this file ({s.duplicates_in_file})</summary>
-          {preview.duplicates.slice(0, 50).map((d) => <p key={d.row} style={{ margin: "4px 0" }}>Row {d.row} is the same as row {d.same_as_row} ({d.matched_by}); it only fills gaps.</p>)}
+          {preview.duplicates.slice(0, 50).map((d) => <p key={d.row} className="u-m-4-0">Row {d.row} is the same as row {d.same_as_row} ({d.matched_by}); it only fills gaps.</p>)}
         </details>
       )}
       {leftOut.length > 0 && (
         <details className="section" open>
           <summary>Left out ({leftOut.length})</summary>
-          {leftOut.slice(0, 30).map((r) => <p key={r.row} style={{ margin: "4px 0" }}>Row {r.row}: {r.reason}</p>)}
+          {leftOut.slice(0, 30).map((r) => <p key={r.row} className="u-m-4-0">Row {r.row}: {r.reason}</p>)}
           <button className="btn ghost" onClick={() => downloadLeftOut(preview.columns, leftOut)}>Download left-out rows (CSV)</button>
         </details>
       )}
@@ -212,19 +212,19 @@ export default function ImportWizard({ onClose, onDone }) {
   if (!canWrite()) return null;                // viewers can't import (the server refuses)
 
   return (
-    <div className="card" style={{ marginBottom: 14 }}>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h3 style={{ margin: 0 }}>Import leads</h3>
+    <div className="card u-mb-16">
+      <div className="row u-between">
+        <h3 className="u-m0">Import leads</h3>
         <button className="btn ghost" onClick={onClose}>Close</button>
       </div>
       <ol className="steps wizard-steps" aria-label="Import steps">
         {STEPS.map((s, i) => <li key={s} className={i === step ? "on" : i < step ? "done" : ""} aria-current={i === step ? "step" : undefined}>{i + 1}. {s}</li>)}
       </ol>
-      {error && <div className="tip error" role="alert" style={{ marginBottom: 10 }}>{error}</div>}
+      {error && <div className="tip error u-mb-12" role="alert" >{error}</div>}
 
       {step === 0 && (
         <>
-          <p className="sub" style={{ margin: "0 0 8px" }}>
+          <p className="sub u-m-0-0-8">
             Any export works: Apollo, Sales Navigator, Lusha, ZoomInfo, Hunter, job boards, IndiaMART, Google Maps, the team sheet or your own columns.
             Duplicates are found and merged; nothing is saved until the last step.
           </p>
@@ -244,12 +244,12 @@ export default function ImportWizard({ onClose, onDone }) {
             <option value="">Work it out from the columns</option>
             {sourceOptions(["outbound", "import", "referral", "manual"]).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
           </select>
-          <div className="row" style={{ marginTop: 12 }}>
+          <div className="row u-mt-12">
             <button className="btn" disabled={busy || !csv.trim()} onClick={() => { setMapping({}); check(1, { mapping: {} }); }}>
               {busy ? "Reading…" : "Next: check the columns"}
             </button>
           </div>
-          {undone && <div className="tip" style={{ marginTop: 10 }}>Removed {undone.removed} lead(s); kept {undone.kept.length} that changed or were contacted since. {undone.note}</div>}
+          {undone && <div className="tip u-mt-12">Removed {undone.removed} lead(s); kept {undone.kept.length} that changed or were contacted since. {undone.note}</div>}
           <History onUndo={(id) => undo(id).then(() => true, (e) => { setError(e.message); return false; })} />
         </>
       )}
@@ -257,7 +257,7 @@ export default function ImportWizard({ onClose, onDone }) {
       {step === 1 && preview && (
         <>
           <MappingStep preview={preview} mapping={mapping} setMapping={setMapping} remember={remember} setRemember={setRemember} />
-          <div className="row" style={{ marginTop: 12 }}>
+          <div className="row u-mt-12">
             <button className="btn ghost" onClick={() => setStep(0)}>Back</button>
             <button className="btn" disabled={busy} onClick={() => setStep(2)}>Next: look for duplicates</button>
           </div>
@@ -267,7 +267,7 @@ export default function ImportWizard({ onClose, onDone }) {
       {step === 2 && preview && (
         <>
           <ImportDuplicates body={body()} choice={dupChoice} setChoice={setDupChoice} />
-          <div className="row" style={{ marginTop: 12 }}>
+          <div className="row u-mt-12">
             <button className="btn ghost" onClick={() => setStep(1)}>Back to columns</button>
             <button className="btn" disabled={busy} data-testid="dup-next" onClick={() => { const next = { ...options, skip_duplicates: dupChoice === "skip" }; setOptions(next); check(3, { options: next }); }}>
               {busy ? "Checking…" : "Next: dry run"}
@@ -279,7 +279,7 @@ export default function ImportWizard({ onClose, onDone }) {
       {step === 3 && preview && (
         <>
           <DryRun preview={preview} options={options} setOptions={changeOptions} />
-          <div className="row" style={{ marginTop: 12 }}>
+          <div className="row u-mt-12">
             <button className="btn ghost" onClick={() => setStep(2)}>Back to duplicates</button>
             <button className="btn" disabled={busy || preview.summary.create + preview.summary.merge + preview.summary.duplicates_in_file === 0} onClick={commit}>
               {busy ? "Importing…" : `Import: ${preview.summary.create} new, ${preview.summary.merge} updated`}
@@ -303,7 +303,7 @@ export default function ImportWizard({ onClose, onDone }) {
           ) : (
             <button className="btn ghost danger" onClick={() => run(() => undo(result.import_id))}>Undo this import</button>
           )}
-          <div className="row" style={{ marginTop: 12 }}>
+          <div className="row u-mt-12">
             <button className="btn" onClick={onClose}>Close</button>
           </div>
         </>

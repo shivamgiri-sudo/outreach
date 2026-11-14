@@ -49,7 +49,7 @@ export function LogoPicker({ data, onSaved }) {
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.current?.click(); } }}>
           {logo.custom_logo ? "Change logo" : "Upload logo"}</label>
         {logo.custom_logo && <button type="button" className="btn ghost" onClick={() => api.deleteLogo().then(onSaved).catch((e) => setMsg(e.message))}>Remove</button>}
-        <p className="sub" style={{ margin: "4px 0 0" }}>PNG, JPG or SVG, up to 1 MB. PNG shows best in email (most mail apps block SVG, so an SVG logo appears as your name there).</p>
+        <p className="sub u-m-4-0-0">PNG, JPG or SVG, up to 1 MB. PNG shows best in email (most mail apps block SVG, so an SVG logo appears as your name there).</p>
         {msg && <p className="sub" role="status">{msg}</p>}
       </div>
     </div>
@@ -86,12 +86,12 @@ export function Preview({ brand, offer }) {
   const pub = view.public || {};
   return (
     <div className="brand-preview">
-      <p className="nav-title" style={{ margin: "0 0 6px" }}>App header</p>
+      <p className="nav-title u-m-0-0-8">App header</p>
       <div className="brand brand-preview-head">
         <img className="brand-mark" src={pub.header_logo} width="34" height="34" alt="" />
         <div className="brand-text"><b>{pub.app_name}</b><span className="brand-sub">by {pub.company_name}</span></div>
       </div>
-      <p className="nav-title" style={{ margin: "14px 0 6px" }}>Designed email</p>
+      <p className="nav-title u-m-16-0-8">Designed email</p>
       {view.ok === false ? <p className="error" role="alert">{view.error}</p> : (
         <iframe title="Designed email preview" className="brand-email-frame" sandbox="" srcDoc={view.html} />
       )}
@@ -114,9 +114,9 @@ function Labels({ data, onSaved }) {
       .then(() => api.brand()).then((d) => { onSaved(d); setMsg("Saved."); }).catch((err) => setMsg(err.message));
   };
   return (
-    <form className="card" style={{ marginBottom: 16 }} onSubmit={save} aria-labelledby="labels-h">
+    <form className="card u-mb-16" onSubmit={save} aria-labelledby="labels-h">
       <b id="labels-h">Your words for stages and lead numbers</b>
-      <p className="sub" style={{ margin: "2px 0 8px" }}>Rename how pipeline stages read everywhere (lists, boards, exports), e.g. “Interested” → “Site visit booked”. The stage itself and its rules stay the same.</p>
+      <p className="sub u-m-4-0-8">Rename how pipeline stages read everywhere (lists, boards, exports), e.g. “Interested” → “Site visit booked”. The stage itself and its rules stay the same.</p>
       <div className="brand-grid">
         {Object.keys(STAGE_LABELS).map((id) => (
           <label key={id}>{STAGE_LABELS[id]}
@@ -124,12 +124,12 @@ function Labels({ data, onSaved }) {
           </label>
         ))}
       </div>
-      <div className="brand-grid" style={{ marginTop: 10 }}>
+      <div className="brand-grid u-mt-12">
         <label>What the “open roles” number means<input value={terms.open_roles || ""} placeholder="Open roles / Units / Seats" maxLength={40} onChange={(e) => setTerms({ ...terms, open_roles: e.target.value })} /></label>
         <label>What the lead’s “role” field means<input value={terms.role || ""} placeholder="Role / Requirement / Property type" maxLength={40} onChange={(e) => setTerms({ ...terms, role: e.target.value })} /></label>
       </div>
-      <button className="btn" style={{ marginTop: 10 }}>Save names</button>
-      {msg && <span className="sub" role="status" style={{ marginLeft: 10 }}>{msg}</span>}
+      <button className="btn u-mt-12">Save names</button>
+      {msg && <span className="sub u-ml-12" role="status" >{msg}</span>}
     </form>
   );
 }
@@ -174,9 +174,9 @@ export default function BrandSettings({ onOpenWizard }) {
   );
   return (
     <div className="brand-page">
-      <div className="tip" style={{ marginBottom: 16 }}>
+      <div className="tip u-mb-16">
         <b>{data.is_default ? "You are using the original brand." : "Your brand is set."}</b> Everything here fills the {"{{my_company}}"}, {"{{my_product}}"}, {"{{my_value_1}}"}…, {"{{my_cta}}"}, {"{{my_website}}"} and {"{{sign_off}}"} placeholders in emails, WhatsApp, LinkedIn, the call script and flows.
-        {onOpenWizard && <div className="row" style={{ marginTop: 8 }}><button type="button" className="btn ghost" onClick={onOpenWizard}>Open the setup wizard</button></div>}
+        {onOpenWizard && <div className="row u-mt-8"><button type="button" className="btn ghost" onClick={onOpenWizard}>Open the setup wizard</button></div>}
       </div>
       <div className="brand-layout">
         <form className="card" onSubmit={save} aria-labelledby="brand-h">
@@ -191,7 +191,7 @@ export default function BrandSettings({ onOpenWizard }) {
           <textarea id="sign-off" rows={2} value={brand.sign_off} onChange={(e) => setBrandDraft({ ...brand, sign_off: e.target.value })} />
           <label htmlFor="postal">Postal address (needed for emails to the US and Canada)</label>
           <textarea id="postal" rows={2} value={brand.postal_address} onChange={(e) => setBrandDraft({ ...brand, postal_address: e.target.value })} />
-          <h3 style={{ marginTop: 18 }}>What you sell</h3>
+          <h3 className="u-mt-20">What you sell</h3>
           <div className="brand-grid">{OFFER_FIELDS.map(field(offer, setOffer))}
             <label>Demo page style
               <select value={offer.demo_kind} onChange={(e) => setOffer({ ...offer, demo_kind: e.target.value })}>
@@ -200,7 +200,7 @@ export default function BrandSettings({ onOpenWizard }) {
               </select>
             </label>
           </div>
-          <div className="row" style={{ marginTop: 12 }}>
+          <div className="row u-mt-12">
             <button className="btn" disabled={ratio !== null && ratio < 3}>Save brand &amp; offer</button>
             {!data.is_default && <button type="button" className="btn ghost danger" onClick={reset}>Reset to original</button>}
           </div>

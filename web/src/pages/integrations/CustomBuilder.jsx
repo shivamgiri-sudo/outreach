@@ -86,7 +86,7 @@ export function CustomWebhookMapper({ channel, provider, values, setValues }) {
       <label htmlFor="sample-payload">Paste a sample payload (JSON)</label>
       <textarea id="sample-payload" rows={6} value={sample} onChange={(e) => setSample(e.target.value)}
         placeholder='{"data": {"from": "919812345678", "text": "Yes, interested", "id": "abc"}}' />
-      {isOwner() && <button type="button" className="btn ghost" style={{ marginTop: 8 }} disabled={!sample.trim()} onClick={run}>Preview what the app reads</button>}
+      {isOwner() && <button type="button" className="btn ghost u-mt-8" disabled={!sample.trim()} onClick={run}>Preview what the app reads</button>}
       {result && (
         <div className={`tip ${result.ok ? "" : "error"}`} role="status" style={{ marginTop: 8 }}>
           {result.message}

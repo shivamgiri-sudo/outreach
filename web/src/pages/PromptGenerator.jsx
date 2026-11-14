@@ -37,9 +37,9 @@ export default function PromptGenerator() {
       <div className="grid g2">
         <div className="card">
           <div className="row">
-            <div style={{ flex: 1 }}><label>Channel</label><Select k="channel" options={["email", "whatsapp", "voice"]} /></div>
-            <div style={{ flex: 1 }}><label>Language</label><Select k="language" options={["English", "Hindi", "Hinglish"]} /></div>
-            <div style={{ flex: 1 }}><label>Tone</label><Select k="tone" options={["warm", "friendly", "formal", "playful"]} /></div>
+            <div className="u-flex1"><label>Channel</label><Select k="channel" options={["email", "whatsapp", "voice"]} /></div>
+            <div className="u-flex1"><label>Language</label><Select k="language" options={["English", "Hindi", "Hinglish"]} /></div>
+            <div className="u-flex1"><label>Tone</label><Select k="tone" options={["warm", "friendly", "formal", "playful"]} /></div>
           </div>
           <label>Industry</label><input value={spec.industry} onChange={(e) => set("industry", e.target.value)} placeholder="BPO, retail, logistics…" />
           <label>Role being hired</label><input value={spec.role} onChange={(e) => set("role", e.target.value)} placeholder="Telecaller, accountant…" />
@@ -47,15 +47,15 @@ export default function PromptGenerator() {
           <label>Facts or a customer story you may use (optional, only with permission)</label><textarea rows={2} value={spec.story} onChange={(e) => set("story", e.target.value)} />
           <label>Do (preferences; cannot relax the honesty rules)</label><input value={spec.dos} onChange={(e) => set("dos", e.target.value)} />
           <label>Don't</label><input value={spec.donts} onChange={(e) => set("donts", e.target.value)} />
-          <label className="row" style={{ fontWeight: 400, marginTop: 10 }}>
+          <label className="row u-fw4 u-mt-12">
             <input type="checkbox" style={{ width: "auto" }} checked={!!spec.use_ai} onChange={(e) => set("use_ai", e.target.checked)} />
             Write it with Claude (richer wording; the honesty rules are still added by the app)
           </label>
-          {canWrite() && <button className="btn" style={{ marginTop: 12 }} onClick={generate} disabled={busy}>{busy ? "Writing…" : "Generate prompt"}</button>}
+          {canWrite() && <button className="btn u-mt-12" onClick={generate} disabled={busy}>{busy ? "Writing…" : "Generate prompt"}</button>}
         </div>
         <div className="card">
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <h3 style={{ margin: 0 }}>Your prompt</h3>
+          <div className="row u-between">
+            <h3 className="u-m0">Your prompt</h3>
             {prompt && <button className="btn ghost" onClick={copy}>{copied ? "Copied" : "Copy"}</button>}
           </div>
           {info && <p className="sub" role="status">{info}</p>}

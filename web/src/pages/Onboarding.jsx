@@ -132,7 +132,7 @@ export default function Onboarding({ onClose, go }) {
           </div>
         </div>
         <div className="onb-body">
-          <p className="sub" style={{ margin: 0 }}>Step {index + 1} of {STEPS.length}</p>
+          <p className="sub u-m0">Step {index + 1} of {STEPS.length}</p>
           <h2 id="onb-title" tabIndex={-1}>{title}</h2>
           {step === "business" && (
             <>
@@ -178,7 +178,7 @@ export default function Onboarding({ onClose, go }) {
         </div>
         <div className="onb-foot">
           {index > 0 && <button type="button" className="btn ghost" onClick={back}>Back</button>}
-          <span style={{ flex: 1 }} />
+          <span className="u-flex1" />
           {step === "business" && <button type="button" className="btn" disabled={busy} onClick={() => saveAndNext(() => api.saveBrand(nonEmpty(business)))}>Save and continue</button>}
           {step === "offer" && <button type="button" className="btn" disabled={busy} onClick={() => saveAndNext(() => api.saveOfferProfile(nonEmpty(offer)))}>Save and continue</button>}
           {!["business", "offer", "done"].includes(step) && <button type="button" className="btn" onClick={next}>Continue</button>}

@@ -30,8 +30,8 @@ const TABS = [["sequences", "Email sequences"], ["snippets", "Snippet library"],
 
 function CopyCard({ t, copied, onCopy }) {
   return (
-    <div className="card" style={{ marginBottom: 12 }}>
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+    <div className="card u-mb-12">
+      <div className="row u-between u-wrap u-gap-8">
         <b>{t.name} <span className="pill">{t.channel}</span></b>
         <button className="btn ghost" onClick={() => onCopy(t.name, (t.subject ? `Subject: ${t.subject}\n\n` : "") + t.body)}>{copied === t.name ? "Copied" : "Copy"}</button>
       </div>
@@ -46,15 +46,15 @@ function SequenceCard({ s, onOpen, onDuplicate, onArchive, onPreview, onDefault 
   const manager = isOwner() || isWorkspaceAdmin();
   const copyLabel = isOwner() || s.can_edit ? "Duplicate" : "Copy into my workspace";
   return (
-    <div className="card" style={{ marginBottom: 12 }}>
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-        <div style={{ minWidth: 0 }}>
+    <div className="card u-mb-12">
+      <div className="row u-between u-wrap u-gap-8">
+        <div className="u-min0">
           <b>{s.name}</b> {s.builtin && <span className="pill">Built in</span>} {s.archived && <span className="pill warn">Archived</span>}
-          {" "}<WorkspaceTag row={s} />{s.is_default && <span className="pill ok" style={{ marginLeft: 4 }}>Default</span>}
-          {tests > 0 && <span className="pill rec" style={{ marginLeft: 4 }}>A/B on {tests} step{tests > 1 ? "s" : ""}</span>}
-          <p className="sub" style={{ margin: "4px 0 0" }}>{s.steps.length} emails on day {s.steps.map((x) => humanDay(x.day)).join(", ")} · {s.in_use} running now{s.notes ? ` · ${s.notes}` : ""}</p>
+          {" "}<WorkspaceTag row={s} />{s.is_default && <span className="pill ok u-ml-4">Default</span>}
+          {tests > 0 && <span className="pill rec u-ml-4">A/B on {tests} step{tests > 1 ? "s" : ""}</span>}
+          <p className="sub u-m-4-0-0">{s.steps.length} emails on day {s.steps.map((x) => humanDay(x.day)).join(", ")} · {s.in_use} running now{s.notes ? ` · ${s.notes}` : ""}</p>
         </div>
-        <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+        <span className="row u-gap-8 u-wrap">
           <button className="btn ghost" onClick={() => onOpen(s)}>{s.can_edit ? "Edit" : "View"}</button>
           {manager && <button className="btn ghost" onClick={() => onDuplicate(s)}>{copyLabel}</button>}
           {s.can_edit && <button className="btn ghost" onClick={() => onArchive(s)}>{s.archived ? "Restore" : "Archive"}</button>}
@@ -65,10 +65,10 @@ function SequenceCard({ s, onOpen, onDuplicate, onArchive, onPreview, onDefault 
         <summary>Steps</summary>
         <ol style={{ paddingLeft: 18 }}>
           {s.steps.map((x, i) => (
-            <li key={i} style={{ margin: "6px 0" }}>
-              <b>Day {humanDay(x.day)} · {stepTitle(x.name)}</b>{x.winner && <span className="pill ok" style={{ marginLeft: 6 }}>Winner {x.winner}</span>}
+            <li key={i} className="u-m-8-0">
+              <b>Day {humanDay(x.day)} · {stepTitle(x.name)}</b>{x.winner && <span className="pill ok u-ml-8">Winner {x.winner}</span>}
               <div className="sub">Subject: {x.subject}</div>
-              <button className="btn ghost" style={{ marginTop: 4 }} onClick={() => onPreview(s, i)}>Preview designed email</button>
+              <button className="btn ghost u-mt-4" onClick={() => onPreview(s, i)}>Preview designed email</button>
             </li>
           ))}
         </ol>
@@ -132,9 +132,9 @@ export default function Templates() {
       ) : (
         <>
           <p className="sub">Each email goes out designed (logo, layout) with the same words, plus a plain-text version. Pick the sequence when you start a lead (contact panel); lists and campaigns use the default.</p>
-          <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          <div className="row u-wrap u-gap-8 u-mb-12">
             {(isOwner() || isWorkspaceAdmin()) && <button className="btn" onClick={newSequence}>New sequence</button>}
-            <label className="row" style={{ gap: 6, margin: 0 }}><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} style={{ width: "auto" }} /> Show archived</label>
+            <label className="row u-gap-8 u-m0"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} style={{ width: "auto" }} /> Show archived</label>
           </div>
           {list.map((s) => <SequenceCard key={s.id} s={s} onOpen={setEditing} onDuplicate={duplicate} onArchive={archive} onPreview={preview} onDefault={makeDefault} />)}
         </>

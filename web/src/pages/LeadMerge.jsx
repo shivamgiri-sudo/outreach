@@ -11,7 +11,7 @@ function Preview({ p }) {
   const records = Object.entries(p.records || {});
   return (
     <div className="tip" data-testid="merge-preview">
-      <p style={{ margin: "0 0 6px" }}><b>{p.summary}</b></p>
+      <p className="u-m-0-0-8"><b>{p.summary}</b></p>
       <ul style={{ margin: 0, paddingLeft: 18 }}>
         {records.length > 0 && <li>Moves across: {records.map(([k, n]) => `${n} ${k}`).join(", ")}.</li>}
         {p.filled.length > 0 && <li>Fills these empty fields from the others: {p.filled.map((f) => (f === "emails" ? "extra email addresses" : f.replace(/_/g, " "))).join(", ")}. Nothing already filled is overwritten.</li>}
@@ -56,19 +56,19 @@ export default function MergeGroup({ group, onMerged }) {
 
   if (notice) {
     return (
-      <div className="tip" role="status" data-testid="merge-notice" style={{ marginTop: 6 }}>
+      <div className="tip u-mt-8" role="status" data-testid="merge-notice" >
         {notice.text}{" "}
         {notice.undo && <button type="button" className="btn ghost" disabled={busy} onClick={doUndo} data-testid="merge-undo">Undo</button>}
         {err && <span className="error" role="alert"> {err}</span>}
       </div>
     );
   }
-  if (!open) return <button type="button" className="btn ghost" style={{ marginTop: 6 }} onClick={() => setOpen(true)} data-testid="merge-open">Merge…</button>;
+  if (!open) return <button type="button" className="btn ghost u-mt-8" onClick={() => setOpen(true)} data-testid="merge-open">Merge…</button>;
   return (
-    <div style={{ marginTop: 8 }} data-testid="merge-panel">
-      <p style={{ margin: "0 0 4px" }}><b>Which lead should stay?</b> The others are folded into it and removed.</p>
+    <div className="u-mt-8" data-testid="merge-panel">
+      <p className="u-m-0-0-4"><b>Which lead should stay?</b> The others are folded into it and removed.</p>
       {group.leads.map((l) => (
-        <label key={l.id} style={{ display: "block", margin: "2px 0" }}>
+        <label key={l.id} className="u-block u-m-4-0">
           <input type="radio" name={`keep-${group.leads[0].id}`} checked={keep === l.id} onChange={() => { setKeep(l.id); setPreview(null); }} data-testid={`keep-${l.id}`} />{" "}
           {name(l)} <small>{l.contact_name} {l.email || l.phone} · {plural(l.history || 0, "history event")}{l.id === richest.id ? " · most history" : ""}</small>
         </label>
@@ -76,7 +76,7 @@ export default function MergeGroup({ group, onMerged }) {
       {group.size > MAX_AT_ONCE + 1 && <p className="sub">This group has {group.size} leads. {MAX_AT_ONCE} can be merged at a time; merge these, then open the report again for the rest.</p>}
       {preview && <Preview p={preview} />}
       {err && <div className="tip error" role="alert">{err}</div>}
-      <div className="row" style={{ gap: 8, marginTop: 6 }}>
+      <div className="row u-gap-8 u-mt-8">
         <button type="button" className="btn ghost" onClick={() => { setOpen(false); setPreview(null); setErr(""); }}>Cancel</button>
         <button type="button" className="btn ghost" disabled={busy} onClick={doPreview} data-testid="merge-preview-btn">{preview ? "Refresh preview" : "Preview"}</button>
         {preview && <button type="button" className="btn" disabled={busy} onClick={doMerge} data-testid="merge-confirm">Merge {plural(others.length, "lead")}</button>}

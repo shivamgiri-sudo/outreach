@@ -79,8 +79,8 @@ function CompanyDetail({ companyKey, onClose }) {
         {!d ? <p>{error || "Loading…"}</p> : (
           <>
             <div className="drawer-head">
-              <div style={{ minWidth: 0 }}>
-                <h2 id="company-title" tabIndex={-1} style={{ overflowWrap: "anywhere" }}>{d.name}</h2>
+              <div className="u-min0">
+                <h2 id="company-title" tabIndex={-1} className="u-anywhere">{d.name}</h2>
                 <StatusPills c={d} />
                 {d.domain && <div><small className="sub">{d.domain}</small></div>}
               </div>
@@ -101,11 +101,11 @@ function CompanyDetail({ companyKey, onClose }) {
               <Stat label="LinkedIn accepted" value={d.linkedin_accepted} />
               <Stat label="Open tasks" value={d.open_tasks} />
             </div>
-            <p className="sub" style={{ marginTop: 8 }}>
+            <p className="sub u-mt-8">
               Furthest stage: <b>{stageLabel(d.best_stage)}</b> · last touch {when(d.last_touch)}
               {d.owners.length > 0 && <> · owner{d.owners.length > 1 ? "s" : ""}: {d.owners.join(", ")}</>}
             </p>
-            {canWrite() && <div className="row" style={{ flexWrap: "wrap", margin: "10px 0" }}>
+            {canWrite() && <div className="row u-wrap u-m-12-0">
               <button className="btn" disabled={busy || !ids.length} onClick={() => saveList(true)}>Start email for all contacts</button>
               <button className="btn ghost" disabled={busy || !ids.length} onClick={() => saveList(false)}>Save as list</button>
             </div>}
@@ -115,7 +115,7 @@ function CompanyDetail({ companyKey, onClose }) {
             <div data-testid="company-contacts">
               {d.contacts_list.map((c) => (
                 <div key={c.id} className="row" style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap", gap: 6 }}>
-                  <div style={{ minWidth: 0 }}>
+                  <div className="u-min0">
                     <button className="linkish" onClick={() => setLead(c.id)}><b>{c.contact_name || c.email || "Unnamed contact"}</b></button>
                     {c.title && <small className="sub-inline"> · {c.title}</small>}
                     <div><small className="sub">
@@ -133,7 +133,7 @@ function CompanyDetail({ companyKey, onClose }) {
               ))}
               {(d.more_people || []).map((c, i) => (
                 <div key={`more-${i}`} className="row" data-testid="company-more-person" style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap", gap: 6 }}>
-                  <div style={{ minWidth: 0 }}>
+                  <div className="u-min0">
                     <b>{c.contact_name || c.email || "Unnamed contact"}</b>
                     {c.title && <small className="sub-inline"> · {c.title}</small>}
                     <div><small className="sub">
@@ -154,7 +154,7 @@ function CompanyDetail({ companyKey, onClose }) {
                   <div key={i}>
                     <small>{t.at ? istLabel(t.at) : ""} · {t.contact.name} · {t.type}{t.direction === "in" ? " (in)" : ""}{t.status ? ` · ${t.status}` : ""}</small>
                     <b>{t.title}</b>
-                    {t.body && <div className="sub" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{String(t.body).slice(0, 280)}{String(t.body).length > 280 ? "…" : ""}</div>}
+                    {t.body && <div className="sub u-prewrap u-anywhere">{String(t.body).slice(0, 280)}{String(t.body).length > 280 ? "…" : ""}</div>}
                   </div>
                 ))}
               </div>
@@ -188,7 +188,7 @@ export default function Companies() {
   return (
     <section>
       <PageHeader title="Companies" description={<>Every person at one employer together: furthest stage, touches, replies and health. Click a company for its people and full history.</>} />
-      <div className="row" style={{ flexWrap: "wrap", gap: 8, margin: "8px 0 12px" }}>
+      <div className="row u-wrap u-gap-8 u-m-8-0-12">
         <input aria-label="Search companies" placeholder="Search company, domain or person" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: "1 1 220px", minWidth: 0 }} />
         <select aria-label="Sort by" value={sort} onChange={(e) => { setSort(e.target.value); setOffset(0); setOrder(e.target.value === "name" ? "asc" : "desc"); }}>
           {SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -204,14 +204,14 @@ export default function Companies() {
         <div data-testid="companies-cards">
           {items.map((c) => (
             <button key={c.key} className="card" style={{ display: "block", width: "100%", textAlign: "left", margin: "0 0 10px", cursor: "pointer", font: "inherit", color: "inherit" }} onClick={() => setOpen(c.key)}>
-              <b style={{ overflowWrap: "anywhere" }}>{c.name}</b> {c.domain && <small className="sub-inline">{c.domain}</small>}
-              <div style={{ margin: "6px 0" }}><StatusPills c={c} /></div>
+              <b className="u-anywhere">{c.name}</b> {c.domain && <small className="sub-inline">{c.domain}</small>}
+              <div className="u-m-8-0"><StatusPills c={c} /></div>
               <small className="sub">{c.contacts} contact{c.contacts === 1 ? "" : "s"} · {c.touches} touches · {c.replies} repl{c.replies === 1 ? "y" : "ies"} · last {when(c.last_touch)}</small>
             </button>
           ))}
         </div>
       ) : (
-        <div className="card" style={{ overflowX: "auto", padding: 0 }}>
+        <div className="card u-xauto u-p0">
           <table data-testid="companies-table">
             <thead><tr><th>Company</th><th>Status</th><th>Contacts</th><th>Touches</th><th>Replies</th><th>Last touch</th><th>{leadTerm("open_roles")}</th><th>LinkedIn accepted</th><th>Owner</th></tr></thead>
             <tbody>
@@ -229,7 +229,7 @@ export default function Companies() {
         </div>
       ))}
       {total > PAGE && (
-        <div className="row" style={{ justifyContent: "space-between", marginTop: 10, flexWrap: "wrap" }}>
+        <div className="row u-between u-mt-12 u-wrap">
           <small className="sub">{offset + 1}–{Math.min(offset + PAGE, total)} of {total}</small>
           <div className="row">
             <button className="btn ghost" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>Previous</button>

@@ -24,7 +24,7 @@ export default function CallRetrySettings() {
     setSaving(false);
   };
   return (
-    <details className="card" style={{ marginBottom: 12 }} data-testid="call-retry">
+    <details className="card u-mb-12" data-testid="call-retry">
       <summary><b>Automatic call retries</b> <span className={`pill ${cfg.enabled ? "ok" : ""}`}>{cfg.enabled ? "On" : "Off"}</span></summary>
       <p className="sub">This is <b>off by default</b>. When on, a call logged as no answer, busy or call disconnected books the next try for you as a call task, so it comes back in the queue at the right time.
         The 1st unanswered try uses the 1st wait, the 2nd uses the 2nd, and the last wait repeats. A try that would land outside Monday to Saturday, 09:00 to 19:00 IST moves to 10:00 the next calling day.
@@ -33,10 +33,10 @@ export default function CallRetrySettings() {
       <label>Most tries per lead (1 to 20)
         <input type="number" min="1" max="20" value={max} onChange={(e) => setMax(e.target.value)} style={{ width: 90, marginLeft: 6 }} /></label>
       {KINDS.map(([k, label]) => (
-        <label key={k} style={{ display: "block", marginTop: 8 }}>{label}: waits in minutes, separated by commas (5 to 10080, up to 6)
+        <label key={k} className="u-block u-mt-8">{label}: waits in minutes, separated by commas (5 to 10080, up to 6)
           <input value={text[k] || ""} onChange={(e) => setText({ ...text, [k]: e.target.value })} aria-label={`${label} waits in minutes`} placeholder="180, 1440" /></label>
       ))}
-      <div className="row" style={{ gap: 8, marginTop: 10 }}>
+      <div className="row u-gap-8 u-mt-12">
         <button className="btn" disabled={saving} onClick={() => save(true)} data-testid="retry-on">{cfg.enabled ? "Save" : "Save and turn on"}</button>
         {cfg.enabled ? <button className="btn ghost" disabled={saving} onClick={() => save(false)} data-testid="retry-off">Turn off</button>
           : <button className="btn ghost" disabled={saving} onClick={() => save(false)}>Save, keep off</button>}

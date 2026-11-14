@@ -19,8 +19,8 @@ function AbStats({ stats }) {
   if (!tests.length) return null;
   const r = stats.rule;
   return (
-    <div className="card" style={{ marginBottom: 12 }}>
-      <h3 style={{ marginTop: 0 }}><Abbr term="A/B test">A/B</Abbr> results</h3>
+    <div className="card u-mb-12">
+      <h3 className="u-mt-0"><Abbr term="A/B test">A/B</Abbr> results</h3>
       <p className="sub">Winner rule: once every version has {r.min_sends_per_variant} real sends, the best reply rate wins if it has at least {r.min_replies} replies,
         leads by {r.min_lead_points}+ points and is {r.win_ratio}× the runner-up. After that only the winner is sent. Opens are shown, never used to decide.</p>
       <div className="table-scroll">
@@ -83,9 +83,9 @@ export default function SequenceEditor({ sequence, onSaved, onClose, onDuplicate
 
   return (
     <section aria-label={`Sequence ${draft.name || "new"}`}>
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-        <h3 style={{ margin: 0 }}>{sequence.id ? (readOnly ? "View sequence" : "Edit sequence") : "New sequence"}{sequence.version > 1 ? ` · version ${sequence.version}` : ""}</h3>
-        <span className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+      <div className="row u-between u-wrap u-gap-8 u-mb-8">
+        <h3 className="u-m0">{sequence.id ? (readOnly ? "View sequence" : "Edit sequence") : "New sequence"}{sequence.version > 1 ? ` · version ${sequence.version}` : ""}</h3>
+        <span className="row u-gap-8 u-wrap">
           {sequence.id && (isOwner() || isWorkspaceAdmin()) && <button type="button" className="btn ghost" onClick={() => onDuplicate(sequence)}>{isOwner() || sequence.can_edit ? "Duplicate" : "Copy into my workspace"}</button>}
           {!readOnly && <button type="button" className="btn" disabled={busy || errors.length > 0} onClick={save}>{busy ? "Saving…" : "Save sequence"}</button>}
           <button type="button" className="btn ghost" onClick={onClose}>Back to list</button>
@@ -106,7 +106,7 @@ export default function SequenceEditor({ sequence, onSaved, onClose, onDuplicate
       </div>
       <AbStats stats={stats} />
       <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", alignItems: "start" }}>
-        <div style={{ minWidth: 0 }}>
+        <div className="u-min0">
           {draft.steps.map((s, i) => (
             <StepEditor key={i} step={s} index={i} prev={draft.steps[i - 1]} readOnly={readOnly} canRemove={draft.steps.length > 1}
               onChange={(next) => { setStep(i, next); if (active.index !== i) setActive({ index: i, variant: "A" }); }}
@@ -119,7 +119,7 @@ export default function SequenceEditor({ sequence, onSaved, onClose, onDuplicate
           <b>Live preview · Step {active.index + 1}{step ? ` (Day ${humanDay(step.day)})` : ""} · version {active.variant}</b>
           {preview ? (
             <>
-              <p className="sub" style={{ margin: "6px 0" }}>Subject: <b>{preview.subject}</b> · sample person: Alex Example, Example Retail</p>
+              <p className="sub u-m-8-0">Subject: <b>{preview.subject}</b> · sample person: Alex Example, Example Retail</p>
               {preview.missing?.length > 0 && <p className="error">Not filled: {preview.missing.join(", ")}</p>}
               <iframe title="Live email preview" srcDoc={preview.html} sandbox="" style={{ width: "100%", height: "60vh", border: "1px solid var(--line)", borderRadius: 10, background: "#fff" }} />
             </>

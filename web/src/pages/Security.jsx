@@ -30,14 +30,14 @@ function TwoStepPolicy() {
     api.resetTwoStep(p.email).then(() => { setMessage(`Two-step login reset for ${p.email}.`); load(); }).catch((e) => setMessage(e.message));
   };
   return (
-    <div className="card" style={{ marginBottom: 16 }} data-testid="two-step-policy">
+    <div className="card u-mb-16" data-testid="two-step-policy">
       <b>Two-step login</b>
-      <p className="sub" style={{ margin: "2px 0 8px" }}>Each person turns it on under Setup &gt; My password. A code from their phone is asked after the password.</p>
+      <p className="sub u-m-4-0-8">Each person turns it on under Setup &gt; My password. A code from their phone is asked after the password.</p>
       <label className="check-row"><input type="checkbox" checked={data.require_two_step} onChange={(e) => toggle(e.target.checked)} data-testid="require-two-step" /> Require two-step login for everyone</label>
-      {data.admin_password_login && <p className="sub" style={{ margin: "4px 0" }}>Not covered: the server admin password sign-in (OUTREACH_ADMIN_PASSWORD). It is the server's break-glass key; keep it long and private, or remove it once owners have their own logins.</p>}
-      <ul className="today-list" style={{ marginTop: 8 }}>
+      {data.admin_password_login && <p className="sub u-m-4-0">Not covered: the server admin password sign-in (OUTREACH_ADMIN_PASSWORD). It is the server's break-glass key; keep it long and private, or remove it once owners have their own logins.</p>}
+      <ul className="today-list u-mt-8">
         {data.people.map((p) => (
-          <li key={p.email} className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+          <li key={p.email} className="row u-between u-wrap">
             <span><b>{p.name}</b> <small>{p.email} · {p.role}</small></span>
             <span className="row"><span className={`pill ${p.two_step_on ? "ok" : ""}`}>{p.two_step_on ? "Two-step on" : "Password only"}</span>
               {p.two_step_on && <button className="btn ghost" onClick={() => reset(p)}>Reset two-step</button>}</span>
@@ -61,10 +61,10 @@ function LoginHistory() {
   const set = (k, v) => { setF({ ...f, [k]: v }); setOffset(0); };
   return (
     <div data-testid="login-history">
-      <h3 style={{ margin: "0 0 4px" }}>Login history</h3>
-      <p className="sub" style={{ margin: 0 }}>Every sign-in attempt, sign-out and password reset (times in <Abbr term="IST">IST</Abbr>). Five failed sign-ins in a row for one login within 15 minutes alert the owners.</p>
-      <div className="card" style={{ margin: "10px 0", padding: 12 }}>
-        <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+      <h3 className="u-m-0-0-4">Login history</h3>
+      <p className="sub u-m0">Every sign-in attempt, sign-out and password reset (times in <Abbr term="IST">IST</Abbr>). Five failed sign-ins in a row for one login within 15 minutes alert the owners.</p>
+      <div className="card u-m-12-0 u-p-12">
+        <div className="row u-wrap u-gap-8">
           <select aria-label="Person" value={f.person} onChange={(e) => set("person", e.target.value)} style={{ width: "auto" }}>
             <option value="">Everyone</option>{(data?.people || []).map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -74,13 +74,13 @@ function LoginHistory() {
           <select aria-label="Event" value={f.event} onChange={(e) => set("event", e.target.value)} style={{ width: "auto" }}>
             <option value="">Every event</option>{Object.entries(EVENTS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
-          <label className="row" style={{ gap: 4, margin: 0 }}>From <input type="date" aria-label="From (IST day)" value={f.date_from} onChange={(e) => set("date_from", e.target.value)} style={{ width: "auto" }} /></label>
-          <label className="row" style={{ gap: 4, margin: 0 }}>To <input type="date" aria-label="To (IST day)" value={f.date_to} onChange={(e) => set("date_to", e.target.value)} style={{ width: "auto" }} /></label>
+          <label className="row u-gap-4 u-m0">From <input type="date" aria-label="From (IST day)" value={f.date_from} onChange={(e) => set("date_from", e.target.value)} style={{ width: "auto" }} /></label>
+          <label className="row u-gap-4 u-m0">To <input type="date" aria-label="To (IST day)" value={f.date_to} onChange={(e) => set("date_to", e.target.value)} style={{ width: "auto" }} /></label>
           {Object.values(f).some(Boolean) && <button className="btn ghost" onClick={() => { setF(EMPTY); setOffset(0); }}>Clear</button>}
         </div>
       </div>
       {error && <div className="tip error" role="alert">{error}</div>}
-      <div className="card table-card" style={{ padding: 0 }}>
+      <div className="card table-card u-p0">
         {!data ? <p className="empty">Loading…</p> : data.items.length === 0 ? <p className="empty">Nothing recorded for these filters.</p> : (
           <div className="table-scroll"><table data-testid="login-table">
             <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>Login</th><th>Event</th><th>Result</th><th>Two-step</th><th>Address</th><th>Browser</th></tr></thead>
@@ -102,7 +102,7 @@ function LoginHistory() {
         )}
       </div>
       {data && data.total > PAGE && (
-        <div className="row" style={{ justifyContent: "space-between", marginTop: 8 }}>
+        <div className="row u-between u-mt-8">
           <small>{offset + 1}–{Math.min(offset + PAGE, data.total)} of {data.total}</small>
           <span className="row">
             <button className="btn ghost" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>Newer</button>

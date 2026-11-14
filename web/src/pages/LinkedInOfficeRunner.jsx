@@ -23,8 +23,8 @@ function CopyLine({ label, text, testid }) {
   return (
     <div className="copy-block">
       {label && <span className="copy-label">{label}</span>}
-      <div className="copy-row" style={{ flexWrap: "wrap" }}>
-        <code data-testid={testid} style={{ wordBreak: "break-all" }}>{text}</code>
+      <div className="copy-row u-wrap">
+        <code data-testid={testid} className="u-breakall">{text}</code>
         <button type="button" className="btn ghost" onClick={async () => { setDone(await copyText(text)); setTimeout(() => setDone(false), 2500); }}>
           {done ? "Copied" : "Copy"}</button>
       </div>
@@ -45,17 +45,17 @@ function Steps({ pairing, online, onCancel }) {
         {SYSTEMS.map(([key, name]) => <button key={key} type="button" role="tab" aria-selected={system === key}
           className={`tab-chip${system === key ? " on" : ""}`} onClick={() => setSystem(key)}>{name}</button>)}
       </div>
-      <p className="sub" style={{ margin: 0 }}>{HOW[system]} It installs everything into that user's own folder, connects the computer to this portal
+      <p className="sub u-m0">{HOW[system]} It installs everything into that user's own folder, connects the computer to this portal
         and starts it now and whenever that user logs in.</p>
       {expired ? <p className="tip error" role="alert">This line has expired. Press Make a new line.</p>
         : <CopyLine text={pairing.commands[system]} testid="runner-command" />}
       {!expired && <small className="sub-inline">Works once, for {left(pairing.expires_at)} more minutes. It holds a short code, not a password.</small>}
       {pairing.insecure && <p className="tip error" role="note">The portal address is not https://. Set the public https address in Settings before connecting a computer over the internet.</p>}
       <b>Step 2. Wait here for "Office computer online"</b>
-      <p className="sub" style={{ margin: 0 }} data-testid="runner-wait">{online ? "The office computer is online." : "Waiting for the office computer… (this page checks by itself)"}</p>
+      <p className="sub u-m0" data-testid="runner-wait">{online ? "The office computer is online." : "Waiting for the office computer… (this page checks by itself)"}</p>
       <b>Step 3. Add the LinkedIn account below and log it in from this page</b>
-      <p className="sub" style={{ margin: 0 }}>The LinkedIn window opens on the office computer by itself. Nobody needs to touch it.</p>
-      <div className="row" style={{ flexWrap: "wrap" }}>
+      <p className="sub u-m0">The LinkedIn window opens on the office computer by itself. Nobody needs to touch it.</p>
+      <div className="row u-wrap">
         <button type="button" className="btn ghost" onClick={onCancel}>{expired ? "Close" : "Cancel"}</button>
       </div>
     </div>
@@ -91,13 +91,13 @@ export default function OfficeRunner({ st, onDone, onMessage }) {
   };
   return (
     <div className="card" style={{ marginBottom: 12, background: "var(--bg)" }} data-testid="office-runner">
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+      <div className="row u-between u-wrap">
         <b>Office computer</b>
         {r ? <span className={`pill ${r.online ? "ok" : "err"}`} data-testid="runner-status">{r.online ? "Office computer online" : "Office computer offline"}</span>
           : <span className="pill" data-testid="runner-status">Not connected</span>}
       </div>
       {r ? (
-        <p className="sub" style={{ marginBottom: 4 }} data-testid="runner-details">
+        <p className="sub u-mb-4" data-testid="runner-details">
           <b>{r.label}</b>{r.hostname && r.hostname !== r.label ? ` (${r.hostname})` : ""}{r.os ? ` · ${r.os}` : ""}
           {" · "}{r.last_seen ? `last heard from ${istLabel(r.last_seen)}` : "not heard from yet"}</p>
       ) : (
@@ -106,16 +106,16 @@ export default function OfficeRunner({ st, onDone, onMessage }) {
       )}
       {r && !r.online && <p className="tip" role="note">Check that the office computer is switched on, logged in to Windows (or macOS / Linux) and connected to the internet.
         It reconnects by itself.</p>}
-      <p className="sub" style={{ marginTop: 4 }}>Keep the office computer switched on and connected during working hours, and do not close the LinkedIn window on it
+      <p className="sub u-mt-4">Keep the office computer switched on and connected during working hours, and do not close the LinkedIn window on it
         (if it is closed, it opens again within a minute).</p>
       {pairing ? <Steps pairing={pairing} online={!!r?.online && !st.pairing} onCancel={cancel} /> : (
-        <div className="row" style={{ flexWrap: "wrap" }}>
+        <div className="row u-wrap">
           <button className={r ? "btn ghost" : "btn"} onClick={connect} data-testid="runner-connect">{r ? "Connect a different computer" : "Connect an office computer"}</button>
           {r && <button className="btn ghost" onClick={rename}>Rename</button>}
           {r && <button className="btn ghost danger" onClick={revoke} data-testid="runner-revoke">Disconnect</button>}
         </div>
       )}
-      <details style={{ marginTop: 8 }}>
+      <details className="u-mt-8">
         <summary className="sub">How to remove it from the office computer</summary>
         <p className="sub">Press Disconnect above, then on the office computer paste the line for its system:</p>
         <CopyLine label="Windows (PowerShell)" text={'powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\\MCN-LinkedIn-Runner\\uninstall.ps1"'} />

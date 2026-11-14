@@ -55,21 +55,21 @@ export default function Reports() {
       <PageHeader title={<>Reports <HelpLink chapter="reports" label="Reports" /></>}
         description="What was done each day and by whom. Times are India Standard Time. Every number comes from the activity log below." />
       <PeriodPicker value={period} onChange={setPeriod} range={data?.range} />
-      <div className="row" style={{ gap: 10, flexWrap: "wrap", margin: "8px 0" }}>
-        <label className="row" style={{ gap: 6, margin: 0 }}>Person
+      <div className="row u-gap-12 u-wrap u-m-8-0">
+        <label className="row u-gap-8 u-m0">Person
           <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Person" data-testid="report-person" style={{ width: "auto" }}>
             <option value="">Everyone</option>
             {(data?.people || []).map((p) => <option key={p} value={p}>{p}</option>)}
           </select></label>
         {canCsv && <button className="btn ghost" onClick={() => ops.dailyReportCsv(period, who, kind)} data-testid="report-csv">Download activity log (CSV)</button>}
       </div>
-      <div className="row" style={{ gap: 8, flexWrap: "wrap", margin: "4px 0 10px" }}>
+      <div className="row u-gap-8 u-wrap u-m-4-0-12">
         {canCsv && <input value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="Also send to (emails, comma separated)" aria-label="Also send to" style={{ flex: "1 1 260px", minWidth: 0 }} />}
         <button className="btn" onClick={sendMail} data-testid="report-email">Email me this report</button>
         {mailMsg && <small className="sub-inline" role="status" data-testid="report-email-msg">{mailMsg}</small>}
       </div>
       {preview && (
-        <details className="card" open style={{ marginBottom: 12 }}>
+        <details className="card u-mb-12" open >
           <summary><b>Email preview</b> (as sent, with the CSV attached and a download link)</summary>
           <iframe title="Report email preview" srcDoc={preview} sandbox="" style={{ width: "100%", height: 520, border: "1px solid var(--line)", borderRadius: 8, background: "#fff" }} data-testid="report-preview" />
         </details>
@@ -83,7 +83,7 @@ export default function Reports() {
               <div key={k} className="card stat" data-testid={`rep-${k}`}><b>{t[k]}</b><span className="sub-inline">{LABEL[k]}</span></div>
             ))}
           </div>
-          <div className="tabs scroll" role="tablist" aria-label="Report sections" style={{ marginTop: 14 }}>
+          <div className="tabs scroll u-mt-16" role="tablist" aria-label="Report sections" >
             {[["daily", "Daily report"], ["team", "By person"], ["log", "Activity log"], ["sla", "Response times"]].map(([id, label]) => (
               <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>{label}</button>
             ))}
@@ -91,10 +91,10 @@ export default function Reports() {
           {tab === "sla" && <ResponseTimes period={period} />}
           {tab === "daily" && (
             <>
-              <div className="card"><h3 style={{ marginTop: 0 }}>Each day</h3>
+              <div className="card"><h3 className="u-mt-0">Each day</h3>
                 <TrendChart days={[...data.days].reverse()} series={[{ key: "calls", label: "Calls", color: SERIES.blue }, { key: "calls_connected", label: "Connected", color: SERIES.teal },
                   { key: "emails_sent", label: "Emails", color: SERIES.violet }, { key: "interested", label: "Interested", color: SERIES.green }]} /></div>
-              <div className="card table-card" style={{ padding: 0, marginTop: 14 }}>
+              <div className="card table-card u-p0 u-mt-16">
                 <div className="table-scroll"><table data-testid="daily-table">
                   <thead><tr><th>Day</th>{DAY_COLS.map((c) => <th key={c}>{LABEL[c]}</th>)}</tr></thead>
                   <tbody>{data.days.map((d) => (
@@ -106,10 +106,10 @@ export default function Reports() {
           )}
           {tab === "team" && (
             <>
-              <div className="card"><h3 style={{ marginTop: 0 }}>Actions per person</h3>
+              <div className="card"><h3 className="u-mt-0">Actions per person</h3>
                 {data.team.length ? <HBars rows={data.team.map((p) => ({ key: p.who, label: p.who, value: p.actions, color: SERIES.blue }))} onPick={(k) => { setWho(k); setTab("log"); }} />
                   : <p className="empty">Nothing done in this period.</p>}</div>
-              <div className="card table-card" style={{ padding: 0, marginTop: 14 }}>
+              <div className="card table-card u-p0 u-mt-16">
                 <div className="table-scroll"><table data-testid="team-report">
                   <thead><tr><th>Person</th><th>Actions</th>{DAY_COLS.map((c) => <th key={c}>{LABEL[c]}</th>)}</tr></thead>
                   <tbody>{data.team.map((p) => (
@@ -121,9 +121,9 @@ export default function Reports() {
             </>
           )}
           {tab === "log" && (
-            <div className="card table-card" style={{ padding: 0 }}>
+            <div className="card table-card u-p0">
               <div className="row" style={{ padding: "12px 16px", gap: 10, flexWrap: "wrap" }}>
-                <label className="row" style={{ gap: 6, margin: 0 }}>Show
+                <label className="row u-gap-8 u-m0">Show
                   <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Action type" style={{ width: "auto" }}>
                     {Object.entries(KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select></label>
@@ -136,7 +136,7 @@ export default function Reports() {
                     <tr key={`${r.at}-${i}`}><td>{istDay(r.day)} {r.time_ist}</td><td>{r.who}</td>
                       <td><button className="link" onClick={() => setLead(r.lead_id)}>{r.company || "—"}</button>{r.contact && <small className="sub-inline"> · {r.contact}</small>}</td>
                       <td>{r.what}</td><td>{pretty(r.outcome)}</td>
-                      <td style={{ overflowWrap: "anywhere" }}>{/^https?:\/\//i.test(r.where) ? <a href={r.where} target="_blank" rel="noopener noreferrer">{r.where.replace(/^https?:\/\/(www\.)?/, "")}</a> : r.where}</td>
+                      <td className="u-anywhere">{/^https?:\/\//i.test(r.where) ? <a href={r.where} target="_blank" rel="noopener noreferrer">{r.where.replace(/^https?:\/\/(www\.)?/, "")}</a> : r.where}</td>
                       <td><small>{r.notes}</small></td></tr>
                   ))}</tbody>
                 </table></div>

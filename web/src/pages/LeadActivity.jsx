@@ -155,17 +155,17 @@ export default function LeadActivity({ lead, onChanged }) {
   return (
     <section aria-label="Activity and tasks">
       {summary && (
-        <div className="card" style={{ marginBottom: 12 }} data-testid="history-summary">
-          <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+        <div className="card u-mb-12" data-testid="history-summary">
+          <div className="row u-between u-wrap">
             <b>Every attempt</b>
             <button className="btn ghost" onClick={report}>Contact report (print / PDF)</button>
           </div>
-          <p className="sub" style={{ margin: "6px 0" }}>
+          <p className="sub u-m-8-0">
             {summary.total_touches} touches · calls {summary.calls.attempts} ({summary.calls.unanswered} unanswered, {summary.calls.connected} connected)
             · emails {summary.emails.sent} sent, {summary.emails.opens} opens, {summary.emails.replies} replies · LinkedIn {summary.linkedin.status || "—"}
             {summary.whatsapp.sent ? ` · WhatsApp ${summary.whatsapp.sent}` : ""}{summary.last_touch ? ` · last touch ${istLabel(summary.last_touch)}` : ""}
           </p>
-          {canWrite() && <div className="row" style={{ flexWrap: "wrap", gap: 6 }} aria-label="Log a call in one click">
+          {canWrite() && <div className="row u-wrap u-gap-8" aria-label="Log a call in one click">
             <small className="sub">Log a call{phones.length > 1 ? " to" : ""}:</small>
             {phones.length > 1 && <select value={to} onChange={(e) => setDialled(e.target.value)} aria-label="Number called" data-testid="call-number" style={{ width: "auto" }}>
               {phones.map((p) => <option key={p} value={p}>{p}{p === lead.phone ? " (main)" : ""}</option>)}</select>}
@@ -178,22 +178,22 @@ export default function LeadActivity({ lead, onChanged }) {
             }}>{l}</button>)}
             {lead.email && !["unsubscribed", "disqualified"].includes(lead.stage) && <button className="btn ghost" onClick={() => setComposing(true)}>Write an email</button>}
           </div>}
-          {canWrite() && <label className="row" style={{ gap: 6, marginTop: 6, flexWrap: "wrap" }}>Remarks
+          {canWrite() && <label className="row u-gap-8 u-mt-8 u-wrap">Remarks
             <input data-testid="call-remarks" style={{ flex: "1 1 240px", minWidth: 0 }} value={remarks} onChange={(e) => setRemarks(e.target.value)}
               placeholder="Optional: what they said; saved with the call you log" maxLength={500} /></label>}
           {invalidReason !== null && canWrite() && (
-            <form className="row" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault();
+            <form className="row u-mt-8" onSubmit={(e) => { e.preventDefault();
               run(() => api.callOutcome(lead.id, "invalid_lead", remarks.trim(), null, to, invalidReason), "Call logged: marked as an invalid lead.").then(() => { setInvalidReason(null); setRemarks(""); }); }}>
-              <label className="row" style={{ gap: 6 }}>Why is it invalid?
+              <label className="row u-gap-8">Why is it invalid?
                 <select required value={invalidReason} onChange={(e) => setInvalidReason(e.target.value)} aria-label="Reason the lead is invalid" data-testid="invalid-reason">
                   <option value="">Pick a reason…</option>{INVALID_REASONS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
               <button className="btn danger" type="submit" disabled={!invalidReason}>Mark invalid</button><button className="btn ghost" type="button" onClick={() => setInvalidReason(null)}>Cancel</button>
             </form>
           )}
           {callback !== null && canWrite() && (
-            <form className="row" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault();
+            <form className="row u-mt-8" onSubmit={(e) => { e.preventDefault();
               run(() => api.callOutcome(lead.id, cbFor, remarks.trim(), withIst(callback), to), "Call logged; a call-back task was created.").then(() => { setCallback(null); setRemarks(""); }); }}>
-              <label className="row" style={{ gap: 6 }}>Call back at (IST)<input type="datetime-local" required value={callback} onChange={(e) => setCallback(e.target.value)} /></label>
+              <label className="row u-gap-8">Call back at (IST)<input type="datetime-local" required value={callback} onChange={(e) => setCallback(e.target.value)} /></label>
               <button className="btn" type="submit">Save</button>{cbFor === "call_disconnected" && <button className="btn ghost" type="button" data-testid="drop-no-callback"
                 onClick={() => run(() => api.callOutcome(lead.id, "call_disconnected", remarks.trim(), null, to), "Call logged: Call disconnected.").then(() => { setCallback(null); setRemarks(""); })}>No call back, just log it</button>}
               <button className="btn ghost" type="button" onClick={() => setCallback(null)}>Cancel</button>
@@ -218,7 +218,7 @@ export default function LeadActivity({ lead, onChanged }) {
           ))}
         </ul>
       )}
-      {canWrite() && <div className="row" style={{ margin: "8px 0" }}>
+      {canWrite() && <div className="row u-m-8-0">
         <button className="btn ghost" onClick={() => setTaskForm({ title: "", text: "", due_at: "", owner: "", priority: "normal" })}>Add a task</button>
         <button className="btn ghost" onClick={() => setLogging(true)}>Log a call / meeting / note</button>
       </div>}
@@ -291,7 +291,7 @@ export default function LeadActivity({ lead, onChanged }) {
               <li key={key} className={`trail-item ${item.direction}`}>
                 <span className="trail-icon" aria-hidden="true">{ICON[item.type] || "•"}</span>
                 <div className="trail-body">
-                  <div className="row" style={{ justifyContent: "space-between", gap: 6 }}>
+                  <div className="row u-between u-gap-8">
                     <b>{item.title}</b>
                     <span className="sub">{istLabel(item.at)}</span>
                   </div>
