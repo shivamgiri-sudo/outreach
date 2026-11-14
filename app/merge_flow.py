@@ -4,7 +4,7 @@ merge(store, user, actor, keep_id, merge_ids, dry_run=True): owners and admins o
 workspace and account, at most MAX_MERGE leads folded into the kept one. The merge itself is app/lead_merge.merge_leads (the kept
 lead fills only its EMPTY fields, never overwritten) plus these safety rules: tags and phones are unioned, the earliest
 created_at and the kept lead's owner stay, the stage never moves out of an exit stage (unsubscribed > disqualified > not_now),
-and a compliance flag on ANY of the leads (do-not-contact, unsubscribed, consent withdrawn, an address on the suppression list)
+and a compliance flag on ANY of the leads (do-not-contact, unsubscribed, consent withdrawn; a bounced address stays blocked by the suppression list itself)
 is kept on the result. Every record that points at a merged lead (tasks, emails, WhatsApp, replies, activities, consent
 rows, automation runs, list members ...) is re-pointed to the kept lead inside one store lock. The merged leads are then removed.
 
@@ -107,8 +107,9 @@ def _flags(lead: dict, suppressed: set) -> list:
         out.append("unsubscribed")
     if lead.get("consent_withdrawn_at"):
         out.append("consent withdrawn")
-    if _addresses(lead) & suppressed:
-        out.append("an email address on the suppression list")
+    # An address on the suppression list (a bounce, or an unsubscribe link click) is NOT turned into do-not-contact for the whole
+    # merged lead: the list is checked address by address at send time, and an unsubscribe also sets the lead's own stage and
+    # consent flags, which ARE carried above. So one bounced address never buries a person who has a good one.
     return out
 
 

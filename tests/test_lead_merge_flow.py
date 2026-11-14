@@ -117,7 +117,7 @@ def test_compliance_flags_survive_and_win(r):
     assert any("do-not-contact" in c for c in body["compliance"])
 
 
-def test_unsubscribed_and_suppressed_address_carry_do_not_contact(r):
+def test_unsubscribed_carries_do_not_contact_but_a_bounced_address_does_not(r):
     dupes(r)
     r.store.update_lead("D1", lambda l: {**l, "stage": "unsubscribed"})
     merge(r, "K1", ["D1"])
@@ -125,8 +125,8 @@ def test_unsubscribed_and_suppressed_address_carry_do_not_contact(r):
     mk(r, "A1", "Sup Co", email="a@sup.in"); mk(r, "A2", "Sup Co", email="b@sup.in")
     r.store.update("suppressed", lambda rows: [*rows, "b@sup.in"])
     out = merge(r, "A1", ["A2"]).json()
-    assert get(r, "A1")["do_not_contact"] is True and any("suppression" in c for c in out["compliance"])
-    assert "b@sup.in" in r.store.read("suppressed")
+    assert not get(r, "A1").get("do_not_contact") and not any("suppression" in c for c in out["compliance"])     # one bounce must not bury a good contact
+    assert "b@sup.in" in r.store.read("suppressed")                                                               # the address itself stays blocked at send time
 
 
 def test_every_collection_is_repointed_in_one_go(r):
