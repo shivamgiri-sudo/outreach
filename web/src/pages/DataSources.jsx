@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getToken, isOwner } from "../api.js";
 import { istLabel } from "../time.js";
 import { GuideButton } from "../GuidePanel.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const DEFAULT_SAMPLE = 25;
 const MAX_SAMPLE = 100;
@@ -236,13 +237,12 @@ export default function DataSources({ go }) {
 
   const refresh = (keepId) => loadRuns(keepId).catch((e) => setError(e.message));
 
-  if (error && !list) return <><h2>Data sources</h2><Alert text={error} /></>;
+  if (error && !list) return <><PageHeader title="Data sources" /><Alert text={error} /></>;
   if (!list) return <p className="empty">Loading…</p>;
 
   return (
     <>
-      <h2>Data sources</h2>
-      <p className="sub">Try free plans side by side on the same Indian leads, then keep the best. Only public business contacts are used, and every value keeps where it came from.</p>
+      <PageHeader title="Data sources" description="Try free plans side by side on the same Indian leads, then keep the best. Only public business contacts are used, and every value keeps where it came from." />
       <Alert text={error} />
       <div className="grid g2">
         <ProviderList list={list} go={go} />
