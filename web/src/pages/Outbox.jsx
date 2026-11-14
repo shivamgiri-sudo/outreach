@@ -10,10 +10,11 @@ import OutboxTable from "./OutboxTable.jsx";
 import { InternalEmails } from "./SendWhy.jsx";
 import HelpLink from "../components/HelpLink.jsx";
 import Abbr from "../components/Abbr.jsx";
+import { Badge, Button, Card, CardHeader, DataTable, EmptyState, Field, Input, PageHeader, Tabs } from "../ui/index.js";
 
 function Downloads() {
   return (
-    <div className="card dl-card" style={{ marginBottom: 14 }}>
+    <Card className="dl-card">
       <b>Download</b>
       <span className="dl-group">
         <DownloadButton path={exportPath("outbox")} label="Emails" title="Every email: when, to whom, step, subject, status, delivered" testId="download-outbox" />
@@ -22,7 +23,7 @@ function Downloads() {
         <DownloadButton path={exportPath("whatsapp")} label="WhatsApp" testId="download-whatsapp" />
         <DownloadButton path={exportPath("transactional")} label="Reminders & invites" title="Reminder and invite emails sent to the team and leads" testId="download-transactional" />
       </span>
-    </div>
+    </Card>
   );
 }
 
@@ -40,32 +41,32 @@ function SendingBanner({ status, onResume, onClearPractice }) {
   if (!status) return null;
   const pct = (x) => `${(x * 100).toFixed(1)}%`;
   return (
-    <div className="card" style={{ marginBottom: 14 }}>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <b>{status.mode === "live" ? "Real sending is ON" : "Practice mode: nothing leaves the app"}</b>
-        <span className={`pill ${status.mode === "live" ? "ok" : ""}`}>{status.mode === "live" ? "Live" : "Practice"}</span>
+    <Card>
+      <div className="ui-card-head">
+        <h3>{status.mode === "live" ? "Real sending is ON" : "Practice mode: nothing leaves the app"}</h3>
+        <Badge tone={status.mode === "live" ? "success" : "neutral"}>{status.mode === "live" ? "Live" : "Practice"}</Badge>
       </div>
       {status.paused && (
-        <div className="tip" role="alert" style={{ marginTop: 8 }}>
+        <div className="tip" role="alert">
           <b>Sending is paused.</b> {status.paused.reason}{" "}
           {status.paused.resume_at ? `It restarts by itself at ${istLabel(status.paused.resume_at)}.` : "A person must resume it."}
-          {isOwner() && <div className="row" style={{ marginTop: 6 }}><button className="btn" onClick={onResume}>Resume sending now</button></div>}
+          {isOwner() && <div className="row card-actions"><Button onClick={onResume}>Resume sending now</Button></div>}
         </div>
       )}
       {status.mode !== "live" && status.live_blockers?.length > 0 && (
         <>
-          <p className="sub" style={{ margin: "8px 0 4px" }}>Before you can switch on real sending:</p>
+          <p className="sub">Before you can switch on real sending:</p>
           <ol className="steps">{status.live_blockers.map((b) => <li key={b}>{b}</li>)}</ol>
         </>
       )}
-      <p className="sub" style={{ margin: "6px 0 0" }}>
+      <p className="sub">
         Last 7 days: {status.rates.sent} sent · {status.rates.bounces} bounced ({pct(status.rates.bounce_rate)}) · {status.rates.complaints} spam
         complaints. Sending pauses by itself above 2% bounces or 0.3% complaints.
       </p>
       {status.mode !== "live" && isOwner() && (
-        <button className="btn ghost" style={{ marginTop: 8 }} onClick={onClearPractice}>Clear practice runs</button>
+        <Button variant="secondary" onClick={onClearPractice}>Clear practice runs</Button>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -111,76 +112,68 @@ export default function Outbox({ go }) {
 
   return (
     <>
-      <h2>Outbox & sending <HelpLink chapter="outbox" label="Outbox and sending" /></h2>
-      <p className="sub">Emails stay in practice mode until a sending domain is connected AND "Send for real" is switched on. Practice runs never use up a lead's real first email.</p>
+      <PageHeader title={<>Outbox & sending <HelpLink chapter="outbox" label="Outbox and sending" /></>}
+        description={<>Emails stay in practice mode until a sending domain is connected AND "Send for real" is switched on. Practice runs never use up a lead's real first email.</>} />
       {loadError && <ErrorState message="The outbox could not load." detail={loadError} onRetry={load} />}
-      {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
+      {message && <div className="tip" role="status">{message}</div>}
       <SendingBanner status={status} onResume={() => act(api.resumeSending, "Sending resumed.")}
         onClearPractice={() => act(api.clearPractice, (r) => `Removed ${r.outbox} practice row(s). Live sending will start each lead from Email 1.`)} />
       <LiveSendingSwitch onChanged={load} />
       <EmailGateCard />
       <DeliverabilityCard />
       <Downloads />
-      <div className="card" style={{ marginBottom: 14 }}><fieldset className="ro-fieldset" disabled={!isOwner()}>
-        <div className="row">
-          <div><label>Sender name</label><input value={cfg.sender_name || ""} onChange={(e) => setCfg({ ...cfg, sender_name: e.target.value })} /></div>
-          <div><label>Max emails per day</label><input type="number" min="1" max="500" value={cfg.daily_cap} onChange={(e) => setCfg({ ...cfg, daily_cap: e.target.value })} /></div>
+      <Card><fieldset className="ro-fieldset" disabled={!isOwner()}>
+        <CardHeader title="Sender details" description="Shown in every email footer." />
+        <div className="form-grid">
+          <Field label="Sender name"><Input value={cfg.sender_name || ""} onChange={(e) => setCfg({ ...cfg, sender_name: e.target.value })} /></Field>
+          <Field label="Max emails per day"><Input type="number" min="1" max="500" value={cfg.daily_cap} onChange={(e) => setCfg({ ...cfg, daily_cap: e.target.value })} /></Field>
+          <Field label="Company name (shown in every email footer)" className="wide"><Input value={cfg.sender_company || ""} placeholder="Your Company" onChange={(e) => setCfg({ ...cfg, sender_company: e.target.value })} /></Field>
+          <Field label="Website (shown in the footer)"><Input value={cfg.sender_website || ""} placeholder="yourcompany.com" onChange={(e) => setCfg({ ...cfg, sender_website: e.target.value })} /></Field>
+          <Field label="Contact email (shown in the footer)"><Input value={cfg.sender_contact_email || ""} placeholder="hello@yourcompany.com" onChange={(e) => setCfg({ ...cfg, sender_contact_email: e.target.value })} /></Field>
+          <Field label="Postal address (optional; needed only to email leads in the US or Canada)" className="wide"><Input value={cfg.sender_address || ""} placeholder="Office address, city, PIN" onChange={(e) => setCfg({ ...cfg, sender_address: e.target.value })} /></Field>
         </div>
-        <label>Company name (shown in every email footer)</label>
-        <input value={cfg.sender_company || ""} placeholder="Your Company" onChange={(e) => setCfg({ ...cfg, sender_company: e.target.value })} />
-        <div className="row">
-          <div><label>Website (shown in the footer)</label>
-            <input value={cfg.sender_website || ""} placeholder="yourcompany.com" onChange={(e) => setCfg({ ...cfg, sender_website: e.target.value })} /></div>
-          <div><label>Contact email (shown in the footer)</label>
-            <input value={cfg.sender_contact_email || ""} placeholder="hello@yourcompany.com" onChange={(e) => setCfg({ ...cfg, sender_contact_email: e.target.value })} /></div>
-        </div>
-        <label>Postal address (optional; needed only to email leads in the US or Canada)</label>
-        <input value={cfg.sender_address || ""} placeholder="Office address, city, PIN" onChange={(e) => setCfg({ ...cfg, sender_address: e.target.value })} />
         {isOwner() ? (
-          <div className="row" style={{ marginTop: 10 }}>
-            <button className="btn ghost" onClick={save}>Save settings</button>
-            <button className="btn" onClick={run}>Run sequences now</button>
+          <div className="row card-actions">
+            <Button variant="secondary" onClick={save}>Save settings</Button>
+            <Button onClick={run}>Run sequences now</Button>
           </div>
-        ) : <p className="sub" style={{ marginTop: 10 }}>Only an owner changes these settings or runs the sequences by hand.</p>}
-      </fieldset></div>
+        ) : <p className="sub card-actions">Only an owner changes these settings or runs the sequences by hand.</p>}
+      </fieldset></Card>
       {status && (status.send_failed.length > 0 || status.stuck.length > 0) && (
-        <div className="card" style={{ marginBottom: 14 }}>
+        <Card>
           {status.send_failed.length > 0 && (
-            <div className="row" style={{ justifyContent: "space-between" }}>
+            <div className="ui-card-head">
               <span>{status.send_failed.length} lead(s) stopped after 3 failed sends.</span>
-              {isOwner() && <button className="btn ghost" onClick={() => act(api.resumeFailed, (r) => `Resumed ${r.resumed} sequence(s).`)}>Resume them</button>}
+              {isOwner() && <Button variant="secondary" size="sm" onClick={() => act(api.resumeFailed, (r) => `Resumed ${r.resumed} sequence(s).`)}>Resume them</Button>}
             </div>
           )}
           {status.stuck.length > 0 && (
-            <p className="sub" style={{ margin: "8px 0 0" }}>
+            <p className="sub">
               {status.stuck.length} send(s) were interrupted. Check your email provider's log, then open the lead and clear it; the retry can't
               send the same email twice.
             </p>
           )}
-        </div>
+        </Card>
       )}
       <p className="sub">Sends only Mon–Fri, 9am–6pm <Abbr term="IST">IST</Abbr>, one step per lead. Any reply stops the sequence for that lead.</p>
       {seesInternal && (
-        <div className="tabs" role="tablist" aria-label="Outbox lists" style={{ marginBottom: 10 }}>
-          <button role="tab" aria-selected={tab === "emails"} className={tab === "emails" ? "on" : ""} onClick={() => setTab("emails")}>Emails to leads</button>
-          <button role="tab" aria-selected={tab === "internal"} className={tab === "internal" ? "on" : ""} data-testid="tab-internal" onClick={() => setTab("internal")}>Internal emails</button>
-        </div>
+        <Tabs label="Outbox lists" value={tab} onChange={setTab} items={[{ id: "emails", label: "Emails to leads" }, { id: "internal", label: "Internal emails", testId: "tab-internal" }]} />
       )}
       {tab === "internal" && seesInternal ? <InternalEmails /> : <OutboxTable refreshKey={refresh} />}
-      <div className="card" style={{ margin: "14px 0" }}>
-        <b>Replies received</b> <span className="sub-inline">are on the Replies page, with how each was read and which lead it matched.</span>{" "}
-        <button className="btn ghost" onClick={() => (go ? go("replies") : (window.location.hash = "replies"))}>Open Replies</button>
+      <div className="ui-strip">
+        <span className="grow"><b>Replies received</b> are on the Replies page, with how each was read and which lead it matched.</span>
+        <span className="actions"><Button variant="secondary" size="sm" onClick={() => (go ? go("replies") : (window.location.hash = "replies"))}>Open Replies</Button></span>
       </div>
-      <h3>WhatsApp messages</h3>
-      <div className="card" style={{ padding: 0, overflowX: "auto" }}>
-        {wa.length === 0 ? <p className="empty">No WhatsApp messages yet. Record a lead's yes, then send from the lead.</p> : (
-          <table>
+      <h3 className="section-title">WhatsApp messages</h3>
+      <div className="card table-card">
+        {wa.length === 0 ? <EmptyState icon="chat" title="No WhatsApp messages yet.">Record a lead's yes, then send from the lead.</EmptyState> : (
+          <DataTable label="WhatsApp messages">
             <thead><tr><th>When</th><th>To</th><th>Template</th><th>Message</th><th>Sent by</th><th>Status</th></tr></thead>
             <tbody>{wa.map((m, i) => (
-              <tr key={i}><td>{istLabel(m.sent_at)}</td><td>{m.to}</td><td>{m.template}{m.ai_drafted && <><br /><span className="pill" title={`Written by the AI; approved and sent by ${m.ai_approved_by || "a person"}`}>AI-drafted</span></>}</td><td>{m.body}</td><td data-testid="wa-sent-by">{sentBy(m)}</td>
+              <tr key={i}><td>{istLabel(m.sent_at)}</td><td>{m.to}</td><td>{m.template}{m.ai_drafted && <><br /><span className="pill rec" title={`Written by the AI; approved and sent by ${m.ai_approved_by || "a person"}`}>AI-drafted</span></>}</td><td>{m.body}</td><td data-testid="wa-sent-by">{sentBy(m)}</td>
                 <td><span className={`pill ${m.status === "sent" ? "ok" : ""}`}>{STATUS_LABEL[m.status] || m.status}</span></td></tr>
             ))}</tbody>
-          </table>
+          </DataTable>
         )}
       </div>
     </>

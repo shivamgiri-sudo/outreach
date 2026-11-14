@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { istDateLabel, istLabel } from "../time.js";
 import { api, canWrite, isOwner } from "../api.js";
 import { ErrorState } from "../states.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const KIND_WORDS = { keyword: "Keyword", competitor: "Competitor", company: "Company" };
 
@@ -29,8 +30,8 @@ export default function Signals() {
 
   return (
     <>
-      <h2>Buying signals</h2>
-      <p className="sub">Watch keywords, competitors or companies and see fresh public news about them: hiring drives, new centres, expansion. You choose which company becomes a lead. This reads only the public news feed, never LinkedIn.</p>
+      <PageHeader title="Buying signals"
+        description={<>Watch keywords, competitors or companies and see fresh public news about them: hiring drives, new centres, expansion. You choose which company becomes a lead. This reads only the public news feed, never LinkedIn.</>} />
       {error && <ErrorState message="Signals could not load." detail={error} onRetry={load} />}
       <section className="card" style={{ marginBottom: 14 }}>
         {isOwner() && <div className="row">

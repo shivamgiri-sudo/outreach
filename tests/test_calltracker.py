@@ -460,3 +460,59 @@ def test_workspace_delete_removes_its_connection(r):
     res = r.c.request("DELETE", f"/api/workspaces/{r.w2}", json={"confirm_name": "Client Two", "move_to": "main"}, headers=r.h["owner"])
     assert res.status_code == 200, res.text
     assert ct.connection(r.store, r.w2) is None
+
+
+# ---------------------------------------------------------------- small fixes after the integration review
+def test_no_push_for_a_lead_who_opted_out(r):
+    """An unsubscribed / do-not-contact / consent-withdrawn lead is never sent to be dialled, at queue time or at run time."""
+    connect(r)
+    for company, change in (("Acme", {"stage": "unsubscribed"}), ("Beta Ltd", {"do_not_contact": True}), ("Cora Inc", {"consent_withdrawn_at": "2026-11-01T00:00:00+00:00"})):
+        r.set(company, **change)
+        call_task(r, company)
+    assert [j for j in r.store.read("ct_outbox") if j["kind"] == "push"] == []        # nothing was even queued
+    # queued first, opted out afterwards: refused when the job runs, with a plain note and no retry
+    r.set("Acme", stage="new")
+    call_task(r, "Acme")
+    r.set("Acme", do_not_contact=True)
+    ct.process_due(r.store)
+    assert not [q for q in r.fake.requests if q[0] == "PUT"]
+    job = next(j for j in r.store.read("ct_outbox") if j["kind"] == "push")
+    assert job["status"] == "failed" and "do-not-contact" in job["error"] and job["attempts"] == 1
+
+
+def test_funnel_connected_uses_the_one_narrow_definition(r):
+    """A 95-second 'Not interested' call got through, but the Leaderboard does not count it as connected, and neither may the funnel."""
+    connect(r)
+    acme, beta = r.lead["Acme"]["id"], r.lead["Beta Ltd"]["id"]
+    r.fake.calls[1] = ct_call(1, ref=acme, outcome="Not interested", connected=True)
+    r.fake.calls[2] = ct_call(2, number="9123456789", ref=beta, outcome="Interested", connected=True)
+    hook(r, conn_id(r), {"id": "g1", "event": "call.outcome", "data": {"callId": 1}})
+    hook(r, conn_id(r), {"id": "g2", "event": "call.outcome", "data": {"callId": 2}})
+    f = r.c.get("/api/calltracker/funnel?from=2026-11-13&to=2026-11-13", headers=r.h["owner"]).json()
+    assert (f["calls"], f["connected"], f["interested"]) == (2, 1, 1)
+
+
+def test_new_dialhalo_signature_header_is_accepted_as_well_as_the_old_one(r):
+    connect(r)
+    cid = conn_id(r)
+    r.fake.calls[3] = ct_call(3, ref=r.lead["Acme"]["id"], outcome="Interested")
+    raw = json.dumps({"id": "h1", "event": "call.outcome", "data": {"callId": 3}}).encode()
+    ts = int(time.time())
+    header = f"t={ts},v1={ev.sign(SECRET, ts, raw)}"
+    new = r.c.post(f"/api/calltracker/hook/{cid}", content=raw, headers={"X-DialHalo-Signature": header, "Content-Type": "application/json"})
+    assert new.status_code == 200 and new.json()["applied"] == 1
+    assert r.c.post(f"/api/calltracker/hook/{cid}", content=raw, headers={"Content-Type": "application/json"}).status_code == 401   # no header still refused
+
+
+def test_unmapped_outcome_names_are_remembered_and_shown_on_the_card(r):
+    connect(r)
+    acme, beta = r.lead["Acme"]["id"], r.lead["Beta Ltd"]["id"]
+    r.fake.calls[1] = ct_call(1, ref=acme, outcome="Promise to pay", connected=True)
+    r.fake.calls[2] = ct_call(2, number="9123456789", ref=beta, outcome="promise  to pay", connected=False)
+    r.fake.calls[3] = ct_call(3, number="9000000003", ref=None, outcome="Interested", connected=True)          # mapped: not listed
+    for i in (1, 2, 3):
+        hook(r, conn_id(r), {"id": f"u{i}", "event": "call.outcome", "data": {"callId": i}})
+    view = r.c.get("/api/calltracker", headers=r.h["owner"]).json()
+    rows = (view.get("connection") or view).get("unmapped_outcomes") if isinstance(view, dict) else None
+    assert rows and len(rows) == 1 and rows[0]["count"] == 2 and rows[0]["name"].lower().startswith("promise")
+    assert rows[0]["counted_as"] in ("connected", "no_answer")

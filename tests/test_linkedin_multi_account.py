@@ -11,7 +11,7 @@ A, B = {"X-LinkedIn-Account": "acct-a"}, {"X-LinkedIn-Account": "acct-b"}
 def rig(tmp_path):
     c, owner, acme, globex = make(tmp_path)
     store = c.app.state.store
-    agent.save_config(store, {"enabled": True, "gap_minutes": 3})
+    agent.save_config(store, {"enabled": True, "gap_minutes": 3, "start_hour": 0, "end_hour": 24, "weekdays_only": False, "days": [0, 1, 2, 3, 4, 5, 6]})     # round the clock: some tests call the endpoints at the real current time, which must not matter
     li.start(store, acme)
     tok = pair(c, owner)["token"]
     return c, owner, store, acme, tok

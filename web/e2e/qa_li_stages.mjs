@@ -69,6 +69,7 @@ await step("Lead drawer: no LinkedIn account connected yet, so no account picker
   await p.keyboard.press("Escape");
 });
 await step("Leads list filters by LinkedIn stage", async () => {
+  await p.locator("summary[aria-label='More filters']").click();
   const f = p.getByTestId("li-stage-filter");
   const opts = await f.locator("option").allInnerTexts();
   const pick = opts.find((o) => /not contacted/i.test(o));

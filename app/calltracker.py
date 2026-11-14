@@ -184,6 +184,24 @@ def note_status(store, ws: str, key: str, ok: bool, detail: str = "") -> None:
     store.update("ct_connections", lambda rows: {**rows, ws: {**rows[ws], key: row}} if ws in rows else rows)
 
 
+def note_unmapped(store, ws: str, name: str, counted_as: str) -> None:
+    """A Call Tracker outcome name with no row in the mapping was counted as `counted_as`: remember it so the card can say so."""
+    key = " ".join(name.lower().split())[:80]
+    stamp = iso(now_utc())
+
+    def apply(rows: dict) -> dict:
+        conn = rows.get(ws)
+        if not conn:
+            return rows
+        seen = dict(conn.get("unmapped_outcomes") or {})
+        cur = seen.get(key) or {"name": name[:80], "count": 0}
+        seen[key] = {**cur, "count": cur["count"] + 1, "last_at": stamp, "counted_as": counted_as}
+        if len(seen) > 30:                     # keep the 30 most recent names
+            seen = dict(sorted(seen.items(), key=lambda kv: kv[1].get("last_at", ""))[-30:])
+        return {**rows, ws: {**conn, "unmapped_outcomes": seen}}
+    store.update("ct_connections", apply)
+
+
 def public_view(store, ws: str) -> Optional[dict]:
     conn = connection(store, ws)
     if not conn:
@@ -193,6 +211,7 @@ def public_view(store, ws: str) -> Optional[dict]:
             "enabled": conn.get("enabled", True), "api_key_set": bool(key), "api_key_hint": ("••••" + key[-4:]) if len(key) > 8 else ("set" if key else ""),
             "webhook_secret_set": bool(conn.get("webhook_secret")), "mapping": mapping_of(conn), "mapping_custom": bool(conn.get("mapping")),
             "last_push": conn.get("last_push"), "last_event": conn.get("last_event"), "last_test": conn.get("last_test"),
+            "unmapped_outcomes": sorted((conn.get("unmapped_outcomes") or {}).values(), key=lambda r: -r.get("count", 0)),
             "created_at": conn.get("created_at"), "updated_at": conn.get("updated_at")}
 
 
@@ -296,10 +315,21 @@ def _enqueue(store, job: dict, merge_key=None) -> dict:
     return saved["job"]
 
 
+def opted_out(lead: dict) -> str:
+    """Why this lead must never be sent to Call Tracker to be dialled ('' when it may be)."""
+    if lead.get("stage") == "unsubscribed":
+        return "unsubscribed"
+    if lead.get("do_not_contact"):
+        return "on the do-not-contact list"
+    if lead.get("consent_withdrawn_at"):
+        return "consent withdrawn"
+    return ""
+
+
 def on_call_task(store, task: dict) -> Optional[dict]:
-    """A new call task: push its lead to the workspace's DialHalo (if connected)."""
+    """A new call task: push its lead to the workspace's DialHalo (if connected). Never for a lead who opted out."""
     lead = next((l for l in store.read("leads") if l.get("id") == task.get("lead_id")), None)
-    if not lead or not active_connection(store, ws_of(lead)):
+    if not lead or not active_connection(store, ws_of(lead)) or opted_out(lead):
         return None
     ws = ws_of(lead)
     return _enqueue(store, {"kind": "push", "ws": ws, "lead_id": lead["id"], "task_id": task.get("id")},
@@ -374,6 +404,8 @@ def _run_job(store, job: dict) -> str:
         raise CallTrackerError("The lead no longer exists.", retry=False)
     if ws_of(lead) != job["ws"]:
         raise CallTrackerError("The lead moved to another workspace.", retry=False)
+    if why := opted_out(lead):                 # opted out after the push was queued: never send them to be dialled
+        raise CallTrackerError(f"Not sent: this lead is {why}.", retry=False)
     body = push_payload(store, lead, os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000"))
     if not norm_phone(body["phone"]):
         raise CallTrackerError("The lead has no phone number, so DialHalo cannot dial it. Add a phone and retry.", retry=False)

@@ -7,6 +7,7 @@ import CallScript from "./CallScript.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
 import PhoneTag from "./PhoneTag.jsx";
 import { INVALID_REASONS } from "../leadReasons.js";
+import { Badge, Button, Card, DataTable, EmptyState, PageHeader, Tabs } from "../ui/index.js";
 
 // [outcome, button label, key]. Every outcome is logged with the signed-in person's name.
 const OUTCOMES = [["connected", "Connected", "1"], ["no_answer", "No answer", "2"], ["busy", "Busy", "3"], ["call_back", "Call back…", "4"],
@@ -99,33 +100,35 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
 
   if (!lead) {
     return (
-      <div className="card" data-testid="dial-done">
-        <h3 style={{ marginTop: 0 }}>Queue done</h3>
+      <Card data-testid="dial-done">
+        <h3>Queue done</h3>
         <p className="sub">{log.length} call{log.length === 1 ? "" : "s"} logged this round{log.length ? `: ${log.map((l) => `${l.company} (${l.outcome.replace(/_/g, " ")})`).join(", ")}` : ""}.</p>
-        <button className="btn" onClick={onExit}>Back to the queue</button>
-      </div>
+        <Button onClick={onExit}>Back to the queue</Button>
+      </Card>
     );
   }
   return (
-    <div className="grid g2" data-testid="dialer">
-      <div className="card">
-        <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-          <small className="sub" style={{ margin: 0 }}>Lead {index + 1} of {queue.length} · {lead.reason}</small>
-          <div className="row" style={{ gap: 6 }}>
-            <button className="btn ghost" onClick={() => setIndex((i) => i + 1)} title="Skip (S)">Skip</button>
-            <button className="btn ghost" onClick={onExit}>Stop</button>
+    <div className="grid g2 dialer-grid" data-testid="dialer">
+      <Card className="dialer">
+        <div className="dialer-top">
+          <span className="eyebrow">Lead {index + 1} of {queue.length} · {lead.reason}</span>
+          <div className="row">
+            <Button variant="secondary" size="sm" onClick={() => setIndex((i) => i + 1)} title="Skip (S)">Skip</Button>
+            <Button variant="secondary" size="sm" onClick={onExit}>Stop</Button>
           </div>
         </div>
-        <h3 style={{ margin: "8px 0 2px" }} data-testid="dial-company">{lead.company || lead.contact_name}</h3>
-        <p className="sub" style={{ margin: 0 }}>{lead.contact_name}{lead.title ? ` · ${lead.title}` : ""}{lead.role ? ` · hiring ${lead.role}` : ""}
+        <h3 className="dialer-company" data-testid="dial-company">{lead.company || lead.contact_name}</h3>
+        <p className="sub dialer-meta">{lead.contact_name}{lead.title ? ` · ${lead.title}` : ""}{lead.role ? ` · hiring ${lead.role}` : ""}
           <br /><span className="pill">{stageLabel(lead.stage)}</span> {lead.score != null && <span className={`pill ${lead.band || ""}`}>{lead.score} · {lead.band}</span>}
-          {lead.consent && <span className="pill ok" style={{ marginLeft: 4 }}>consent</span>}</p>
-        <a className="btn dial-btn" href={dialLink(lead.phone)} style={{ display: "inline-block", margin: "10px 0", fontSize: 18 }} data-testid="dial-link" onClick={() => setDialled(lead.phone)}>Call {lead.phone}</a><PhoneTag lead={lead} />
-        {(lead.phones || []).map((p) => <a key={p} className="btn ghost" href={dialLink(p)} onClick={() => setDialled(p)} style={{ marginLeft: 6 }} data-testid="dial-extra">Call {p}</a>)}
-        {(lead.phones || []).length > 0 && <small className="sub" style={{ display: "block" }}>Logging for {dialled || lead.phone} (the number you last tapped).</small>}
+          {lead.consent && <span className="pill ok">consent</span>}</p>
+        <div className="dial-actions">
+          <a className="btn dial-btn" href={dialLink(lead.phone)} data-testid="dial-link" onClick={() => setDialled(lead.phone)}>Call {lead.phone}</a><PhoneTag lead={lead} />
+          {(lead.phones || []).map((p) => <a key={p} className="btn ghost dial-btn" href={dialLink(p)} onClick={() => setDialled(p)} data-testid="dial-extra">Call {p}</a>)}
+        </div>
+        {(lead.phones || []).length > 0 && <small className="sub dial-note">Logging for {dialled || lead.phone} (the number you last tapped).</small>}
         <Summary s={summary} />
         {lead.recent_notes.length > 0 && (
-          <ul className="sub" style={{ paddingLeft: 18, margin: "4px 0" }}>
+          <ul className="sub dial-notes-list">
             {lead.recent_notes.map((n, i) => <li key={i}>{istLabel(n.at)} · {n.kind}{n.by ? ` · ${n.by}` : ""}: {n.text}</li>)}
           </ul>
         )}
@@ -133,18 +136,18 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
         <label htmlFor="dial-notes">Notes (saved with the outcome)</label>
         <textarea id="dial-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What they said, next step" />
         {reason !== null && (
-          <label className="row" style={{ gap: 6, marginTop: 6 }}>Why is it invalid?
+          <label className="row dial-inline">Why is it invalid?
             <select value={reason} onChange={(e) => setReason(e.target.value)} aria-label="Reason the lead is invalid" data-testid="invalid-reason">
               <option value="">Pick a reason…</option>
               {INVALID_REASONS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select></label>
         )}
         {callback !== null && (
-          <label className="row" style={{ gap: 6, marginTop: 6 }}>Call back at (IST)
+          <label className="row dial-inline">Call back at (IST)
             <input type="datetime-local" value={callback} onChange={(e) => setCallback(e.target.value)} aria-label="Call back at" />
-            {cbFor === "call_disconnected" && <button type="button" className="btn ghost" disabled={busy} onClick={() => record("call_disconnected", true)} data-testid="drop-no-callback">No call back, just log it</button>}</label>
+            {cbFor === "call_disconnected" && <Button variant="secondary" size="sm" disabled={busy} onClick={() => record("call_disconnected", true)} data-testid="drop-no-callback">No call back, just log it</Button>}</label>
         )}
-        <div className="row" style={{ flexWrap: "wrap", gap: 6, marginTop: 8 }} aria-label="Call outcome">
+        <div className="outcome-grid" role="group" aria-label="Call outcome">
           {OUTCOMES.map(([o, label, key]) => (
             <button key={o} className={`btn ${o === "interested" ? "" : "ghost"}${["not_interested", "wrong_number", "inactive_number", "invalid_lead", "consultant_lead"].includes(o) ? " danger" : ""}`} disabled={busy}
               title={`${MEANS[o] || "Log it and go to the next lead."} Key ${key}.`} onClick={() => record(o)}>
@@ -156,8 +159,8 @@ function Dialer({ queue, script, rep, onScript, onOpen, onExit }) {
         </>}
         {msg && <p className="error" role="alert">{msg}</p>}
         <button className="link" onClick={() => onOpen(lead.lead_id)}>Open the full lead</button>
-      </div>
-      <div className="card"><CallScript data={script} lead={lead} rep={rep} onChanged={onScript} /></div>
+      </Card>
+      <Card><CallScript data={script} lead={lead} rep={rep} onChanged={onScript} /></Card>
     </div>
   );
 }
@@ -184,9 +187,8 @@ export default function CallDesk() {
 
   return (
     <>
-      <h2>Call desk</h2>
-      <p className="sub">Call-backs and call tasks first, then leads who said yes, then leads with a phone and consent. <b>{script?.note}</b></p>
-      {best && <p className="sub" data-testid="best-time">{best.enough && best.window
+      <PageHeader title="Call desk" description={<>Call-backs and call tasks first, then leads who said yes, then leads with a phone and consent. <b>{script?.note}</b></>} />
+      {best && <p className="sub best-time" data-testid="best-time">{best.enough && best.window
         ? `Calls reach people most between ${String(best.window.from).padStart(2, "0")}:00-${String(best.window.to).padStart(2, "0")}:00 IST (based on ${best.sample} calls).`
         : `Not enough calls yet to say when people pick up (${best.sample} of ${best.min_total} calls so far).`}</p>}
       {error && <p className="error" role="alert">{error}</p>}
@@ -195,38 +197,31 @@ export default function CallDesk() {
         <Dialer queue={walking} script={script} rep={rep} onScript={setScript} onOpen={setOpen} onExit={() => { setWalking(null); load(); }} />
       ) : (
         <div className="grid g2">
-          <div className="card" style={{ padding: 0 }}>
-            <div className="row" style={{ padding: 12, justifyContent: "space-between", flexWrap: "wrap" }}>
-              <button className="btn" disabled={!queue.length} onClick={() => setWalking(queue)} data-testid="start-calling">Start calling ({queue.length})</button>
-              <label className="row" style={{ gap: 6, fontWeight: 400 }}><input type="checkbox" style={{ width: "auto" }} checked={mine} onChange={(e) => setMine(e.target.checked)} /> Only mine</label>
+          <Card className="queue-card">
+            <div className="queue-head">
+              <Button icon="phone" disabled={!queue.length} onClick={() => setWalking(queue)} data-testid="start-calling">Start calling ({queue.length})</Button>
+              <label className="check-row queue-mine"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> Only mine</label>
             </div>
-            <div className="row" style={{ padding: "0 12px 8px", gap: 6, flexWrap: "wrap" }} role="group" aria-label="Who to call">
-              {CHIPS.map(([k, label, test]) => (
-                <button key={k} type="button" className={`btn ghost${view === k ? " on" : ""}`} aria-pressed={view === k} onClick={() => setView(k)} data-testid={`queue-${k}`}>
-                  {label} ({everyone.filter(test).length})
-                </button>
-              ))}
-            </div>
-            {queue.length === 0 ? <p className="empty">{everyone.length ? "No one in this group right now." : "No one is waiting for a call right now."}</p> : (
-              <div className="table-wrap">
-                <table>
+            <Tabs label="Who to call" value={view} onChange={setView}
+              items={CHIPS.map(([k, label, test]) => ({ id: k, label: `${label} (${everyone.filter(test).length})`, testId: `queue-${k}` }))} />
+            {queue.length === 0 ? <EmptyState icon="phone" title={everyone.length ? "No one in this group right now." : "No one is waiting for a call right now."} /> : (
+              <DataTable maxHeight="calc(100vh - 330px)" label="Call queue">
                   <thead><tr><th>Lead</th><th>Why now</th><th>Calls so far</th><th>Phone</th></tr></thead>
                   <tbody>
                     {queue.map((l, i) => (
                       <tr key={l.lead_id}>
                         <td><button className="link" onClick={() => setOpen(l.lead_id)}><b>{l.company || l.contact_name}</b></button><br />
-                          <small>{l.contact_name}{l.score != null ? ` · score ${l.score}` : ""}</small>{l.retry_exhausted && <span className="pill warn" style={{ marginLeft: 6 }}>Retries used up</span>}</td>
+                          <small>{l.contact_name}{l.score != null ? ` · score ${l.score}` : ""}</small>{l.retry_exhausted && <Badge tone="warning">Retries used up</Badge>}</td>
                         <td>{l.reason}{l.due_at ? <div className="sub">due {istLabel(l.due_at)}</div> : null}</td>
-                        <td data-testid="queue-attempts">{l.attempts ? <>{l.attempts} call{l.attempts > 1 ? "s" : ""}<div className="sub">{l.last_outcome ? `last: ${l.last_outcome.replace(/_/g, " ")} · ` : "last "}{istLabel(l.last_attempt_at)}</div></> : <span className="pill ok">never called</span>}</td>
+                        <td data-testid="queue-attempts">{l.attempts ? <>{l.attempts} call{l.attempts > 1 ? "s" : ""}<div className="sub">{l.last_outcome ? `last: ${l.last_outcome.replace(/_/g, " ")} · ` : "last "}{istLabel(l.last_attempt_at)}</div></> : <Badge tone="success">never called</Badge>}</td>
                         <td><a href={dialLink(l.phone)}>{l.phone}</a><PhoneTag lead={l} /><br /><button className="link" onClick={() => setWalking([...queue.slice(i), ...queue.slice(0, i)])}>Call from here</button></td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
+              </DataTable>
             )}
-          </div>
-          <div className="card"><CallScript data={script} lead={queue[0]} rep={rep} onChanged={setScript} /></div>
+          </Card>
+          <Card className="script-card"><CallScript data={script} lead={queue[0]} rep={rep} onChanged={setScript} /></Card>
         </div>
       )}
       {open && <LeadDrawer id={open} ids={(walking || queue).map((l) => l.lead_id)} onClose={() => { setOpen(null); if (!walking) load(); }} />}

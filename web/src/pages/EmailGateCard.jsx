@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, isOwner, isWorkspaceAdmin } from "../api.js";
 import { istLabel } from "../time.js";
+import { Badge, Button, Card, Switch } from "../ui/index.js";
 
 const COUNT_LABELS = [
   ["waiting_for_check", "Waiting for a check"], ["held", "Waiting to be emailed"], ["valid", "Valid"],
@@ -33,44 +34,37 @@ export default function EmailGateCard() {
     : `Verifier connected (${v.provider}).`;
   const paid = v.connected && !v.builtin;
   return (
-    <div className="card" style={{ marginBottom: 14 }} data-testid="email-gate">
-      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+    <Card data-testid="email-gate">
+      <div className="ui-card-head">
         <div>
-          <b>Email checks before the first send</b> <span className={`pill ${state.enabled ? "ok" : ""}`}>{state.enabled ? "On" : "Off"}</span>
-          <div className="sub" style={{ margin: "4px 0 0" }}>
+          <h3>Email checks before the first send <Badge tone={state.enabled ? "success" : "neutral"}>{state.enabled ? "On" : "Off"}</Badge></h3>
+          <div className="sub">
             The first real email to a lead goes only to an address a mailbox check said works. This keeps bounces down. {verifierText}
           </div>
         </div>
-        {manager && state.enabled && <button className="btn" disabled={busy} onClick={checkNow}>Check now</button>}
+        {manager && state.enabled && <Button disabled={busy} onClick={checkNow}>Check now</Button>}
       </div>
-      <p className="sub" style={{ margin: "8px 0 0" }} data-testid="email-gate-counts">
+      <p className="sub" data-testid="email-gate-counts">
         {COUNT_LABELS.map(([k, label]) => `${label}: ${state.counts[k] ?? 0}`).join(" · ")}
       </p>
-      {state.last_run && <p className="sub" style={{ margin: "4px 0 0" }}>Last check: {istLabel(state.last_run)}.</p>}
-      {note && <div className="tip" role="status" style={{ marginTop: 8 }}>{note}</div>}
-      {(error || state.error) && <div className="tip error" role="alert" style={{ marginTop: 8 }}>{((e) => e.charAt(0).toUpperCase() + e.slice(1))(error || state.error)}</div>}
+      {state.last_run && <p className="sub">Last check: {istLabel(state.last_run)}.</p>}
+      {note && <div className="tip" role="status">{note}</div>}
+      {(error || state.error) && <div className="tip error" role="alert">{((e) => e.charAt(0).toUpperCase() + e.slice(1))(error || state.error)}</div>}
       {owner ? (
-        <div style={{ marginTop: 10 }}>
-          <div className="tab-chips" role="group" aria-label="Email checks before the first send">
-            <button className={`tab-chip${state.enabled ? " on" : ""}`} disabled={busy} onClick={() => state.enabled || run(() => api.setEmailGate(true, state.approve_risky))}>On</button>
-            <button className={`tab-chip${state.enabled ? "" : " on"}`} disabled={busy} onClick={() => !state.enabled || run(() => api.setEmailGate(false, state.approve_risky))}>Off</button>
-          </div>
-          <p className="sub" style={{ margin: 0 }}>
+        <div className="switch-block">
+          <Switch showState label="Email checks before the first send" checked={state.enabled} disabled={busy} onChange={(on) => run(() => api.setEmailGate(on, state.approve_risky))} />
+          <p className="sub">
             Turning this off sends first emails to addresses nobody has checked, as the app did before. More of them can bounce, and too many bounces pause all sending.
             Risky addresses wait for an owner or admin to approve them on the lead.
           </p>
-          <div style={{ marginTop: 8 }}>
-            <b>Use the built-in checker</b>
-            <div className="tab-chips" role="group" aria-label="Use the built-in checker">
-              <button className={`tab-chip${state.builtin ? " on" : ""}`} disabled={busy || paid} onClick={() => state.builtin || run(() => api.setEmailGate(state.enabled, state.approve_risky, true))}>On</button>
-              <button className={`tab-chip${state.builtin ? "" : " on"}`} disabled={busy || paid} onClick={() => !state.builtin || run(() => api.setEmailGate(state.enabled, state.approve_risky, false))}>Off</button>
-            </div>
-            <p className="sub" style={{ margin: 0 }}>
+          <div className="switch-block">
+            <Switch showState label="Use the built-in checker" checked={Boolean(state.builtin)} disabled={busy || paid} onChange={(on) => run(() => api.setEmailGate(state.enabled, state.approve_risky, on))} />
+            <p className="sub">
               {paid ? "A paid verifier is connected, so it is used instead." : "No paid verifier? Switch this on: the app then checks spelling (gmial.com), throwaway inboxes, shared mailboxes (info@), the domain's mail records and your own bounce history."}
             </p>
           </div>
         </div>
-      ) : <p className="sub" style={{ margin: "8px 0 0" }}>Only an owner can change this.</p>}
-    </div>
+      ) : <p className="sub">Only an owner can change this.</p>}
+    </Card>
   );
 }

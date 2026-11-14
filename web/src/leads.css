@@ -1,0 +1,90 @@
+/* Leads page: one compact toolbar, saved views, active-filter chips, a table with fixed column widths and a sticky header. */
+.lead-toolbar { display: grid; gap: var(--s3); margin-bottom: var(--s3); }
+.lead-filter-row { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.lead-filter-row > select { flex: 0 0 160px; width: 160px; min-width: 0; }
+.lead-filter-row > [data-testid="contact-filter"] { flex-basis: 184px; width: 184px; }
+.lead-search { flex: 1 1 170px; min-width: 170px; }
+.lead-download { margin-left: 0; }
+.lead-view-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
+.lead-view-sep { width: 1px; height: 22px; background: var(--line-strong); }
+.lead-views { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.lead-views-form { gap: var(--s2); flex-wrap: nowrap; }
+.lead-views-form input { width: 200px; }
+.lead-count { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); }
+.lead-tools { display: inline-flex; flex-wrap: wrap; gap: var(--s2); }
+.lead-tools .btn { min-height: var(--h-ctl-sm); font-size: var(--fs-sm); }
+.lead-chips { padding: 0; }
+.ui-pop .check-row { margin: 0; }
+.ui-pop .multi-filter { flex: none; }
+.ui-pop .multi-filter summary { display: flex; align-items: center; min-height: var(--h-ctl); padding: 0 var(--s3); border-color: var(--line-strong); border-radius: var(--r-sm); }
+.ui-pop .multi-pop { position: static; margin-top: var(--s2); box-shadow: none; }
+.lead-panel { margin-bottom: var(--s3); display: grid; gap: var(--s3); }
+.lead-panel h3, .lead-panel .sub, .lead-panel label { margin: 0; }
+.lead-panel-row { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: end; }
+.lead-panel-row > * { flex: 1 1 220px; }
+.lead-panel-row > .grow2 { flex: 2 1 320px; }
+.lead-panel-row > .btn { flex: none; }
+.lead-panel-text { margin: 0; }
+.lead-panel > .btn { justify-self: start; }
+
+/* table */
+.table-card { padding: 0; overflow: hidden; }
+.leads-table { table-layout: fixed; min-width: 1600px; }
+.leads-table th, .leads-table td { padding: 10px var(--s3); }
+.leads-table .c-pick { width: 44px; padding-right: 0; }
+.leads-table .c-company { width: 200px; }
+.leads-table .c-contact { width: 210px; }
+.leads-table .c-stage { width: 170px; }
+.leads-table .c-sales { width: 170px; }
+.leads-table .c-status { width: 150px; }
+.leads-table .c-score { width: 110px; }
+.leads-table .c-owner { width: 110px; }
+.leads-table .c-tags { width: 150px; }
+.leads-table .c-source { width: 170px; }
+.leads-table .c-date { width: 130px; }
+.leads-table .c-li { width: 170px; }
+.leads-table .c-next { width: 230px; }
+.leads-table td.c-company .linkish { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leads-table td.c-company .linkish b { font-weight: 600; }
+.leads-table td.c-next { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.leads-table tbody tr:hover td { background: color-mix(in srgb, var(--brand) 6%, var(--panel)); }
+.leads-table th.c-company, .leads-table td.c-company { position: sticky; left: 0; z-index: 1; background: var(--panel); box-shadow: 1px 0 0 var(--line); }
+.leads-table th.c-company { z-index: 2; }
+.leads-table td.c-pick, .leads-table th.c-pick { position: sticky; left: 0; z-index: 1; background: var(--panel); }
+.leads-table th.c-pick { z-index: 2; }
+.leads-table th.c-pick + th.c-company, .leads-table td.c-pick + td.c-company { left: 44px; }
+.pill-stack { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.leads-table td .pill { margin: 0; }
+.leads-table td.c-company .pill { margin-left: 6px; }
+.pager { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); align-items: center; justify-content: space-between; padding: var(--s3) var(--s4); border-top: 1px solid var(--line); }
+.pager .sub { margin: 0; }
+.pager select { width: auto; min-height: var(--h-ctl-sm); }
+
+/* bulk bar and hand-over */
+.bulkbar { position: sticky; top: 64px; z-index: 5; display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); align-items: center; padding: var(--s3) var(--s4); margin-bottom: var(--s3); border-radius: var(--r-md); background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 25%, var(--line)); box-shadow: var(--shadow); }
+.bulkbar select, .bulkbar input:not([type="checkbox"]) { width: auto; min-height: var(--h-ctl-sm); }
+.bulkbar .btn { min-height: var(--h-ctl-sm); font-size: var(--fs-sm); }
+[data-testid="handover-panel"] { margin-top: var(--s3); padding: var(--s2) var(--s4); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: none; }
+[data-testid="handover-panel"] > summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; gap: var(--s2); color: var(--ink); }
+[data-testid="handover-panel"] > summary .sub { margin: 0; font-size: var(--fs-sm); }
+[data-testid="handover-panel"] > .row { margin-top: var(--s3); }
+[data-testid="handover-panel"] select { width: auto; }
+
+/* multi-filter (source, contact details) */
+.multi-filter { position: relative; }
+.multi-filter summary { list-style: none; cursor: pointer; padding: 0 var(--s3); border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--panel); }
+.multi-filter summary::-webkit-details-marker { display: none; }
+.multi-pop { z-index: 5; min-width: 240px; max-height: 320px; overflow: auto; display: grid; gap: var(--s2); padding: var(--s3); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm); }
+@media (max-width: 760px) {
+  .lead-filter-row > select { flex: 1 1 calc(50% - 8px); width: auto; min-width: 0; }
+  .lead-search { flex-basis: 100%; }
+  .lead-download { margin-left: 0; }
+  .lead-view-sep { display: none; }
+  .lead-count { margin-left: 0; width: 100%; }
+  .leads-table { min-width: 0; table-layout: auto; }
+  .leads-table th.c-company, .leads-table td.c-company, .leads-table td.c-pick { position: static; box-shadow: none; background: transparent; }
+  .leads-table .c-pick, .leads-table .c-company, .leads-table .c-contact, .leads-table .c-stage, .leads-table .c-sales, .leads-table .c-status, .leads-table .c-score, .leads-table .c-owner, .leads-table .c-tags, .leads-table .c-source, .leads-table .c-date, .leads-table .c-li, .leads-table .c-next { width: auto; }
+  .leads-table td.c-next { white-space: normal; }
+  .ui-table-wrap { max-height: none; }
+  .bulkbar { top: 60px; }
+}

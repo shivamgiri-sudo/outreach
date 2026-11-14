@@ -9,6 +9,7 @@ import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import { useHashParam } from "../route.js";
 import { useConfirm } from "../Dialog.jsx";
 import { CampaignLeadsTable, OutcomeLine, OutcomeTiles } from "./CampaignOutcomes.jsx";
+import { PageHeader } from "../ui/index.js";
 
 function lastRunText(run) {
   if (!run) return "Not run yet";
@@ -108,11 +109,7 @@ export default function Campaigns({ go }) {
   }
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div><h2>Campaigns</h2><p className="sub">One click finds companies that are hiring, fills in contacts, checks emails and, if you allow it, starts the email sequence.
-          The caller gets an update after every run.</p></div>
-        {isOwner() && <button className="btn" onClick={() => setView({ mode: "wizard", campaign: null })}>New campaign</button>}
-      </div>
+      <PageHeader title="Campaigns" description={<>One click finds companies that are hiring, fills in contacts, checks emails and, if you allow it, starts the email sequence. The caller gets an update after every run.</>} actions={<>{isOwner() && <button className="btn" onClick={() => setView({ mode: "wizard", campaign: null })}>New campaign</button>}</>} />
       {error && <div className="tip error" role="alert">{error}</div>}
       {!list ? <p className="empty">Loading…</p> : list.length === 0 ? (
         <div className="card"><div className="empty"><EmptyArt name="campaigns" /><p>{isOwner() ? "No campaigns yet. Click “New campaign” to set up your first one, for example BPOs in Pune hiring customer support staff." : "No campaigns yet."}</p></div></div>

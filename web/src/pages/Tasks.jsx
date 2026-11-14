@@ -5,6 +5,7 @@ import { istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import Abbr from "../components/Abbr.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const BUCKETS = [["overdue", "Overdue"], ["today", "Today"], ["upcoming", "Upcoming"], ["no_date", "No due time"], ["done", "Done recently"]];
 const withIst = (local) => (local ? `${local}:00+05:30` : null);
@@ -68,9 +69,9 @@ export default function Tasks() {
 
   return (
     <>
-      <h2>Tasks &amp; follow-ups</h2>
-      <p className="sub">Everything that needs doing, by due time (<Abbr term="IST">IST</Abbr>). When a lead says yes, a call task is added for the caller automatically.
-        Reminders arrive 15 minutes before a task is due, and again if it's an hour overdue.</p>
+      <PageHeader title={<>Tasks &amp; follow-ups</>}
+        description={<>Everything that needs doing, by due time (<Abbr term="IST">IST</Abbr>). When a lead says yes, a call task is added for the caller automatically.
+        Reminders arrive 15 minutes before a task is due, and again if it's an hour overdue.</>} />
       {error && <ErrorState message="Tasks could not load." detail={error} onRetry={load} />}
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
       {isOwner() && <TeamSettings onSaved={load} />}

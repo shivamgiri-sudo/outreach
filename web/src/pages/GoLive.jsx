@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { GuideButton } from "../GuidePanel.jsx";
+import { Button, PageHeader } from "../ui/index.js";
 
 const MARK = { done: "✓", todo: "○", optional: "–" };
 const PILL = { done: "ok", todo: "warn", optional: "" };
@@ -24,27 +25,26 @@ export default function GoLive({ go, embedded = false }) {
 
   return (
     <>
-      {embedded ? <h3>Go-live checklist</h3> : <h2>Go live</h2>}
-      <p className="sub">Everything needed to move from practice mode to real sending, in order.</p>
-      <div className={`tip`} style={{ marginBottom: 14 }}>
+      {embedded ? null : <PageHeader title="Go live" description="Everything needed to move from practice mode to real sending, in order." />}
+      <div className="tip">
         {r.ready_for_live_test
           ? <><b>Ready for a live test.</b> Send to your own address first, then switch on real sending.</>
           : <><b>{requiredDone} of {required.length} required steps done.</b> Finish the rest to start a live test.</>}
-        <div className="bar" style={{ width: `${(requiredDone / required.length) * 100}%`, marginTop: 8, height: 8 }} />
+        <div className="bar progress-bar" style={{ width: `${(requiredDone / required.length) * 100}%` }} />
       </div>
 
       {sections.map(([title, items]) => (
-        <div key={title}>
+        <div key={title} className="check-section">
           <h3>{title}</h3>
           {items.map((i) => (
-            <div className="card row" key={i.id} style={{ marginBottom: 8, justifyContent: "space-between" }}>
-              <span style={{ flex: 1, minWidth: 220 }}>
+            <div className="card check-item" key={i.id}>
+              <span className="check-text">
                 <b>{MARK[i.status]} {i.title}</b><br /><small className="sub">{i.detail}</small>
               </span>
               <span className="row">
                 <span className={`pill ${PILL[i.status]}`}>{i.status === "done" ? "Done" : i.status === "todo" ? "To do" : "Optional"}</span>
-                <GuideButton keys={`setup:${i.id}`} label="Need help?" testId={`checklist-guide-${i.id}`} />
-                {i.status !== "done" && <button className="btn ghost" onClick={() => go(i.page)}>Fix this</button>}
+                {i.status !== "done" && <GuideButton keys={`setup:${i.id}`} label="Need help?" testId={`checklist-guide-${i.id}`} />}
+                {i.status !== "done" && <Button variant="secondary" size="sm" onClick={() => go(i.page)}>Fix this</Button>}
               </span>
             </div>
           ))}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, canWrite, isOwner } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { getBrand } from "../brand.js";
+import { PageHeader } from "../ui/index.js";
 
 const STEP_LABELS = {
   invited: "Invited", opened: "Opened demo", drafted: "Drafted a role", published: "Published role",
@@ -43,8 +44,8 @@ export default function Growth() {
 
   return (
     <>
-      <h2>Free experience</h2>
-      <p className="sub">Let employers try it first. Give a real, capped taste, track whether they reach a result, and talk about paying only after.</p>
+      <PageHeader title="Free experience"
+        description="Let employers try it first. Give a real, capped taste, track whether they reach a result, and talk about paying only after." />
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message}</div>}
 
       <div className="grid g2">

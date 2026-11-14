@@ -5,6 +5,7 @@ import { istLabel } from "../time.js";
 import LeadQualityCard from "./LeadQualityCard.jsx";
 import DownloadButton from "../DownloadButton.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const OUTCOMES = ["connected", "no_answer", "busy", "call_back", "interested", "not_interested", "meeting_booked", "wrong_number", "call_disconnected", "inactive_number"];
 const CHANNELS = [["call", "Calls"], ["all", "All contact"], ["email", "Email"], ["whatsapp", "WhatsApp"], ["linkedin", "LinkedIn"]];
@@ -38,8 +39,8 @@ export default function CallLog() {
 
   return (
     <>
-      <h2>Call log</h2>
-      <p className="sub">Every contact attempt across your leads, with who made it, when (IST), how it ended and the notes. You see only leads you can see.</p>
+      <PageHeader title="Call log"
+        description={<>Every contact attempt across your leads, with who made it, when (IST), how it ended and the notes. You see only leads you can see.</>} />
 
       <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
         <button className={`tab-chip${f.from === today && f.to === today ? " on" : ""}`} onClick={() => preset(today, today)}>Today</button>

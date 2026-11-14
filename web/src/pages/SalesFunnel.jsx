@@ -11,6 +11,7 @@ import { AttributionPeople, ClosedRevenue, PipelineForecast } from "./SalesFunne
 import HelpLink from "../components/HelpLink.jsx";
 import CallTrackerFunnel from "./CallTrackerFunnel.jsx";
 import "../funnel.css";
+import { PageHeader } from "../ui/index.js";
 
 const POLL_MS = 60000;
 const PRESET_NAMES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["lastMonth", "Last month"], ["quarter", "This quarter"], ["fy", "This FY"]];
@@ -22,7 +23,7 @@ function MultiSelect({ label, options, value, onChange }) {
   const toggle = (o) => onChange(value.includes(o) ? value.filter((x) => x !== o) : [...value, o]);
   return (
     <details className="multi-filter">
-      <summary aria-label={`Filter by ${label.toLowerCase()}`}>{value.length ? `${label}: ${value.length}` : `All ${label.toLowerCase()}s`}</summary>
+      <summary aria-label={`Filter by ${label.toLowerCase()}`}>{value.length ? `${label}: ${value.length}` : `All ${/y$/i.test(label) ? label.toLowerCase().slice(0, -1) + "ies" : label.toLowerCase() + "s"}`}</summary>
       <div className="multi-pop" role="group" aria-label={label}>
         {options.length === 0 && <small className="sub">Nothing to pick yet.</small>}
         {options.map((o) => <label key={o} className="row" style={{ margin: 0 }}><input type="checkbox" checked={value.includes(o)} onChange={() => toggle(o)} /> {o}</label>)}
@@ -95,8 +96,7 @@ export default function SalesFunnel() {
   const snapshotIds = ["inquiries", "mqls", "sqls", "opps", "won", "value"];
   return (
     <div data-testid="sales-funnel">
-      <h2 style={{ marginBottom: 4 }}>Sales funnel <HelpLink chapter="funnel" label="Sales funnel" /></h2>
-      <p className="sub">Leads by how far they got, from first inquiry to a signed deal. Counts are for leads created in the range; revenue is by the date the deal closed.</p>
+      <PageHeader title={<>Sales funnel <HelpLink chapter="funnel" label="Sales funnel" /></>} description="Leads by how far they got, from first inquiry to a signed deal. Counts are for leads created in the range; revenue is by the date the deal closed." />
       <Controls f={f} setF={setF} data={data} today={today} error={error && data ? error : ""} />
       {!data && error && <ErrorState message="The sales funnel could not load." detail={error} onRetry={() => load(true)} />}
       {!data && !error && <p className="sub" role="status">Loading the funnel…</p>}

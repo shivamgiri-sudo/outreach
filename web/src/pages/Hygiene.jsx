@@ -6,6 +6,7 @@ import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import { useConfirm } from "../Dialog.jsx";
 import RestoreLandlines from "./RestoreLandlines.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const GROUPS_SHOWN = 20;
 const FIELD_NAMES = {
@@ -142,10 +143,7 @@ export default function Hygiene({ go }) {
   const m = report.missing, e = report.emails;
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div><h2>Data hygiene</h2><p className="sub">Find gaps, duplicates and differing values across every source, and fix them in one place.</p></div>
-        {go && <button className="btn ghost" onClick={() => go("leads")}>Back to leads</button>}
-      </div>
+      <PageHeader title="Data hygiene" description={<>Find gaps, duplicates and differing values across every source, and fix them in one place.</>} actions={<>{go && <button className="btn ghost" onClick={() => go("leads")}>Back to leads</button>}</>} />
       {message && <div className="tip" role="status" style={{ marginBottom: 12 }}>{message} <button className="linkish" aria-label="Dismiss message" onClick={() => setMessage("")}>✕</button></div>}
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginTop: 0 }}>Overview of {report.total} leads</h3>

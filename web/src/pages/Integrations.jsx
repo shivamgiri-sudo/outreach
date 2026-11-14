@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, canAdminister, isOwner } from "../api.js";
-import { EmptyArt, ErrorState } from "../states.jsx";
+import { ErrorState } from "../states.jsx";
 import { istLabel } from "../time.js";
 import { CopyRow, StatusPill } from "./integrations/Fields.jsx";
 import Wizard, { guideKeys } from "./integrations/Wizard.jsx";
@@ -8,6 +8,7 @@ import { GuideButton } from "../GuidePanel.jsx";
 import LeadCapture from "./integrations/LeadCapture.jsx";
 import CallTracker from "./integrations/CallTracker.jsx";
 import Abbr from "../components/Abbr.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const EXTRA_TABS = [["calltracker", "DialHalo"], ["capture", "Lead capture"], ["custom", "Custom"], ["webhooks", "Webhook addresses"]];
 const OAUTH_ERRORS = {
@@ -26,7 +27,7 @@ function ProviderCard({ channel, provider, onOpen, onActivate }) {
     <div className="card prov-card" data-testid={`prov-${channel.id}-${provider.id}`}>
       <div className="row prov-head">
         <b>{provider.title}</b>
-        <span className="row" style={{ gap: 6 }}>
+        <span className="row">
           {provider.recommended && <span className="pill rec">Recommended</span>}
           {provider.active && <span className="pill ok">Active</span>}
         </span>
@@ -61,12 +62,12 @@ function ChannelIntro({ channel, onLive, go }) {
       <p className="sub">{channel.about}</p>
       {["live_whatsapp", "live_sms"].includes(channel.live_flag) && (
         <div className={`tip ${live ? "error" : ""}`}>
-          {isOwner() ? <label className="row" style={{ margin: 0 }}>
+          {isOwner() ? <label className="row m0">
             <input type="checkbox" checked={live} data-testid={`live-${channel.id}`}
               onChange={(e) => { setLive(e.target.checked); onLive(channel.live_flag, e.target.checked); }} />
             Send for real
           </label> : <b>Send for real: {live ? "on" : "off"}</b>}
-          <p style={{ margin: "4px 0 0" }}>
+          <p className="m0">
             {live ? "On: messages go to real phones through the active provider. Consent and opt-out rules still apply."
               : "Off (practice mode): messages are prepared and shown, but not delivered."}
           </p>
@@ -119,17 +120,13 @@ export default function Integrations({ go }) {
 
   return (
     <>
-      <div className="page-intro">
-        <div><h2>Integrations</h2>
-          <p className="sub">{connected} of {hub.length} channels connected. Every card has plain steps, a test button, and there is a custom option for any provider not listed.</p></div>
-        <EmptyArt name="integrations" />
-      </div>
+      <PageHeader title="Integrations" description={`${connected} of ${hub.length} channels connected. Every card has plain steps, a test button, and there is a custom option for any provider not listed.`} />
       {notice && (
-        <div className={`tip ${notice.ok ? "" : "error"}`} role="status" style={{ marginBottom: 12 }}>
+        <div className={`tip ${notice.ok ? "" : "error"}`} role="status">
           {notice.text} <button className="linkish" onClick={() => setNotice(null)}>Dismiss</button>
         </div>
       )}
-      {error && <div className="tip error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
+      {error && <div className="tip error" role="alert">{error}</div>}
       <div className="tabs scroll" role="tablist" aria-label="Channels">
         {[...data.channels.map((c) => [c.id, c.title, c.status]), ...EXTRA_TABS.filter(([id]) => isOwner() || id === "custom" || (id === "calltracker" && canAdminister()))].map(([id, label, status]) => (
           <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => setTab(id)} data-testid={`tab-${id}`}>
@@ -167,7 +164,7 @@ export default function Integrations({ go }) {
       {tab === "webhooks" && isOwner() && (
         <div className="card">
           <b>Addresses to paste into provider dashboards</b>
-          <p className="sub" style={{ margin: "2px 0 12px" }}>
+          <p className="sub">
             One per saved provider that sends things back (replies, bounces, bookings). Each contains a secret code: treat it like a password.
           </p>
           {hooks === null && <p className="sub">Loading…</p>}
