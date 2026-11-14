@@ -1,5 +1,7 @@
 // Left filter panel of Prospect search (Apollo-style). `value` is the filter object sent to /api/prospects/*.
 import { useId, useState } from "react";
+import Icon from "../icons.jsx";
+import { Button, Field, Input, Select } from "../ui/index.js";
 
 const LABEL = {
   owner: "Owner", founder: "Founder", c_suite: "C-suite", vp: "VP", head: "Head", director: "Director", manager: "Manager", senior: "Senior", entry: "Entry",
@@ -20,7 +22,7 @@ function Section({ title, count, open: start = false, children }) {
   return (
     <div className="pf-section">
       <button type="button" className="pf-head" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
-        <span>{title}</span>{count > 0 && <span className="pill">{count}</span>}<span aria-hidden="true" className="pf-caret">{open ? "−" : "+"}</span>
+        <span>{title}</span>{count > 0 && <span className="pill info">{count}</span>}<span aria-hidden="true" className="pf-caret"><Icon name="chevronDown" size={16} /></span>
       </button>
       {open && <div id={id} className="pf-body">{children}</div>}
     </div>
@@ -42,7 +44,7 @@ function Checks({ options, value = [], onChange, limit = 10, name }) {
           </label>
         );
       })}
-      {options.length > limit && <button type="button" className="linkish" onClick={() => setAll(!all)}>{all ? "Show fewer" : `Show all ${options.length}`}</button>}
+      {options.length > limit && <Button variant="ghost" size="sm" className="pf-more" onClick={() => setAll(!all)}>{all ? "Show fewer" : `Show all ${options.length}`}</Button>}
     </div>
   );
 }
@@ -51,11 +53,10 @@ function TextList({ label: text, value = [], onChange, placeholder, list }) {
   const [draft, setDraft] = useState(value.join(", "));
   const id = useId();
   return (
-    <>
-      <label htmlFor={id}>{text}</label>
-      <input id={id} value={draft} placeholder={placeholder} list={list} onChange={(e) => setDraft(e.target.value)}
+    <Field label={text}>
+      <Input id={id} value={draft} placeholder={placeholder} list={list} onChange={(e) => setDraft(e.target.value)}
         onBlur={() => onChange(splitText(draft))} onKeyDown={(e) => { if (e.key === "Enter") onChange(splitText(draft)); }} />
-    </>
+    </Field>
   );
 }
 
@@ -65,10 +66,10 @@ export default function ProspectFilters({ value, onChange, facets, kind, onClear
   const people = kind === "people";
   const num = (k) => (e) => set(k)(e.target.value === "" ? "" : Number(e.target.value));
   return (
-    <aside className="pf" aria-label="Filters" data-testid="prospect-filters">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <b>Filters</b>
-        {countFilters(value) > 0 && <button type="button" className="linkish" onClick={onClear}>Clear all</button>}
+    <aside className="pf card" aria-label="Filters" data-testid="prospect-filters">
+      <div className="pf-title">
+        <h3>Filters</h3>
+        {countFilters(value) > 0 && <Button variant="ghost" size="sm" onClick={onClear}>Clear all</Button>}
       </div>
       {people && (
         <Section title="Job title" count={(value.title?.length || 0) + (value.title_exclude?.length || 0)} open>
@@ -93,10 +94,11 @@ export default function ProspectFilters({ value, onChange, facets, kind, onClear
       <Section title="Company keywords" count={value.keywords?.length}><TextList label="Keywords (any)" value={value.keywords} onChange={set("keywords")} placeholder="saas, export" /></Section>
       <Section title="Buying signals" count={(value.signal_kinds?.length || 0) + (value.signal_days ? 1 : 0)}>
         <Checks name="Signal kinds" options={f.signal_kinds || []} value={value.signal_kinds} onChange={set("signal_kinds")} />
-        <label htmlFor="pf-sigdays">Within</label>
-        <select id="pf-sigdays" value={value.signal_days || ""} onChange={num("signal_days")}>
-          <option value="">Any time</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option>
-        </select>
+        <Field label="Within">
+          <Select id="pf-sigdays" value={value.signal_days || ""} onChange={num("signal_days")}>
+            <option value="">Any time</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option>
+          </Select>
+        </Field>
       </Section>
       {people && (
         <Section title="Email and phone" count={["verified_only", "has_email", "has_phone"].filter((k) => value[k]).length + (value.email_status?.length || 0)}>
@@ -107,18 +109,19 @@ export default function ProspectFilters({ value, onChange, facets, kind, onClear
         </Section>
       )}
       <Section title="Founded" count={(value.founded_min ? 1 : 0) + (value.founded_max ? 1 : 0)}>
-        <div className="row" style={{ flexWrap: "nowrap" }}>
-          <input aria-label="Founded from year" inputMode="numeric" placeholder="From" value={value.founded_min || ""} onChange={num("founded_min")} />
-          <input aria-label="Founded to year" inputMode="numeric" placeholder="To" value={value.founded_max || ""} onChange={num("founded_max")} />
+        <div className="pf-pair">
+          <Input aria-label="Founded from year" inputMode="numeric" placeholder="From" value={value.founded_min || ""} onChange={num("founded_min")} />
+          <Input aria-label="Founded to year" inputMode="numeric" placeholder="To" value={value.founded_max || ""} onChange={num("founded_max")} />
         </div>
       </Section>
       <Section title="Data" count={(value.source?.length || 0) + (value.updated_days ? 1 : 0) + (value.not_in_crm ? 1 : 0)}>
         <label className="pf-check"><input type="checkbox" checked={!!value.not_in_crm} onChange={(e) => set("not_in_crm")(e.target.checked)} /><span>Fresh only: not already in my leads (never contacted)</span></label>
-        <label htmlFor="pf-upd">Updated within</label>
-        <select id="pf-upd" value={value.updated_days || ""} onChange={num("updated_days")}>
-          <option value="">Any time</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option><option value="180">180 days</option>
-        </select>
-        <div className="sub" style={{ marginTop: 8 }}>Source</div>
+        <Field label="Updated within">
+          <Select id="pf-upd" value={value.updated_days || ""} onChange={num("updated_days")}>
+            <option value="">Any time</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option><option value="180">180 days</option>
+          </Select>
+        </Field>
+        <div className="pf-sub">Source</div>
         <Checks name="Source" options={f.sources || []} value={value.source} onChange={set("source")} />
       </Section>
     </aside>

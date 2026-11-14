@@ -1,0 +1,50 @@
+/* Shared patterns for the pages that moved onto the ui kit after Leads / Call desk: hit areas, small text, page toolbars,
+   list rows and tile grids. Loaded last so these win over the older generic rules. */
+small { font-size: var(--fs-xs); }
+b, strong { font-weight: 600; }
+
+/* row actions: a text link inside a table or list is a real 32px target; links inside a sentence stay inline */
+td .linkish, td button.link, li .linkish, li button.link, .th-sort, .hbar-row { display: inline-flex; align-items: center; min-height: 32px; }
+td .linkish, td button.link { max-width: 100%; }
+p .linkish, p button.link, .sub .linkish, .tip .linkish, .empty .linkish { display: inline; min-height: 0; }
+.th-sort { gap: 4px; }
+
+/* one toolbar pattern for every list page: search + selects + count */
+.page-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-bottom: var(--s3); }
+.page-toolbar > .field-wrap, .page-toolbar > input[type="search"] { flex: 2 1 240px; min-width: 0; }
+.page-toolbar > select { flex: 0 1 180px; width: auto; min-width: 0; }
+.page-toolbar .count { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); }
+@media (max-width: 760px) { .page-toolbar > select { flex: 1 1 calc(50% - 8px); } .page-toolbar .count { margin-left: 0; width: 100%; } }
+
+/* generic .toolbar (Lists, Companies, Prospect search): the Input wrapper and the selects share the row */
+.toolbar > .field-wrap { flex: 2 1 240px; min-width: 0; }
+.toolbar > .field-wrap > input { width: 100%; }
+.toolbar > select { flex: 0 1 200px; }
+@media (max-width: 760px) { .toolbar > select { flex: 1 1 100%; } }
+
+.tight-tabs { margin: 0; border-bottom: 0; }
+.block { display: block; }
+.row-actions { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); }
+
+/* Lists */
+.lists-grid { grid-template-columns: minmax(0, 1fr); align-items: start; }
+.lists-grid .list-picker { max-width: 640px; }
+.lists-table { table-layout: fixed; min-width: 1020px; }
+.lists-table .c-list { width: 210px; } .lists-table .c-assign { width: 150px; } .lists-table .c-leads { width: 80px; }
+.lists-table .c-stat { width: 240px; } .lists-table .c-acts { width: 300px; }
+.lists-table td.c-list .linkish { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lists-table td { vertical-align: top; }
+.list-picker { display: grid; gap: var(--s3); align-content: start; }
+.list-picker .ui-card-head { margin-bottom: 0; }
+.picklist { max-height: 280px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--s1) var(--s3); }
+.pick-row { display: flex; align-items: center; gap: var(--s3); margin: 0; padding: var(--s2) 0; min-height: 40px; font-weight: 400; cursor: pointer; border-bottom: 1px solid var(--line); }
+.pick-row:last-child { border-bottom: 0; }
+.pick-text { display: grid; min-width: 0; }
+.pick-text b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-create { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.list-create > input, .list-create > .field-wrap { flex: 1 1 200px; width: auto; }
+.list-banner { border-left: 4px solid var(--brand); margin-bottom: var(--s4); }
+.list-members { table-layout: fixed; min-width: 640px; }
+.list-members .c-pick { width: 44px; } .list-members .c-lead { width: 230px; } .list-members .c-contact { width: 200px; }
+.list-members td { vertical-align: top; }
+.row-actions .btn, td .row-actions .btn + .btn { margin: 0; }
