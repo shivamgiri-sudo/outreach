@@ -181,7 +181,7 @@ def seq_status(live, lead_id):
 
 
 def open_up(live, **extra):
-    live.call("/api/linkedin-agent", "PUT", {"enabled": True, "start_hour": 0, "end_hour": 24, "weekdays_only": False, "gap_minutes": 3, **extra})
+    live.call("/api/linkedin-agent", "PUT", {"enabled": True, "start_hour": 0, "end_hour": 24, "weekdays_only": False, "days": [0, 1, 2, 3, 4, 5, 6], "gap_minutes": 3, **extra})
 
 
 @needs_browser
