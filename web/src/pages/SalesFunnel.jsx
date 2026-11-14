@@ -9,6 +9,7 @@ import SalesSettings from "./SalesSettings.jsx";
 import { FunnelHealth, SpeedDiscipline, StatusStrip, Tiles } from "./SalesFunnelParts.jsx";
 import { AttributionPeople, ClosedRevenue, PipelineForecast } from "./SalesFunnelMore.jsx";
 import HelpLink from "../components/HelpLink.jsx";
+import CallTrackerFunnel from "./CallTrackerFunnel.jsx";
 import "../funnel.css";
 
 const POLL_MS = 60000;
@@ -103,6 +104,7 @@ export default function SalesFunnel() {
         <>
           <StatusStrip data={data} refreshedAt={refreshed || clock()} failed={failed} />
           <Tiles tiles={data.snapshot} onDrill={onDrill} ids={snapshotIds} />
+          <CallTrackerFunnel from={f.from} to={f.to} />
           <FunnelHealth data={data} onDrill={onDrill} />
           <SpeedDiscipline data={data} onDrill={onDrill} />
           <PipelineForecast data={data} onDrill={onDrill} />

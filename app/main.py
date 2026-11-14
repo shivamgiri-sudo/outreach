@@ -265,6 +265,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     from . import accounts as accounts_mod
     from . import account_limits as account_limits_mod
     accounts_mod.migrate(store)               # existing data becomes account "mcn" (settings only; idempotent)
+    from . import calltracker as calltracker_mod
     ensure_cutover(store)                     # signed unsubscribe links start now; older unsigned ones get 60 days
     source_names.backfill(store)              # adds source_id next to source on older leads (idempotent, never rewrites source)
 
@@ -285,6 +286,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                                                  webhook_secret(store, routes_growth.WEBHOOK_SECRET).encode("utf-8")))
                      # Integrations hub: only the exact webhook / OAuth-callback routes, and only when their secret checks out.
                      or (path.startswith(("/api/webhooks/", "/api/oauth/")) and await gate_allows(store, request))
+                     # Call Tracker webhooks: only for a connection that exists; the route checks its signature, timestamp, replays.
+                     or (path.startswith("/api/calltracker/hook/") and request.method == "POST"
+                         and calltracker_mod.by_id(store, path.rsplit("/", 1)[-1][:40]) is not None)
                      # Lead capture: only the exact public capture addresses, and only when the token / signature / key checks out.
                      or (path.startswith("/api/inbound/") and await inbound_auth.gate_allows(store, request)))
         if open_path:
@@ -683,6 +687,10 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_linkedin_runner_router(store, cloud_router))
     app.include_router(make_sources_router(store, campaign_io))
     app.include_router(make_email_gate_router(store, campaign_io))
+    from .routes_calltracker import make_router as make_calltracker_router
+    app.include_router(make_calltracker_router(store, BASE_URL))
+    if any(j.get("status") == "pending" for j in store.read("ct_outbox")):
+        calltracker_mod.kick(store)               # pushes queued before a restart carry on
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender, capture_runner=lambda: run_sheet_syncs(store, capture_sheet_fetcher),
                          campaign_runner=lambda now: run_due_campaigns(

@@ -301,6 +301,7 @@ export default function LeadActivity({ lead, onChanged }) {
                       {item.status ? ` · ${String(item.status).replace(/_/g, " ")}` : ""}</>}
                     {item.to ? ` · to ${item.to}` : ""}{item.detail ? ` · ${item.detail}` : ""}
                     {item.due_at ? ` · due ${istLabel(item.due_at)}` : ""}{item.start ? ` · ${istLabel(item.start)}` : ""}
+                    {/^https:\/\//.test(item.link || "") && <> · <a href={item.link} target="_blank" rel="noreferrer" data-testid="ct-call-link">{item.link_label || "Open"}</a></>}
                   </div>
                   {item.body && (
                     <p className="trail-text">{open === key || !long ? item.body : `${item.body.slice(0, 140)}…`}

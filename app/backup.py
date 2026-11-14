@@ -38,7 +38,7 @@ MAX_JSON_BYTES = 1024 * 1024 * 1024            # after unpacking: refuses "zip b
 SEND_RUN_WAIT_SECONDS = 30
 LIVE_FLAGS = ("live_sending", "live_whatsapp", "live_sms")
 DROPPED_KEYS = ("tokens", "webhook_tokens")    # OAuth tokens and webhook secrets inside integrations
-SCRUBBED_COLLECTIONS = ("integrations", "users")
+SCRUBBED_COLLECTIONS = ("integrations", "users", "ct_connections")
 DROPPED_COLLECTIONS = ("sessions",)
 # settings that hold login credentials: password hashes, runner token hashes, the pending runner pairing code
 LOGIN_HASH_FIELDS = {"users": ("password_hash", "two_step_secret", "two_step_pending", "two_step_recovery"),

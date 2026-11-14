@@ -100,7 +100,8 @@ const OWNER_PAGES = new Set(["engine"]);
 // A login limited to some workspaces sees only pages built from its own workspace's leads (the server refuses the rest).
 const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "funnel", "replies", "calls", "calllog", "leaderboard", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports", "linkedin", "flows"]);
 const isLimited = (me) => me.role !== "owner" && ((me.workspaces || []).length > 0 || me.role === "admin");
-const pageAllowed = (me, id) => (me.role === "owner" || !OWNER_PAGES.has(id)) && (!isLimited(me) || LIMITED_PAGES.has(id));
+// A workspace admin also opens Integrations, for its own workspace's Call Tracker connection (the server checks the workspace).
+const pageAllowed = (me, id) => (me.role === "owner" || !OWNER_PAGES.has(id)) && (!isLimited(me) || LIMITED_PAGES.has(id) || (id === "integrations" && me.role === "admin"));
 const GROUPS = GROUPS_ALL.map(([g, ids]) => [g, ids.filter((id) => BY_ID[id])]).filter(([, ids]) => ids.length);
 // Old links to the separate Go live page now open the checklist inside Setup.
 const ALIASES = { golive: "setup" };

@@ -26,6 +26,7 @@ RATE_LIMITS = (
     ("/demo/", False, 60),
     ("/api/webhooks/", False, 120),
     ("/api/inbound/", False, 120),
+    ("/api/calltracker/hook/", False, 240),          # Call Tracker webhooks (signature checked in app/calltracker_events.py)
     ("/api/activation/event", True, 120),
     ("/api/linkedin-runner/pair", True, 10),        # office runner pairing codes: wrong guesses are also capped per address and code
     ("/api/linkedin-runner/install", False, 20),

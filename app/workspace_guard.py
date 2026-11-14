@@ -93,6 +93,8 @@ LIMITED_OK = {
     ("PUT", "/api/lists/{list_id}/assign"), ("POST", "/api/lists/{list_id}/split"), ("PUT", "/api/lists/{list_id}/share"),
     ("GET", "/api/ownership-mode"), ("PUT", "/api/ownership-mode"), ("GET", "/api/ownership/report"), ("GET", "/api/ownership/preview"), ("POST", "/api/ownership/migrate"),
     ("POST", "/api/ownership/fix-owners"),
+    ("GET", "/api/calltracker"), ("PUT", "/api/calltracker"), ("DELETE", "/api/calltracker"), ("POST", "/api/calltracker/test"),
+    ("POST", "/api/calltracker/retry"), ("GET", "/api/calltracker/funnel"),      # own workspaces only (app/routes_calltracker.py)
     ("POST", "/api/import/preview"), ("POST", "/api/import/excel"), ("POST", "/api/import/commit"), ("GET", "/api/import/history"), ("POST", "/api/import/{import_id}/undo"),
 }
 # The LinkedIn agent program's calls, for a pairing / slot token of a client account only (never a web login): its own
