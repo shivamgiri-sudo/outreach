@@ -23,6 +23,7 @@ import AccountUsage from "./setup/AccountUsage.jsx";
 import { isClient } from "../api.js";
 import HelpLink from "../components/HelpLink.jsx";
 import "../setup.css";
+import { PageHeader } from "../ui/index.js";
 
 const OWNER = ["owner"];
 const ADMINS = ["owner", "admin"];
@@ -96,7 +97,7 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
 
   return (
     <div className="setup">
-      <h2 className="setup-title">Setup</h2>
+      <PageHeader title="Setup" description={description} />
       <div className="setup-grid">
         <nav className="setup-nav" aria-label="Setup sections">
           {groups.map(([g, list]) => (
@@ -117,9 +118,11 @@ export default function Setup({ onSetupChanged, go, tab: initialTab, role = "own
         </div>
         <div className="setup-body">
           <header className="setup-head">
-            <p className="setup-kicker">{group} <HelpLink chapter={`setup-${section}`} label={title} /></p>
-            <h2 data-testid="setup-section-title">{title}</h2>
-            <p className="setup-desc">{description}</p>
+            <div className="setup-head-row">
+              <h3 data-testid="setup-section-title">{title}</h3>
+              <span className="eyebrow">{group}</span>
+              <HelpLink chapter={`setup-${section}`} label={title} />
+            </div>
             {summary && <p className="setup-summary" data-testid="setup-summary"><b>{done} of {items.length}</b> connected. Everything works without these; connect each one when you are ready.</p>}
           </header>
           {section === "account" && <div className="setup-stack"><OwnPassword /><TwoStepCard /></div>}

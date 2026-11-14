@@ -120,7 +120,7 @@ tr.click:hover, .ui-table tbody tr:hover { background: color-mix(in srgb, var(--
 .th-sort.on { color: var(--brand); }
 
 /* ---------- pills and badges ---------- */
-.pill, .ui-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 600; line-height: 1.6; background: var(--neutral-bg); color: var(--ink); white-space: nowrap; }
+.pill, .ui-badge { font-family: var(--font-body); letter-spacing: 0; display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 600; line-height: 1.6; background: var(--neutral-bg); color: var(--ink); white-space: nowrap; }
 .pill.hot { background: var(--hot-bg); color: var(--hot); }
 .pill.warm, .pill.warn { background: var(--warn-bg); color: var(--warn); }
 .pill.ok { background: var(--ok-bg); color: var(--ok); }
@@ -213,3 +213,38 @@ tr.click:hover, .ui-table tbody tr:hover { background: color-mix(in srgb, var(--
 .src-bar .bar { flex: none; }
 .today { margin-top: var(--s4); }
 .today-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+
+/* card-internal layout helpers (Outbox, Setup, Integrations) */
+.form-grid { display: grid; gap: var(--s3) var(--s4); grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.form-grid .wide { grid-column: 1 / -1; }
+.card-actions { margin-top: var(--s3); }
+.switch-block { display: grid; gap: var(--s2); margin-top: var(--s3); }
+.switch-block + .switch-block { padding-top: var(--s3); border-top: 1px solid var(--line); }
+.switch-block .sub { margin: 0; font-size: var(--fs-sm); }
+.section-title { margin: var(--s5) 0 var(--s3); }
+.confirm-input { max-width: 220px; }
+.live-card.is-on { border-left: 4px solid var(--ok); }
+main > .card, main > .tip, main > .ui-strip, main > .ui-card, main > .grid { margin-bottom: var(--s4); }
+main > .tip { margin-top: 0; }
+main > .tabs { margin-bottom: var(--s4); }
+.m0 { margin: 0; } .my-2 { margin-block: var(--s2); } .mt-3 { margin-top: var(--s3); } .mt-4 { margin-top: var(--s4); } .mt-5 { margin-top: var(--s5); } .mb-3 { margin-bottom: var(--s3); }
+.row.between { justify-content: space-between; }
+.card.tight { padding: var(--s3); }
+.card-summary { cursor: pointer; font-weight: 600; font-family: var(--font-head); }
+.filter-card { padding: var(--s3); margin-bottom: var(--s3); }
+.filter-card select, .filter-card input[type="date"] { width: auto; }
+.filter-card input.grow { flex: 1 1 200px; width: auto; }
+.inline-label { gap: var(--s1); margin: 0; font-weight: 500; }
+.table-card { padding: 0; overflow-x: auto; }
+.email-body { white-space: pre-wrap; word-break: break-word; font: inherit; margin: 0; background: none; border: 0; padding: 0; }
+.email-frame { width: 100%; height: 65vh; border: 1px solid var(--line); border-radius: var(--r-sm); background: #fff; }
+.card p.sub { margin: 0 0 var(--s3); }
+.card p.sub:last-child { margin-bottom: 0; }
+td .btn, td .btn.ghost { min-height: var(--h-ctl-sm); padding: 0 var(--s3); font-size: var(--fs-sm); }
+td .btn + .btn, td .pill + .btn { margin-left: var(--s1); }
+.progress-bar { margin-top: var(--s2); height: 8px; }
+.check-section { margin-top: var(--s5); display: grid; gap: var(--s2); }
+.check-section h3 { margin: 0; }
+.check-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s3) var(--s4); box-shadow: none; }
+.check-text { flex: 1 1 260px; min-width: 0; display: grid; gap: 2px; }
+.check-text .sub { margin: 0; }

@@ -21,28 +21,28 @@ function EmailViewer({ itemKey, onClose, onOpenLead }) {
       <div className="scrim" onClick={onClose} aria-hidden="true" />
       <aside className="drawer" role="dialog" aria-modal="true" aria-label="Email">
         <div className="drawer-head">
-          <div><h2 style={{ margin: 0 }}>{m?.subject || "Email"}</h2>
+          <div><h2 className="m0">{m?.subject || "Email"}</h2>
             {m && <small className="sub-inline">To {m.to} · {m.step} · {istLabel(m.sent_at)}{m.by ? ` · by ${m.by}` : ""}</small>}</div>
           <button className="btn ghost" onClick={onClose} aria-label="Close">Close</button>
         </div>
         {error && <div className="tip error" role="alert">{error}</div>}
         {!m ? !error && <p className="empty">Loading…</p> : (
           <>
-            <div className="row" style={{ marginBottom: 10, flexWrap: "wrap" }}>
+            <div className="row mb-3">
               <span className={`pill ${STATUS_PILL[m.delivered_at ? "delivered" : m.status] ?? "warn"}`}>{m.delivered_at ? "delivered" : STATUS_LABEL[m.status] || m.status}</span>
               <OriginPill type={m.origin_type} label={m.origin_label} actor={m.origin_actor} />
               {m.campaign && <span className="pill">{m.campaign}</span>}
               {m.lead_id && <button className="btn ghost" onClick={() => onOpenLead(m.lead_id)}>Open lead{m.company ? `: ${m.company}` : ""}</button>}
             </div>
             {m.error && <div className="tip error">{m.error}</div>}
-            <div className="card" style={{ padding: 10, marginBottom: 10 }} data-testid="why-panel"><b>Why it was sent</b><WhyList lines={m.why} /></div>
+            <div className="card flat tight mb-3" data-testid="why-panel"><b>Why it was sent</b><WhyList lines={m.why} /></div>
             <div className="tabs" role="tablist" aria-label="Email view">
               <button role="tab" aria-selected={view === "text"} className={view === "text" ? "on" : ""} onClick={() => setView("text")}>Text as sent</button>
               <button role="tab" aria-selected={view === "html"} className={view === "html" ? "on" : ""} disabled={!m.html} onClick={() => setView("html")}>Designed preview</button>
             </div>
             {view === "text"
-              ? <pre data-testid="email-body" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", font: "inherit", margin: 0 }}>{m.body || "(no text kept)"}</pre>
-              : <iframe title="Designed email preview" srcDoc={m.html} sandbox="" style={{ width: "100%", height: "65vh", border: "1px solid var(--line)", borderRadius: 10, background: "#fff" }} />}
+              ? <pre data-testid="email-body" className="email-body">{m.body || "(no text kept)"}</pre>
+              : <iframe title="Designed email preview" srcDoc={m.html} sandbox="" className="email-frame" />}
           </>
         )}
       </aside>
@@ -68,35 +68,35 @@ export default function OutboxTable({ refreshKey }) {
   const any = Object.values(filters).some(Boolean);
   return (
     <>
-      <div className="card" style={{ marginBottom: 10, padding: 12 }} data-testid="outbox-filters">
-        <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
-          <input aria-label="Search to, subject or company" placeholder="Search to, subject, company" value={filters.q} onChange={(e) => set("q", e.target.value)} style={{ flex: "1 1 180px" }} />
-          <select aria-label="Status" value={filters.status} onChange={(e) => set("status", e.target.value)} style={{ width: "auto" }}>
+      <div className="card filter-card" data-testid="outbox-filters">
+        <div className="row">
+          <input aria-label="Search to, subject or company" placeholder="Search to, subject, company" value={filters.q} onChange={(e) => set("q", e.target.value)} className="grow" />
+          <select aria-label="Status" value={filters.status} onChange={(e) => set("status", e.target.value)}>
             <option value="">Any status</option><option value="sent">Sent</option><option value="delivered">Delivered</option>
             <option value="practice">Practice</option><option value="failed">Failed</option>
           </select>
-          <select aria-label="Step" value={filters.step} onChange={(e) => set("step", e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Step" value={filters.step} onChange={(e) => set("step", e.target.value)}>
             <option value="">Any step</option>{(data?.steps || []).map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-          <select aria-label="Campaign" value={filters.campaign_id} onChange={(e) => set("campaign_id", e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Campaign" value={filters.campaign_id} onChange={(e) => set("campaign_id", e.target.value)}>
             <option value="">Any campaign</option>{(data?.campaigns || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select aria-label="Kind" value={filters.kind} onChange={(e) => set("kind", e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Kind" value={filters.kind} onChange={(e) => set("kind", e.target.value)}>
             <option value="">Sequence and one-off</option><option value="sequence">Sequence only</option><option value="manual">One-off (manual) only</option>
           </select>
-          <select aria-label="Who sent it" value={filters.origin} onChange={(e) => set("origin", e.target.value)} style={{ width: "auto" }}>
+          <select aria-label="Who sent it" value={filters.origin} onChange={(e) => set("origin", e.target.value)}>
             <option value="">Automatic and manual</option><option value="automatic">Automatic (System) only</option>
             <option value="manual">Manual (a person) only</option><option value="unknown">Before audit tracking</option>
           </select>
-          <label className="row" style={{ gap: 4, margin: 0 }}>From <input type="date" aria-label="Sent from (IST day)" value={filters.from} onChange={(e) => set("from", e.target.value)} style={{ width: "auto" }} /></label>
-          <label className="row" style={{ gap: 4, margin: 0 }}>To <input type="date" aria-label="Sent to (IST day)" value={filters.to} onChange={(e) => set("to", e.target.value)} style={{ width: "auto" }} /></label>
+          <label className="row inline-label">From <input type="date" aria-label="Sent from (IST day)" value={filters.from} onChange={(e) => set("from", e.target.value)} /></label>
+          <label className="row inline-label">To <input type="date" aria-label="Sent to (IST day)" value={filters.to} onChange={(e) => set("to", e.target.value)} /></label>
           {any && <button className="btn ghost" onClick={() => { setFilters(EMPTY); setPage(1); }}>Clear filters</button>}
           {mayExport && <button className="btn ghost" data-testid="export-audit" title="These emails with who or which rule sent each one, and why" onClick={exportCsv}>Download with why (CSV)</button>}
         </div>
         {exportMsg && <div className="tip error" role="alert">{exportMsg}</div>}
       </div>
       {error && <div className="tip error" role="alert">{error}</div>}
-      <div className="card" style={{ padding: 0, overflowX: "auto" }}>
+      <div className="card table-card">
         {!data ? <p className="empty">Loading…</p> : data.items.length === 0 ? (
           <p className="empty">{any ? "No emails match these filters." : "Nothing queued yet. Start a sequence from a lead, then click Run."}</p>
         ) : (
@@ -126,9 +126,9 @@ export default function OutboxTable({ refreshKey }) {
         )}
       </div>
       {data && data.total > 0 && (
-        <div className="row" style={{ justifyContent: "space-between", marginTop: 8, flexWrap: "wrap" }}>
+        <div className="row between mt-3">
           <small className="sub-inline">{data.total} email{data.total === 1 ? "" : "s"}{data.total !== data.all ? ` of ${data.all}` : ""} · page {data.page} of {data.pages}</small>
-          <span className="row" style={{ gap: 6 }}>
+          <span className="row">
             <button className="btn ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
             <button className="btn ghost" disabled={page >= data.pages} onClick={() => setPage(page + 1)}>Next</button>
           </span>
