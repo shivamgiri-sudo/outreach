@@ -1,0 +1,31 @@
+/* Call desk: queue card with tabs, script card, and the one-lead-at-a-time dialer. */
+.best-time { margin-top: calc(-1 * var(--s3)); }
+.queue-card { padding: 0; overflow: hidden; align-self: start; }
+.queue-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s4) var(--s4) var(--s3); }
+.queue-mine { display: flex; margin: 0; font-weight: 500; }
+.queue-card .tabs { padding: 0 var(--s4); margin-bottom: 0; }
+.queue-card .ui-table-wrap { border-top: 0; }
+.queue-card td a { font-weight: 500; }
+.script-card { align-self: start; position: sticky; top: 72px; }
+.dialer-grid { align-items: start; }
+.dialer-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); }
+.dialer-company { margin: var(--s3) 0 var(--s1); font-size: var(--fs-xl); }
+.dialer-meta { margin: 0 0 var(--s3); }
+.dial-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin: var(--s3) 0; }
+.btn.dial-btn { min-height: 52px; padding: 0 var(--s6); font-size: var(--fs-lg); }
+.btn.ghost.dial-btn { color: var(--brand); }
+.dial-note { display: block; margin-bottom: var(--s2); }
+.dial-notes-list { padding-left: 18px; margin: var(--s2) 0; }
+.dial-inline { display: flex; gap: var(--s2); margin: var(--s2) 0 0; }
+.dial-inline select, .dial-inline input { width: auto; flex: 1 1 200px; }
+.outcome-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s2); margin-top: var(--s3); }
+.outcome-grid .btn { min-height: var(--h-touch); padding: 0 var(--s3); white-space: normal; text-align: center; }
+p.error { color: var(--danger); font-weight: 500; }
+@media (max-width: 760px) {
+  .script-card { position: static; }
+  .outcome-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .btn.dial-btn { flex: 1 1 100%; }
+}
+.queue-card .tabs { gap: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.queue-card .tabs button { padding: 0 10px; font-size: var(--fs-sm); }
+.dialer-meta .pill { margin-right: 4px; }

@@ -6,5 +6,6 @@ import "./ui.css";
 import "./shell.css";
 import "./ux.css";
 import "./leads.css";
+import "./calls.css";
 
 createRoot(document.getElementById("root")).render(<App />);

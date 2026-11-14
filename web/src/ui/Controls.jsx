@@ -47,7 +47,7 @@ export function Tabs({ items, value, onChange, label, className }) {
   return (
     <div className={cx("tabs", className)} role="tablist" aria-label={label}>
       {items.map((t) => (
-        <button key={t.id} type="button" role="tab" aria-selected={value === t.id} className={value === t.id ? "on" : ""} onClick={() => onChange(t.id)}>
+        <button key={t.id} type="button" role="tab" data-testid={t.testId} aria-selected={value === t.id} className={value === t.id ? "on" : ""} onClick={() => onChange(t.id)}>
           {t.icon && <Icon name={t.icon} size={16} />}{t.label}{t.count != null && <span className="pill">{t.count}</span>}
         </button>
       ))}
