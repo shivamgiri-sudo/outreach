@@ -97,15 +97,6 @@ label > select, label > input, label > textarea { margin-top: 4px; font-weight: 
 .tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; cursor: pointer; color: var(--muted); font-weight: 600; }
 .tabs button.on { color: var(--brand); border-bottom-color: var(--brand); }
 
-/* ---------- leads toolbar, bulk bar, table ---------- */
-.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
-.toolbar input { flex: 2 1 240px; width: auto; }
-.toolbar select { flex: 1 1 150px; width: auto; }
-.bulkbar { position: sticky; top: 8px; z-index: 2; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 14px; margin-bottom: 12px; border-radius: var(--r-md); background: var(--brand-soft); border: 1px solid var(--line); box-shadow: var(--shadow); }
-.table-card { padding: 0; overflow-x: auto; }
-.th-sort { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; }
-td.pick, .leads-table th:first-child { width: 36px; }
-
 /* ---------- today ---------- */
 .today { margin-top: 16px; }
 .today-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
@@ -341,20 +332,13 @@ details.section summary { cursor: pointer; font-weight: 700; }
 }
 
 /* ---------- find & enrich leads ---------- */
-.find-card { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 16px 0; border-left: 4px solid var(--cta); }
-.find-card-text { flex: 1 1 260px; min-width: 0; }
 .find-conn { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
 .find-limits { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 10px; }
 .find-track { height: 12px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 8px; }
 .find-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--brand), var(--brand-2)); transition: width .4s ease; }
 .find-modes legend { margin-bottom: 4px; }
-@media (max-width: 640px) { .find-card .btn { width: 100%; } }
 
 /* Lead sources and lead capture */
-.multi-filter { position: relative; flex: 1 1 150px; }
-.multi-filter summary { list-style: none; cursor: pointer; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel); }
-.multi-filter summary::-webkit-details-marker { display: none; }
-.multi-pop { position: absolute; z-index: 5; margin-top: 4px; min-width: 240px; max-width: min(90vw, 340px); max-height: 320px; overflow: auto; display: grid; gap: 8px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: var(--shadow); }
 .origin-list { margin: 0; padding-left: 20px; display: grid; gap: 10px; }
 .origin-attrs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 4px 12px; margin: 4px 0 0; font-size: var(--fs-xs); }
 .origin-attrs dt { color: var(--muted); } .origin-attrs dd { margin: 0; overflow-wrap: anywhere; }
@@ -372,16 +356,10 @@ details.section summary { cursor: pointer; font-weight: 700; }
   .source-table tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
   .source-table td { border: 0; padding: 2px 0; }
   .source-table td[data-label]:not([data-label="Source"])::before { content: attr(data-label) ": "; color: var(--muted); font-size: var(--fs-xs); }
-  .multi-pop { position: static; box-shadow: none; }
-}
+  }
 
 /* ---------- layout polish (2026-11-04) ---------- */
 .gw { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr)); align-items: start; }
-.toolbar input[type="checkbox"] { flex: none; width: auto; }
-.toolbar label.row { flex: none; white-space: nowrap; }
-.toolbar .sub { white-space: nowrap; }
-.pager { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; padding: 12px 16px; border-top: 1px solid var(--line); }
-.pager select { width: auto; }
 .row > div:has(> label) { flex: 1 1 220px; min-width: 0; }
 .row > div:has(> label) > input:not([type="checkbox"]), .row > div:has(> label) > select { width: 100%; }
 td, th { vertical-align: middle; }
@@ -405,8 +383,7 @@ td small { color: var(--muted); overflow-wrap: anywhere; }
 .grid:not(.g4) { align-items: start; }
 .card table td:first-child:not(.pick) { min-width: 120px; }
 @media (max-width: 640px) {
-  .find-card { align-items: stretch; }
-  .find-card > svg, .find-card > .find-icon, .find-card > span:first-child:not(.find-card-text) { display: none; }
+    .find-card > svg, .find-card > .find-icon, .find-card > span:first-child:not(.find-card-text) { display: none; }
   .row > input:not([type="checkbox"]):not([type="radio"]), .row > select { flex-basis: 100%; }
 }
 @media (max-width: 640px) { .fb-name { flex: 1 1 100%; order: 3; } }

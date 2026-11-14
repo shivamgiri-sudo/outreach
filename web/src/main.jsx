@@ -5,5 +5,6 @@ import "./styles.css";
 import "./ui.css";
 import "./shell.css";
 import "./ux.css";
+import "./leads.css";
 
 createRoot(document.getElementById("root")).render(<App />);

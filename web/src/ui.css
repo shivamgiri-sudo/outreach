@@ -100,7 +100,7 @@ label > select, label > input, label > textarea { margin-top: var(--s1); font-we
 .ui-strip .actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
 
 /* ---------- tables ---------- */
-table { width: 100%; border-collapse: collapse; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
 th, td { text-align: left; padding: 10px var(--s3); border-bottom: 1px solid var(--line); vertical-align: middle; }
 th { color: var(--muted); font-weight: 600; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; background: var(--panel); }
 td small { color: var(--muted); overflow-wrap: anywhere; }
@@ -197,4 +197,19 @@ tr.click:hover, .ui-table tbody tr:hover { background: color-mix(in srgb, var(--
   .ui-pop-panel { position: fixed; left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 75vh; }
   .ui-toasts { left: var(--s3); right: var(--s3); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); max-width: none; }
 }
-@media (max-width: 760px) { h2 { font-size: var(--fs-xl); } .stat b, .ui-stat b { font-size: var(--fs-2xl); } }
+@media (max-width: 760px) { .page-head-actions { width: 100%; } .page-head-actions .btn, .ui-strip .actions .btn { flex: 1 1 auto; } .ui-strip .actions { width: 100%; } h2 { font-size: var(--fs-xl); } .stat b, .ui-stat b { font-size: var(--fs-2xl); } }
+
+/* generic filter toolbar (Lists, Prospect search); the Leads page has its own in leads.css */
+.toolbar { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; margin-bottom: var(--s3); }
+.toolbar input:not([type="checkbox"]) { flex: 2 1 240px; width: auto; }
+.toolbar select { flex: 1 1 150px; width: auto; }
+.toolbar label.row { flex: none; white-space: nowrap; margin: 0; }
+.toolbar .sub { white-space: nowrap; margin: 0; }
+.find-strip .stat-icon { flex: none; width: 32px; height: 32px; }
+.find-strip .grow b { color: var(--ink); margin-right: var(--s2); }
+.dash-tip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin: var(--s4) 0; }
+.dash-grid { margin-top: var(--s4); }
+.src-bar { gap: var(--s2); flex-wrap: nowrap; }
+.src-bar .bar { flex: none; }
+.today { margin-top: var(--s4); }
+.today-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }

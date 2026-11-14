@@ -1211,7 +1211,8 @@ await step("Lead capture: the lead is on Leads with its source label, campaign a
   await row.getByText("Webhook (Zapier / Make / n8n)").waitFor();
   await row.getByText("Inbound", { exact: true }).waitFor();
   await row.getByText("diwali-e2e").waitFor();
-  await page.locator("details.multi-filter summary").click();
+  await page.locator("summary[aria-label='More filters']").click();
+  await page.locator("details.multi-filter summary").first().click();
   await page.getByRole("group", { name: "Sources" }).getByLabel(/Webhook \(Zapier/).check();
   await page.locator("tr.click").first().waitFor();
   const filtered = await page.locator("tr.click").count();
@@ -1220,7 +1221,7 @@ await step("Lead capture: the lead is on Leads with its source label, campaign a
   if (await page.locator("tr.click").count() !== 2) throw new Error("inbound only should still show both");
   await page.getByLabel("Inbound only").uncheck();
   await page.getByRole("button", { name: "Clear sources" }).click();
-  await page.locator("details.multi-filter summary").click();
+  await page.locator("details.multi-filter summary").first().click();
   await shot("12-leads-source-filter");
 });
 await step("Lead capture: the lead drawer shows where it came from", async () => {
