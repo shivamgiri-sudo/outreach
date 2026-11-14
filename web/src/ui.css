@@ -138,12 +138,10 @@ tr.click:hover, .ui-table tbody tr:hover { background: color-mix(in srgb, var(--
 .ui-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 
 /* ---------- tabs, segmented control, chip tabs ---------- */
-.tabs { display: flex; gap: var(--s1); margin: 0 0 var(--s4); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
-.tabs::-webkit-scrollbar { display: none; }
+.tabs { display: flex; gap: var(--s1); margin: 0 0 var(--s4); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: 0 var(--s3); min-height: var(--h-ctl); cursor: pointer; color: var(--muted); font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; transition: color .18s, border-color .18s; }
 .tabs button:hover { color: var(--ink); }
 .tabs button.on, .tabs button[aria-selected="true"] { color: var(--brand); border-bottom-color: var(--brand); }
-.tabs.scroll { flex-wrap: nowrap; }
 .tab-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; }
 .tab-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--s2) 0; }
 .tab-chip { border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: var(--r-pill); padding: 0 14px; min-height: var(--h-ctl-sm); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; transition: background-color .18s, color .18s, border-color .18s; }

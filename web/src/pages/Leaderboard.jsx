@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { Empty, ErrorState } from "../states.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const PERIODS = [["today", "Today"], ["yesterday", "Yesterday"], ["week", "This week"], ["month", "This month"]];
 const MAX_DAYS = 92;
@@ -54,8 +55,8 @@ export default function Leaderboard() {
 
   return (
     <>
-      <h2>Leaderboard</h2>
-      <p className="sub">Who is calling, how many get through and how each person is doing against their daily target. Dates are IST. Marking a lead Invalid or Consultant is shown as Marked and does not count as a call.</p>
+      <PageHeader title="Leaderboard"
+        description="Who is calling, how many get through and how each person is doing against their daily target. Dates are IST. Marking a lead Invalid or Consultant is shown as Marked and does not count as a call." />
 
       <div className="tab-chips" role="group" aria-label="Period">
         {PERIODS.map(([id, text]) => (

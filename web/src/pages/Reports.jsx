@@ -8,6 +8,7 @@ import LeadDrawer from "./LeadDrawer.jsx";
 import ResponseTimes from "./ResponseTimes.jsx";
 import HelpLink from "../components/HelpLink.jsx";
 import Abbr from "../components/Abbr.jsx";
+import { PageHeader } from "../ui/index.js";
 
 // Reports: the daily report (what was done each day), each person's numbers, and the full activity log with the exact
 // number / email / LinkedIn profile used. Download as CSV (owners and workspace admins).
@@ -51,8 +52,8 @@ export default function Reports() {
   const t = data?.totals || {};
   return (
     <>
-      <h2>Reports <HelpLink chapter="reports" label="Reports" /></h2>
-      <p className="sub">What was done each day and by whom. Times are India Standard Time. Every number comes from the activity log below.</p>
+      <PageHeader title="Reports" help="reports" helpLabel="Reports"
+        description="What was done each day and by whom. Times are India Standard Time. Every number comes from the activity log below." />
       <PeriodPicker value={period} onChange={setPeriod} range={data?.range} />
       <div className="row" style={{ gap: 10, flexWrap: "wrap", margin: "8px 0" }}>
         <label className="row" style={{ gap: 6, margin: 0 }}>Person

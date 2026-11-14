@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, canWrite } from "../api.js";
+import { PageHeader } from "../ui/index.js";
 
 const EMPTY = { title: "", industry: "", result: "", quote: "", permission: false };
 
@@ -14,8 +15,8 @@ export default function Stories() {
 
   return (
     <>
-      <h2>Success stories</h2>
-      <p className="sub">Only real results with the customer's permission. Stories without permission are never sent.</p>
+      <PageHeader title="Success stories"
+        description="Only real results with the customer's permission. Stories without permission are never sent." />
       <div className="grid g2">
         {canWrite() && <div className="card">
           <h3 style={{ marginTop: 0 }}>Add a story</h3>

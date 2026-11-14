@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import IcpCard from "./IcpCard.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const TRUST_PILL = { confirmed: "ok", published: "ok", published_doubtful: "warn", published_mismatch: "warn", invalid: "warn", guess_mx: "", guess_risky: "warn", guess_rejected: "warn", none: "" };
 const TRUST_SHORT = { confirmed: "Confirmed", published: "Published", published_doubtful: "Doubtful", published_mismatch: "Wrong company?", invalid: "Invalid", guess_mx: "Guess", guess_risky: "Risky guess", guess_rejected: "Rejected", none: "No email" };
@@ -35,8 +36,8 @@ export default function HiringEngine() {
 
   return (
     <>
-      <h2>Hiring engine</h2>
-      <p className="sub">One pass that turns a company's hiring signal into the right person and an email, and says honestly how far each result can be trusted.</p>
+      <PageHeader title="Hiring engine"
+        description="One pass that turns a company's hiring signal into the right person and an email, and says honestly how far each result can be trusted." />
       <IcpCard />
       {error && <ErrorState message="The hiring engine could not load." detail={error} onRetry={load} />}
       <div className="grid gw" style={{ marginBottom: 14 }}>

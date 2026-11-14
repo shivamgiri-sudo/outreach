@@ -4,6 +4,7 @@ import WorkspaceTag from "./sequences/WorkspaceTag.jsx";
 import { istLabel } from "../time.js";
 import { useConfirm } from "../Dialog.jsx";
 import FlowEditor from "./flows/FlowEditor.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const STATUS = { active: ["ok", "Active"], paused: ["warn", "Paused"], draft: ["", "Draft"] };
 const TRIGGER_WORDS = {
@@ -55,10 +56,10 @@ function FlowList({ onOpen }) {
   };
   return (
     <>
-      <h2>Flow builder</h2>
-      <p className="sub">Draw your own communication flow: a trigger, then checks, waits and messages across email, WhatsApp, SMS,
+      <PageHeader title="Flow builder"
+        description={<>Draw your own communication flow: a trigger, then checks, waits and messages across email, WhatsApp, SMS,
         LinkedIn tasks, calls and meetings. Every message keeps the app's rules: consent before WhatsApp, practice mode, caps,
-        business hours and the do-not-contact list.</p>
+        business hours and the do-not-contact list.</>} />
       {error && <div className="tip error" role="alert">{error}</div>}
       {maker && <div className="row" style={{ marginBottom: 16, flexWrap: "wrap" }}>
         {isOwner() && spaces.length > 1 && <label className="row" style={{ gap: 6, margin: 0 }}>Workspace

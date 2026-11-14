@@ -5,6 +5,7 @@ import { istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import { Composer } from "./LeadActivity.jsx";
 import { useHashParam } from "../route.js";
+import { PageHeader } from "../ui/index.js";
 
 const LABEL_WORDS = { interested: "Interested", question: "Question", not_now: "Not now", wrong_person: "Wrong person", other: "Needs a look",
   not_interested: "Not interested", auto_reply: "Auto-reply", unsubscribe: "Unsubscribe", bounce: "Bounce" };
@@ -128,8 +129,8 @@ export default function Replies() {
 
   return (
     <>
-      <h2>Replies</h2>
-      <p className="sub">Every reply from every channel in one list. The score (0–100) says how much a reply deserves a person's time now. Reply, mark handled, assign or snooze it right here.</p>
+      <PageHeader title="Replies"
+        description={<>Every reply from every channel in one list. The score (0–100) says how much a reply deserves a person's time now. Reply, mark handled, assign or snooze it right here.</>} />
       {error && <ErrorState message="Replies could not load." detail={error} onRetry={load} />}
       {data && (
         <div className="kpi-row kpi-mini" data-testid="reply-kpis">

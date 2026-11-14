@@ -12,6 +12,7 @@ import { istLabel } from "../time.js";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import { GuideButton } from "../GuidePanel.jsx";
 import HelpLink from "../components/HelpLink.jsx";
+import { PageHeader } from "../ui/index.js";
 
 const PERSONA = { ceo_founder: "CEO / Founder", chro: "CHRO / HR Director", ta_head: "Head of TA", recruitment_head: "Recruitment Head",
   business_head: "Business Head", general: "General" };
@@ -256,9 +257,9 @@ export default function LinkedInQueue() {
 
   return (
     <>
-      <h2>LinkedIn outreach <HelpLink chapter="linkedin" label="LinkedIn outreach" /></h2>
-      <p className="sub">Today's list has every message already written. The LinkedIn agent sends one action at a time, with a fixed gap, inside working hours,
-        so a person you start is contacted at the agent's next turn, not at once. Messages only start after they accept, and any reply stops the sequence.</p>
+      <PageHeader title="LinkedIn outreach" help="linkedin" helpLabel="LinkedIn outreach"
+        description={<>Today's list has every message already written. The LinkedIn agent sends one action at a time, with a fixed gap, inside working hours,
+        so a person you start is contacted at the agent's next turn, not at once. Messages only start after they accept, and any reply stops the sequence.</>} />
       <div className="tabs scroll" role="tablist" aria-label="LinkedIn sections">
         {visibleTabs.map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => pick(id)}>{label}</button>

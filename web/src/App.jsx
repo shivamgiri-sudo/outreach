@@ -40,7 +40,7 @@ import Help from "./pages/Help.jsx";
 import ProspectSearch from "./pages/ProspectSearch.jsx";
 import { THEMES, getTheme, setTheme } from "./theme.js";
 import { DialogProvider } from "./Dialog.jsx";
-import { ToastProvider } from "./ui/index.js";
+import { PageHeader, ToastProvider } from "./ui/index.js";
 import { useModalFocus } from "./DrawerShell.jsx";
 import { loadBrand, loadPublicBrand, useBrand } from "./brand.js";
 import Onboarding from "./pages/Onboarding.jsx";
@@ -49,29 +49,29 @@ import { platform } from "./platformApi.js";
 
 // [id, label, component, icon]
 const PAGES = [
-  ["myday", "My day", MyDay, "tasks"],
+  ["myday", "My day", MyDay, "calendarCheck"],
   ["dashboard", "Dashboard", Dashboard, "dashboard"],
   ["prospects", "Prospect search", ProspectSearch, "search"],
   ["leads", "Leads", Leads, "users"],
-  ["hygiene", "Data hygiene", Hygiene, "check"],
-  ["lists", "Lists", Lists, "tasks"],
-  ["companies", "Companies", Companies, "users"],
+  ["hygiene", "Data hygiene", Hygiene, "sparkles"],
+  ["lists", "Lists", Lists, "list"],
+  ["companies", "Companies", Companies, "building"],
   ["campaigns", "Campaigns", Campaigns, "rocket"],
-  ["engine", "Hiring engine", HiringEngine, "workflow"],
-  ["signals", "Buying signals", Signals, "bell"],
-  ["sources", "Data sources", DataSources, "layers"],
+  ["engine", "Hiring engine", HiringEngine, "bot"],
+  ["signals", "Buying signals", Signals, "zap"],
+  ["sources", "Data sources", DataSources, "database"],
   ["analytics", "Analytics", Analytics, "chart"],
-  ["funnel", "Sales funnel", SalesFunnel, "chart"],
-  ["reports", "Reports", Reports, "tasks"],
-  ["insights", "Insights", Insights, "chart"],
+  ["funnel", "Sales funnel", SalesFunnel, "filter"],
+  ["reports", "Reports", Reports, "fileText"],
+  ["insights", "Insights", Insights, "lightbulb"],
   ["intelligence", "Intelligence", Intelligence, "eye"],
   ["growth", "Free experience", Growth, "gift"],
   ["flows", "Flow builder", FlowBuilder, "workflow"],
   ["workflows", "Simple rules", Workflows, "rules"],
   ["outbox", "Outbox & sending", Outbox, "send"],
-  ["calls", "Call desk", CallDesk, "phone"],
-  ["calllog", "Call log", CallLog, "phone"],
-  ["leaderboard", "Leaderboard", Leaderboard, "chart"],
+  ["calls", "Call desk", CallDesk, "headset"],
+  ["calllog", "Call log", CallLog, "history"],
+  ["leaderboard", "Leaderboard", Leaderboard, "trophy"],
   ["meetings", "Meetings", Meetings, "calendar"],
   ["replies", "Replies", Replies, "inbox"],
   ["tasks", "Tasks & follow-ups", Tasks, "tasks"],
@@ -141,7 +141,7 @@ function Bell({ onOpen }) {
   }, []);
   return (
     <div className="bell-wrap" onKeyDown={(e) => { if (e.key === "Escape" && open) { e.stopPropagation(); setOpen(false); } }}>
-      <button className="bell" aria-label={`Reminders: ${items.length} unread`} aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button className="bell icon-btn" aria-label={`Reminders: ${items.length} unread`} aria-expanded={open} onClick={() => setOpen(!open)}>
         <Icon name="bell" size={18} />{items.length > 0 && <span className="badge-dot">{items.length}</span>}
       </button>
       {open && (
@@ -149,7 +149,7 @@ function Bell({ onOpen }) {
           {items.length === 0 ? <p className="sub">No new reminders.</p> : items.slice(0, 8).map((n) => (
             <div key={n.id} className="bell-item"><b>{n.title}</b>{n.text && <div className="sub">{n.text.slice(0, 120)}</div>}</div>
           ))}
-          <div className="row" style={{ marginTop: 8 }}>
+          <div className="row bell-actions">
             <button className="btn ghost" onClick={() => { setOpen(false); onOpen(); }}>Open tasks</button>
             {items.length > 0 && canWrite() && <button className="btn ghost" onClick={() => api.markNotificationsRead().then(() => setItems([]))}>Mark all read</button>}
           </div>
@@ -194,7 +194,7 @@ function QuickSearch({ onClose, onPage, onLead }) {
               </button>
             </li>
           ))}
-          {results.length === 0 && <li className="sub" style={{ padding: 12 }}>Nothing matches “{query}”.</li>}
+          {results.length === 0 && <li className="sub palette-empty">Nothing matches “{query}”.</li>}
         </ul>
       </div>
     </>
@@ -358,25 +358,19 @@ function Shell() {
         <div className="brand">
           <img className="brand-mark" src={brand.header_logo} width="34" height="34" alt="" />
           <div className="brand-text"><h1>{brand.app_name}</h1><span className="brand-sub">by {brand.company_name}</span></div>
-          {phone ? <button className="icon-btn nav-close" aria-label="Close menu" onClick={closeMenu}><Icon name="close" size={22} /></button>
-            : <Bell onOpen={() => go("tasks")} />}
+          {phone && <button className="icon-btn nav-close" aria-label="Close menu" onClick={closeMenu}><Icon name="close" size={22} /></button>}
         </div>
         {!phone && accts.length > 1 && (
-          <label className="ws-pick" style={{ display: "block", margin: "0 12px 6px" }}>
+          <label className="ws-pick">
             <span className="nav-title">Account</span>
             {acctPicker("")}
           </label>
         )}
         {!phone && (spaces.length > 1 || me.client) && (
-          <label className="ws-pick" style={{ display: "block", margin: "0 12px 10px" }}>
+          <label className="ws-pick">
             <span className="nav-title">{me.client ? <span data-testid="account-name">{me.account_name}</span> : "Workspace"}</span>
             {spacePicker("")}
           </label>
-        )}
-        {!phone && (
-          <button className="search-trigger" onClick={() => setSearching(true)} aria-label="Quick search (Ctrl K)">
-            <Icon name="search" size={16} /><span>Search…</span><kbd>Ctrl K</kbd>
-          </button>
         )}
         {GROUPS.map(([group, all]) => [group, all.filter((id) => pageAllowed(me, id))]).filter(([, ids]) => ids.length).map(([group, ids]) => (
           <div className="nav-group" key={group} role="group" aria-label={group}>
@@ -400,13 +394,24 @@ function Shell() {
           </button>
         )}
       </nav>
+      <div className="main-col">
+      {!phone && (
+        <header className="deskbar">
+          <span className="deskbar-crumb" aria-hidden="true"><span className="eyebrow">{GROUPS.find(([, ids]) => ids.includes(page))?.[0]}</span><b>{BY_ID[page][1]}</b></span>
+          <button className="search-trigger" onClick={() => setSearching(true)} aria-label="Quick search (Ctrl K)">
+            <Icon name="search" size={16} /><span>Search pages and leads</span><kbd>Ctrl K</kbd>
+          </button>
+          <Bell onOpen={() => go("tasks")} />
+        </header>
+      )}
       <main>
         <PlatformBanners status={platformStatus} />
-        {me.role === "viewer" && <p className="tip" role="note" data-testid="viewer-note" style={{ marginBottom: 12 }}>You have a view-only login: you can look at everything, but changes are refused. Ask an owner if you need to change something.</p>}
+        {me.role === "viewer" && <p className="tip" role="note" data-testid="viewer-note">You have a view-only login: you can look at everything, but changes are refused. Ask an owner if you need to change something.</p>}
         {!pageAllowed(me, page)
-          ? <><h2>{BY_ID[page][1]}</h2><p className="empty" role="status">{isLimited(me) ? "This page is not available for logins limited to a workspace." : "Only an owner can open this page."}</p></>
+          ? <><PageHeader title={BY_ID[page][1]} /><p className="empty" role="status">{isLimited(me) ? "This page is not available for logins limited to a workspace." : "Only an owner can open this page."}</p></>
           : <Current key={`${page}:${space}`} go={go} onSetupChanged={refreshPending} role={me.role} onOpenWizard={me.role === "owner" ? () => setWizard(true) : undefined} />}
       </main>
+      </div>
       {phone && (
         <nav className="bottombar" aria-label="Quick links">
           {BOTTOM.map((id) => (
