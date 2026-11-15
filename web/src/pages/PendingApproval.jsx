@@ -9,7 +9,7 @@ export function PendingApproval({ me, onSignOut }) {
   const [info, setInfo] = useState(null);
   useEffect(() => { platform.pending().then(setInfo).catch(() => setInfo({})); }, []);
   return (
-    <main className="pending-page" style={{ maxWidth: 760, margin: "40px auto", padding: "0 16px" }} data-testid="pending-page">
+    <main className="pending-page" data-testid="pending-page">
       <h2>Waiting for approval</h2>
       <p className="sub">Thanks{me?.name ? `, ${me.name}` : ""}. The account for <b>{info?.account || "your company"}</b> was created and our team is
         reviewing it. You will get an email the moment it is approved; until then nothing can be imported or sent.</p>
@@ -38,15 +38,13 @@ export function PlatformBanners({ status }) {
   return (
     <>
       {va && (
-        <div className="tip" role="alert" data-testid="view-as-banner"
-          style={{ background: "#7c2d12", color: "#fff", padding: "12px 16px", fontSize: 16, fontWeight: 600, marginBottom: 12, borderRadius: 8 }}>
+        <div className="tip banner banner-view" role="alert" data-testid="view-as-banner">
           Viewing as {va.name || va.as} (read-only) — {minutes} min left.{" "}
           <button className="btn small" onClick={stopViewAs} data-testid="view-as-stop">Stop</button>
         </div>
       )}
       {stop && (
-        <div className="tip" role="alert" data-testid="stop-all-banner"
-          style={{ background: "#b91c1c", color: "#fff", padding: "10px 16px", fontWeight: 600, marginBottom: 12, borderRadius: 8 }}>
+        <div className="tip banner banner-stop" role="alert" data-testid="stop-all-banner">
           All sending is stopped by the platform admin{stop.reason ? `: ${stop.reason}` : ""}. Nothing is emailed, sent on WhatsApp or LinkedIn, and flows wait.
         </div>
       )}

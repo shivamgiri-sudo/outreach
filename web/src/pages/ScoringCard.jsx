@@ -44,7 +44,7 @@ export default function ScoringCard() {
               <input type="number" min={0} max={100} required value={cfg.weights[k]} onChange={(e) => setWeight(k, e.target.value)} />
             </label>
           ))}
-          <p className="sub" style={{ margin: 0, alignSelf: "end" }}>Total: <b>{total}</b> points{total > 100 ? " (scores above 100 are capped)" : ""}</p>
+          <p className="sub u-m0 u-self-end">Total: <b>{total}</b> points{total > 100 ? " (scores above 100 are capped)" : ""}</p>
         </div>
         <div className="split-2">
           <label>Warm from<input type="number" min={0} max={99} required value={cfg.warm} onChange={(e) => setCfg({ ...cfg, warm: e.target.value })} /></label>

@@ -90,7 +90,7 @@ export default function OfficeRunner({ st, onDone, onMessage }) {
     try { onDone(await api.revokeLinkedinRunner(r.id)); onMessage("Office computer disconnected."); } catch (e) { onMessage(e.message); }
   };
   return (
-    <div className="card" style={{ marginBottom: 12, background: "var(--bg)" }} data-testid="office-runner">
+    <div className="card flat u-mb-12" data-testid="office-runner">
       <div className="row u-between u-wrap">
         <b>Office computer</b>
         {r ? <span className={`pill ${r.online ? "ok" : "err"}`} data-testid="runner-status">{r.online ? "Office computer online" : "Office computer offline"}</span>

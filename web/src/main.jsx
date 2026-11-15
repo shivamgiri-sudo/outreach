@@ -9,5 +9,6 @@ import "./leads.css";
 import "./calls.css";
 import "./pages.css";
 import "./utilities.css";
+import "./work-pages.css";
 
 createRoot(document.getElementById("root")).render(<App />);

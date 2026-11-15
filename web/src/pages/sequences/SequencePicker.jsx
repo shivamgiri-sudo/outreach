@@ -19,14 +19,14 @@ export default function SequencePicker({ lead, onStart }) {
   };
   return (
     <div className="row u-wrap u-gap-8 u-acenter">
-      <select aria-label="Email sequence to start" value={chosen} onChange={(e) => setChosen(e.target.value)} style={{ flex: "1 1 200px", width: "auto", minWidth: 0 }}>
+      <select aria-label="Email sequence to start" value={chosen} onChange={(e) => setChosen(e.target.value)} className="u-flex1 u-minwidth-200 u-w-auto">
         {(list.length ? list : [{ id: "default", name: "Default (6 emails)", steps: [] }]).map((s) => (
           <option key={s.id} value={s.id}>{s.name}{s.steps.length ? ` · ${s.steps.length} emails` : ""}</option>
         ))}
       </select>
       <button className="btn ghost" onClick={start}>Start {pick ? `${pick.steps.length}-step ` : ""}email sequence</button>
-      {pick && pick.steps.length > 0 && <span className="sub" style={{ flexBasis: "100%", margin: 0 }}>Emails on day {pick.steps.map((s) => humanDay(s.day)).join(", ")}.</span>}
-      {msg && <p className="error" role="alert" style={{ flexBasis: "100%", margin: 0 }}>{msg}</p>}
+      {pick && pick.steps.length > 0 && <span className="sub u-m0 u-basis-full">Emails on day {pick.steps.map((s) => humanDay(s.day)).join(", ")}.</span>}
+      {msg && <p className="error u-m0 u-basis-full" role="alert">{msg}</p>}
     </div>
   );
 }

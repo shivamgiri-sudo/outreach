@@ -25,7 +25,7 @@ function ChainCheck() {
       <button className="btn ghost" onClick={run} disabled={busy} data-testid="audit-verify">{busy ? "Checking…" : "Check change log"}</button>
       {error && <span className="dl-error" role="alert">{error}</span>}
       {res && (
-        <div className={`tip ${res.ok ? "" : "error"}`} role="status" data-testid="audit-verify-result" style={{ marginTop: 8 }}>
+        <div className={`tip u-mt-8 ${res.ok ? "" : "error"}`} role="status" data-testid="audit-verify-result">
           <b>{res.ok ? "Intact." : "Not intact."}</b> {res.message}
           {res.trimmed > 0 && <> {res.trimmed} oldest row(s) were trimmed by the size limit (not tampering).</>}
           {res.note && <><br /><small>{res.note}</small></>}
@@ -67,7 +67,7 @@ export default function AuditLog() {
           <select aria-label="Person" value={f.by} onChange={(e) => set("by", e.target.value)} className="u-w-auto">
             <option value="">Anyone</option>{(data?.people || []).map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
-          <input aria-label="Search what or detail" placeholder="Search what changed" value={f.q} onChange={(e) => set("q", e.target.value)} style={{ flex: "1 1 160px" }} />
+          <input aria-label="Search what or detail" placeholder="Search what changed" value={f.q} onChange={(e) => set("q", e.target.value)} className="u-flex1 u-minwidth-160" />
           <label className="row u-gap-4 u-m0">From <input type="date" aria-label="From (IST day)" value={f.from} onChange={(e) => set("from", e.target.value)} className="u-w-auto" /></label>
           <label className="row u-gap-4 u-m0">To <input type="date" aria-label="To (IST day)" value={f.to} onChange={(e) => set("to", e.target.value)} className="u-w-auto" /></label>
           {Object.values(f).some(Boolean) && <button className="btn ghost" onClick={() => { setF(EMPTY); setOffset(0); }}>Clear</button>}

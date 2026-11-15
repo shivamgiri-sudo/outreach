@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, isOwner } from "../api.js";
-import { PageHeader } from "../ui/index.js";
+import { PageHeader, Card, CardHeader, Field, Input, Button, Badge, Switch, EmptyState, Skeleton } from "../ui/index.js";
+import "../work-pages.css";
 
 const TRIGGERS = {
   reply: { label: "They reply, and it sounds…", options: ["interested", "question", "not_now", "wrong_person", "unsubscribe", "other"] },
@@ -21,10 +22,10 @@ const OPTION_NAMES = { first_after_yes: "First message (after yes)", nudge_demo_
   nudge_not_published: "Nudge: drafted but not published", pilot_offer: "Offer: help with existing applicants" };
 
 export default function Workflows() {
-  const [rules, setRules] = useState([]);
+  const [rules, setRules] = useState(null);
   const [form, setForm] = useState({ name: "", tType: "reply", tValue: "interested", aType: "whatsapp", aValue: "first_after_yes" });
   const [message, setMessage] = useState("");
-  const load = () => api.workflows().then(setRules);
+  const load = () => api.workflows().then(setRules).catch((e) => { setRules([]); setMessage(e.message); });
   useEffect(() => { load(); }, []);
 
   const set = (patch) => setForm({ ...form, ...patch });
@@ -52,58 +53,57 @@ export default function Workflows() {
       <PageHeader title="Simple rules"
         description={<>When something happens, do one thing. Each rule runs once per lead. WhatsApp actions still respect consent.
         For several steps, waits and branches, use the Flow builder.</>} />
-      {message && <div className="tip u-mb-12">{message}</div>}
+      {message && <div className="tip u-mb-12" role="status">{message}</div>}
 
       <div className="grid g2">
-        {owner && <div className="card">
-          <h3 className="u-mt-0">New rule</h3>
-          <label>Name</label>
-          <input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Yes by email → WhatsApp" />
-          <label>When</label>
+        {owner && <Card>
+          <CardHeader title="New rule" />
+          <div className="stack">
+          <Field label="Name"><Input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Yes by email → WhatsApp" /></Field>
+          <Field label="When">
           <select value={form.tType} onChange={(e) => pickTrigger(e.target.value)}>
             {Object.entries(TRIGGERS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
+          </select></Field>
           {TRIGGERS[form.tType].options ? (
-            <select className="u-mt-8" value={form.tValue} onChange={(e) => set({ tValue: e.target.value })}>
+            <select value={form.tValue} onChange={(e) => set({ tValue: e.target.value })}>
               {TRIGGERS[form.tType].options.map((o) => <option key={o}>{o}</option>)}
             </select>
-          ) : <input className="u-mt-8" type="number" min="1" value={form.tValue} onChange={(e) => set({ tValue: e.target.value })} />}
-          <label>Then</label>
-          <select value={form.aType} onChange={(e) => pickAction(e.target.value)}>
+          ) : <input type="number" min="1" value={form.tValue} onChange={(e) => set({ tValue: e.target.value })} />}
+          <Field label="Then"><select value={form.aType} onChange={(e) => pickAction(e.target.value)}>
             {Object.entries(ACTIONS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
+          </select></Field>
           {ACTIONS[form.aType].options ? (
-            <select className="u-mt-8" value={form.aValue} onChange={(e) => set({ aValue: e.target.value })}>
+            <select value={form.aValue} onChange={(e) => set({ aValue: e.target.value })}>
               {ACTIONS[form.aType].options.map((o) => <option key={o} value={o}>{OPTION_NAMES[o] || o.replace(/_/g, " ")}</option>)}
             </select>
-          ) : <input className="u-mt-8" value={form.aValue} onChange={(e) => set({ aValue: e.target.value })} placeholder="e.g. Send pricing to {{company}} ({{first_name}})" />}
-          <div className="row u-mt-12">
-            <button className="btn" onClick={add}>Add rule</button>
-            <button className="btn ghost" onClick={() => api.starterWorkflows().then(() => { setMessage("Suggested rules added."); load(); }, (e) => setMessage(e.message))}>Add suggested rules</button>
+          ) : <input value={form.aValue} onChange={(e) => set({ aValue: e.target.value })} placeholder="e.g. Send pricing to {{company}} ({{first_name}})" />}
+          <div className="row">
+            <Button onClick={add}>Add rule</Button>
+            <Button variant="secondary" onClick={() => api.starterWorkflows().then(() => { setMessage("Suggested rules added."); load(); }, (e) => setMessage(e.message))}>Add suggested rules</Button>
           </div>
-        </div>}
+          </div>
+        </Card>}
 
-        <div className="card">
-          <div className="row u-between">
-            <h3 className="u-m0">Your rules ({rules.length})</h3>
-            {owner && <button className="btn ghost" onClick={async () => { const r = await api.runTimeRules(); setMessage(`Checked time-based rules: ${r.ran} ran.`); }}>Check time-based rules now</button>}
-          </div>
-          {rules.length === 0 && <p className="empty">{owner ? "No rules yet. Add the suggested ones to start." : "No rules yet."}</p>}
-          {rules.map((r) => (
-            <div key={r.id} className="row u-between u-m-12-0">
+        <Card>
+          <CardHeader title={`Your rules (${(rules || []).length})`} actions={owner ? <Button variant="secondary" onClick={async () => { const r = await api.runTimeRules(); setMessage(`Checked time-based rules: ${r.ran} ran.`); }}>Check time-based rules now</Button> : null} />
+          {rules === null && <div className="stack" aria-busy="true"><Skeleton height={48} /><Skeleton height={48} /></div>}
+          {rules && rules.length === 0 && <EmptyState icon="rules" title="No rules yet">{owner ? "Add the suggested ones to start, or write your own on the left." : "The owner has not added any rules yet."}</EmptyState>}
+          <div className="stack">
+          {(rules || []).map((r) => (
+            <div key={r.id} className="row rule-row">
               <span className="u-flex1">
                 <b>{r.name}</b><br />
                 <small>{describe("when", r.trigger, TRIGGERS)} → {describe("then", r.action, ACTIONS)}</small>
               </span>
-              {!owner && <span className={`pill ${r.enabled ? "ok" : ""}`}>{r.enabled ? "On" : "Off"}</span>}
-              {owner && <label className="row u-fw4 u-m0">
-                <input type="checkbox" className="u-w-auto" checked={r.enabled} onChange={(e) => { const enabled = e.target.checked; setRules((all) => all.map((x) => (x.id === r.id ? { ...x, enabled } : x))); api.toggleWorkflow(r.id, enabled).catch(load); }} />
-                On
-              </label>}
-              {owner && <button className="btn ghost" onClick={() => api.deleteWorkflow(r.id).then(load).catch(() => load())}>Delete</button>}
+              {!owner && <Badge tone={r.enabled ? "success" : "neutral"}>{r.enabled ? "On" : "Off"}</Badge>}
+              {owner && <span className="row u-gap-8 u-m0">
+                <Switch checked={r.enabled} showState label={`Rule ${r.name} on`} onChange={(enabled) => { setRules((all) => all.map((x) => (x.id === r.id ? { ...x, enabled } : x))); api.toggleWorkflow(r.id, enabled).catch(load); }} />
+              </span>}
+              {owner && <Button variant="secondary" onClick={() => api.deleteWorkflow(r.id).then(load).catch(() => load())}>Delete</Button>}
             </div>
           ))}
-        </div>
+          </div>
+        </Card>
       </div>
     </>
   );

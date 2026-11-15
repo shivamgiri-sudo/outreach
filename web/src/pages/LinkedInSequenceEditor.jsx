@@ -44,7 +44,7 @@ function StepRow({ step, index, count, onChange, onRemove, onMove, readOnly, sam
         )}
       </div>
       <div className="row u-wrap">
-        <label style={{ flex: 2, minWidth: 180 }}>Purpose
+        <label className="u-flex2 u-minwidth-180">Purpose
           <input value={step.purpose || ""} maxLength={120} disabled={readOnly} onChange={(e) => set("purpose", e.target.value)} />
         </label>
         {!connect && <label className="u-flex1 u-minwidth-120">Days later
@@ -131,9 +131,9 @@ export default function LinkedInSequenceEditor({ onMessage }) {
       <p className="sub">Matched on the person's job title, top to bottom; the first match gives the {"{hook}"} line. The pattern is a regular expression (for example <code>{"\\b(founder|ceo)\\b"}</code>).</p>
       {personas.map((p, i) => (
         <div key={i} className="row u-wrap u-aend u-mb-8">
-          <label style={{ flex: "0 0 120px" }}>Key<input value={p.key} disabled={readOnly} maxLength={30} onChange={(e) => setPersona(i, "key", e.target.value)} /></label>
+          <label className="u-w-key">Key<input value={p.key} disabled={readOnly} maxLength={30} onChange={(e) => setPersona(i, "key", e.target.value)} /></label>
           <label className="u-flex1 u-minwidth-160">Title pattern<input value={p.pattern} disabled={readOnly} maxLength={300} onChange={(e) => setPersona(i, "pattern", e.target.value)} /></label>
-          <label style={{ flex: 2, minWidth: 200 }}>Hook<input value={p.hook} disabled={readOnly} maxLength={400} onChange={(e) => setPersona(i, "hook", e.target.value)} /></label>
+          <label className="u-flex2 u-minwidth-200">Hook<input value={p.hook} disabled={readOnly} maxLength={400} onChange={(e) => setPersona(i, "hook", e.target.value)} /></label>
           {!readOnly && <button type="button" className="btn ghost" onClick={() => setPersonas(personas.filter((_, j) => j !== i))} aria-label={`Remove persona ${p.key}`}>Remove</button>}
         </div>
       ))}

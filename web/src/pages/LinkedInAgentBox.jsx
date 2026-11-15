@@ -94,7 +94,7 @@ export default function LinkedInAgent({ onMessage, onAccount }) {
                 <td>{a.counts.connect_week} requests</td>
                 <td>{a.leads}</td>
                 <td>{manage && a.paused && <button className="btn ghost" onClick={() => save({ resume_account: a.account }, `${a.name || a.account} resumed.`)}>Resume</button>}
-                  {manage && !a.paused && <button className="btn ghost" style={{ color: "#b91c1c" }} onClick={async () => { if (await confirm(`Pause ${a.name || a.account}? Nothing is sent from it until you press Resume.`)) save({ pause_account: a.account }, `${a.name || a.account} paused.`); }}>Pause</button>}
+                  {manage && !a.paused && <button className="btn danger" onClick={async () => { if (await confirm(`Pause ${a.name || a.account}? Nothing is sent from it until you press Resume.`)) save({ pause_account: a.account }, `${a.name || a.account} paused.`); }}>Pause</button>}
                   {manage && st.accounts.length > 1 && <select aria-label={`${a.account} is the same LinkedIn account as`} value="" onChange={async (e) => { const into = e.target.value;
                     if (into && await confirm(`${a.account} is the same LinkedIn account as ${into} (its profile link changed)? Its people and counts move over.`))
                       save({ merge_from: a.account, merge_into: into }, `Merged ${a.account} into ${into}.`); }}>
@@ -153,7 +153,7 @@ export default function LinkedInAgent({ onMessage, onAccount }) {
       {st.log.length > 0 && (
         <details className="section" open><summary>What it did lately</summary>
           <ul className="task-list">{st.log.slice(0, 12).map((r, i) => (
-            <li key={i}><div><b>{KIND_WORDS[r.kind] || r.kind}</b>{r.verified === true ? " ✓ confirmed" : r.verified === false ? " ⚠ not confirmed" : ""}{r.note ? ` — ${r.note}` : ""}{r.mismatch && <b style={{ color: "#b91c1c" }}> WRONG PERSON: {r.mismatch_why}</b>}{r.to_name && !r.mismatch && r.observed_name ? ` (saw ${r.observed_name})` : ""}</div><div className="sub">{istLabel(r.at)}</div></li>))}
+            <li key={i}><div><b>{KIND_WORDS[r.kind] || r.kind}</b>{r.verified === true ? " ✓ confirmed" : r.verified === false ? " ⚠ not confirmed" : ""}{r.note ? ` — ${r.note}` : ""}{r.mismatch && <b className="li-block"> WRONG PERSON: {r.mismatch_why}</b>}{r.to_name && !r.mismatch && r.observed_name ? ` (saw ${r.observed_name})` : ""}</div><div className="sub">{istLabel(r.at)}</div></li>))}
           </ul>
         </details>
       )}

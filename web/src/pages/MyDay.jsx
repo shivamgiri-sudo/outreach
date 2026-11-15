@@ -3,22 +3,20 @@ import { api, canWrite, isOwner } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { istDayLabel, istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
-import { Button, PageHeader } from "../ui/index.js";
+import { Button, PageHeader, Card, CardHeader, Badge, Skeleton, Stat } from "../ui/index.js";
+import "../myday.css";
 
 const TARGETS = [["calls", "Calls"], ["connects", "Connects"], ["emails", "Emails"], ["linkedin", "LinkedIn"], ["whatsapp", "WhatsApp"]];
-// Buttons wrap under the text on a phone instead of pushing the page sideways.
-const ACTIONS_STYLE = { flexWrap: "wrap", gap: 6, flex: "0 1 auto", minWidth: 0, justifyContent: "flex-end" };
 const ACTION_ICON = { call: "📞", email: "✉", whatsapp: "🟢", open: "→" };
 
 function Progress({ label, done, target }) {
   const pct = target ? Math.min(100, Math.round((done / target) * 100)) : 0;
   return (
-    <div className="kpi" data-testid={`target-${label.toLowerCase()}`}>
-      <b>{done}<small className="sub" style={{ fontSize: 14, fontWeight: 600 }}> / {target}</small></b>
+    <div className="kpi md-kpi" data-testid={`target-${label.toLowerCase()}`}>
+      <b>{done}<small className="sub md-of"> / {target}</small></b>
       <span>{label} today</span>
-      <div role="progressbar" aria-label={`${label}: ${done} of ${target}`} aria-valuenow={done} aria-valuemin={0} aria-valuemax={target || 0}
-        style={{ height: 6, borderRadius: 4, background: "var(--line)", marginTop: 6, overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%", background: pct >= 100 ? "var(--ok)" : "var(--brand)" }} />
+      <div className="md-track" role="progressbar" aria-label={`${label}: ${done} of ${target}`} aria-valuenow={done} aria-valuemin={0} aria-valuemax={target || 0}>
+        <div className={`md-fill${pct >= 100 ? " done" : ""}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -43,7 +41,7 @@ function TargetEditor({ day, onSaved, onCancel }) {
       {isOwner() && <label>Save for<select value={scope} onChange={(e) => setScope(e.target.value)}>
         <option value="me">Just me</option><option value="team">The whole team (default for everyone)</option></select></label>}
       {msg && <p className="error" role="alert">{msg}</p>}
-      <div className="row"><button className="btn" type="submit">Save targets</button><button className="btn ghost" type="button" onClick={onCancel}>Cancel</button></div>
+      <div className="row"><Button type="submit">Save targets</Button><Button variant="secondary" onClick={onCancel}>Cancel</Button></div>
     </form>
   );
 }
@@ -52,18 +50,19 @@ function TargetEditor({ day, onSaved, onCancel }) {
 function Item({ title, sub, item, onOpen, go, overdue }) {
   const next = item.next || { action: "open", label: "Open" };
   const leadId = item.lead_id;
+  const lead = (v) => (v === next.action ? "primary" : "secondary");
   return (
-    <li className={`today-item${overdue ? " overdue" : ""}`} data-testid="myday-item">
-      <div className="today-text">
+    <li className={`md-item${overdue ? " overdue" : ""}`} data-testid="myday-item">
+      <div className="md-text">
         <b>{title}</b>{sub && <span className="sub"> — {sub}</span>}
         {next.why && <div className="sub">{ACTION_ICON[next.action] || ""} {next.why}</div>}
       </div>
-      <div className="row today-actions" style={ACTIONS_STYLE}>
-        {item.phone && <a className={`btn ${next.action === "call" ? "" : "ghost"}`} href={`tel:${item.phone}`} title="Dial now">Call</a>}
-        {item.email && canWrite() && <button className={`btn ${next.action === "email" ? "" : "ghost"}`} onClick={() => onOpen(leadId, "activity")}>Write email</button>}
-        {item.phone && next.action === "whatsapp" && canWrite() && <button className="btn" onClick={() => onOpen(leadId, "outreach")}>WhatsApp</button>}
-        {next.action === "call" && item.phone && <button className="btn ghost" onClick={() => go("calls")} title="Call it from the call desk with the script">Call desk</button>}
-        {leadId && <button className="btn ghost" onClick={() => onOpen(leadId)}>Open</button>}
+      <div className="md-actions">
+        {item.phone && <a className={`btn sm ${next.action === "call" ? "" : "ghost"}`} href={`tel:${item.phone}`} title="Dial now">Call</a>}
+        {item.email && canWrite() && <Button size="sm" variant={lead("email")} onClick={() => onOpen(leadId, "activity")}>Write email</Button>}
+        {item.phone && next.action === "whatsapp" && canWrite() && <Button size="sm" onClick={() => onOpen(leadId, "outreach")}>WhatsApp</Button>}
+        {next.action === "call" && item.phone && <Button size="sm" variant="secondary" onClick={() => go("calls")} title="Call it from the call desk with the script">Call desk</Button>}
+        {leadId && <Button size="sm" variant="ghost" onClick={() => onOpen(leadId)}>Open</Button>}
       </div>
     </li>
   );
@@ -71,10 +70,10 @@ function Item({ title, sub, item, onOpen, go, overdue }) {
 
 function Section({ title, count, empty, children, testId }) {
   return (
-    <div className="card" data-testid={testId}>
-      <h3 className="u-mt-0">{title} {count > 0 && <span className="pill">{count}</span>}</h3>
-      {count === 0 ? <p className="sub">{empty}</p> : <ul className="today-list">{children}</ul>}
-    </div>
+    <Card data-testid={testId}>
+      <CardHeader title={title} actions={count > 0 ? <Badge>{count}</Badge> : null} />
+      {count === 0 ? <p className="sub u-m0">{empty}</p> : <ul className="md-list">{children}</ul>}
+    </Card>
   );
 }
 
@@ -90,7 +89,7 @@ export default function MyDay({ go }) {
     setOpen(id);
   };
   if (error) return <ErrorState message="Your day could not load." detail={error} onRetry={load} />;
-  if (!day) return <p className="empty">Loading your day…</p>;
+  if (!day) return <div aria-busy="true"><PageHeader title="My day" description="Loading your day…" /><div className="md-grid"><Skeleton height={120} /><Skeleton height={120} /></div></div>;
   const c = day.counts;
   const ids = [...new Set([...day.callbacks, ...day.calls_due, ...day.replies, ...day.hot_leads, ...day.tasks].map((x) => x.lead_id).filter(Boolean))];
   const callable = c.callbacks + c.calls_due + c.hot_leads;
@@ -104,14 +103,14 @@ export default function MyDay({ go }) {
       <div className="kpi-row" data-testid="myday-targets">
         {TARGETS.filter(([k]) => day.targets[k] > 0 || day.today[k] > 0).map(([k, l]) => <Progress key={k} label={l} done={day.today[k] || 0} target={day.targets[k] || 0} />)}
       </div>
-      <p className="sub u-mt-0">
+      <p className="sub u-mt-0 u-mb-16">
         This week: {day.week.calls} calls, {day.week.connects} connects, {day.week.emails} emails, {day.week.linkedin} LinkedIn, {day.week.whatsapp} WhatsApp, {day.week.tasks_done} tasks done.
         {canWrite() && <>{" "}<button className="link" onClick={() => setEditing(!editing)}>{editing ? "Close targets" : "Change targets"}</button></>}
         {!day.personal_targets && " (team targets)"}
       </p>
       {editing && canWrite() && <TargetEditor day={day} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
 
-      <div className="grid gw">
+      <div className="md-grid">
         <Section title="Call-backs due" count={c.callbacks} empty="No call-backs due today." testId="myday-callbacks">
           {day.callbacks.map((t) => <Item key={t.id} item={t} title={t.company || t.title} sub={`${t.overdue || new Date(t.due_at) < new Date() ? "was due" : "due"} ${istLabel(t.due_at)}${t.text ? ` · ${t.text.slice(0, 80)}` : ""}`}
             overdue={new Date(t.due_at) < new Date()} onOpen={openLead} go={go} />)}
@@ -124,13 +123,13 @@ export default function MyDay({ go }) {
         </Section>
         <Section title="My tasks due" count={c.tasks} empty={c.upcoming ? `Nothing due today; ${c.upcoming} later.` : "No tasks due."} testId="myday-tasks">
           {day.tasks.map((t) => (
-            <li key={t.id} className={`today-item${t.due_at && new Date(t.due_at) < new Date() ? " overdue" : ""}`} data-testid="myday-task">
-              <div className="today-text"><b>{t.title}</b>{t.company && <span className="sub"> — {t.company}</span>}
+            <li key={t.id} className={`md-item${t.due_at && new Date(t.due_at) < new Date() ? " overdue" : ""}`} data-testid="myday-task">
+              <div className="md-text"><b>{t.title}</b>{t.company && <span className="sub"> — {t.company}</span>}
                 <div className="sub">{t.due_at ? `Due ${istLabel(t.due_at)}` : ""}{t.text ? ` · ${t.text.slice(0, 90)}` : ""}</div></div>
-              <div className="row today-actions" style={ACTIONS_STYLE}>
-                {canWrite() && <button className="btn ghost" onClick={() => api.taskDoneById(t.id, "").then(load)}>Done</button>}
-                {canWrite() && <button className="btn ghost" onClick={() => api.updateTask(t.id, { snooze_minutes: 1440 }).then(load)}>Tomorrow</button>}
-                {t.lead_id && <button className="btn ghost" onClick={() => openLead(t.lead_id)}>Open</button>}
+              <div className="md-actions">
+                {canWrite() && <Button size="sm" variant="secondary" onClick={() => api.taskDoneById(t.id, "").then(load)}>Done</Button>}
+                {canWrite() && <Button size="sm" variant="secondary" onClick={() => api.updateTask(t.id, { snooze_minutes: 1440 }).then(load)}>Tomorrow</Button>}
+                {t.lead_id && <Button size="sm" variant="ghost" onClick={() => openLead(t.lead_id)}>Open</Button>}
               </div>
             </li>
           ))}
@@ -140,11 +139,11 @@ export default function MyDay({ go }) {
         </Section>
         <Section title="Meetings today" count={c.meetings} empty="No meetings today." testId="myday-meetings">
           {day.meetings.map((m, i) => (
-            <li key={i} className="today-item">
-              <div className="today-text"><b>{istLabel(m.start, false)} · {m.title}</b><span className="sub"> — {m.company}</span></div>
-              <div className="row today-actions" style={ACTIONS_STYLE}>
-                {/^https:\/\//.test(m.join_url) && <a className="btn" href={m.join_url} target="_blank" rel="noopener noreferrer">Join</a>}
-                <button className="btn ghost" onClick={() => openLead(m.lead_id)}>Open</button>
+            <li key={i} className="md-item">
+              <div className="md-text"><b>{istLabel(m.start, false)} · {m.title}</b><span className="sub"> — {m.company}</span></div>
+              <div className="md-actions">
+                {/^https:\/\//.test(m.join_url) && <a className="btn sm" href={m.join_url} target="_blank" rel="noopener noreferrer">Join</a>}
+                <Button size="sm" variant="ghost" onClick={() => openLead(m.lead_id)}>Open</Button>
               </div>
             </li>
           ))}

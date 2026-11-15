@@ -17,7 +17,7 @@ function ago(seconds) {
 const when = (iso, seconds) => (iso ? `${istLabel(iso)}${seconds != null ? ` (${ago(seconds)})` : ""}` : "never");
 
 function Row({ label, children, tone }) {
-  return <tr><td><b>{label}</b></td><td>{tone !== undefined && <span className={`pill ${tone}`} style={{ marginRight: 6 }}>{tone === "ok" ? "OK" : tone === "warn" ? "Check" : "—"}</span>}{children}</td></tr>;
+  return <tr><td><b>{label}</b></td><td>{tone !== undefined && <span className={`pill u-mr-8 ${tone}`}>{tone === "ok" ? "OK" : tone === "warn" ? "Check" : "—"}</span>}{children}</td></tr>;
 }
 
 export default function SystemHealth() {
@@ -34,7 +34,7 @@ export default function SystemHealth() {
         <div><h3 className="u-m0">System health</h3><p className="sub u-m-4-0-0">Checked {istLabel(h.checked_at)}.</p></div>
         <button className="btn ghost" onClick={load}>Check again</button>
       </div>
-      <div className={`tip ${h.ok ? "" : "error"}`} role="status" style={{ margin: "10px 0" }}>
+      <div className={`tip u-m-12-0 ${h.ok ? "" : "error"}`} role="status">
         {h.ok ? "Everything looks fine." : <>Needs a look: {h.problems.join(" ")}</>}
       </div>
       <div className="card table-card u-p0">
