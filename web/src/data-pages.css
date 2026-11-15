@@ -1,0 +1,43 @@
+/* Buying signals, Data sources, Data hygiene, Hiring engine, Free experience. Tokens only; both themes. */
+.dp-card-stack { display: grid; gap: var(--s4); }
+.dp-add { display: grid; gap: var(--s3); grid-template-columns: minmax(140px, 180px) minmax(0, 1fr) auto auto; align-items: center; }
+.dp-add select, .dp-add input { width: 100%; }
+.dp-watch { display: flex; flex-wrap: wrap; gap: var(--s2); margin: var(--s3) 0 0; }
+.dp-watch .ui-chip { background: var(--raised); color: var(--ink); }
+.dp-feed { display: grid; gap: var(--s3); margin-top: var(--s4); }
+.dp-article { display: grid; gap: var(--s2); }
+.dp-article > a { font-weight: 600; font-size: var(--fs-lg); overflow-wrap: anywhere; }
+.dp-article .meta { color: var(--muted); font-size: var(--fs-sm); display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); align-items: center; }
+.dp-article-actions { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.dp-article-actions input { flex: 1 1 220px; width: auto; }
+.dp-toolbar { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; justify-content: space-between; margin: var(--s4) 0 0; }
+.dp-run-grid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+.dp-check { display: flex; align-items: flex-start; gap: var(--s3); margin: var(--s3) 0 0; font-weight: 400; font-size: var(--fs-md); }
+.dp-check > input { margin-top: 3px; }
+.dp-badges { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; margin: var(--s4) 0; }
+.dp-badges .grow { margin-left: auto; }
+.dp-steps { margin: 0; padding-left: var(--s5); display: grid; gap: var(--s2); }
+.dp-two { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); align-items: start; margin-bottom: var(--s4); }
+.dp-partner { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); align-items: center; justify-content: space-between; padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
+.dp-partner:last-of-type { border-bottom: 0; }
+.dp-partner select { width: auto; }
+.dp-add-partner { display: grid; gap: var(--s2); grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) auto; margin-top: var(--s3); }
+.dp-list { display: grid; gap: var(--s3); margin: 0; padding: 0; list-style: none; }
+.dp-list li { padding-bottom: var(--s3); border-bottom: 1px solid var(--line); }
+.dp-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.dp-warn { color: var(--hot); margin: var(--s2) 0 0; }
+.dp-fields { display: grid; gap: var(--s3); }
+.dp-inline-3 { align-items: end; display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
+.dp-skel { display: grid; gap: var(--s3); }
+@media (max-width: 760px) {
+  .dp-add { grid-template-columns: minmax(0, 1fr); }
+  .dp-add-partner { grid-template-columns: minmax(0, 1fr); }
+  .dp-badges .grow { margin-left: 0; }
+  .dp-check { min-height: var(--h-touch); }
+  .dp-check > input { width: 20px; height: 20px; }
+}
+.dp-hot { color: var(--hot); } .dp-ok { color: var(--ok); }
+.dp-watch .ui-chip { min-height: 36px; padding-right: 2px; }
+.dp-watch .ui-chip button { width: 32px; height: 32px; }
+@media (max-width: 760px) { .dp-watch .ui-chip { min-height: 40px; } .dp-watch .ui-chip button { width: 40px; height: 40px; } }
+.dp-article > 

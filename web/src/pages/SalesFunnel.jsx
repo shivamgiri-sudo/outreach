@@ -11,7 +11,7 @@ import { AttributionPeople, ClosedRevenue, PipelineForecast } from "./SalesFunne
 import HelpLink from "../components/HelpLink.jsx";
 import CallTrackerFunnel from "./CallTrackerFunnel.jsx";
 import "../funnel.css";
-import { PageHeader } from "../ui/index.js";
+import { Button, Card, Field, Input, PageHeader, Skeleton } from "../ui/index.js";
 
 const POLL_MS = 60000;
 const PRESET_NAMES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["lastMonth", "Last month"], ["quarter", "This quarter"], ["fy", "This FY"]];
@@ -39,20 +39,20 @@ function Controls({ f, setF, data, today, error }) {
   const preset = (name) => data?.presets?.[name] && setF({ ...f, ...data.presets[name] });
   const dirty = f.from || f.to || MULTI.some(([k]) => f[k].length);
   return (
-    <div className="card sf-controls" data-testid="sf-filters">
-      <div className="row" style={{ alignItems: "end" }}>
-        <label>From<input type="date" value={f.from} max={f.to || today} onChange={(e) => pick("from", e.target.value)} data-testid="sf-from" /></label>
-        <label>To<input type="date" value={f.to} max={today} onChange={(e) => pick("to", e.target.value)} data-testid="sf-to" /></label>
-        <button type="button" className="btn ghost" onClick={() => setF({ ...EMPTY })} disabled={!dirty} data-testid="sf-reset">Reset</button>
+    <Card className="sf-controls" data-testid="sf-filters">
+      <div className="sf-row">
+        <Field label="From"><Input type="date" value={f.from} max={f.to || today} onChange={(e) => pick("from", e.target.value)} data-testid="sf-from" /></Field>
+        <Field label="To"><Input type="date" value={f.to} max={today} onChange={(e) => pick("to", e.target.value)} data-testid="sf-to" /></Field>
+        <Button variant="secondary" onClick={() => setF({ ...EMPTY })} disabled={!dirty} data-testid="sf-reset">Reset</Button>
       </div>
-      <div className="row sf-presets" role="group" aria-label="Quick ranges">
-        {PRESET_NAMES.map(([id, text]) => <button key={id} type="button" className="btn ghost" onClick={() => preset(id)} data-testid={`sf-preset-${id}`}>{text}</button>)}
+      <div className="sf-presets" role="group" aria-label="Quick ranges">
+        {PRESET_NAMES.map(([id, text]) => <Button key={id} variant="secondary" onClick={() => preset(id)} data-testid={`sf-preset-${id}`}>{text}</Button>)}
       </div>
       <div className="row sf-multis">
         {MULTI.map(([k, listKey, label]) => <MultiSelect key={k} label={label} options={data?.filters?.[listKey] || []} value={f[k]} onChange={(v) => setF({ ...f, [k]: v })} />)}
       </div>
       {(bad || error) && <div className="tip error" role="alert" data-testid="sf-error">{bad || error}</div>}
-    </div>
+    </Card>
   );
 }
 
@@ -99,7 +99,7 @@ export default function SalesFunnel() {
       <PageHeader title={<>Sales funnel <HelpLink chapter="funnel" label="Sales funnel" /></>} description="Leads by how far they got, from first inquiry to a signed deal. Counts are for leads created in the range; revenue is by the date the deal closed." />
       <Controls f={f} setF={setF} data={data} today={today} error={error && data ? error : ""} />
       {!data && error && <ErrorState message="The sales funnel could not load." detail={error} onRetry={() => load(true)} />}
-      {!data && !error && <p className="sub" role="status">Loading the funnel…</p>}
+      {!data && !error && <div className="sf-skel" role="status" aria-label="Loading the funnel" aria-busy="true"><Skeleton height={44} /><div className="sf-tiles">{[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} height={96} />)}</div><Skeleton height={260} /></div>}
       {data && (
         <>
           <StatusStrip data={data} refreshedAt={refreshed || clock()} failed={failed} />

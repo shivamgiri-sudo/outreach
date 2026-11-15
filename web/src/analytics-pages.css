@@ -43,3 +43,13 @@
   .an-grid { grid-template-columns: minmax(0, 1fr); }
   .an-radios label { min-height: var(--h-touch); }
 }
+.rep-toolbar { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; margin-bottom: var(--s3); }
+.rep-toolbar .field-wrap, .rep-toolbar > input { flex: 1 1 260px; min-width: 0; }
+.rep-toolbar label { margin: 0; display: flex; align-items: center; gap: var(--s2); font-weight: 600; }
+.rep-toolbar select { width: auto; }
+.rep-msg { color: var(--muted); font-size: var(--fs-sm); }
+.rep-preview { width: 100%; height: 520px; border: 1px solid var(--line); border-radius: var(--r-sm); background: #fff; }
+.rep-log-head { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; padding: var(--s3) var(--s4); }
+.rep-log-head label { margin: 0; display: flex; align-items: center; gap: var(--s2); }
+.rep-log-head select { width: auto; }
+.ui-table a:not(.btn), .sf-scroll a, .drawer .ui-table a { color: var(--brand); }

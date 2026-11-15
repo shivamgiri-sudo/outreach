@@ -1,6 +1,7 @@
 // Sales funnel: real calls from DialHalo on the leads in view (Integrations → DialHalo). Hidden until connected.
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
+import { Card, CardHeader, Stat, Stats } from "../ui/index.js";
 
 const TILES = [
   ["sent_total", "Sent to DialHalo", "Leads in a caller's dial queue (all time)"],
@@ -20,17 +21,13 @@ export default function CallTrackerFunnel({ from, to }) {
   }, [from, to]);
   if (!data || (!data.connected_workspaces && !data.sent_total && !data.calls)) return null;
   return (
-    <section className="card u-mt-16" data-testid="ct-funnel" >
-      <b>Calls from DialHalo</b>
-      <p className="sub">Real calls synced from callers' phones{from || to ? ` (${from || "start"} to ${to || "today"}, IST)` : ""}.</p>
-      <div className="grid g4">
+    <Card as="section" className="sf-section-gap" data-testid="ct-funnel">
+      <CardHeader title="Calls from DialHalo" description={`Real calls synced from callers' phones${from || to ? ` (${from || "start"} to ${to || "today"}, IST)` : ""}.`} />
+      <Stats>
         {TILES.map(([key, label, hint]) => (
-          <div key={key} className="stat" title={hint} data-testid={`ct-funnel-${key}`}>
-            <span className="sub-inline">{label}</span>
-            <b>{data[key] ?? 0}</b>
-          </div>
+          <Stat key={key} value={data[key] ?? 0} label={label} title={hint} data-testid={`ct-funnel-${key}`} />
         ))}
-      </div>
-    </section>
+      </Stats>
+    </Card>
   );
 }

@@ -3,9 +3,10 @@ import { api } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import IcpCard from "./IcpCard.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
-import { PageHeader, DataTable } from "../ui/index.js";
+import "../data-pages.css";
+import { Badge, Button, Card, CardHeader, DataTable, EmptyState, Field, Input, PageHeader, Skeleton } from "../ui/index.js";
 
-const TRUST_PILL = { confirmed: "ok", published: "ok", published_doubtful: "warn", published_mismatch: "warn", invalid: "warn", guess_mx: "", guess_risky: "warn", guess_rejected: "warn", none: "" };
+const TRUST_PILL = { confirmed: "success", published: "success", published_doubtful: "warning", published_mismatch: "warning", invalid: "warning", guess_mx: "neutral", guess_risky: "warning", guess_rejected: "warning", none: "neutral" };
 const TRUST_SHORT = { confirmed: "Confirmed", published: "Published", published_doubtful: "Doubtful", published_mismatch: "Wrong company?", invalid: "Invalid", guess_mx: "Guess", guess_risky: "Risky guess", guess_rejected: "Rejected", none: "No email" };
 const STEPS = [
   ["1", "Hiring signal", "Open roles, how long they have been open and reposts, from the job sources."],
@@ -40,29 +41,28 @@ export default function HiringEngine() {
         description="One pass that turns a company's hiring signal into the right person and an email, and says honestly how far each result can be trusted." />
       <IcpCard />
       {error && <ErrorState message="The hiring engine could not load." detail={error} onRetry={load} />}
-      <div className="grid gw u-mb-16">
-        <div className="card">
-          <b>How it works</b>
-          <ol className="steps">{STEPS.map(([n, title, text]) => <li key={n}><b>{title}.</b> {text}</li>)}</ol>
-        </div>
-        <div className="card">
-          <b>Run it</b>
-          <p className="sub">Works on your busiest hirers first. Emails are only checked, never sent.</p>
-          <div className="row">
-            <div><label>Leads to check</label><input type="number" min="1" max="1000" value={maxLeads} onChange={(e) => setMaxLeads(e.target.value)} /></div>
-            <div><label>Also verify this many published emails</label><input type="number" min="0" max="1000" value={checkPublished} onChange={(e) => setCheckPublished(e.target.value)} /></div>
-            <div><label>Most paid checks</label><input type="number" min="0" max="500" value={maxCredits} onChange={(e) => setMaxCredits(e.target.value)} /></div>
+      <div className="dp-two">
+        <Card>
+          <CardHeader title="How it works" />
+          <ol className="dp-steps">{STEPS.map(([n, title, text]) => <li key={n}><b>{title}.</b> {text}</li>)}</ol>
+        </Card>
+        <Card>
+          <CardHeader title="Run it" description="Works on your busiest hirers first. Emails are only checked, never sent." />
+          <div className="dp-run-grid">
+            <Field label="Leads to check"><Input type="number" min="1" max="1000" value={maxLeads} onChange={(e) => setMaxLeads(e.target.value)} /></Field>
+            <Field label="Also verify this many published emails"><Input type="number" min="0" max="1000" value={checkPublished} onChange={(e) => setCheckPublished(e.target.value)} /></Field>
+            <Field label="Most paid checks"><Input type="number" min="0" max="500" value={maxCredits} onChange={(e) => setMaxCredits(e.target.value)} /></Field>
           </div>
-          <label className="row u-fw4 u-m-8-0-0">
-            <input type="checkbox" className="u-w-auto" checked={recheck} onChange={(e) => setRecheck(e.target.checked)} />
+          <label className="dp-check">
+            <input type="checkbox" checked={recheck} onChange={(e) => setRecheck(e.target.checked)} />
             Also re-check guesses that are still unconfirmed (uses paid checks)
           </label>
           <div className="row u-mt-12">
-            <button className="btn ghost" disabled={busy} onClick={() => run(true)}>Preview (changes nothing)</button>
-            <button className="btn" disabled={busy} onClick={() => run(false)}>{busy ? "Working…" : "Run the engine"}</button>
+            <Button variant="secondary" disabled={busy} onClick={() => run(true)}>Preview (changes nothing)</Button>
+            <Button disabled={busy} onClick={() => run(false)}>{busy ? "Working…" : "Run the engine"}</Button>
           </div>
           {report && (
-            <p className="tip u-mt-12" role="status" >
+            <p className="tip u-mt-12" role="status">
               {report.dry ? "Preview: " : ""}checked {report.checked} leads · {report.employers} employers, {report.agencies} agencies ·
               {" "}{report.guessed} addresses built · {report.confirmed} confirmed, {report.kept_as_guess} kept as guesses, {report.rejected} rejected
               {report.skipped_no_name_or_domain ? ` · ${report.skipped_no_name_or_domain} have no decision maker name yet (run Find & enrich first)` : ""}
@@ -71,38 +71,40 @@ export default function HiringEngine() {
               {report.errors?.length > 0 && <><br />{report.errors.join(" ")}</>}
             </p>
           )}
-        </div>
+        </Card>
       </div>
+      {!data && !error && <div className="dp-skel" aria-busy="true"><Skeleton height={40} /><Skeleton height={220} /></div>}
       {data && (
         <>
-          <div className="row u-mb-12">
+          <div className="dp-badges">
             {Object.keys(data.labels).map((k) => (
-              <span key={k} className={`pill ${TRUST_PILL[k]}`} title={data.labels[k]}>{TRUST_SHORT[k]}: {data.trust[k]}</span>
+              <Badge key={k} tone={TRUST_PILL[k]} title={data.labels[k]}>{TRUST_SHORT[k]}: {data.trust[k]}</Badge>
             ))}
-            <span className="pill">Agencies: {data.posted_by.agency || 0}</span>
-            <span style={{ marginLeft: "auto" }}>
+            <Badge>Agencies: {data.posted_by.agency || 0}</Badge>
+            <span className="grow">
               <DownloadButton path={exportPath("hiring_sheet")} label="Download the sheet" testId="download-hiring-sheet"
                 title="One row per company with the decision maker, email and a trust column" />
             </span>
           </div>
-          <div className="card u-p0 u-xauto">
-            <DataTable>
+          <Card className="table-card">
+            {data.top.length === 0 ? <EmptyState icon="bot" title="No companies to show yet">Read job pages or run a campaign first; the engine works from the hiring signals they find.</EmptyState> : (
+            <DataTable label="Hiring engine results">
               <thead><tr><th>Company</th><th>Open roles</th><th>Posted by</th><th>Decision maker</th><th>Email</th><th>Trust</th></tr></thead>
               <tbody>
                 {data.top.map((r, i) => (
                   <tr key={i}>
                     <td><b>{r.company}</b><br /><small>{r.website}</small></td>
                     <td>{r.open_roles}{r.oldest_open_role_days ? <><br /><small>oldest {r.oldest_open_role_days} days</small></> : null}</td>
-                    <td><span className={`pill ${r.posted_by === "agency" ? "warn" : ""}`} title={r.posted_by_reason}>{r.posted_by}</span></td>
+                    <td><Badge tone={r.posted_by === "agency" ? "warning" : "neutral"} title={r.posted_by_reason}>{r.posted_by}</Badge></td>
                     <td>{r.decision_maker || "—"}<br /><small>{r.title}</small></td>
                     <td>{r.email || r.guessed_email || "—"}{r.email_notes ? <><br /><small>{r.email_notes}</small></> : null}</td>
-                    <td><span className={`pill ${TRUST_PILL[r.email_trust]}`} title={r.email_trust_detail}>{TRUST_SHORT[r.email_trust]}</span></td>
+                    <td><Badge tone={TRUST_PILL[r.email_trust]} title={r.email_trust_detail}>{TRUST_SHORT[r.email_trust]}</Badge></td>
                   </tr>
                 ))}
               </tbody>
-            </DataTable>
-          </div>
-          <p className="sub">Showing the top {data.top.length} of {data.total}. The download has every row.</p>
+            </DataTable>)}
+          </Card>
+          <p className="sub u-mt-12">Showing the top {data.top.length} of {data.total}. The download has every row.</p>
         </>
       )}
     </>

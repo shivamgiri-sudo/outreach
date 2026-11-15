@@ -1,8 +1,8 @@
 // Sales funnel page, groups A–C: the tiles, the funnel and its leakage, speed and discipline.
 import { FunnelChart, Gauge } from "../salesCharts.jsx";
-import { changeText, days, hours, inr, inrShort, num, pct } from "../salesFormat.js";
+import { changeText, days, hours, inr, inrShort, num, pct, statusShort } from "../salesFormat.js";
 import Abbr, { Stage } from "../components/Abbr.jsx";
-import { DataTable } from "../ui/index.js";
+import { Card, CardHeader, DataTable, EmptyState } from "../ui/index.js";
 
 export function Tile({ label, value, change, previous, money, drill, onDrill, id }) {
   const c = changeText(change);
@@ -42,15 +42,15 @@ export function FunnelHealth({ data, onDrill }) {
     <section aria-labelledby="sf-h-health">
       <h3 id="sf-h-health">Funnel health</h3>
       <div className="sf-health-grid">
-        <div className="card">
-          <h4>Funnel (leads created in the range)</h4>
+        <Card>
+          <CardHeader title="Funnel (leads created in the range)" />
           <FunnelChart stages={data.funnel} onPick={(k) => onDrill(k, "Leads in this funnel stage")} />
           <p className="sub">Each section of the funnel is every lead that reached that stage by the To date; click one to see the leads. On the right: the share of all
             inquiries, then the share of the stage before that moved on and how many dropped.</p>
-        </div>
-        <div className="card table-card-inner">
-          <h4>Stage conversion</h4>
-          <DataTable data-testid="sf-conversions">
+        </Card>
+        <Card className="table-card-inner">
+          <CardHeader title="Stage conversion" />
+          <DataTable label="Stage conversion" data-testid="sf-conversions">
             <thead><tr><th>From → to</th><th className="u-right">Count</th><th className="u-right">Rate</th></tr></thead>
             <tbody>
               {data.conversions.map((c) => (
@@ -59,16 +59,14 @@ export function FunnelHealth({ data, onDrill }) {
               ))}
             </tbody>
           </DataTable>
-        </div>
+        </Card>
       </div>
-      <div className="card u-mt-16">
-        <div className="row u-between">
-          <h4 className="u-m0">Funnel leakage: Closed Lost by the stage it was lost at</h4>
-          <button type="button" className="linkish" disabled={!data.lost.count} onClick={() => onDrill(data.lost.drill, "Closed Lost leads")} data-testid="sf-lost-total">{data.lost.count} lost</button>
-        </div>
-        {!reasons.length ? <p className="empty">No leads were lost in this range.</p> : (
+      <Card className="sf-section-gap">
+        <CardHeader title="Funnel leakage: Closed Lost by the stage it was lost at"
+          actions={<button type="button" className="linkish" disabled={!data.lost.count} onClick={() => onDrill(data.lost.drill, "Closed Lost leads")} data-testid="sf-lost-total">{data.lost.count} lost</button>} />
+        {!reasons.length ? <EmptyState icon="check" title="No leads were lost in this range">Leads marked Closed Lost show here by the stage they were lost at.</EmptyState> : (
           <div className="table-card u-xauto">
-            <DataTable data-testid="sf-leakage">
+            <DataTable label="Funnel leakage" data-testid="sf-leakage">
               <thead><tr><th>Lost at stage</th>{reasons.map((r) => <th key={r} className="u-right">{r}</th>)}</tr></thead>
               <tbody>
                 {Object.keys(rows).map((stage) => (
@@ -82,7 +80,7 @@ export function FunnelHealth({ data, onDrill }) {
             </DataTable>
           </div>
         )}
-      </div>
+      </Card>
     </section>
   );
 }
@@ -93,34 +91,32 @@ export function SpeedDiscipline({ data, onDrill }) {
     <section aria-labelledby="sf-h-speed">
       <h3 id="sf-h-speed">Speed and discipline</h3>
       <div className="grid g3">
-        <div className="card" data-testid="sf-speed">
-          <h4><Abbr term="Speed to lead">Speed to lead</Abbr></h4>
+        <Card data-testid="sf-speed">
+          <CardHeader title={<Abbr term="Speed to lead">Speed to lead</Abbr>} />
           <div className="sf-pair-nums"><div><b>{hours(sp.avgHours)}</b><small>average</small></div><div><b>{hours(sp.medianHours)}</b><small>median</small></div></div>
           <p className="sub">Created to first human contact. {sp.measured} lead{sp.measured === 1 ? "" : "s"} measured.</p>
           {sp.byOwner.length > 0 && (
-            <DataTable><thead><tr><th>Owner</th><th className="u-right">Avg</th><th className="u-right">Median</th></tr></thead>
+            <DataTable label="Speed to lead by owner"><thead><tr><th>Owner</th><th className="u-right">Avg</th><th className="u-right">Median</th></tr></thead>
               <tbody>{sp.byOwner.map((o) => <tr key={o.owner}><td>{o.owner}</td><td className="u-right">{hours(o.avgHours)}</td><td className="u-right">{hours(o.medianHours)}</td></tr>)}</tbody></DataTable>
           )}
-        </div>
-        <div className="card">
-          <h4><Abbr term="SLA">SLA</Abbr> compliance</h4>
+        </Card>
+        <Card>
+          <CardHeader title={<><Abbr term="SLA">SLA</Abbr> compliance</>} />
           <Gauge value={sla.pct} caption={`First response within ${sla.hours} h: ${sla.within} of ${sla.measured}`} />
-        </div>
-        <div className="card" data-testid="sf-stalled">
-          <div className="row u-between">
-            <h4 className="u-m0"><Abbr term="Stalled lead">Stalled leads</Abbr></h4>
-            <button type="button" className="linkish" disabled={!st.total} onClick={() => onDrill(st.drill, "Stalled leads")} data-testid="sf-stalled-total">{st.total} stalled</button>
-          </div>
+        </Card>
+        <Card data-testid="sf-stalled">
+          <CardHeader title={<Abbr term="Stalled lead">Stalled leads</Abbr>}
+            actions={<button type="button" className="linkish" disabled={!st.total} onClick={() => onDrill(st.drill, "Stalled leads")} data-testid="sf-stalled-total">{st.total} stalled</button>} />
           <p className="sub">Open, no activity for more than the configured days; biggest value first.</p>
-          {st.rows.length === 0 ? <p className="empty">Nothing is stalled.</p> : (
-            <div style={{ maxHeight: 260, overflow: "auto" }}>
-              <DataTable><tbody>{st.rows.slice(0, 50).map((r) => (
+          {st.rows.length === 0 ? <EmptyState icon="check" title="Nothing is stalled">Every open lead has had activity recently.</EmptyState> : (
+            <div className="sf-scroll">
+              <DataTable label="Stalled leads"><tbody>{st.rows.slice(0, 50).map((r) => (
                 <tr key={r.id}><td><a href={`#leads?lead=${encodeURIComponent(r.id)}`}>{r.company || r.id}</a><br /><small className="sub-inline">{r.owner || "—"} · <Stage status={r.stage} /></small></td>
                   <td className="u-right">{inr(r.value)}<br /><small className="sub-inline">{days(r.daysIdle)} idle</small></td></tr>
               ))}</tbody></DataTable>
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </section>
   );

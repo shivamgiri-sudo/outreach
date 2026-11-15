@@ -8,7 +8,8 @@ import LeadDrawer from "./LeadDrawer.jsx";
 import ResponseTimes from "./ResponseTimes.jsx";
 import HelpLink from "../components/HelpLink.jsx";
 import Abbr from "../components/Abbr.jsx";
-import { PageHeader, DataTable } from "../ui/index.js";
+import "../analytics-pages.css";
+import { Button, Card, CardHeader, DataTable, EmptyState, Input, PageHeader, Select, Skeleton, Stat, Stats, Tabs } from "../ui/index.js";
 
 // Reports: the daily report (what was done each day), each person's numbers, and the full activity log with the exact
 // number / email / LinkedIn profile used. Download as CSV (owners and workspace admins).
@@ -55,82 +56,79 @@ export default function Reports() {
       <PageHeader title={<>Reports <HelpLink chapter="reports" label="Reports" /></>}
         description="What was done each day and by whom. Times are India Standard Time. Every number comes from the activity log below." />
       <PeriodPicker value={period} onChange={setPeriod} range={data?.range} />
-      <div className="row u-gap-12 u-wrap u-m-8-0">
-        <label className="row u-gap-8 u-m0">Person
-          <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Person" data-testid="report-person" className="u-w-auto">
+      <div className="rep-toolbar">
+        <label>Person
+          <Select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Person" data-testid="report-person">
             <option value="">Everyone</option>
             {(data?.people || []).map((p) => <option key={p} value={p}>{p}</option>)}
-          </select></label>
-        {canCsv && <button className="btn ghost" onClick={() => ops.dailyReportCsv(period, who, kind)} data-testid="report-csv">Download activity log (CSV)</button>}
+          </Select></label>
+        {canCsv && <Button variant="secondary" icon="download" onClick={() => ops.dailyReportCsv(period, who, kind)} data-testid="report-csv">Download activity log (CSV)</Button>}
       </div>
-      <div className="row u-gap-8 u-wrap u-m-4-0-12">
-        {canCsv && <input value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="Also send to (emails, comma separated)" aria-label="Also send to" style={{ flex: "1 1 260px", minWidth: 0 }} />}
-        <button className="btn" onClick={sendMail} data-testid="report-email">Email me this report</button>
-        {mailMsg && <small className="sub-inline" role="status" data-testid="report-email-msg">{mailMsg}</small>}
+      <div className="rep-toolbar">
+        {canCsv && <Input icon="mail" value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="Also send to (emails, comma separated)" aria-label="Also send to" />}
+        <Button onClick={sendMail} data-testid="report-email">Email me this report</Button>
+        {mailMsg && <small className="rep-msg" role="status" data-testid="report-email-msg">{mailMsg}</small>}
       </div>
       {preview && (
-        <details className="card u-mb-12" open >
+        <Card as="details" className="u-mb-12" open>
           <summary><b>Email preview</b> (as sent, with the CSV attached and a download link)</summary>
-          <iframe title="Report email preview" srcDoc={preview} sandbox="" style={{ width: "100%", height: 520, border: "1px solid var(--line)", borderRadius: 8, background: "#fff" }} data-testid="report-preview" />
-        </details>
+          <iframe title="Report email preview" srcDoc={preview} sandbox="" className="rep-preview u-mt-12" data-testid="report-preview" />
+        </Card>
       )}
       {error && <ErrorState message="The report could not load." detail={error} onRetry={load} />}
-      {!data && !error && <p className="empty">Loading…</p>}
+      {!data && !error && <div className="an-skel" aria-busy="true"><div className="an-skel-tiles">{[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} height={96} />)}</div><Skeleton height={220} /></div>}
       {data && (
         <>
-          <div className="stat-grid">
+          <Stats>
             {["leads_added", "calls", "calls_connected", "interested", "not_interested", "follow_ups", "emails_sent", "whatsapp_sent", "replies", "meetings"].map((k) => (
-              <div key={k} className="card stat" data-testid={`rep-${k}`}><b>{t[k]}</b><span className="sub-inline">{LABEL[k]}</span></div>
+              <Stat key={k} value={t[k]} label={LABEL[k]} data-testid={`rep-${k}`} />
             ))}
-          </div>
-          <div className="tabs scroll u-mt-16" role="tablist" aria-label="Report sections" >
-            {[["daily", "Daily report"], ["team", "By person"], ["log", "Activity log"], ["sla", "Response times"]].map(([id, label]) => (
-              <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>{label}</button>
-            ))}
-          </div>
+          </Stats>
+          <div className="an-section"><Tabs label="Report sections" value={tab} onChange={setTab}
+            items={[["daily", "Daily report"], ["team", "By person"], ["log", "Activity log"], ["sla", "Response times"]].map(([id, label]) => ({ id, label }))} /></div>
           {tab === "sla" && <ResponseTimes period={period} />}
           {tab === "daily" && (
             <>
-              <div className="card"><h3 className="u-mt-0">Each day</h3>
+              <Card><CardHeader title="Each day" />
                 <TrendChart days={[...data.days].reverse()} series={[{ key: "calls", label: "Calls", color: SERIES.blue }, { key: "calls_connected", label: "Connected", color: SERIES.teal },
-                  { key: "emails_sent", label: "Emails", color: SERIES.violet }, { key: "interested", label: "Interested", color: SERIES.green }]} /></div>
-              <div className="card table-card u-p0 u-mt-16">
-                <div className="table-scroll"><DataTable data-testid="daily-table">
+                  { key: "emails_sent", label: "Emails", color: SERIES.violet }, { key: "interested", label: "Interested", color: SERIES.green }]} /></Card>
+              <Card className="table-card u-p0 an-section">
+                <div className="table-scroll"><DataTable label="Each day" data-testid="daily-table">
                   <thead><tr><th>Day</th>{DAY_COLS.map((c) => <th key={c}>{LABEL[c]}</th>)}</tr></thead>
                   <tbody>{data.days.map((d) => (
                     <tr key={d.day}><td><b>{istDay(d.day)}</b></td>{DAY_COLS.map((c) => <td key={c}>{d[c] || <span className="sub-inline">0</span>}</td>)}</tr>
                   ))}</tbody>
                 </DataTable></div>
-              </div>
+              </Card>
             </>
           )}
           {tab === "team" && (
             <>
-              <div className="card"><h3 className="u-mt-0">Actions per person</h3>
+              <Card><CardHeader title="Actions per person" />
                 {data.team.length ? <HBars rows={data.team.map((p) => ({ key: p.who, label: p.who, value: p.actions, color: SERIES.blue }))} onPick={(k) => { setWho(k); setTab("log"); }} />
-                  : <p className="empty">Nothing done in this period.</p>}</div>
-              <div className="card table-card u-p0 u-mt-16">
-                <div className="table-scroll"><DataTable data-testid="team-report">
+                  : <EmptyState icon="users" title="Nothing done in this period">Pick a longer period above.</EmptyState>}</Card>
+              <Card className="table-card u-p0 an-section">
+                <div className="table-scroll"><DataTable label="By person" data-testid="team-report">
                   <thead><tr><th>Person</th><th>Actions</th>{DAY_COLS.map((c) => <th key={c}>{LABEL[c]}</th>)}</tr></thead>
                   <tbody>{data.team.map((p) => (
                     <tr key={p.who}><td><button className="link" onClick={() => { setWho(p.who); setTab("log"); }}>{p.who}</button></td><td>{p.actions}</td>
                       {DAY_COLS.map((c) => <td key={c}>{p[c]}</td>)}</tr>
                   ))}</tbody>
                 </DataTable></div>
-              </div>
+              </Card>
             </>
           )}
           {tab === "log" && (
-            <div className="card table-card u-p0">
-              <div className="row" style={{ padding: "12px 16px", gap: 10, flexWrap: "wrap" }}>
-                <label className="row u-gap-8 u-m0">Show
-                  <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Action type" className="u-w-auto">
+            <Card className="table-card u-p0">
+              <div className="rep-log-head">
+                <label>Show
+                  <Select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Action type">
                     {Object.entries(KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select></label>
+                  </Select></label>
                 <small className="sub-inline">{data.log_total} actions{data.log_total > data.log.length ? ` (newest ${data.log.length} shown; download for all)` : ""}</small>
               </div>
-              {data.log.length === 0 ? <p className="empty">Nothing in this period.</p> : (
-                <div className="table-scroll"><DataTable data-testid="activity-log">
+              {data.log.length === 0 ? <EmptyState icon="history" title="Nothing in this period">Calls, emails and stage changes are listed here as they happen.</EmptyState> : (
+                <div className="table-scroll"><DataTable label="Activity log" data-testid="activity-log">
                   <thead><tr><th>When (<Abbr term="IST">IST</Abbr>)</th><th>By</th><th>Lead</th><th>Action</th><th>Outcome</th><th>Number / email / profile used</th><th>Notes</th></tr></thead>
                   <tbody>{data.log.map((r, i) => (
                     <tr key={`${r.at}-${i}`}><td>{istDay(r.day)} {r.time_ist}</td><td>{r.who}</td>
@@ -141,7 +139,7 @@ export default function Reports() {
                   ))}</tbody>
                 </DataTable></div>
               )}
-            </div>
+            </Card>
           )}
         </>
       )}

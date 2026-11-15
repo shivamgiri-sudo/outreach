@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { getToken, isOwner } from "../api.js";
 import { istLabel } from "../time.js";
 import { GuideButton } from "../GuidePanel.jsx";
-import { PageHeader, DataTable } from "../ui/index.js";
+import "../data-pages.css";
+import "../analytics-pages.css";
+import { Badge, Button, Card, CardHeader, DataTable, EmptyState, Field, Input, PageHeader, Skeleton } from "../ui/index.js";
 
 const DEFAULT_SAMPLE = 25;
 const MAX_SAMPLE = 100;
@@ -38,26 +40,27 @@ const sources = {
 const when = (iso) => istLabel(iso);
 
 function Alert({ text }) {
-  return text ? <p role="alert" style={{ color: "var(--hot)", margin: "8px 0 0" }}>{text}</p> : null;
+  return text ? <p role="alert" className="dp-warn">{text}</p> : null;
 }
 
 function ProviderList({ list, go }) {
   return (
-    <div className="card">
-      <h3 className="u-mt-0">Providers</h3>
+    <Card>
+      <CardHeader title="Providers" />
+      {list.length === 0 && <EmptyState icon="database" title="No providers available">Providers appear here once they are enabled for your account.</EmptyState>}
       {list.map((p) => (
-        <div className="row" key={p.id} style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+        <div className="dp-partner" key={p.id}>
           <span className="u-flex1 u-minwidth-220">
             <b>{p.title}</b><br /><small className="sub">{p.configured ? p.cost_note : p.reason}</small>
           </span>
           <span className="row">
-            <span className={`pill ${p.configured ? "ok" : "warn"}`}>{p.configured ? "Connected" : "Not set up"}</span>
+            <Badge tone={p.configured ? "success" : "warning"}>{p.configured ? "Connected" : "Not set up"}</Badge>
             {p.setup_id && <GuideButton keys={`integration:${p.setup_id}`} label="How do I get this?" testId={`source-guide-${p.id}`} />}
-            {!p.configured && <button className="btn ghost" onClick={() => go("setup")}>Set up in Setup</button>}
+            {!p.configured && <Button variant="secondary" onClick={() => go("setup")}>Set up in Setup</Button>}
           </span>
         </div>
       ))}
-    </div>
+    </Card>
   );
 }
 
@@ -76,24 +79,25 @@ function CompareForm({ list, onDone }) {
   };
 
   return (
-    <div className="card">
-      <h3 className="u-mt-0">Compare</h3>
-      <p className="sub u-m-0-0-8">Each ticked provider looks up the same leads. Nothing is saved to your leads until you choose.</p>
+    <Card>
+      <CardHeader title="Compare" description="Each ticked provider looks up the same leads. Nothing is saved to your leads until you choose." />
       {list.map((p) => (
-        <label key={p.id} className="row u-fw4 u-m-8-0">
+        <label key={p.id} className="dp-check">
           <input type="checkbox" checked={picked.includes(p.id)} onChange={() => toggle(p.id)} />
-          {p.title}{!p.configured && <small className="sub u-m0"> (not set up, will be skipped)</small>}
+          <span>{p.title}{!p.configured && <small className="sub u-m0"> (not set up, will be skipped)</small>}</span>
         </label>
       ))}
-      <label htmlFor="sample-size">How many leads to test</label>
-      <input id="sample-size" type="number" min="1" max={MAX_SAMPLE} value={size} onChange={(e) => setSize(e.target.value)} className="u-maxwidth-140" />
+      <div className="u-mt-12 u-maxwidth-220">
+        <label htmlFor="sample-size">How many leads to test</label>
+        <input id="sample-size" type="number" min="1" max={MAX_SAMPLE} value={size} onChange={(e) => setSize(e.target.value)} />
+      </div>
       <div className="row u-mt-12">
-        <button className="btn" disabled={busy || picked.length === 0 || !(size >= 1 && size <= MAX_SAMPLE)} onClick={run}>
+        <Button disabled={busy || picked.length === 0 || !(size >= 1 && size <= MAX_SAMPLE)} onClick={run}>
           {busy ? "Running… this can take a few minutes" : "Run comparison"}
-        </button>
+        </Button>
       </div>
       <Alert text={error} />
-    </div>
+    </Card>
   );
 }
 
@@ -102,7 +106,7 @@ function ResultRow({ m, run, onApplied }) {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   if (m.skipped) {
-    return <tr><td><b>{m.title}</b></td><td colSpan={9}><span className="pill warn">Skipped</span> {m.reason}</td></tr>;
+    return <tr><td><b>{m.title}</b></td><td colSpan={9}><Badge tone="warning">Skipped</Badge> {m.reason}</td></tr>;
   }
   const applied = (run.applied || []).includes(m.provider);
   const use = async () => {
@@ -116,7 +120,7 @@ function ResultRow({ m, run, onApplied }) {
   };
   return (
     <tr>
-      <td><b>{m.title}</b>{m.stopped && <><br /><small style={{ color: "var(--hot)" }}>Stopped: {m.stopped}</small></>}</td>
+      <td><b>{m.title}</b>{m.stopped && <><br /><small className="dp-hot">Stopped: {m.stopped}</small></>}</td>
       <td>{m.leads_checked}</td>
       <td>{m.with_email}</td>
       <td>{m.with_phone}</td>
@@ -126,10 +130,10 @@ function ResultRow({ m, run, onApplied }) {
       <td>{m.bounced ?? 0}</td>
       <td title={(m.error_messages || []).join("\n")}>{m.errors}</td>
       <td>
-        {isOwner() ? <button className="btn ghost" disabled={busy || applied} onClick={use}>
+        {isOwner() ? <Button variant="secondary" disabled={busy || applied} onClick={use}>
           {applied ? "Used" : busy ? "Saving…" : "Use these results"}
-        </button> : applied ? "Used" : ""}
-        {note && <><br /><small style={{ color: "var(--ok)" }}>{note}</small></>}
+        </Button> : applied ? "Used" : ""}
+        {note && <><br /><small className="dp-ok">{note}</small></>}
         <Alert text={error} />
       </td>
     </tr>
@@ -139,17 +143,17 @@ function ResultRow({ m, run, onApplied }) {
 function Results({ run, onApplied }) {
   if (!run) return null;
   return (
-    <div className="card u-p0 u-xauto u-mt-16">
-      <h3 className="u-m-16">Results for {run.sample_size} leads <small className="sub">({when(run.at)})</small></h3>
-      <DataTable>
+    <Card className="an-card-table an-section">
+      <h3>Results for {run.sample_size} leads <small className="sub">({when(run.at)})</small></h3>
+      <DataTable label="Comparison results">
         <thead><tr>
           <th>Provider</th><th>Checked</th><th>Found email</th><th>Found phone</th><th>Coverage %</th>
           <th>Credits</th><th>Cost per contact</th><th>Bounced</th><th>Errors</th><th />
         </tr></thead>
         <tbody>{run.providers.map((m) => <ResultRow key={`${run.id}-${m.provider}`}m={m} run={run} onApplied={onApplied} />)}</tbody>
       </DataTable>
-      <p className="sub u-m-16">"Use these results" only fills emails and phones that are empty, and skips unsubscribed or disqualified leads. Bounced grows once sending starts.</p>
-    </div>
+      <p className="an-notes u-p-16">"Use these results" only fills emails and phones that are empty, and skips unsubscribed or disqualified leads. Bounced grows once sending starts.</p>
+    </Card>
   );
 }
 
@@ -174,15 +178,14 @@ function ImportCard() {
   };
 
   return (
-    <div className="card">
-      <h3 className="u-mt-0">Import from the website contact scraper</h3>
-      <p className="sub u-m-0-0-8">Run the open-source scraper on your computer (homepage or key pages only, no proxies), then paste or upload its JSON.</p>
+    <Card>
+      <CardHeader title="Import from the website contact scraper" description="Run the open-source scraper on your computer (homepage or key pages only, no proxies), then paste or upload its JSON." />
       <label htmlFor="scraper-file">JSON file</label>
       <input id="scraper-file" type="file" accept=".json,application/json" onChange={readFile} />
       <label htmlFor="scraper-json">Or paste the JSON</label>
       <textarea id="scraper-json" rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder='[{"domain": "example.in", "emails": [...], "phones": [...]}]' />
       <div className="row u-mt-12">
-        <button className="btn" disabled={busy || !text.trim()} onClick={send}>{busy ? "Importing…" : "Import"}</button>
+        <Button disabled={busy || !text.trim()} onClick={send}>{busy ? "Importing…" : "Import"}</Button>
       </div>
       <Alert text={error} />
       {result && (
@@ -191,29 +194,29 @@ function ImportCard() {
           {result.unmatched_domains.length > 0 && <><br /><small>No lead for: {result.unmatched_domains.join(", ")}</small></>}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
 function History({ runs, current, onShow }) {
   return (
-    <div className="card u-mt-16">
-      <h3 className="u-mt-0">Past comparisons</h3>
-      {runs.length === 0 && <p className="sub u-m0">No comparisons yet.</p>}
+    <Card className="an-section">
+      <CardHeader title="Past comparisons" />
+      {runs.length === 0 && <EmptyState icon="history" title="No comparisons yet">Run a comparison above; each run is kept here so you can look back.</EmptyState>}
       {runs.map((r) => (
-        <div className="row" key={r.id} style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+        <div className="dp-partner" key={r.id}>
           <span className="u-flex1 u-minwidth-220">
             <b>{when(r.at)}</b> · {r.sample_size} leads<br />
             <small className="sub">
               {r.providers.map((m) => (m.skipped ? `${m.title}: skipped` : `${m.title}: ${m.coverage_pct}%`)).join(" · ")}
             </small>
           </span>
-          <button className="btn ghost" disabled={current && current.id === r.id} onClick={() => onShow(r)}>
+          <Button variant="secondary" disabled={current && current.id === r.id} onClick={() => onShow(r)}>
             {current && current.id === r.id ? "Showing" : "Show"}
-          </button>
+          </Button>
         </div>
       ))}
-    </div>
+    </Card>
   );
 }
 
@@ -238,20 +241,18 @@ export default function DataSources({ go }) {
   const refresh = (keepId) => loadRuns(keepId).catch((e) => setError(e.message));
 
   if (error && !list) return <><PageHeader title="Data sources" /><Alert text={error} /></>;
-  if (!list) return <p className="empty">Loading…</p>;
+  if (!list) return <div className="dp-skel" aria-busy="true"><Skeleton height={36} width="40%" /><Skeleton height={220} /></div>;
 
   return (
     <>
       <PageHeader title="Data sources" description="Try free plans side by side on the same Indian leads, then keep the best. Only public business contacts are used, and every value keeps where it came from." />
       <Alert text={error} />
-      <div className="grid g2">
+      <div className="dp-two">
         <ProviderList list={list} go={go} />
         {isOwner() && <CompareForm list={list} onDone={(run) => { setCurrent(run); refresh(run.id); }} />}
       </div>
       <Results run={current} onApplied={() => current && refresh(current.id)} />
-      {isOwner() && <div className="grid g2 u-mt-16">
-        <ImportCard />
-      </div>}
+      {isOwner() && <div className="an-section"><ImportCard /></div>}
       <History runs={runs} current={current} onShow={setCurrent} />
     </>
   );

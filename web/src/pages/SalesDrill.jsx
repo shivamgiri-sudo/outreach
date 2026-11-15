@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import DrawerShell from "../DrawerShell.jsx";
 import { sales } from "../salesApi.js";
 import { inr } from "../salesFormat.js";
-import { DataTable } from "../ui/index.js";
+import { Button, DataTable, EmptyState, Skeleton } from "../ui/index.js";
 
 export default function SalesDrill({ drillKey, title, filters, onClose }) {
   const [state, setState] = useState({ loading: true });
@@ -21,12 +21,13 @@ export default function SalesDrill({ drillKey, title, filters, onClose }) {
           <h2 id="sf-drill-title" tabIndex={-1}>{title}</h2>
           <p className="sub u-m0">{state.loading ? "Loading…" : state.error ? "" : <><b data-testid="sf-drill-count">{state.count}</b> lead{state.count === 1 ? "" : "s"}{state.truncated ? " (first 10,000 shown)" : ""}</>}</p>
         </div>
-        <button className="btn ghost" onClick={onClose} aria-label="Close the list">Close</button>
+        <Button variant="secondary" onClick={onClose} aria-label="Close the list">Close</Button>
       </div>
+      {state.loading && <div className="sf-skel" aria-busy="true"><Skeleton height={20} /><Skeleton height={20} /><Skeleton height={20} /></div>}
       {state.error && <div className="tip error" role="alert">{state.error}</div>}
-      {state.rows && (state.rows.length === 0 ? <p className="empty">No leads behind this number.</p> : (
+      {state.rows && (state.rows.length === 0 ? <EmptyState icon="users" title="No leads behind this number">Try a wider date range or fewer filters.</EmptyState> : (
         <div className="table-card u-xauto">
-          <DataTable data-testid="sf-drill-table">
+          <DataTable label="Leads behind this number" data-testid="sf-drill-table">
             <thead><tr><th>ID</th><th>Company</th><th>Owner</th><th>Stage</th><th className="u-right">Value / month</th></tr></thead>
             <tbody>
               {state.rows.map((r) => (

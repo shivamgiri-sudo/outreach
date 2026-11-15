@@ -6,7 +6,8 @@ import { ErrorState } from "../states.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import { useConfirm } from "../Dialog.jsx";
 import RestoreLandlines from "./RestoreLandlines.jsx";
-import { PageHeader } from "../ui/index.js";
+import "../data-pages.css";
+import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Skeleton, Stat, Stats } from "../ui/index.js";
 
 const GROUPS_SHOWN = 20;
 const FIELD_NAMES = {
@@ -15,7 +16,7 @@ const FIELD_NAMES = {
 };
 
 function Kpi({ n, label }) {
-  return <div className="kpi"><b>{n}</b><span>{label}</span></div>;
+  return <Stat value={n} label={label} />;
 }
 
 function LeadCard({ lead, suggested, others, onMerge, busy }) {
@@ -29,21 +30,21 @@ function LeadCard({ lead, suggested, others, onMerge, busy }) {
   return (
     <div className="lead-card">
       <b>{lead.company || lead.domain || lead.id}</b>
-      {suggested && <span><span className="pill ok">Suggested to keep</span></span>}
+      {suggested && <span><Badge tone="success">Suggested to keep</Badge></span>}
       <dl>{rows.filter(([, v]) => v).map(([k, v]) => <Fragment key={k}><dt>{k}</dt><dd>{v}</dd></Fragment>)}</dl>
-      {isOwner() && <button className="btn ghost" disabled={busy} onClick={() => onMerge(lead, others)}>Keep this one, merge the others in</button>}
+      {isOwner() && <Button variant="secondary" disabled={busy} onClick={() => onMerge(lead, others)}>Keep this one, merge the others in</Button>}
     </div>
   );
 }
 
 function Clusters({ clusters, onMerge, busy }) {
   const [shown, setShown] = useState(GROUPS_SHOWN);
-  if (!clusters.length) return <p className="sub">No duplicates found.</p>;
+  if (!clusters.length) return <EmptyState icon="check" title="No duplicates found">Leads with the same email, phone or website would be grouped here.</EmptyState>;
   return (
     <>
       {clusters.slice(0, shown).map((c) => (
         <div key={c.lead_ids.join("-")} className="section-block">
-          <div className="row">{c.why.map((w) => <span key={w} className="pill warn">{w}</span>)}</div>
+          <div className="row">{c.why.map((w) => <Badge key={w} tone="warning">{w}</Badge>)}</div>
           <div className="compare">
             {c.leads.map((lead) => (
               <LeadCard key={lead.id} lead={lead} suggested={lead.id === c.suggested_keep} busy={busy}
@@ -52,22 +53,22 @@ function Clusters({ clusters, onMerge, busy }) {
           </div>
         </div>
       ))}
-      {clusters.length > shown && <button className="btn ghost" onClick={() => setShown(shown + GROUPS_SHOWN)}>Show more ({clusters.length - shown} left)</button>}
+      {clusters.length > shown && <Button variant="secondary" onClick={() => setShown(shown + GROUPS_SHOWN)}>Show more ({clusters.length - shown} left)</Button>}
     </>
   );
 }
 
 function Conflicts({ items, onResolve, busy }) {
-  if (!items.length) return <p className="sub">Nothing to check. When an import brings a different value for a field that is already filled, it shows up here.</p>;
+  if (!items.length) return <EmptyState icon="check" title="Nothing to check">When an import brings a different value for a field that is already filled, it shows up here.</EmptyState>;
   return items.map((c) => (
-    <div key={c.id} className="row" style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-      <span style={{ flex: "1 1 240px", overflowWrap: "anywhere" }}>
+    <div key={c.id} className="dp-partner">
+      <span className="u-flex1 u-anywhere">
         <b>{c.company || c.lead_id}</b> · {FIELD_NAMES[c.field] || c.field}: now “{String(c.kept)}”, {c.source} says “{String(c.incoming)}”
       </span>
       <span className="row">
         {isOwner() && <>
-          <button className="btn ghost" disabled={busy} onClick={() => onResolve(c, "keep")}>Keep current</button>
-          <button className="btn ghost" disabled={busy} onClick={() => onResolve(c, "use_new")}>Use new</button>
+          <Button variant="secondary" disabled={busy} onClick={() => onResolve(c, "keep")}>Keep current</Button>
+          <Button variant="secondary" disabled={busy} onClick={() => onResolve(c, "use_new")}>Use new</Button>
         </>}
       </span>
     </div>
@@ -89,12 +90,12 @@ function Standardise({ count, onChanged }) {
   };
   return (
     <>
-      <p className="sub u-m-0-0-8">
+      <p className="sub">
         Applies the import clean-up to leads saved earlier: names, company names (legal suffix kept separately), titles, phones (+91),
         website domains, city, state and country. Emails, stages and consent are never changed. {count} lead(s) would change.
       </p>
       {error && <p role="alert" className="tip error">{error}</p>}
-      {!plan && isOwner() && <button className="btn ghost" disabled={busy || count === 0} onClick={() => act(true)}>{busy ? "Checking…" : "Preview the clean-up"}</button>}
+      {!plan && isOwner() && <Button variant="secondary" disabled={busy || count === 0} onClick={() => act(true)}>{busy ? "Checking…" : "Preview the clean-up"}</Button>}
       {plan && isOwner() && (
         <>
           <ul>
@@ -106,8 +107,8 @@ function Standardise({ count, onChanged }) {
           </ul>
           {plan.changed > 30 && <p className="sub">…and {plan.changed - 30} more.</p>}
           <div className="row">
-            <button className="btn" disabled={busy || plan.changed === 0} onClick={() => act(false)}>{busy ? "Saving…" : `Apply to ${plan.changed} lead(s)`}</button>
-            <button className="btn ghost" onClick={() => setPlan(null)}>Cancel</button>
+            <Button disabled={busy || plan.changed === 0} onClick={() => act(false)}>{busy ? "Saving…" : `Apply to ${plan.changed} lead(s)`}</Button>
+            <Button variant="secondary" onClick={() => setPlan(null)}>Cancel</Button>
           </div>
         </>
       )}
@@ -139,45 +140,44 @@ export default function Hygiene({ go }) {
   const resolve = (c, choice) => act(() => api.resolveConflict(c.lead_id, c.id, choice), choice === "keep" ? "Kept the current value." : "Used the new value.");
 
   if (error) return <ErrorState message="Could not load the data hygiene report" detail={error} onRetry={load} />;
-  if (!report) return <p className="empty">Loading…</p>;
+  if (!report) return <div className="dp-skel" aria-busy="true"><Skeleton height={36} width="40%" /><Skeleton height={160} /><Skeleton height={200} /></div>;
   const m = report.missing, e = report.emails;
   return (
     <>
-      <PageHeader title="Data hygiene" description={<>Find gaps, duplicates and differing values across every source, and fix them in one place.</>} actions={<>{go && <button className="btn ghost" onClick={() => go("leads")}>Back to leads</button>}</>} />
+      <PageHeader title="Data hygiene" description={<>Find gaps, duplicates and differing values across every source, and fix them in one place.</>} actions={go && <Button variant="secondary" onClick={() => go("leads")}>Back to leads</Button>} />
       {message && <div className="tip u-mb-12" role="status" >{message} <button className="linkish" aria-label="Dismiss message" onClick={() => setMessage("")}>✕</button></div>}
-      <div className="card u-mb-16">
-        <h3 className="u-mt-0">Overview of {report.total} leads</h3>
-        <div className="kpi-row">
+      <div className="dp-card-stack">
+      <Card>
+        <CardHeader title={`Overview of ${report.total} leads`} />
+        <Stats>
           <Kpi n={m.email} label="no email" /><Kpi n={m.phone} label="no phone" /><Kpi n={m.decision_maker} label="no decision maker" />
           <Kpi n={m.website} label="no website" /><Kpi n={e.invalid} label="invalid emails" /><Kpi n={e.role} label="shared inboxes (info@, hr@)" />
           <Kpi n={e.free_mail} label="personal emails" /><Kpi n={e.suppressed} label="on do-not-contact list" />
           <Kpi n={report.foreign_phones} label="numbers outside India" /><Kpi n={report.stale} label={`no activity in ${report.stale_days} days`} />
           <Kpi n={report.duplicate_clusters} label="groups of duplicates" /><Kpi n={report.conflicts} label="values to check" />
-        </div>
-      </div>
-      <div className="card u-mb-16">
-        <div className="row dl-head">
-          <h3 className="u-mt-0">Duplicates ({report.duplicate_clusters})</h3>
-          <DownloadButton path={exportPath("duplicates")} label="Download duplicates" disabled={!report.duplicate_clusters}
-            title="Every duplicate group, one row per lead, with why they match" testId="download-duplicates" />
-        </div>
-        <p className="sub u-m-0-0-8">Each group shows why the leads match. Pick the one to keep; nothing is lost from the others.</p>
+        </Stats>
+      </Card>
+      <Card>
+        <CardHeader title={`Duplicates (${report.duplicate_clusters})`} description="Each group shows why the leads match. Pick the one to keep; nothing is lost from the others."
+          actions={<DownloadButton path={exportPath("duplicates")} label="Download duplicates" disabled={!report.duplicate_clusters}
+            title="Every duplicate group, one row per lead, with why they match" testId="download-duplicates" />} />
         <Clusters clusters={report.clusters} onMerge={merge} busy={busy} />
-      </div>
-      <div className="card u-mb-16">
-        <h3 className="u-mt-0">Different values to check ({report.conflicts})</h3>
+      </Card>
+      <Card>
+        <CardHeader title={`Different values to check (${report.conflicts})`} />
         <Conflicts items={report.conflict_list} onResolve={resolve} busy={busy} />
-      </div>
-      <div className="card" style={isOwner() ? { marginBottom: 14 } : undefined}>
-        <h3 className="u-mt-0">Standardise existing leads</h3>
+      </Card>
+      <Card>
+        <CardHeader title="Standardise existing leads" />
         <Standardise count={report.needs_standardising} onChanged={(text) => { setMessage(text); load(); }} />
-      </div>
+      </Card>
       {isOwner() && (
-        <div className="card">
-          <h3 className="u-mt-0">Restore landlines</h3>
+        <Card>
+          <CardHeader title="Restore landlines" />
           <RestoreLandlines onChanged={(text) => { setMessage(text); load(); }} />
-        </div>
+        </Card>
       )}
+      </div>
     </>
   );
 }

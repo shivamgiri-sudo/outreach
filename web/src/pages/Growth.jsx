@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { api, canWrite, isOwner } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import { getBrand } from "../brand.js";
-import { PageHeader } from "../ui/index.js";
+import "../data-pages.css";
+import { Badge, Button, Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Skeleton } from "../ui/index.js";
 
 const STEP_LABELS = {
   invited: "Invited", opened: "Opened demo", drafted: "Drafted a role", published: "Published role",
@@ -30,7 +31,7 @@ export default function Growth() {
   useEffect(() => { load(); }, []);
 
   if (loadError) return <ErrorState message="The free-experience page could not load." detail={loadError} onRetry={load} />;
-  if (!g || !offer) return <p className="empty">Loading…</p>;
+  if (!g || !offer) return <div className="dp-skel" aria-busy="true"><Skeleton height={36} width="40%" /><Skeleton height={220} /><Skeleton height={220} /></div>;
   const max = Math.max(1, ...Object.values(g.activation_funnel));
   const num = (k, v) => setOffer({ ...offer, [k]: Number(v) });
 
@@ -46,26 +47,25 @@ export default function Growth() {
     <>
       <PageHeader title="Free experience"
         description="Let employers try it first. Give a real, capped taste, track whether they reach a result, and talk about paying only after." />
-      {message && <div className="tip u-mb-12" role="status" >{message}</div>}
+      {message && <div className="tip u-mb-12" role="status">{message}</div>}
 
-      <div className="grid g2">
-        <div className="card">
-          <h3 className="u-mt-0">The free offer</h3>
-          <fieldset className="ro-fieldset" disabled={!isOwner()}>
-          {OFFER_FIELDS.map(([key, label]) => (
-            <div key={key}><label>{label}</label><input type="number" min="0" value={offer[key]} onChange={(e) => num(key, e.target.value)} /></div>
-          ))}
-          <label>Where “Use this draft” sends them</label>
-          <input value={offer.claim_url} onChange={(e) => setOffer({ ...offer, claim_url: e.target.value })} />
+      <div className="dp-two">
+        <Card>
+          <CardHeader title="The free offer" />
+          <fieldset className="ro-fieldset dp-fields" disabled={!isOwner()}>
+            {OFFER_FIELDS.map(([key, label]) => (
+              <Field key={key} label={label}><Input type="number" min="0" value={offer[key]} onChange={(e) => num(key, e.target.value)} /></Field>
+            ))}
+            <Field label="Where “Use this draft” sends them"><Input value={offer.claim_url} onChange={(e) => setOffer({ ...offer, claim_url: e.target.value })} /></Field>
           </fieldset>
-          {isOwner() && <button className="btn u-mt-12" onClick={saveOffer}>Save offer</button>}
-          <p className="sub u-mt-12">
+          {isOwner() && <Button className="u-mt-12" onClick={saveOffer}>Save offer</Button>}
+          <p className="sub u-mt-12 u-mb-0">
             These numbers appear in emails and demo pages. The limits themselves must also be set inside {getBrand().public.product_name}, or free use has no ceiling.
           </p>
-        </div>
+        </Card>
 
-        <div className="card">
-          <h3 className="u-mt-0">Did they reach a result?</h3>
+        <Card>
+          <CardHeader title="Did they reach a result?" />
           {Object.entries(STEP_LABELS).map(([step, label]) => (
             <div className="funnel-row" key={step}>
               <span>{label}</span>
@@ -73,52 +73,52 @@ export default function Growth() {
               <b>{g.activation_funnel[step]}</b>
             </div>
           ))}
-        </div>
+        </Card>
 
-        <div className="card">
-          <h3 className="u-mt-0">Do today</h3>
-          {g.nudges.length === 0 && <p className="empty">Nobody is waiting on a nudge.</p>}
-          {g.nudges.map((n) => <p key={n.lead_id}><b>{n.company}</b> — {n.text}</p>)}
-        </div>
+        <Card>
+          <CardHeader title="Do today" />
+          {g.nudges.length === 0 && <EmptyState icon="check" title="Nobody is waiting on a nudge">When an employer stalls, a suggested message appears here.</EmptyState>}
+          <ul className="dp-list">{g.nudges.map((n) => <li key={n.lead_id}><b>{n.company}</b> — {n.text}</li>)}</ul>
+        </Card>
 
-        <div className="card">
-          <h3 className="u-mt-0">Time for an honest heads-up</h3>
-          {g.conversion_due.length === 0 && <p className="empty">No one is near the end of the free allowance.</p>}
-          {g.conversion_due.map((c) => (
-            <p key={c.lead_id}><b>{c.company}</b> <span className="pill warn">{c.reason}</span><br />{c.text}</p>
-          ))}
-        </div>
+        <Card>
+          <CardHeader title="Time for an honest heads-up" />
+          {g.conversion_due.length === 0 && <EmptyState icon="gift" title="No one is near the end of the free allowance">Employers close to their free limit are listed here with what to say.</EmptyState>}
+          <ul className="dp-list">{g.conversion_due.map((c) => (
+            <li key={c.lead_id}><b>{c.company}</b> <Badge tone="warning">{c.reason}</Badge><br />{c.text}</li>
+          ))}</ul>
+        </Card>
 
-        <div className="card">
-          <h3 className="u-mt-0">How many emails can we safely send?</h3>
-          <fieldset className="ro-fieldset row" disabled={!isOwner()}>
-            <div className="u-flex1"><label>Mailboxes</label><input type="number" min="0" value={offer.mailboxes} onChange={(e) => num("mailboxes", e.target.value)} /></div>
-            <div className="u-flex1"><label>Emails per mailbox per day</label><input type="number" min="0" value={offer.per_mailbox_per_day} onChange={(e) => num("per_mailbox_per_day", e.target.value)} /></div>
-            <div className="u-flex1"><label>Leads to reach</label><input type="number" min="0" value={offer.target_leads} onChange={(e) => num("target_leads", e.target.value)} /></div>
+        <Card>
+          <CardHeader title="How many emails can we safely send?" />
+          <fieldset className="ro-fieldset dp-inline-3" disabled={!isOwner()}>
+            <Field label="Mailboxes"><Input type="number" min="0" value={offer.mailboxes} onChange={(e) => num("mailboxes", e.target.value)} /></Field>
+            <Field label="Emails per mailbox per day"><Input type="number" min="0" value={offer.per_mailbox_per_day} onChange={(e) => num("per_mailbox_per_day", e.target.value)} /></Field>
+            <Field label="Leads to reach"><Input type="number" min="0" value={offer.target_leads} onChange={(e) => num("target_leads", e.target.value)} /></Field>
           </fieldset>
-          {isOwner() && <button className="btn ghost u-mt-12" onClick={saveOffer}>Recalculate</button>}
+          {isOwner() && <Button variant="secondary" className="u-mt-12" onClick={saveOffer}>Recalculate</Button>}
           <p><b>{g.capacity.daily}</b> a day, <b>{g.capacity.monthly}</b> a month.
             {g.capacity.days_needed && <> About <b>{g.capacity.days_needed}</b> working days to reach {offer.target_leads} leads.</>}</p>
-          {g.capacity.warning && <p style={{ color: "var(--hot)" }}>{g.capacity.warning}</p>}
-        </div>
+          {g.capacity.warning && <p className="dp-warn">{g.capacity.warning}</p>}
+        </Card>
 
-        <div className="card">
-          <h3 className="u-mt-0">Partners and communities ({partners.length})</h3>
-          <p className="sub">Staffing agencies, HR groups, associations. Referrals so far: {g.referrals}.</p>
+        <Card>
+          <CardHeader title={`Partners and communities (${partners.length})`} description={`Staffing agencies, HR groups, associations. Referrals so far: ${g.referrals}.`} />
+          {partners.length === 0 && <EmptyState icon="users" title="No partners yet">{canWrite() ? "Add the first agency, HR group or association below." : "Partners your team adds will show here."}</EmptyState>}
           {partners.map((p) => (
-            <div className="row u-mb-8" key={p.id} >
+            <div className="dp-partner" key={p.id}>
               <span className="u-flex1"><b>{p.name}</b> <small>{p.kind} · {p.contact}</small></span>
-              {canWrite() ? <select className="u-w-auto" value={p.status} onChange={(e) => api.partnerStatus(p.id, e.target.value).then(load).catch((err) => setMessage(err.message))}>
+              {canWrite() ? <Select value={p.status} onChange={(e) => api.partnerStatus(p.id, e.target.value).then(load).catch((err) => setMessage(err.message))}>
                 {PARTNER_STATUSES.map((s) => <option key={s}>{s}</option>)}
-              </select> : <span className="pill">{p.status}</span>}
+              </Select> : <Badge>{p.status}</Badge>}
             </div>
           ))}
-          {canWrite() && <div className="row">
-            <input style={{ flex: 2 }} placeholder="Name" value={newPartner.name} onChange={(e) => setNewPartner({ ...newPartner, name: e.target.value })} />
-            <input style={{ flex: 2 }} placeholder="Contact" value={newPartner.contact} onChange={(e) => setNewPartner({ ...newPartner, contact: e.target.value })} />
-            <button className="btn" disabled={!newPartner.name.trim()} onClick={addPartner}>Add</button>
+          {canWrite() && <div className="dp-add-partner">
+            <Input placeholder="Name" value={newPartner.name} onChange={(e) => setNewPartner({ ...newPartner, name: e.target.value })} />
+            <Input placeholder="Contact" value={newPartner.contact} onChange={(e) => setNewPartner({ ...newPartner, contact: e.target.value })} />
+            <Button disabled={!newPartner.name.trim()} onClick={addPartner}>Add</Button>
           </div>}
-        </div>
+        </Card>
       </div>
     </>
   );

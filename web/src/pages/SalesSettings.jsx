@@ -4,6 +4,7 @@ import { isOwner, isWorkspaceAdmin } from "../api.js";
 import { sales } from "../salesApi.js";
 import { inr } from "../salesFormat.js";
 import Abbr from "../components/Abbr.jsx";
+import { Button, Card, Field, Input } from "../ui/index.js";
 
 export default function SalesSettings({ owners, onSaved }) {
   const editable = isOwner() || isWorkspaceAdmin();
@@ -24,34 +25,34 @@ export default function SalesSettings({ owners, onSaved }) {
   };
   return (
     <section aria-labelledby="sf-h-set">
-      <details className="card" data-testid="sf-settings">
+      <Card as="details" data-testid="sf-settings">
         <summary><b id="sf-h-set">Funnel settings</b> <small className="sub-inline">SLA {s.sla_hours} h · stalled after {s.stalled_days} days · {s.targets.length} target row{s.targets.length === 1 ? "" : "s"}</small></summary>
         <form onSubmit={save} className="inline-form" aria-label="Sales funnel settings">
-          <div className="row">
-            <label>First-response <Abbr term="SLA">SLA</Abbr> (hours)<input type="number" min="1" max="720" value={s.sla_hours} disabled={!editable} onChange={(e) => setS({ ...s, sla_hours: e.target.value })} /></label>
-            <label>Stalled after (days without activity)<input type="number" min="1" max="365" value={s.stalled_days} disabled={!editable} onChange={(e) => setS({ ...s, stalled_days: e.target.value })} /></label>
+          <div className="form-grid">
+            <Field label={<>First-response <Abbr term="SLA">SLA</Abbr> (hours)</>}><Input type="number" min="1" max="720" value={s.sla_hours} disabled={!editable} onChange={(e) => setS({ ...s, sla_hours: e.target.value })} /></Field>
+            <Field label="Stalled after (days without activity)"><Input type="number" min="1" max="365" value={s.stalled_days} disabled={!editable} onChange={(e) => setS({ ...s, stalled_days: e.target.value })} /></Field>
           </div>
           <b>Monthly targets (₹ of new monthly value, by owner)</b>
           {s.targets.length === 0 && <p className="sub">No targets yet. Without a target the coverage ratio shows a dash.</p>}
           {s.targets.map((t, i) => (
-            <div className="row" key={i}>
-              <input type="month" aria-label="Month" value={t.month} disabled={!editable} onChange={(e) => setTarget(i, "month", e.target.value)} className="u-width-160" />
-              <input list="sf-owner-list" aria-label="Owner (blank = whole team)" placeholder="Owner (blank = team)" value={t.owner} disabled={!editable} onChange={(e) => setTarget(i, "owner", e.target.value)} className="u-width-200" />
-              <input type="number" min="0" aria-label="Target in rupees" value={t.target} disabled={!editable} onChange={(e) => setTarget(i, "target", e.target.value)} className="u-width-160" />
+            <div className="sf-form-row" key={i}>
+              <input type="month" aria-label="Month" value={t.month} disabled={!editable} onChange={(e) => setTarget(i, "month", e.target.value)} />
+              <input list="sf-owner-list" aria-label="Owner (blank = whole team)" placeholder="Owner (blank = team)" value={t.owner} disabled={!editable} onChange={(e) => setTarget(i, "owner", e.target.value)} />
+              <input type="number" min="0" aria-label="Target in rupees" value={t.target} disabled={!editable} onChange={(e) => setTarget(i, "target", e.target.value)} />
               <small className="sub-inline">{inr(Number(t.target) || 0)}</small>
-              {editable && <button type="button" className="btn ghost danger" onClick={() => setS({ ...s, targets: s.targets.filter((_, j) => j !== i) })}>Remove</button>}
+              {editable && <Button variant="danger" onClick={() => setS({ ...s, targets: s.targets.filter((_, j) => j !== i) })}>Remove</Button>}
             </div>
           ))}
           <datalist id="sf-owner-list">{owners.map((o) => <option key={o} value={o} />)}</datalist>
           {editable ? (
             <div className="row">
-              <button type="button" className="btn ghost" onClick={() => setS({ ...s, targets: [...s.targets, { month: new Date().toISOString().slice(0, 7), owner: "", target: 0 }] })}>Add a target</button>
-              <button className="btn" type="submit" disabled={busy}>{busy ? "Saving…" : "Save settings"}</button>
+              <Button variant="secondary" onClick={() => setS({ ...s, targets: [...s.targets, { month: new Date().toISOString().slice(0, 7), owner: "", target: 0 }] })}>Add a target</Button>
+              <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save settings"}</Button>
             </div>
           ) : <p className="sub">Only the owner or a workspace admin changes these.</p>}
           {msg && <div className={msg === "Saved." ? "tip" : "tip error"} role="status">{msg}</div>}
         </form>
-      </details>
+      </Card>
     </section>
   );
 }

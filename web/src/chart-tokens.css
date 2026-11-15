@@ -4,3 +4,6 @@
   :root:not([data-theme="light"]) { --chart-blue: #38bdf8; --chart-green: #4ade80; --chart-red: #f87171; --chart-amber: #fbbf24; --chart-violet: #a78bfa; --chart-slate: #94a3b8; --chart-teal: #2dd4bf; }
 }
 :root[data-theme="dark"] { --chart-blue: #38bdf8; --chart-green: #4ade80; --chart-red: #f87171; --chart-amber: #fbbf24; --chart-violet: #a78bfa; --chart-slate: #94a3b8; --chart-teal: #2dd4bf; }
+:root { --funnel-a: #0e7490; --funnel-b: #1e3a8a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --funnel-a: #0891b2; --funnel-b: #2563eb; } }
+:root[data-theme="dark"] { --funnel-a: #0891b2; --funnel-b: #2563eb; }

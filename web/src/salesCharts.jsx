@@ -1,5 +1,6 @@
 // Dependency-free SVG / CSS charts for the sales funnel page. They keep the same elements between refreshes, so a new
 // number only moves a bar (CSS transition) instead of redrawing the chart.
+import "./chart-tokens.css";
 import { inrShort, pct as pctText, STAGE_COLORS } from "./salesFormat.js";
 import { Stage } from "./components/Abbr.jsx";
 
@@ -9,7 +10,7 @@ import { Stage } from "./components/Abbr.jsx";
 // right: share of all inquiries, then how many moved on / dropped from the stage before (biggest drop marked).
 const FUNNEL_FLOOR = 20;                       // % of the full width the narrowest edge keeps
 const edgeWidth = (count, max) => FUNNEL_FLOOR + (100 - FUNNEL_FLOOR) * (count / max);
-const bandColor = (i, n) => `color-mix(in srgb, #0e7490 ${Math.round((i / Math.max(1, n - 1)) * 100)}%, #1e3a8a)`;
+const bandColor = (i, n) => `color-mix(in srgb, var(--funnel-a) ${Math.round((i / Math.max(1, n - 1)) * 100)}%, var(--funnel-b))`;
 
 export function FunnelChart({ stages, onPick }) {
   const max = Math.max(1, ...stages.map((s) => s.count));
@@ -81,7 +82,7 @@ export function ColumnChart({ rows, format = inrShort, height = 190, label = "Va
 // Half-circle gauge for a percentage (SLA compliance).
 export function Gauge({ value, caption }) {
   const r = 70, c = Math.PI * r, v = value === null || value === undefined ? 0 : Math.max(0, Math.min(100, value));
-  const color = v >= 80 ? "var(--ok)" : v >= 50 ? "#d97706" : "#dc2626";
+  const color = v >= 80 ? "var(--ok)" : v >= 50 ? "var(--chart-amber)" : "var(--chart-red)";
   return (
     <div className="sf-gauge" data-testid="sf-gauge">
       <svg viewBox="0 0 180 104" width="100%" role="img" aria-label={`${caption}: ${value === null || value === undefined ? "no data" : `${value}%`}`}>

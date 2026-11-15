@@ -28,4 +28,4 @@ export const STATUS_SHORT = {
   "Closed Lost": "Lost", "Recycled / Nurture": "Recycled",
 };
 export const statusShort = (s) => STATUS_SHORT[s] || s;
-export const STAGE_COLORS = ["#94a3b8", "#64748b", "#0284c7", "#0369a1", "#7c3aed", "#d97706", "#c2410c", "#15803d"];
+export const STAGE_COLORS = ["var(--chart-slate)", "var(--chart-slate)", "var(--chart-blue)", "var(--brand)", "var(--chart-violet)", "var(--chart-amber)", "var(--chart-amber)", "var(--chart-green)"];
