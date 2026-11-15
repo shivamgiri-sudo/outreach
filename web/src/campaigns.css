@@ -45,3 +45,6 @@
   .camp-check > input { width: 20px; height: 20px; }
   .camp-filters select { flex: 1 1 140px; }
 }
+ol.wizard-steps > li { padding: 0; border: 0; background: none; }
+ol.wizard-steps > li button { width: 100%; justify-content: center; border-radius: var(--r-sm); color: var(--muted); background: var(--panel); border: 1px solid var(--line); min-height: var(--h-ctl); font-weight: 600; cursor: pointer; }
+ol.wizard-steps > li button.on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); }

@@ -117,9 +117,8 @@ export default function Campaigns({ go }) {
         actions={owner && <Button icon="plus" onClick={() => setView({ mode: "wizard", campaign: null })}>New campaign</Button>} />
       {error && <ErrorState message="Campaigns could not load." detail={error} onRetry={load} />}
       {!list && !error ? <div className="camp-grid" aria-busy="true">{[0, 1, 2].map((i) => <Card key={i}><Skeleton height={20} width="60%" /><Skeleton height={14} style={{ marginTop: 12 }} /><Skeleton height={48} style={{ marginTop: 12 }} /></Card>)}</div> : list && list.length === 0 ? (
-        <Card><EmptyState icon="rocket" title="No campaigns yet"
-          action={owner && <Button icon="plus" onClick={() => setView({ mode: "wizard", campaign: null })}>New campaign</Button>}>
-          {owner ? "Set up your first one, for example BPOs in Pune hiring customer support staff. You can preview it before anything is saved." : "When an owner sets one up, it will show here."}</EmptyState></Card>
+        <Card><EmptyState icon="rocket" title="No campaigns yet">
+          {owner ? "Press “New campaign” above to set up your first one, for example BPOs in Pune hiring customer support staff. You can preview it before anything is saved." : "When an owner sets one up, it will show here."}</EmptyState></Card>
       ) : list && (
         <div className="camp-grid">
           {list.map((c) => (

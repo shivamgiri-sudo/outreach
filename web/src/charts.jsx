@@ -52,7 +52,7 @@ export function TrendChart({ days, series, height = 180 }) {
   const max = Math.max(1, ...days.flatMap((d) => series.map((s) => d[s.key] || 0)));
   const x = (i) => pad.l + (days.length < 2 ? 0 : (i / (days.length - 1)) * (width - pad.l - pad.r));
   const y = (v) => pad.t + (1 - v / max) * (height - pad.t - pad.b);
-  const ticks = [0, Math.round(max / 2), max];
+  const ticks = [...new Set([0, Math.round(max / 2), max])];
   const every = Math.max(1, Math.ceil(days.length / 8));
   const totals = series.map((s) => `${s.label} ${days.reduce((n, d) => n + (d[s.key] || 0), 0)}`).join(", ");
   return (
