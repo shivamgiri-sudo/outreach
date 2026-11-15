@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { api, canWrite } from "../api.js";
 import { istDateLabel, istLabel } from "../time.js";
+import { Button, Badge } from "../ui/index.js";
+import "../inbox-pages.css";
 
-const BAND = { strong: "ok", steady: "", "weak / unknown": "warn" };
+const BAND = { strong: "success", steady: "neutral", "weak / unknown": "warning" };
 
 // Company health from free public data: website, DNS email setup, domain age, Wikidata, news, plus our own hiring data.
 export default function CompanyHealth({ lead }) {
@@ -15,17 +17,17 @@ export default function CompanyHealth({ lead }) {
   return (
     <section className="card u-m-12-0" aria-label="Company health" data-testid="company-health">
       <div className="row u-between u-wrap">
-        <b>Company health {r && <span className={`pill ${BAND[r.band] || ""}`} style={{ marginLeft: 6 }}>{r.score}/100 · {r.band}</span>}</b>
-        {canWrite() && <button className="btn ghost" onClick={build} disabled={busy}>{busy ? "Checking public sources…" : r ? "Refresh" : "Build health report"}</button>}
+        <b>Company health {r && <Badge tone={BAND[r.band] || "neutral"} className="u-ml-8">{r.score}/100 · {r.band}</Badge>}</b>
+        {canWrite() && <Button variant="secondary" size="sm" onClick={build} disabled={busy}>{busy ? "Checking public sources…" : r ? "Refresh" : "Build health report"}</Button>}
       </div>
       {!r && !busy && <p className="sub">{canWrite() ? "" : "No health report yet. "}Checks free public sources for {data?.domain || "the company's domain"}: its website, email setup, domain age, Wikidata and recent news. Takes about 10–20 seconds.</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {r && (
         <>
-          <ul className="sub" style={{ margin: "8px 0", paddingLeft: 18 }}>
-            {r.reasons.map((x, i) => <li key={i}><b style={{ color: x.points < 0 ? "var(--accent)" : "inherit" }}>{x.points > 0 ? "+" : ""}{x.points}</b> {x.why}</li>)}
+          <ul className="sub health-list">
+            {r.reasons.map((x, i) => <li key={i}><b className={x.points < 0 ? "health-neg" : undefined}>{x.points > 0 ? "+" : ""}{x.points}</b> {x.why}</li>)}
           </ul>
-          <div className="grid g2 u-gap-12">
+          <div className="health-grid">
             <div><small className="sub">Website</small><div>{r.website.ok ? <a href={r.website.url} target="_blank" rel="noopener noreferrer">{r.website.title || r.domain}</a> : "not reachable"}</div>
               {r.website.description && <small className="sub">{r.website.description.slice(0, 160)}</small>}
               {r.website.tools?.length > 0 && <div><small className="sub">Tools seen: {r.website.tools.join(", ")}</small></div>}
@@ -38,7 +40,7 @@ export default function CompanyHealth({ lead }) {
           </div>
           <div className="u-mt-12"><small className="sub">News, last 6 months ({r.news.ok ? `${r.news.count} headlines` : "not available"})</small>
             {r.news.ok && r.news.items.map((n, i) => (
-              <div key={i}><small>{n.signal && <span className={`pill ${n.signal === "risk" ? "warn" : "ok"}`} style={{ marginRight: 4 }}>{n.signal}</span>}
+              <div key={i}><small>{n.signal && <Badge tone={n.signal === "risk" ? "warning" : "success"} className="u-mr-4">{n.signal}</Badge>}
                 <a href={n.url} target="_blank" rel="noopener noreferrer">{n.title}</a> <span className="sub">{istDateLabel(n.date)}</span></small></div>))}
           </div>
           <small className="sub">Built {istLabel(r.built_at)} from {r.sources.join(", ")}. A guide for prioritising, not a credit rating.</small>

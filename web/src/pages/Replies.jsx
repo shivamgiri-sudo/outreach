@@ -5,11 +5,12 @@ import { istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import { Composer } from "./LeadActivity.jsx";
 import { useHashParam } from "../route.js";
-import { PageHeader } from "../ui/index.js";
+import { PageHeader, Card, Stat, Button, Badge, EmptyState, Skeleton, Switch } from "../ui/index.js";
+import "../inbox-pages.css";
 
 const LABEL_WORDS = { interested: "Interested", question: "Question", not_now: "Not now", wrong_person: "Wrong person", other: "Needs a look",
   not_interested: "Not interested", auto_reply: "Auto-reply", unsubscribe: "Unsubscribe", bounce: "Bounce" };
-const LABEL_PILL = { interested: "ok", question: "ok", not_now: "", wrong_person: "warn", other: "warn", not_interested: "", auto_reply: "", unsubscribe: "warn", bounce: "warn" };
+const LABEL_TONE = { interested: "success", question: "success", not_now: "neutral", wrong_person: "warning", other: "warning", not_interested: "neutral", auto_reply: "muted", unsubscribe: "warning", bounce: "danger" };
 const CHANNEL_WORDS = { email: "Email", linkedin: "LinkedIn", whatsapp: "WhatsApp", sms: "SMS", call: "Call" };
 const withIst = (local) => (local ? `${local}:00+05:30` : null);
 const tomorrowMorning = () => { const d = new Date(Date.now() + (330 + 24 * 60) * 60000).toISOString().slice(0, 10); return `${d}T11:00`; };
@@ -29,7 +30,7 @@ function Thread({ leadId }) {
   if (!t) return <p className="sub">Loading the conversation…</p>;
   if (!t.messages.length) return <p className="sub">No emails or messages yet.</p>;
   return (
-    <ol className="trail u-mt-8" data-testid="reply-thread" >
+    <ol className="trail" data-testid="reply-thread">
       {t.messages.map((m, i) => (
         <li key={i} className={`trail-item ${m.direction}`}>
           <span className="trail-icon" aria-hidden="true">{m.direction === "in" ? "↩" : "✉"}</span>
@@ -62,32 +63,32 @@ function ReplyRow({ r, team, onChanged, onOpen, setMessage }) {
   const subject = r.subject ? (/^re:/i.test(r.subject) ? r.subject : `Re: ${r.subject}`) : `Re: your reply`;
   const quoted = `{{greeting}}\n\n\n\n— On ${istLabel(r.at)} you wrote:\n> ${r.text.split("\n").join("\n> ")}`;
   return (
-    <div className={`card reply-card${r.read ? "" : " unread"}`} data-testid="reply-row" style={{ marginBottom: 10, borderLeft: r.read ? undefined : "4px solid var(--brand)" }}>
-      <div className="row u-between u-wrap u-gap-8">
-        <div className="u-min0">
-          <b title="Score: how much it deserves a person's time now">{r.score}</b>{" "}
+    <Card className={`reply-card${r.read ? "" : " unread"}`} data-testid="reply-row">
+      <div className="reply-head">
+        <div className="reply-who">
+          <span className="reply-score" title="Score: how much it deserves a person's time now">{r.score}</span>
           <button className="link" onClick={() => onOpen(r.lead_id)}><b>{r.company || r.contact || "Lead"}</b></button>
-          <span className="sub"> {r.contact}{r.title ? ` · ${r.title}` : ""}</span>
+          <span className="sub-inline">{r.contact}{r.title ? ` · ${r.title}` : ""}</span>
         </div>
-        <div className="row u-gap-8 u-wrap">
-          <span className={`pill ${LABEL_PILL[r.label] || ""}`} title={r.label_overridden ? `Corrected by a person (was ${LABEL_WORDS[r.guessed_label] || r.guessed_label})` : "Detected"}>
-            {LABEL_WORDS[r.label] || r.label}{r.label_overridden ? " ✎" : ""}</span>
-          <span className="sub">{CHANNEL_WORDS[r.channel] || r.channel} · {when(r.age_hours)}</span>
-          {r.handled && <span className="pill ok">Handled{r.handled_by ? ` by ${r.handled_by}` : ""}</span>}
-          {r.snoozed_until && <span className="pill">Snoozed to {istLabel(r.snoozed_until)}</span>}
-          {r.assignee && <span className="pill">→ {r.assignee}</span>}
+        <div className="reply-meta">
+          <Badge tone={LABEL_TONE[r.label] || "neutral"} title={r.label_overridden ? `Corrected by a person (was ${LABEL_WORDS[r.guessed_label] || r.guessed_label})` : "Detected"}>
+            {LABEL_WORDS[r.label] || r.label}{r.label_overridden ? " ✎" : ""}</Badge>
+          {r.handled && <Badge tone="success">Handled{r.handled_by ? ` by ${r.handled_by}` : ""}</Badge>}
+          {r.snoozed_until && <Badge>Snoozed to {istLabel(r.snoozed_until)}</Badge>}
+          {r.assignee && <Badge>→ {r.assignee}</Badge>}
+          <span>{CHANNEL_WORDS[r.channel] || r.channel} · {when(r.age_hours)}</span>
         </div>
       </div>
-      <p className="u-m-8-0">{r.text.slice(0, 400)}{r.text.length > 400 ? "…" : ""}</p>
-      <p className="sub u-m-0-0-8">Next step: {r.next_step}</p>
-      <div className="row u-wrap u-gap-8" aria-label="Reply actions">
-        {canWrite() && <button className="btn" onClick={() => toggle("reply")}>Reply</button>}
-        <button className="btn ghost" onClick={() => toggle("thread")} aria-expanded={panel === "thread"}>{panel === "thread" ? "Hide thread" : "Thread"}</button>
+      <p className="reply-text">{r.text.slice(0, 400)}{r.text.length > 400 ? "…" : ""}</p>
+      <p className="reply-next">Next step: {r.next_step}</p>
+      <div className="reply-actions" aria-label="Reply actions">
+        {canWrite() && <Button onClick={() => toggle("reply")}>Reply</Button>}
+        <Button variant="secondary" onClick={() => toggle("thread")} aria-expanded={panel === "thread"}>{panel === "thread" ? "Hide thread" : "Thread"}</Button>
         {canWrite() && <>{r.handled
-          ? <button className="btn ghost" onClick={() => run("unhandled", {}, "Marked not handled.")}>Mark not handled</button>
-          : <button className="btn ghost" onClick={() => run("handled", {}, "Marked handled.")}>Mark handled</button>}
-        <button className="btn ghost" onClick={() => toggle("snooze")}>Snooze…</button>
-        <button className="btn ghost" onClick={() => run(r.read ? "unread" : "read", {}, r.read ? "Marked unread." : "Marked read.")}>{r.read ? "Mark unread" : "Mark read"}</button>
+          ? <Button variant="secondary" onClick={() => run("unhandled", {}, "Marked not handled.")}>Mark not handled</Button>
+          : <Button variant="secondary" onClick={() => run("handled", {}, "Marked handled.")}>Mark handled</Button>}
+        <Button variant="secondary" onClick={() => toggle("snooze")}>Snooze…</Button>
+        <Button variant="ghost" onClick={() => run(r.read ? "unread" : "read", {}, r.read ? "Marked unread." : "Marked read.")}>{r.read ? "Mark unread" : "Mark read"}</Button>
         <select aria-label="Assign to" value={r.assignee || ""} onChange={(e) => run("assign", { assignee: e.target.value }, e.target.value ? `Assigned to ${e.target.value}.` : "Unassigned.")}>
           <option value="">Assign to…</option>{team.map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
@@ -96,19 +97,19 @@ function ReplyRow({ r, team, onChanged, onOpen, setMessage }) {
         </select></>}
       </div>
       {panel === "snooze" && canWrite() && (
-        <form className="row u-mt-8" onSubmit={(e) => { e.preventDefault(); run("snooze", { until: withIst(until) }, "Snoozed; a task will remind you then.").then(() => setPanel("")); }}>
-          <label className="row u-gap-8">Remind me at (IST)<input type="datetime-local" required value={until} onChange={(e) => setUntil(e.target.value)} /></label>
-          <button className="btn" type="submit">Snooze</button><button className="btn ghost" type="button" onClick={() => setPanel("")}>Cancel</button>
+        <form className="reply-snooze" onSubmit={(e) => { e.preventDefault(); run("snooze", { until: withIst(until) }, "Snoozed; a task will remind you then.").then(() => setPanel("")); }}>
+          <label>Remind me at (IST)<input type="datetime-local" required value={until} onChange={(e) => setUntil(e.target.value)} /></label>
+          <Button type="submit">Snooze</Button><Button variant="secondary" onClick={() => setPanel("")}>Cancel</Button>
         </form>
       )}
-      {panel === "thread" && <Thread leadId={r.lead_id} />}
+      {panel === "thread" && <div className="reply-thread-card"><Thread leadId={r.lead_id} /></div>}
       {panel === "reply" && canWrite() && (lead ? (lead.email
         ? <Composer lead={lead} initialSubject={subject} initialBody={quoted} note={`Replying to ${r.contact || r.company}'s ${CHANNEL_WORDS[r.channel] || ""} reply.`}
             onCancel={() => setPanel("")}
             onDone={(m) => { setPanel(""); setMessage(m); api.replyAction(r.key, "handled").then(onChanged).catch(onChanged); }} />
         : <p className="sub">This lead has no email address. Call them or reply on {CHANNEL_WORDS[r.channel] || "their channel"}.</p>)
         : <p className="sub">Loading…</p>)}
-    </div>
+    </Card>
   );
 }
 
@@ -132,16 +133,17 @@ export default function Replies() {
       <PageHeader title="Replies"
         description={<>Every reply from every channel in one list. The score (0–100) says how much a reply deserves a person's time now. Reply, mark handled, assign or snooze it right here.</>} />
       {error && <ErrorState message="Replies could not load." detail={error} onRetry={load} />}
-      {data && (
-        <div className="kpi-row kpi-mini" data-testid="reply-kpis">
-          <div className="kpi"><b>{data.needs_action}</b><span>need a person</span></div>
-          <div className="kpi"><b>{data.unread ?? 0}</b><span>unread</span></div>
-          <div className="kpi"><b>{data.counts.interested || 0}</b><span>said yes</span></div>
-          <div className="kpi"><b>{data.total}</b><span>replies in all</span></div>
+      {data ? (
+        <div className="stat-grid" data-testid="reply-kpis">
+          <Stat label="need a person" value={data.needs_action} tone={data.needs_action ? "amber" : undefined} />
+          <Stat label="unread" value={data.unread ?? 0} />
+          <Stat label="said yes" value={data.counts.interested || 0} tone="green" />
+          <Stat label="replies in all" value={data.total} />
         </div>
-      )}
-      <div className="row u-mb-12 u-wrap">
-        <label className="row u-gap-8"><input type="checkbox" className="u-w-auto" checked={onlyAction} onChange={(e) => setOnlyAction(e.target.checked)} /> Only ones that need a person</label>
+      ) : !error && <div className="stat-grid" aria-busy="true">{[0, 1, 2, 3].map((i) => <Skeleton key={i} height={72} />)}</div>}
+      <div className="filter-bar">
+        <Switch checked={onlyAction} onChange={setOnlyAction} label="Only ones that need a person" />
+        <span className="sub-inline">Only ones that need a person</span>
         <select aria-label="Kind of reply" value={label} onChange={(e) => setLabel(e.target.value)}>
           <option value="">All kinds</option>
           {(data?.labels || []).map((l) => <option key={l} value={l}>{LABEL_WORDS[l] || l}{data?.counts[l] ? ` (${data.counts[l]})` : ""}</option>)}
@@ -155,13 +157,17 @@ export default function Replies() {
           {(data?.team || []).map((n) => <option key={n} value={n}>{n} (and unassigned)</option>)}
         </select>
       </div>
-      {message && <div className="tip u-mb-12" role="status" >{message}</div>}
+      {message && <div className="tip u-mb-12" role="status">{message}</div>}
       {data && data.replies.length === 0 && (
-        <p className="empty">{onlyAction ? "Nothing needs a person right now." : "No replies yet."} Replies appear here when they are read from your inbox, LinkedIn agent or pasted on a lead.</p>
+        <Card><EmptyState icon="inbox" title={onlyAction ? "Nothing needs a person right now" : "No replies yet"}
+          action={onlyAction ? <Button variant="secondary" onClick={() => setOnlyAction(false)}>Show every reply</Button> : undefined}>
+          Replies appear here when they are read from your inbox, LinkedIn agent or pasted on a lead.</EmptyState></Card>
       )}
-      {data && data.replies.map((r) => (
-        <ReplyRow key={r.key} r={r} team={data.team || []} onChanged={load} onOpen={setLead} setMessage={setMessage} />
-      ))}
+      <div className="stack">
+        {data && data.replies.map((r) => (
+          <ReplyRow key={r.key} r={r} team={data.team || []} onChanged={load} onOpen={setLead} setMessage={setMessage} />
+        ))}
+      </div>
       {lead && <LeadDrawer id={lead} ids={[...new Set((data?.replies || []).map((r) => r.lead_id))]} onClose={() => { setLead(null); load(); }} />}
     </>
   );
