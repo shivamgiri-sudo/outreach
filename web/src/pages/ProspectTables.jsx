@@ -12,8 +12,7 @@ export function PeopleTable({ results, picked, toggle, allOnPage, togglePage, on
     <DataTable tableClass="ps-results ps-people" label="People results">
       <thead><tr>
         <th className="pick"><input type="checkbox" aria-label="Select all on this page" checked={allOnPage} onChange={togglePage} /></th>
-        <th className="c-name">Name</th><th className="c-title">Title</th><th className="c-co">Company</th><th className="c-loc">Location</th>
-        <th className="c-email">Email</th><th className="c-src">Source</th><th className="c-upd">Updated</th>
+        <th className="c-name">Name</th><th className="c-title">Title</th><th className="c-co">Company</th><th className="c-email">Email</th>
       </tr></thead>
       <tbody>
         {results.map((p) => {
@@ -37,15 +36,13 @@ export function PeopleTable({ results, picked, toggle, allOnPage, togglePage, on
               <td data-label="Title"><Cell title={p.title || "—"} sub={p.seniority ? `${label(p.seniority)}${p.department ? ` · ${label(p.department)}` : ""}` : ""} /></td>
               <td data-label="Company">
                 {p.company ? <button className="linkish ps-co" title={p.company.name || p.company.domain} onClick={() => onCompany(p.company.id)}>{p.company.name || p.company.domain}</button> : "—"}
-                {p.company?.industry && <div className="ps-sub" title={p.company.industry}>{p.company.industry}{p.company.employees ? ` · ${p.company.employees} staff` : ""}</div>}
+                {(where || p.company?.industry) && <div className="ps-sub" title={[where, p.company?.industry].filter(Boolean).join(" · ")}>{[where, p.company?.industry].filter(Boolean).join(" · ")}</div>}
               </td>
-              <td data-label="Location"><span className="ps-clip" title={where}>{where || "—"}</span></td>
               <td className="ps-email" data-label="Email">
                 <span className="ps-email-text" title={p.email || ""}>{p.email || ""}</span>
                 <div className="pill-stack"><StatusBadge status={p.email_status} confidence={p.email_confidence} />{p.has_phone && <Badge title="Has a phone number">phone</Badge>}</div>
+                <div className="ps-sub" title={`Source: ${sources || "unknown"}. Last seen ${day(p.last_seen)}`}>{sources || "—"} · {day(p.last_seen)}</div>
               </td>
-              <td data-label="Source"><span className="ps-clip" title={sources}>{sources || "—"}</span></td>
-              <td data-label="Updated"><small>{day(p.last_seen)}</small></td>
             </tr>
           );
         })}

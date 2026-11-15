@@ -140,7 +140,7 @@ export function CompanyDrawer({ id, onClose, onPerson }) {
           <h3>People ({c.people.length})</h3>
           <div data-testid="company-people">
             {c.people.length === 0 ? <p className="sub">No people stored yet.</p> : c.people.map((p) => (
-              <div key={p.id} className="row" style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+              <div key={p.id} className="dr-line">
                 <div className="u-min0">
                   <button className="linkish" onClick={() => onPerson(p.id)}><b>{p.full_name || p.email}</b></button>
                   <div><small className="sub">{p.title || "—"}</small></div>
