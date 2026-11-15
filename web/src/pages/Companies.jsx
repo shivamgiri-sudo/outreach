@@ -5,11 +5,12 @@ import { ErrorState } from "../states.jsx";
 import { leadTerm, stageLabel } from "../labels.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
-import { PageHeader, DataTable } from "../ui/index.js";
+import { PageHeader, Card, CardHeader, DataTable, Button, Badge, Input, Select, EmptyState, Skeleton } from "../ui/index.js";
+import "../inbox-pages.css";
 
 const PAGE = 25;
 const SORTS = [["last_touch", "Last touch"], ["contacts", "Contacts"], ["score", "Best score"], ["health", "Company health"], ["name", "Name"]];
-const HEALTH_BAND = { strong: "ok", steady: "", "weak / unknown": "warn" };
+const HEALTH_BAND = { strong: "success", steady: "neutral", "weak / unknown": "warning" };
 const when = (iso) => (iso ? istLabel(iso) : "never");
 
 function useNarrow() {
@@ -27,16 +28,16 @@ function useNarrow() {
 
 function StatusPills({ c }) {
   return (
-    <span className="chips">
-      <span className="pill">{stageLabel(c.best_stage)}</span>
-      {c.engaged && <span className="pill ok">Engaged account</span>}
-      {c.health && <span className={`pill ${HEALTH_BAND[c.health.band] || ""}`} title="Company health">Health {c.health.score}</span>}
+    <span className="chips u-m0">
+      <Badge>{stageLabel(c.best_stage)}</Badge>
+      {c.engaged && <Badge tone="success">Engaged account</Badge>}
+      {c.health && <Badge tone={HEALTH_BAND[c.health.band] || "neutral"} title="Company health">Health {c.health.score}</Badge>}
     </span>
   );
 }
 
 function Stat({ label, value }) {
-  return <div className="card" style={{ padding: "10px 12px", margin: 0 }}><small className="sub">{label}</small><div style={{ fontSize: 20, fontWeight: 700 }}>{value}</div></div>;
+  return <div className="co-stat"><small>{label}</small><b>{value}</b></div>;
 }
 
 function CompanyDetail({ companyKey, onClose }) {
@@ -76,7 +77,7 @@ function CompanyDetail({ companyKey, onClose }) {
     <>
       <div className="scrim" onClick={onClose} aria-hidden="true" />
       <div className="drawer" role="dialog" aria-modal="true" aria-labelledby="company-title" ref={panel} data-testid="company-detail">
-        {!d ? <p>{error || "Loading…"}</p> : (
+        {!d ? (error ? <p className="error">{error}</p> : <div className="stack" aria-busy="true"><Skeleton height={32} width="60%" /><Skeleton height={80} /><Skeleton height={160} /></div>) : (
           <>
             <div className="drawer-head">
               <div className="u-min0">
@@ -84,7 +85,7 @@ function CompanyDetail({ companyKey, onClose }) {
                 <StatusPills c={d} />
                 {d.domain && <div><small className="sub">{d.domain}</small></div>}
               </div>
-              <button className="btn ghost" onClick={onClose}>Close</button>
+              <Button variant="secondary" onClick={onClose}>Close</Button>
             </div>
             {d.warnings.length > 0 && (
               <div className="tip error" role="alert" data-testid="overlap-warning">
@@ -93,7 +94,7 @@ function CompanyDetail({ companyKey, onClose }) {
                 <small>Consider pausing one sequence so this employer hears from you once a day.</small>
               </div>
             )}
-            <div style={{ gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", display: "grid" }}>
+            <div className="co-stats">
               <Stat label="Contacts" value={d.contacts} />
               <Stat label="Touches" value={d.touches} />
               <Stat label="Replies" value={d.replies} />
@@ -105,16 +106,16 @@ function CompanyDetail({ companyKey, onClose }) {
               Furthest stage: <b>{stageLabel(d.best_stage)}</b> · last touch {when(d.last_touch)}
               {d.owners.length > 0 && <> · owner{d.owners.length > 1 ? "s" : ""}: {d.owners.join(", ")}</>}
             </p>
-            {canWrite() && <div className="row u-wrap u-m-12-0">
-              <button className="btn" disabled={busy || !ids.length} onClick={() => saveList(true)}>Start email for all contacts</button>
-              <button className="btn ghost" disabled={busy || !ids.length} onClick={() => saveList(false)}>Save as list</button>
+            {canWrite() && <div className="drawer-actions">
+              <Button disabled={busy || !ids.length} onClick={() => saveList(true)}>Start email for all contacts</Button>
+              <Button variant="secondary" disabled={busy || !ids.length} onClick={() => saveList(false)}>Save as list</Button>
             </div>}
             {msg && <p className="sub" role="status">{msg}</p>}
 
-            <h3>People ({d.contacts_list.length + (d.more_people?.length || 0)})</h3>
-            <div data-testid="company-contacts">
+            <h3 className="u-mt-16">People ({d.contacts_list.length + (d.more_people?.length || 0)})</h3>
+            <div className="co-people" data-testid="company-contacts">
               {d.contacts_list.map((c) => (
-                <div key={c.id} className="row" style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap", gap: 6 }}>
+                <div key={c.id} className="co-person">
                   <div className="u-min0">
                     <button className="linkish" onClick={() => setLead(c.id)}><b>{c.contact_name || c.email || "Unnamed contact"}</b></button>
                     {c.title && <small className="sub-inline"> · {c.title}</small>}
@@ -124,15 +125,15 @@ function CompanyDetail({ companyKey, onClose }) {
                     </small></div>
                   </div>
                   <span className="chips">
-                    <span className="pill">{stageLabel(c.stage)}</span>
-                    <span className="pill" title="Buying-signal score">{c.score}</span>
-                    {c.in_sequence && <span className="pill rec">Email sequence</span>}
-                    {c.in_linkedin && <span className="pill rec">LinkedIn</span>}
+                    <Badge>{stageLabel(c.stage)}</Badge>
+                    <Badge title="Buying-signal score">{c.score}</Badge>
+                    {c.in_sequence && <Badge tone="info">Email sequence</Badge>}
+                    {c.in_linkedin && <Badge tone="info">LinkedIn</Badge>}
                   </span>
                 </div>
               ))}
               {(d.more_people || []).map((c, i) => (
-                <div key={`more-${i}`} className="row" data-testid="company-more-person" style={{ justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap", gap: 6 }}>
+                <div key={`more-${i}`} className="co-person" data-testid="company-more-person">
                   <div className="u-min0">
                     <b>{c.contact_name || c.email || "Unnamed contact"}</b>
                     {c.title && <small className="sub-inline"> · {c.title}</small>}
@@ -140,14 +141,14 @@ function CompanyDetail({ companyKey, onClose }) {
                       {c.email || "no email"}{c.phone ? ` · ${c.phone}` : ""} · kept on <button className="linkish" onClick={() => setLead(c.kept_on)}>{c.kept_on_name}</button>'s record
                     </small></div>
                   </div>
-                  <span className="chips"><span className="pill" title="Found with another lead at this company; not a separate lead yet">Also at this company</span></span>
+                  <span className="chips"><Badge title="Found with another lead at this company; not a separate lead yet">Also at this company</Badge></span>
                 </div>
               ))}
             </div>
 
             {d.health_lead_id && <CompanyHealth lead={{ id: d.health_lead_id }} />}
 
-            <h3>Everything that happened ({d.timeline_total})</h3>
+            <h3 className="u-mt-16">Everything that happened ({d.timeline_total})</h3>
             {d.timeline.length === 0 ? <p className="sub">No activity yet.</p> : (
               <div className="timeline" data-testid="company-timeline">
                 {d.timeline.slice(0, shown).map((t, i) => (
@@ -159,7 +160,7 @@ function CompanyDetail({ companyKey, onClose }) {
                 ))}
               </div>
             )}
-            {d.timeline.length > shown && <button className="btn ghost" onClick={() => setShown((n) => n + 40)}>Show more</button>}
+            {d.timeline.length > shown && <Button variant="secondary" onClick={() => setShown((n) => n + 40)}>Show more</Button>}
           </>
         )}
       </div>
@@ -188,22 +189,25 @@ export default function Companies() {
   return (
     <section>
       <PageHeader title="Companies" description={<>Every person at one employer together: furthest stage, touches, replies and health. Click a company for its people and full history.</>} />
-      <div className="row u-wrap u-gap-8 u-m-8-0-12">
-        <input aria-label="Search companies" placeholder="Search company, domain or person" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: "1 1 220px", minWidth: 0 }} />
+      <div className="filter-bar">
+        <div className="grow"><Input icon="search" aria-label="Search companies" placeholder="Search company, domain or person" value={q} onChange={(e) => setQ(e.target.value)} onClear={() => setQ("")} /></div>
         <select aria-label="Sort by" value={sort} onChange={(e) => { setSort(e.target.value); setOffset(0); setOrder(e.target.value === "name" ? "asc" : "desc"); }}>
           {SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <button className="btn ghost" aria-label={`Order: ${order === "desc" ? "highest first" : "lowest first"}`} onClick={() => { setOrder(order === "desc" ? "asc" : "desc"); setOffset(0); }}>
+        <Button variant="secondary" aria-label={`Order: ${order === "desc" ? "highest first" : "lowest first"}`} onClick={() => { setOrder(order === "desc" ? "asc" : "desc"); setOffset(0); }}>
           {sort === "name" ? (order === "desc" ? "Z → A" : "A → Z") : order === "desc" ? "High → low" : "Low → high"}
-        </button>
+        </Button>
       </div>
       {error && <ErrorState message="Could not load companies" detail={error} onRetry={load} />}
-      {!data && !error && <p className="empty">Loading…</p>}
-      {data && items.length === 0 && <p className="empty">{query ? "No company matches that search." : "No companies yet. Import leads to see them grouped by employer."}</p>}
+      {!data && !error && <Card className="table-card" aria-busy="true"><div className="stack u-p-16"><Skeleton height={28} /><Skeleton height={28} /><Skeleton height={28} /><Skeleton height={28} /></div></Card>}
+      {data && items.length === 0 && (
+        <Card><EmptyState icon="building" title={query ? "No company matches that search" : "No companies yet"}>
+          {query ? "Try a shorter name, or a domain such as acme.com." : "Import leads and they are grouped here by employer."}</EmptyState></Card>
+      )}
       {items.length > 0 && (narrow ? (
-        <div data-testid="companies-cards">
+        <div className="co-cards" data-testid="companies-cards">
           {items.map((c) => (
-            <button key={c.key} className="card" style={{ display: "block", width: "100%", textAlign: "left", margin: "0 0 10px", cursor: "pointer", font: "inherit", color: "inherit" }} onClick={() => setOpen(c.key)}>
+            <button key={c.key} className="card co-card" onClick={() => setOpen(c.key)}>
               <b className="u-anywhere">{c.name}</b> {c.domain && <small className="sub-inline">{c.domain}</small>}
               <div className="u-m-8-0"><StatusPills c={c} /></div>
               <small className="sub">{c.contacts} contact{c.contacts === 1 ? "" : "s"} · {c.touches} touches · {c.replies} repl{c.replies === 1 ? "y" : "ies"} · last {when(c.last_touch)}</small>
@@ -211,29 +215,29 @@ export default function Companies() {
           ))}
         </div>
       ) : (
-        <div className="card u-xauto u-p0">
+        <Card className="table-card">
           <DataTable data-testid="companies-table">
-            <thead><tr><th>Company</th><th>Status</th><th>Contacts</th><th>Touches</th><th>Replies</th><th>Last touch</th><th>{leadTerm("open_roles")}</th><th>LinkedIn accepted</th><th>Owner</th></tr></thead>
+            <thead><tr><th>Company</th><th>Status</th><th className="num">Contacts</th><th className="num">Touches</th><th className="num">Replies</th><th>Last touch</th><th className="num">{leadTerm("open_roles")}</th><th className="num">LinkedIn accepted</th><th>Owner</th></tr></thead>
             <tbody>
               {items.map((c) => (
                 <tr key={c.key}>
                   <td><button className="linkish" onClick={() => setOpen(c.key)}><b>{c.name}</b></button>{c.domain && <><br /><small className="sub">{c.domain}</small></>}</td>
                   <td><StatusPills c={c} />{c.active_sequences > 1 && <div><small className="sub">{c.active_sequences} in active sequences</small></div>}</td>
-                  <td>{c.contacts}</td><td>{c.touches}</td><td>{c.replies}</td>
-                  <td><small>{when(c.last_touch)}</small></td><td>{c.open_roles || "–"}</td><td>{c.linkedin_accepted}</td>
+                  <td className="num">{c.contacts}</td><td className="num">{c.touches}</td><td className="num">{c.replies}</td>
+                  <td><small>{when(c.last_touch)}</small></td><td className="num">{c.open_roles || "–"}</td><td className="num">{c.linkedin_accepted}</td>
                   <td><small>{c.owners.join(", ") || "–"}</small></td>
                 </tr>
               ))}
             </tbody>
           </DataTable>
-        </div>
+        </Card>
       ))}
       {total > PAGE && (
-        <div className="row u-between u-mt-12 u-wrap">
+        <div className="co-pager">
           <small className="sub">{offset + 1}–{Math.min(offset + PAGE, total)} of {total}</small>
           <div className="row">
-            <button className="btn ghost" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>Previous</button>
-            <button className="btn ghost" disabled={offset + PAGE >= total} onClick={() => setOffset(offset + PAGE)}>Next</button>
+            <Button variant="secondary" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>Previous</Button>
+            <Button variant="secondary" disabled={offset + PAGE >= total} onClick={() => setOffset(offset + PAGE)}>Next</Button>
           </div>
         </div>
       )}

@@ -61,13 +61,13 @@ function ColourField({ id, label, value, onChange, checkText }) {
   return (
     <div>
       <label htmlFor={id}>{label}</label>
-      <div className="row" style={{ flexWrap: "nowrap" }}>
-        <input type="color" aria-label={`${label} picker`} value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#0369a1"} style={{ width: 48, padding: 2 }}
+      <div className="row nowrap-row">
+        <input type="color" aria-label={`${label} picker`} value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#0369a1"} className="color-pick"
           onChange={(e) => onChange(e.target.value)} />
         <input id={id} value={value} maxLength={7} onChange={(e) => onChange(e.target.value)} className="u-maxwidth-120" />
       </div>
       {checkText && ratio !== null && (
-        <p className="sub" role="status" style={{ margin: "4px 0 0", color: ratio < 3 ? "var(--hot)" : undefined }}>
+        <p className={`sub u-mt-4 u-mb-0${ratio < 3 ? " lint-err" : ""}`} role="status">
           White text on it: {ratio}:1 {ratio < 3 ? "— too light, pick a darker shade" : ratio < 4.5 ? "— fine for buttons, a darker shade reads better" : "— good"}
         </p>
       )}

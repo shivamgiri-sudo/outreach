@@ -4,7 +4,8 @@ import WorkspaceTag from "./sequences/WorkspaceTag.jsx";
 import { istLabel } from "../time.js";
 import { useConfirm } from "../Dialog.jsx";
 import FlowEditor from "./flows/FlowEditor.jsx";
-import { PageHeader, DataTable } from "../ui/index.js";
+import { PageHeader, Card, CardHeader, DataTable, Button, Badge, EmptyState, Skeleton } from "../ui/index.js";
+import "../work-pages.css";
 
 const STATUS = { active: ["ok", "Active"], paused: ["warn", "Paused"], draft: ["", "Draft"] };
 const TRIGGER_WORDS = {
@@ -59,33 +60,32 @@ function FlowList({ onOpen }) {
       <PageHeader title="Flow builder"
         description={<>Draw your own communication flow: a trigger, then checks, waits and messages across email, WhatsApp, SMS,
         LinkedIn tasks, calls and meetings. Every message keeps the app's rules: consent before WhatsApp, practice mode, caps,
-        business hours and the do-not-contact list.</>} />
-      {error && <div className="tip error" role="alert">{error}</div>}
-      {maker && <div className="row u-mb-16 u-wrap">
-        {isOwner() && spaces.length > 1 && <label className="row u-gap-8 u-m0">Workspace
-          <select aria-label="Workspace of a new flow" value={space} onChange={(e) => setSpace(e.target.value)} className="u-w-auto">
-            {spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>}
-        <button type="button" className="btn" onClick={() => setPicking(!picking)} aria-expanded={picking}>New from template</button>
-        <button type="button" className="btn ghost" onClick={() => create(() => api.createFlow({ name: "Untitled flow", ...(into ? { workspace: into } : {}) }))}>Blank flow</button>
-        <label className="btn ghost u-pointer">Import a flow
-          <input type="file" accept="application/json,.json" hidden onChange={(e) => { importFile(e.target.files?.[0]); e.target.value = ""; }} /></label>
-      </div>}
+        business hours and the do-not-contact list.</>}
+        actions={maker ? <>
+          {isOwner() && spaces.length > 1 && <label className="row u-gap-8 u-m0">Workspace
+            <select aria-label="Workspace of a new flow" value={space} onChange={(e) => setSpace(e.target.value)} className="u-w-auto">
+              {spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>}
+          <Button onClick={() => setPicking(!picking)} aria-expanded={picking}>New from template</Button>
+          <Button variant="secondary" onClick={() => create(() => api.createFlow({ name: "Untitled flow", ...(into ? { workspace: into } : {}) }))}>Blank flow</Button>
+          <label className="btn ghost u-pointer">Import a flow
+            <input type="file" accept="application/json,.json" hidden onChange={(e) => { importFile(e.target.files?.[0]); e.target.value = ""; }} /></label>
+        </> : null} />
+      {error && <div className="tip error u-mb-12" role="alert">{error}</div>}
       {picking && maker && (
         <div className="grid g2 u-mb-16" data-testid="flow-templates">
           {templates.map((t) => (
-            <div key={t.key} className="card">
-              <h3 className="u-mt-0">{t.name}</h3>
-              <p className="sub u-mb-12">{t.description}</p>
-              <button type="button" className="btn" onClick={() => create(() => api.flowFromTemplate(t.key, into))} aria-label={`Use template: ${t.name}`}>
+            <Card key={t.key}>
+              <CardHeader title={t.name} description={t.description} />
+              <Button onClick={() => create(() => api.flowFromTemplate(t.key, into))} aria-label={`Use template: ${t.name}`}>
                 Use this template
-              </button>
-            </div>
+              </Button>
+            </Card>
           ))}
         </div>
       )}
       <div className="card table-card">
-        {flows === null ? <p className="empty">Loading…</p> : flows.length === 0 ? (
-          <p className="empty">{maker ? "No flows yet. Start from a template: the cold email one is the same as today's sequence." : "No flows yet."}</p>
+        {flows === null ? <div className="stack u-p-16" aria-busy="true"><Skeleton height={28} /><Skeleton height={28} /></div> : flows.length === 0 ? (
+          <EmptyState icon="workflow" title="No flows yet">{maker ? "Start from a template: the cold email one is the same as today's sequence." : "Your admin has not made any flows yet."}</EmptyState>
         ) : (
           <DataTable  tableClass="stack-table">
             <thead><tr><th>Flow</th><th>Status</th><th>Starts when</th><th>Active leads</th><th>Last edited</th><th /></tr></thead>
@@ -99,7 +99,7 @@ function FlowList({ onOpen }) {
                     <td data-label="Starts when">{TRIGGER_WORDS[f.trigger] || "No trigger yet"}</td>
                     <td data-label="Active leads">{f.stats.active_leads} <small className="sub-inline">of {f.stats.total}</small></td>
                     <td data-label="Last edited">{istLabel(f.updated_at)}</td>
-                    <td className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
+                    <td className="row nowrap-row">
                       <button type="button" className="btn ghost" onClick={() => onOpen(f.id)} aria-label={`Open ${f.name}`}>Open</button>
                       {canEditWorkspace(f.workspace_id) && <button type="button" className="btn ghost danger" onClick={() => remove(f)} aria-label={`Delete ${f.name}`}>Delete</button>}</td>
                   </tr>

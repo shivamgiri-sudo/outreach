@@ -51,7 +51,7 @@ export function LeadTags({ lead, onChanged }) {
       </div>
       {canEdit && (
         <form className="row u-mt-8" onSubmit={submit} >
-          <input aria-label="New tag" placeholder="Add a tag, e.g. Noida BPO" maxLength={40} value={text} onChange={(e) => setText(e.target.value)} style={{ flex: "1 1 160px", width: "auto" }} />
+          <input aria-label="New tag" placeholder="Add a tag, e.g. Noida BPO" maxLength={40} value={text} onChange={(e) => setText(e.target.value)} className="u-flex1 u-minwidth-160 u-w-auto" />
           <button className="btn ghost" type="submit" disabled={!text.trim()}>Add tag</button>
         </form>
       )}
@@ -62,7 +62,7 @@ export function LeadTags({ lead, onChanged }) {
 
 export default function LeadAssign({ lead, onChanged }) {
   return (
-    <div className="card" style={{ margin: "10px 0", padding: "10px 14px" }}>
+    <div className="card tight">
       <LeadOwner lead={lead} onChanged={onChanged} />
       <LeadTags lead={lead} onChanged={onChanged} />
     </div>

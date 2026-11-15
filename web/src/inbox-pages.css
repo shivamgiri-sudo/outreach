@@ -1,0 +1,83 @@
+/* Replies, Tasks, Meetings, Leaderboard, Companies: page layout on the shared ui kit. Tokens only. */
+
+/* shared: a toolbar card that holds filters */
+.filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-bottom: var(--s4); }
+.filter-bar > select { flex: 0 1 200px; width: auto; min-width: 0; }
+.filter-bar .grow { flex: 1 1 220px; min-width: 0; }
+.filter-bar .push { margin-left: auto; }
+.sum-grid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: var(--s4); }
+.sum-grid .ui-stat { padding: var(--s3) var(--s4); }
+.sum-grid .ui-stat b { margin-top: var(--s1); font-size: var(--fs-xl); }
+.sum-grid .stat-icon { display: none; }
+.stack { display: grid; gap: var(--s3); }
+.muted { color: var(--muted); }
+
+/* Replies */
+.reply-card { display: grid; gap: var(--s2); }
+.reply-card.unread { border-left: 4px solid var(--brand); }
+.reply-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--s2) var(--s4); }
+.reply-who { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.reply-score { display: inline-grid; place-items: center; min-width: 36px; height: 28px; padding: 0 var(--s2); border-radius: var(--r-pill); background: var(--brand-soft); color: var(--brand); font-weight: 700; font-size: var(--fs-sm); }
+.reply-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); color: var(--muted); font-size: var(--fs-sm); }
+.reply-text { margin: 0; font-size: var(--fs-md); overflow-wrap: anywhere; }
+.reply-next { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+.reply-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.reply-actions > select { flex: 0 1 170px; width: auto; min-height: var(--h-ctl-sm); }
+.reply-snooze { display: flex; flex-wrap: wrap; align-items: end; gap: var(--s2) var(--s3); }
+.reply-snooze label { margin: 0; }
+.reply-thread-card { margin-top: var(--s2); padding-top: var(--s3); border-top: 1px solid var(--line); }
+
+/* Tasks */
+.task-add { display: grid; gap: var(--s2) var(--s3); grid-template-columns: minmax(200px, 3fr) minmax(170px, 1.2fr) minmax(130px, 1fr) minmax(130px, 1fr) auto; align-items: end; }
+.task-group { display: grid; gap: var(--s2); }
+.task-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2) var(--s4); align-items: center; padding: var(--s3); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.task-row.overdue { border-color: var(--danger); background: var(--danger-bg); }
+.task-main { min-width: 0; display: grid; gap: 2px; }
+.task-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.task-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); justify-content: flex-end; }
+.task-actions select { width: auto; min-height: var(--h-ctl-sm); flex: 0 1 140px; }
+.team-grid { display: grid; gap: var(--s2); grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: center; }
+@media (max-width: 900px) { .task-add { grid-template-columns: 1fr 1fr; } .task-add .span2 { grid-column: 1 / -1; } .task-row { grid-template-columns: minmax(0, 1fr); } .task-actions { justify-content: flex-start; } }
+
+/* Meetings */
+.meet-day { display: grid; gap: var(--s2); }
+.meet-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: var(--s3); align-items: center; padding: var(--s3); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.meet-time { font-weight: 700; font-variant-numeric: tabular-nums; }
+.meet-main { min-width: 0; display: grid; gap: 2px; }
+.meet-main p { margin: 0; color: var(--muted); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+@media (max-width: 600px) { .meet-row { grid-template-columns: minmax(0, 1fr); } }
+
+/* Leaderboard */
+.lb-you td { background: var(--brand-soft); font-weight: 600; }
+.lb-attain { display: flex; align-items: center; gap: var(--s2); min-width: 150px; }
+.lb-track { flex: 1; height: 8px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
+.lb-fill { height: 100%; background: var(--brand); }
+.lb-total td { font-weight: 700; background: var(--raised); }
+.lb-rank { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--neutral-bg); font-weight: 700; font-size: var(--fs-sm); }
+.lb-rank.r1 { background: var(--warn-bg); color: var(--warn); }
+.date-pair { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); align-items: end; }
+.date-pair label { margin: 0; display: grid; gap: var(--s1); }
+.date-pair input { width: 160px; }
+
+/* Companies */
+.co-cards { display: grid; gap: var(--s3); }
+.co-card { display: block; width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.co-card:hover { border-color: var(--brand); }
+.co-people { display: grid; }
+.co-person { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--s2); padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
+.co-person:last-child { border-bottom: 0; }
+.co-stats { display: grid; gap: var(--s2); grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+.co-stats .co-stat { border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--s2) var(--s3); background: var(--panel); }
+.co-stats .co-stat small { display: block; color: var(--muted); }
+.co-stats .co-stat b { font: 700 var(--fs-xl)/1.2 var(--font-head); }
+.co-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: var(--s4); }
+.health-list { margin: var(--s2) 0; padding-left: var(--s5); }
+.health-neg { color: var(--accent); }
+.health-grid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.health-grid small { color: var(--muted); }
+.u-nowrap { white-space: nowrap; }
+.drawer-actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin: var(--s3) 0; }
+.task-add input, .task-add select { min-width: 0; }
+.task-actions select { flex: 0 1 118px; }
+@media (max-width: 760px) { .filter-bar > select { flex: 1 1 140px; } .filter-bar > label { flex: 1 1 100%; } .reply-actions > select { flex: 1 1 140px; } .reply-actions .btn { flex: 1 1 auto; } }
+.meet-main .linkish, .reply-who .link, .task-title .link { display: inline-flex; align-items: center; min-height: 32px; }

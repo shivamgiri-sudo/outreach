@@ -1,0 +1,11 @@
+/* My day: target tiles and the work lists. Tokens only. */
+.md-kpi b .md-of { font-size: var(--fs-md); font-weight: 600; }
+.md-track { height: 6px; border-radius: var(--r-pill); background: var(--line); margin-top: var(--s2); overflow: hidden; }
+.md-fill { height: 100%; background: var(--brand); }
+.md-fill.done { background: var(--ok); }
+.md-grid { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); align-items: start; }
+.md-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.md-item { display: grid; gap: var(--s2); padding: var(--s3); border: 1px solid var(--line); border-radius: var(--r-sm); min-width: 0; }
+.md-item.overdue { border-color: var(--danger); background: var(--danger-bg); }
+.md-text { min-width: 0; overflow-wrap: anywhere; }
+.md-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }

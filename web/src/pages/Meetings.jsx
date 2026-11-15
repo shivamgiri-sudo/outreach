@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { Empty, ErrorState } from "../states.jsx";
+import { ErrorState } from "../states.jsx";
 import { istDayLabel, istLabel } from "../time.js";
 import LeadDrawer from "./LeadDrawer.jsx";
 import DownloadButton, { exportPath } from "../DownloadButton.jsx";
 import Abbr from "../components/Abbr.jsx";
-import { PageHeader } from "../ui/index.js";
+import { PageHeader, Card, CardHeader, Button, Badge, EmptyState, Skeleton, Switch } from "../ui/index.js";
+import "../inbox-pages.css";
 
-const STATUS_TONE = { scheduled: "ok", cancelled: "", done: "warm" };
+const STATUS_TONE = { scheduled: "success", cancelled: "muted", done: "warning" };
 
 export default function Meetings({ go }) {
   const [rows, setRows] = useState(null);
@@ -22,7 +23,7 @@ export default function Meetings({ go }) {
   useEffect(() => { load(); }, []);
 
   if (error && !rows) return <ErrorState message="Could not load meetings" detail={error} onRetry={load} />;
-  if (!rows) return <p className="empty">Loading…</p>;
+  if (!rows) return <div aria-busy="true"><PageHeader title="Meetings" /><div className="stack"><Skeleton height={90} /><Skeleton height={90} /></div></div>;
   const active = calendar?.providers.find((p) => p.active);
   const shown = rows.filter((m) => showCancelled || m.status !== "cancelled");
   const days = [...new Set(shown.map((m) => istDayLabel(m.start)))];
@@ -34,36 +35,40 @@ export default function Meetings({ go }) {
       {!active && (
         <div className="tip u-mb-16">
           Connect Google Calendar, Microsoft 365, Zoom or a booking page (Cal.com, Calendly) to book meetings with a video link.
-          <div className="row u-mt-8"><button className="btn" onClick={() => go?.("integrations")}>Open Integrations</button></div>
+          <div className="row u-mt-8"><Button onClick={() => go?.("integrations")}>Open Integrations</Button></div>
         </div>
       )}
-      <div className="row dl-head">
-        <label className="row u-fw4">
-          <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} /> Show cancelled
-        </label>
-        <DownloadButton path={exportPath("meetings")} label="Download all meetings" testId="download-meetings"
-          title="Past, upcoming and cancelled meetings with times in IST" />
+      <div className="filter-bar">
+        <Switch checked={showCancelled} onChange={setShowCancelled} label="Show cancelled" />
+        <span className="sub-inline">Show cancelled</span>
+        <span className="push">
+          <DownloadButton path={exportPath("meetings")} label="Download all meetings" testId="download-meetings"
+            title="Past, upcoming and cancelled meetings with times in IST" />
+        </span>
       </div>
-      {shown.length === 0 && <Empty>No upcoming meetings.</Empty>}
+      {shown.length === 0 && <Card><EmptyState icon="calendar" title="No upcoming meetings">Book one from a lead's panel: open a lead, then Meetings.</EmptyState></Card>}
+      <div className="stack">
       {days.map((day) => (
-        <div key={day} className="card u-mb-12">
-          <h3 className="u-mt-0">{day}</h3>
-          <ul className="today-list">
+        <Card key={day}>
+          <CardHeader title={day} />
+          <div className="meet-day">
             {shown.filter((m) => istDayLabel(m.start) === day).map((m) => (
-              <li key={m.id} className="today-item meet-item" data-testid="meeting-row">
-                <div className="today-text">
-                  <b>{istLabel(m.start, false)}</b> · <button className="linkish" onClick={() => setOpen(m.lead_id)}>{m.company || "Lead"}</button>
-                  {m.contact_name && <span className="sub-inline"> ({m.contact_name})</span>}
-                  <p>{m.title} · {m.provider} <span className={`pill ${STATUS_TONE[m.status] || ""}`}>{m.status}</span></p>
+              <div key={m.id} className="meet-row" data-testid="meeting-row">
+                <span className="meet-time">{istLabel(m.start, false)}</span>
+                <div className="meet-main">
+                  <span><button className="linkish" onClick={() => setOpen(m.lead_id)}><b>{m.company || "Lead"}</b></button>
+                    {m.contact_name && <span className="sub-inline"> ({m.contact_name})</span>}</span>
+                  <p>{m.title} · {m.provider} <Badge tone={STATUS_TONE[m.status] || "neutral"}>{m.status}</Badge></p>
                 </div>
-                <div className="today-actions">
+                <div>
                   {m.join_url && m.status === "scheduled" && <a className="btn ghost" href={m.join_url} target="_blank" rel="noreferrer">Join</a>}
                 </div>
-              </li>
+              </div>
             ))}
-          </ul>
-        </div>
+          </div>
+        </Card>
       ))}
+      </div>
       {open && <LeadDrawer id={open} onClose={() => { setOpen(null); load(); }} />}
     </>
   );

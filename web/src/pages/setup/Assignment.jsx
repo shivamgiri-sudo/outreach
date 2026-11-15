@@ -20,10 +20,10 @@ function Team({ team, owners, onChange, onRemove }) {
         </label>
         <button className="btn ghost" onClick={onRemove} aria-label={`Remove team ${team.name || ""}`}>Remove</button>
       </div>
-      <fieldset style={{ border: 0, padding: 0, margin: "8px 0 0" }}>
+      <fieldset className="bare-fieldset">
         <legend className="sub">Members</legend>
         <div className="chips">{owners.map((n) => (
-          <label key={n} className="pill rec" style={{ cursor: "pointer", opacity: team.members.includes(n) ? 1 : 0.55 }}>
+          <label key={n} className={`pill rec pick-pill${team.members.includes(n) ? "" : " off"}`}>
             <input type="checkbox" checked={team.members.includes(n)} onChange={() => toggle(n)} className="u-mr-4" />{n}
           </label>))}
           {owners.length === 0 && <small className="sub">No team members yet. Add them under Team members.</small>}
@@ -37,12 +37,12 @@ function Rule({ rule, index, last, teams, onChange, onMove, onRemove }) {
   return (
     <div className="card u-mb-12" data-testid="rule-card">
       <div className="row u-wrap u-gap-8 u-aend">
-        <b style={{ minWidth: 24 }}>{index + 1}.</b>
+        <b className="u-minwidth-24">{index + 1}.</b>
         {WHEN.map(([k, label]) => (
-          <label key={k} style={{ flex: "1 1 120px", margin: 0 }}>{label}
+          <label key={k} className="u-flex1 u-minwidth-120 u-m0">{label}
             <input value={rule.when?.[k] || ""} onChange={(e) => onChange({ ...rule, when: { ...rule.when, [k]: e.target.value } })} placeholder="any" />
           </label>))}
-        <label style={{ flex: "1 1 140px", margin: 0 }}>Goes to team
+        <label className="u-flex1 u-minwidth-130 u-m0">Goes to team
           <select value={rule.team} onChange={(e) => onChange({ ...rule, team: e.target.value })}>
             <option value="">Choose a team</option>
             {teams.map((t) => <option key={t.id} value={t.id}>{t.name || t.id}</option>)}
@@ -107,7 +107,7 @@ function AssignmentBody() {
         {teams.map((t, i) => (
           <div key={t.id}>
             <Team team={t} owners={owners} onChange={(x) => setTeam(i, x)} onRemove={() => set({ teams: teams.filter((_, j) => j !== i), rules: rules.filter((r) => r.team !== t.id) })} />
-            <label className="row" style={{ gap: 8, margin: "-4px 0 10px" }}><input type="radio" name="default-team" checked={!!t.default} onChange={() => setDefault(t.id)} /> Default team (gets leads that match no rule)</label>
+            <label className="row u-gap-8 u-m-8-0"><input type="radio" name="default-team" checked={!!t.default} onChange={() => setDefault(t.id)} /> Default team (gets leads that match no rule)</label>
           </div>))}
         {teams.length === 0 && <p className="empty">No teams yet.</p>}
         <button className="btn ghost" onClick={() => set({ teams: [...teams, { id: uid("team"), name: "", members: [], default: teams.length === 0, daily_cap: 0 }] })}>Add team</button>

@@ -60,7 +60,7 @@ export default function Snippets() {
           </div>
           {form.channel === "email" && <label>Subject<input maxLength={200} value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></label>}
           <label>Text<textarea required rows={6} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} /></label>
-          {checks.map((x, i) => <p key={i} className="sub" style={{ color: x.level === "error" ? "var(--hot)" : "var(--warn)", margin: 0 }}>{x.text}</p>)}
+          {checks.map((x, i) => <p key={i} className={`sub u-m0 ${x.level === "error" ? "lint-err" : "lint-warn"}`}>{x.text}</p>)}
           <div className="row"><button className="btn" type="submit" disabled={checks.some((x) => x.level === "error")}>Save snippet</button>
             <button className="btn ghost" type="button" onClick={() => setForm(null)}>Cancel</button></div>
         </form>

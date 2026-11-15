@@ -10,11 +10,11 @@ export function PendingQueue({ rows, onAction, onDetails }) {
   const pending = rows.filter((a) => a.status === "pending");
   if (!pending.length) return null;
   return (
-    <section className="card" data-testid="pending-queue" style={{ marginBottom: 14, borderLeft: "4px solid #d97706" }}>
+    <section className="card bar-warn console-card" data-testid="pending-queue">
       <h3>Waiting for approval ({pending.length})</h3>
       {pending.map((a) => (
-        <div key={a.id} className="row" data-testid={`pending-${a.name}`} style={{ gap: 10, flexWrap: "wrap", alignItems: "center", padding: "8px 0", borderTop: "1px solid var(--line, #e2e8f0)" }}>
-          <div style={{ flex: "1 1 260px" }}>
+        <div key={a.id} className="row console-line" data-testid={`pending-${a.name}`}>
+          <div className="u-flex1 u-minwidth-220">
             <b>{a.name}</b> <span className="hint">{a.signup?.name} &lt;{a.signup?.email}&gt;{a.signup?.phone ? ` · ${a.signup.phone}` : ""}</span>
             <div className="hint">Signed up {istDate(a.signup?.at || a.created_at)}{flagText(a) && <> · <span className="pill tiny">{flagText(a)}</span></>}</div>
           </div>
@@ -40,9 +40,9 @@ export function StopAllSwitch({ stop, onChanged }) {
     setBusy(false);
   };
   return (
-    <section className="card" data-testid="stop-all" style={{ marginBottom: 14, borderLeft: `4px solid ${stop ? "#b91c1c" : "#16a34a"}` }}>
+    <section className={`card console-card ${stop ? "bar-danger" : "bar-ok"}`} data-testid="stop-all">
       <div className="row u-gap-12 u-wrap u-acenter">
-        <div style={{ flex: "1 1 280px" }}>
+        <div className="u-flex1 u-minwidth-220">
           <b>Stop all sending</b>
           <div className="hint">{stop ? `ON since ${istDate(stop.at)} by ${stop.by}${stop.reason ? ` — ${stop.reason}` : ""}. Nothing goes out for any account.`
             : "Off. Every account sends as set up."}</div>
@@ -66,9 +66,9 @@ export function SignupSwitch({ open, onChanged }) {
     setBusy(false);
   };
   return (
-    <section className="card" data-testid="signup-switch" style={{ marginBottom: 14, borderLeft: `4px solid ${open ? "#b45309" : "#16a34a"}` }}>
+    <section className={`card console-card ${open ? "bar-warn" : "bar-ok"}`} data-testid="signup-switch">
       <div className="row u-gap-12 u-wrap u-acenter">
-        <div style={{ flex: "1 1 280px" }}>
+        <div className="u-flex1 u-minwidth-220">
           <b>Public sign-up</b>
           <div className="hint">{open ? "OPEN. The sign-in page shows “Create an account”; every new account still waits for your approval."
             : "Closed. The sign-in page has no sign-up link and the sign-up form refuses requests. Accounts are created by you in this console."}</div>
@@ -95,9 +95,9 @@ export function StatusFilter({ value, onChange }) {
 export function AlertsStrip({ alerts }) {
   if (!alerts?.length) return null;
   return (
-    <section className="card" data-testid="console-alerts" style={{ marginBottom: 14, borderLeft: "4px solid #b45309" }}>
+    <section className="card bar-warn console-card" data-testid="console-alerts">
       <h3>Alerts ({alerts.length})</h3>
-      <ul style={{ margin: 0, paddingLeft: 18 }}>
+      <ul className="li-reasons">
         {alerts.slice(0, 8).map((a) => (
           <li key={a.id} data-testid={`console-alert-${a.kind}`}><b>{a.label}</b>: {a.title}{" "}
             <span className="hint">{istDate(a.at)}{a.account ? ` · ${a.account}` : ""}</span></li>))}

@@ -17,7 +17,7 @@
   --mcn-red: #d83038; --mcn-green: #70c050; --mcn-blue: #2078b8;
   --ok: #15803d; --ok-bg: #dcfce7; --warn: #b45309; --warn-bg: #ffedd5; --hot: #be185d; --hot-bg: #fce7f3;
   --danger: #b91c1c; --danger-bg: #fee2e2; --danger-solid: #dc2626; --neutral-bg: #e2e8f0;
-  --violet: #6d28d9; --violet-bg: #ede9fe; --blue: #1d4ed8; --blue-bg: #e0ebff; --warn-solid: #ea580c;
+  --violet: #6d28d9; --violet-bg: #ede9fe; --blue: #1d4ed8; --blue-bg: #e0ebff; --warn-solid: #ea580c; --banner-view: #7c2d12; --banner-stop: #b91c1c; --on-banner: #fff;
   --radius: var(--r-md);
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s7: 32px; --s8: 48px;
   --shadow: 0 1px 2px rgba(15,23,42,.05), 0 4px 14px rgba(15,23,42,.05);

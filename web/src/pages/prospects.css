@@ -25,12 +25,12 @@ label.pf-check span { flex: 1; overflow-wrap: anywhere; }
 .pf-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
 .pf-sub { font-size: var(--fs-sm); font-weight: 600; margin-top: var(--s2); }
 .ps-results { table-layout: fixed; }
-.ps-people { min-width: 1040px; }
+.ps-people { min-width: 780px; }
 .ps-companies { min-width: 1000px; }
 .ps-results td { vertical-align: top; }
 .ps-results .pick { width: 44px; }
-.ps-people .c-name { width: 210px; } .ps-people .c-title { width: 150px; } .ps-people .c-co { width: 170px; } .ps-people .c-loc { width: 100px; }
-.ps-people .c-email { width: 210px; } .ps-people .c-src { width: 70px; } .ps-people .c-upd { width: 80px; }
+.ps-people .c-name { width: 190px; } .ps-people .c-title { width: 140px; } .ps-people .c-co { width: 170px; }
+.ps-people .c-email { width: 236px; }
 .ps-people th.c-name, .ps-people td.ps-name { position: sticky; left: 44px; z-index: 1; background: var(--panel); box-shadow: 1px 0 0 var(--line); }
 .ps-people th.c-name { z-index: 2; }
 .ps-people th.pick, .ps-people td.pick { position: sticky; left: 0; z-index: 1; background: var(--panel); }

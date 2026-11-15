@@ -31,10 +31,9 @@ export function PresetsCard({ onApplied }) {
       <p className="sub">Start from words written for your kind of business: an email sequence, LinkedIn steps and personas, a call script,
         snippets, ideal-customer hints, the label for the lead's number field, stage names and two starter flows. Claims come from your
         brand settings ({"{{my_value_1}}"} …), so nothing is promised that you haven't written.</p>
-      <div className="preset-grid" role="radiogroup" aria-label="Industry presets"
-        style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
+      <div className="preset-grid" role="radiogroup" aria-label="Industry presets">
         {data.presets.map((p) => (
-          <label key={p.id} className={`card ${pick === p.id ? "on" : ""}`} style={{ margin: 0, cursor: "pointer", outline: pick === p.id ? "2px solid var(--accent, #0369a1)" : "none" }}>
+          <label key={p.id} className={`card preset-card ${pick === p.id ? "on" : ""}`}>
             <span className="row u-m0 u-gap-8">
               <input type="radio" name="preset" value={p.id} checked={pick === p.id} onChange={() => { setPick(p.id); setResult(null); }} />
               <b>{p.name}</b>{p.default && <span className="pill">built in</span>}{data.applied?.id === p.id && <span className="pill ok">applied</span>}
@@ -92,13 +91,13 @@ export function LeadFieldsCard() {
         into any message as {"{{custom.<key>}}"} (empty when the lead has no value).</p>
       {fields.length === 0 && <p className="sub">No custom fields yet.</p>}
       {fields.map((f, i) => (
-        <div key={i} className="row" style={{ flexWrap: "wrap", alignItems: "flex-end", borderBottom: "1px solid var(--line, #ddd)", paddingBottom: 8, marginBottom: 8 }}>
-          <label style={{ flex: 2, minWidth: 160 }}>Name<input aria-label={`Field ${i + 1} name`} value={f.label} maxLength={60} onChange={(e) => set(i, "label", e.target.value)} /></label>
+        <div key={i} className="row field-row">
+          <label className="u-flex2 u-minwidth-160">Name<input aria-label={`Field ${i + 1} name`} value={f.label} maxLength={60} onChange={(e) => set(i, "label", e.target.value)} /></label>
           <label className="u-flex1 u-minwidth-130">Key<input aria-label={`Field ${i + 1} key`} value={f.key} maxLength={40} placeholder="made from the name"
             onChange={(e) => set(i, "key", e.target.value.toLowerCase())} /></label>
           <label className="u-flex1 u-minwidth-120">Type<select aria-label={`Field ${i + 1} type`} value={f.type} onChange={(e) => set(i, "type", e.target.value)}>
             {TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
-          {f.type === "select" && <label style={{ flex: 2, minWidth: 180 }}>Choices (comma separated)
+          {f.type === "select" && <label className="u-flex2 u-minwidth-180">Choices (comma separated)
             <input aria-label={`Field ${i + 1} choices`} value={Array.isArray(f.options) ? f.options.join(", ") : f.options} onChange={(e) => set(i, "options", e.target.value)} /></label>}
           <label className="row u-m0"><input type="checkbox" checked={f.show_in_table} onChange={(e) => set(i, "show_in_table", e.target.checked)} /> Column</label>
           <label className="row u-m0"><input type="checkbox" checked={f.filterable} onChange={(e) => set(i, "filterable", e.target.checked)} /> Filter</label>

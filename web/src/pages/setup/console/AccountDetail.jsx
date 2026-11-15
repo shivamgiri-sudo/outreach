@@ -55,12 +55,12 @@ export default function AccountDetail({ row, onClose, onDone, onManage, onText }
   const requests = (row.workspaces || []).filter((w) => w.status === "requested");
   return (
     <Modal title={`Account: ${row.name}`} onClose={onClose} wide testId="account-detail">
-      <dl className="row" style={{ flexWrap: "wrap", gap: "6px 22px" }}>
+      <dl className="row detail-dl">
         {figures.map(([k, v]) => <div key={k} className="u-minwidth-120"><dt className="hint">{k}</dt><dd data-testid={`fig-${k}`}><b>{String(v)}</b></dd></div>)}
       </dl>
       <p className="hint">Limits: {Object.entries(row.limits || {}).map(([k, v]) => `${k.replace(/_/g, " ")} ${v}`).join(", ") || "none (unlimited)"} ·
         Integrations granted: {(row.integrations_granted || []).join(", ") || "none"}</p>
-      {!mcn && row.auto_hold && <div className="setup-form" data-testid="detail-auto-hold" style={{ borderLeft: "4px solid #b91c1c", paddingLeft: 10 }}>
+      {!mcn && row.auto_hold && <div data-testid="detail-auto-hold" className="setup-form bar-danger">
         <b>Sending held automatically</b> <span className="hint">{istDate(row.auto_hold.at)}</span>
         <p className="hint">{row.auto_hold.reason}</p>
         <button className="btn small" disabled={busy} onClick={() => run(() => platform.releaseHold(row.id), `Sending hold lifted for “${row.name}”.`)} data-testid="detail-release-hold">Release the hold</button></div>}
@@ -83,7 +83,7 @@ export default function AccountDetail({ row, onClose, onDone, onManage, onText }
           <span className="u-flex1">{u.name} <span className="hint">{u.email} · {u.role}</span></span>
           <button className="btn ghost small" onClick={() => run(() => startViewAs(u.email))} aria-label={`View as ${u.email}`}>View as</button>
         </div>)}</div>}
-      {!mcn && <div className="setup-form" data-testid="detail-delete" style={{ borderTop: "1px solid #fecaca", marginTop: 12 }}>
+      {!mcn && <div data-testid="detail-delete" className="setup-form delete-zone">
         <h3>Delete account</h3>
         <p className="hint">Erases its leads, messages, workspaces and logins for good. Export the data first. Type <b>{row.name}</b> to confirm.</p>
         <div className="row u-gap-8">

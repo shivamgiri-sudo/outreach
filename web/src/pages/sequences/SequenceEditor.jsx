@@ -106,7 +106,7 @@ export default function SequenceEditor({ sequence, onSaved, onClose, onDuplicate
           {spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>}
       </div>
       <AbStats stats={stats} />
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", alignItems: "start" }}>
+      <div className="seq-layout">
         <div className="u-min0">
           {draft.steps.map((s, i) => (
             <StepEditor key={i} step={s} index={i} prev={draft.steps[i - 1]} readOnly={readOnly} canRemove={draft.steps.length > 1}
@@ -116,13 +116,13 @@ export default function SequenceEditor({ sequence, onSaved, onClose, onDuplicate
           ))}
           {!readOnly && draft.steps.length < MAX_STEPS && <button type="button" className="btn ghost" onClick={addStep}>Add a step</button>}
         </div>
-        <div className="card" style={{ position: "sticky", top: 12, minWidth: 0, padding: 16 }}>
+        <div className="card seq-preview">
           <b>Live preview · Step {active.index + 1}{step ? ` (Day ${humanDay(step.day)})` : ""} · version {active.variant}</b>
           {preview ? (
             <>
               <p className="sub u-m-8-0">Subject: <b>{preview.subject}</b> · sample person: Alex Example, Example Retail</p>
               {preview.missing?.length > 0 && <p className="error">Not filled: {preview.missing.join(", ")}</p>}
-              <iframe title="Live email preview" srcDoc={preview.html} sandbox="" style={{ width: "100%", height: "60vh", border: "1px solid var(--line)", borderRadius: 10, background: "#fff" }} />
+              <iframe title="Live email preview" srcDoc={preview.html} sandbox="" className="email-frame" />
             </>
           ) : <p className="sub">Write a subject and email to see the designed preview.</p>}
         </div>

@@ -7,11 +7,11 @@ const MAX_VARIANTS = 3;
 const NEXT_NAMES = ["B", "C", "D"];
 
 function Lint({ items }) {
-  if (!items.length) return <p className="sub" style={{ color: "var(--ok)" }}>No problems found.</p>;
+  if (!items.length) return <p className="sub lint-ok">No problems found.</p>;
   return (
-    <ul style={{ margin: "4px 0", paddingLeft: 18 }} aria-label="Checks for this step">
+    <ul className="lint-list" aria-label="Checks for this step">
       {items.map((x, i) => (
-        <li key={i} style={{ color: x.level === "error" ? "var(--hot)" : "var(--warn)", fontSize: 13 }}>
+        <li key={i} className={x.level === "error" ? "lint-err" : "lint-warn"}>
           <b>{x.level === "error" ? "Fix: " : "Tip: "}</b>{x.text}
         </li>
       ))}

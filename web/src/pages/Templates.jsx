@@ -6,7 +6,8 @@ import SequenceEditor from "./sequences/SequenceEditor.jsx";
 import Snippets from "./sequences/Snippets.jsx";
 import WorkspaceTag from "./sequences/WorkspaceTag.jsx";
 import { humanDay, stepTitle } from "./sequences/lint.js";
-import { PageHeader } from "../ui/index.js";
+import { PageHeader, Card, Tabs, Button, Badge, Switch, EmptyState, Skeleton } from "../ui/index.js";
+import "../work-pages.css";
 
 const UNSUB = "\n\nPrefer no more emails? {{unsub_link}}";
 const email = (text) => `{{greeting}}\n\n${text}\n\n— {{sender}}${UNSUB}`;
@@ -30,14 +31,14 @@ const TABS = [["sequences", "Email sequences"], ["snippets", "Snippet library"],
 
 function CopyCard({ t, copied, onCopy }) {
   return (
-    <div className="card u-mb-12">
+    <Card>
       <div className="row u-between u-wrap u-gap-8">
-        <b>{t.name} <span className="pill">{t.channel}</span></b>
-        <button className="btn ghost" onClick={() => onCopy(t.name, (t.subject ? `Subject: ${t.subject}\n\n` : "") + t.body)}>{copied === t.name ? "Copied" : "Copy"}</button>
+        <b>{t.name} <Badge>{t.channel}</Badge></b>
+        <Button variant="secondary" onClick={() => onCopy(t.name, (t.subject ? `Subject: ${t.subject}\n\n` : "") + t.body)}>{copied === t.name ? "Copied" : "Copy"}</Button>
       </div>
       {t.subject && <p><b>Subject:</b> {t.subject}</p>}
       <pre>{t.body}</pre>
-    </div>
+    </Card>
   );
 }
 
@@ -46,40 +47,40 @@ function SequenceCard({ s, onOpen, onDuplicate, onArchive, onPreview, onDefault 
   const manager = isOwner() || isWorkspaceAdmin();
   const copyLabel = isOwner() || s.can_edit ? "Duplicate" : "Copy into my workspace";
   return (
-    <div className="card u-mb-12">
+    <Card>
       <div className="row u-between u-wrap u-gap-8">
         <div className="u-min0">
-          <b>{s.name}</b> {s.builtin && <span className="pill">Built in</span>} {s.archived && <span className="pill warn">Archived</span>}
-          {" "}<WorkspaceTag row={s} />{s.is_default && <span className="pill ok u-ml-4">Default</span>}
-          {tests > 0 && <span className="pill rec u-ml-4">A/B on {tests} step{tests > 1 ? "s" : ""}</span>}
+          <b>{s.name}</b> {s.builtin && <Badge>Built in</Badge>} {s.archived && <Badge tone="warning">Archived</Badge>}
+          {" "}<WorkspaceTag row={s} />{s.is_default && <Badge tone="success" className="u-ml-4">Default</Badge>}
+          {tests > 0 && <Badge tone="info" className="u-ml-4">A/B on {tests} step{tests > 1 ? "s" : ""}</Badge>}
           <p className="sub u-m-4-0-0">{s.steps.length} emails on day {s.steps.map((x) => humanDay(x.day)).join(", ")} · {s.in_use} running now{s.notes ? ` · ${s.notes}` : ""}</p>
         </div>
         <span className="row u-gap-8 u-wrap">
-          <button className="btn ghost" onClick={() => onOpen(s)}>{s.can_edit ? "Edit" : "View"}</button>
-          {manager && <button className="btn ghost" onClick={() => onDuplicate(s)}>{copyLabel}</button>}
-          {s.can_edit && <button className="btn ghost" onClick={() => onArchive(s)}>{s.archived ? "Restore" : "Archive"}</button>}
+          <Button variant="secondary" onClick={() => onOpen(s)}>{s.can_edit ? "Edit" : "View"}</Button>
+          {manager && <Button variant="secondary" onClick={() => onDuplicate(s)}>{copyLabel}</Button>}
+          {s.can_edit && <Button variant="secondary" onClick={() => onArchive(s)}>{s.archived ? "Restore" : "Archive"}</Button>}
           {manager && !s.is_default && !s.archived && (s.workspace_id === "main" || !isOwner() || s.workspace_id === getWorkspace()) && <button className="btn ghost" title="Leads of this workspace start this sequence when nobody picks one" onClick={() => onDefault(s)}>Make default</button>}
         </span>
       </div>
       <details>
         <summary>Steps</summary>
-        <ol style={{ paddingLeft: 18 }}>
+        <ol className="plain-ol">
           {s.steps.map((x, i) => (
             <li key={i} className="u-m-8-0">
-              <b>Day {humanDay(x.day)} · {stepTitle(x.name)}</b>{x.winner && <span className="pill ok u-ml-8">Winner {x.winner}</span>}
+              <b>Day {humanDay(x.day)} · {stepTitle(x.name)}</b>{x.winner && <Badge tone="success" className="u-ml-8">Winner {x.winner}</Badge>}
               <div className="sub">Subject: {x.subject}</div>
-              <button className="btn ghost u-mt-4" onClick={() => onPreview(s, i)}>Preview designed email</button>
+              <Button variant="secondary" size="sm" className="u-mt-4" onClick={() => onPreview(s, i)}>Preview designed email</Button>
             </li>
           ))}
         </ol>
       </details>
-    </div>
+    </Card>
   );
 }
 
 export default function Templates() {
   const [tab, setTab] = useState("sequences");
-  const [list, setList] = useState([]);
+  const [list, setList] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState(null);
   const [shown, setShown] = useState(null);
@@ -120,11 +121,7 @@ export default function Templates() {
     <>
       <PageHeader title={<>Sequences & templates</>}
         description={<>Short, human, no hard sell, no invented stories. Words in {"{{double braces}}"} are filled per lead ({"{{greeting}}"}, {"{{first_name}}"}, {"{{company}}"}, {"{{role}}"}, {"{{sender}}"}, {"{{offer_line}}"}, {"{{demo_link}}"}, {"{{unsub_link}}"}); [square brackets] you fill by hand. A sequence stops on a reply. Cold emails carry no link except the unsubscribe link.</>} />
-      <div className="tabs scroll" role="tablist" aria-label="Template sections">
-        {TABS.map(([k, label]) => (
-          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => { setTab(k); setMsg(""); }}>{label}</button>
-        ))}
-      </div>
+      <Tabs label="Template sections" value={tab} onChange={(k) => { setTab(k); setMsg(""); }} items={TABS.map(([id, label]) => ({ id, label }))} />
       {msg && <p className="sub" role="status">{msg}</p>}
       {tab === "sequences" && (editing ? (
         <SequenceEditor key={editing.id || "new"} sequence={editing} onClose={() => { setEditing(null); load(); }}
@@ -132,20 +129,25 @@ export default function Templates() {
       ) : (
         <>
           <p className="sub">Each email goes out designed (logo, layout) with the same words, plus a plain-text version. Pick the sequence when you start a lead (contact panel); lists and campaigns use the default.</p>
-          <div className="row u-wrap u-gap-8 u-mb-12">
-            {(isOwner() || isWorkspaceAdmin()) && <button className="btn" onClick={newSequence}>New sequence</button>}
-            <label className="row u-gap-8 u-m0"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="u-w-auto" /> Show archived</label>
+          <div className="filter-bar">
+            {(isOwner() || isWorkspaceAdmin()) && <Button onClick={newSequence}>New sequence</Button>}
+            <Switch checked={showArchived} onChange={setShowArchived} label="Show archived" />
+            <span className="sub-inline">Show archived</span>
           </div>
-          {list.map((s) => <SequenceCard key={s.id} s={s} onOpen={setEditing} onDuplicate={duplicate} onArchive={archive} onPreview={preview} onDefault={makeDefault} />)}
+          {list === null && <div className="stack" aria-busy="true"><Skeleton height={90} /></div>}
+          {list && list.length === 0 && <Card><EmptyState icon="mail" title="No sequences yet">Make your first email sequence with New sequence, or duplicate the built-in one.</EmptyState></Card>}
+          <div className="stack">
+          {(list || []).map((s) => <SequenceCard key={s.id} s={s} onOpen={setEditing} onDuplicate={duplicate} onArchive={archive} onPreview={preview} onDefault={makeDefault} />)}
+          </div>
         </>
       ))}
       {tab === "snippets" && <Snippets />}
       {tab === "other" && (
         <>
           <h3>WhatsApp (only after a recorded yes)</h3>
-          {whatsapp.map((t) => <CopyCard key={t.name} t={t} copied={copied} onCopy={copy} />)}
+          <div className="stack u-mb-16">{whatsapp.map((t) => <CopyCard key={t.name} t={t} copied={copied} onCopy={copy} />)}</div>
           <h3>Other messages (copy and send)</h3>
-          {OTHERS.map((t) => <CopyCard key={t.name} t={t} copied={copied} onCopy={copy} />)}
+          <div className="stack">{OTHERS.map((t) => <CopyCard key={t.name} t={t} copied={copied} onCopy={copy} />)}</div>
         </>
       )}
       <PreviewDrawer shown={shown} onClose={() => setShown(null)} onSend={shown ? (to) => api.sendSequenceStepPreview(shown.seqId, shown.index, to) : null} />

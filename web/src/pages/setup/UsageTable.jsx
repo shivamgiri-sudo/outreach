@@ -12,8 +12,8 @@ export default function UsageTable({ rows }) {
             <td data-label="What">{r.label} <span className="hint">({PERIOD[r.period] || r.period})</span></td>
             <td data-label="Used" className="num">{r.used}</td>
             <td data-label="Limit" className="num">{r.limit ?? "Unlimited"}</td>
-            <td data-label="Status">{r.state === "full" ? <b role="status" style={{ color: "#b91c1c" }}>Limit reached ({r.pct}%)</b>
-              : r.state === "warn" ? <b style={{ color: "#b45309" }}>{r.pct}% used</b> : r.state === "unlimited" ? <span className="muted">No limit</span> : `${r.pct}% used`}</td>
+            <td data-label="Status">{r.state === "full" ? <b role="status" className="li-block">Limit reached ({r.pct}%)</b>
+              : r.state === "warn" ? <b className="li-wait">{r.pct}% used</b> : r.state === "unlimited" ? <span className="muted">No limit</span> : `${r.pct}% used`}</td>
           </tr>))}</tbody>
       </table>
     </div>

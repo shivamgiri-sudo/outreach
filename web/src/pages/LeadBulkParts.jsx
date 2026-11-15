@@ -77,7 +77,7 @@ export function HandoverPanel({ owners, onDone }) {
         <label className="check-row u-m0"><input type="checkbox" checked={untouched} onChange={(e) => { setUntouched(e.target.checked); reset(); }} /> Only leads not yet contacted</label>
         <button className="btn ghost" disabled={!from || !to || busy} onClick={check}>{busy && !plan ? "Checking…" : "Check how many"}</button>
       </div>
-      {err && <p className="sub" role="alert" style={{ color: "var(--danger, #b42318)" }}>{err}</p>}
+      {err && <p className="sub li-block" role="alert">{err}</p>}
       {plan && (
         <div className="u-mt-8" data-testid="handover-plan">
           <p className="u-m-0-0-8"><b>{plan.will_move}</b> lead(s) would move from <b>{plan.from_owner}</b> to <b>{plan.to_owner}</b>

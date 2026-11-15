@@ -26,7 +26,7 @@ export default function PreviewDrawer({ shown, onClose, onSend }) {
           </form>
         )}
         {note && <p className="sub" role="status">{note}</p>}
-        <iframe title="Designed email preview" srcDoc={shown.html} sandbox="" style={{ width: "100%", height: "70vh", border: "1px solid var(--line, #e2e8f0)", borderRadius: 10, background: "#fff" }} />
+        <iframe title="Designed email preview" srcDoc={shown.html} sandbox="" className="email-frame" />
       </div>
     </>
   );
