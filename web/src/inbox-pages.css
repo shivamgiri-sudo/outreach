@@ -80,3 +80,4 @@
 .task-add input, .task-add select { min-width: 0; }
 .task-actions select { flex: 0 1 118px; }
 @media (max-width: 760px) { .filter-bar > select { flex: 1 1 140px; } .filter-bar > label { flex: 1 1 100%; } .reply-actions > select { flex: 1 1 140px; } .reply-actions .btn { flex: 1 1 auto; } }
+.meet-main .linkish, .reply-who .link, .task-title .link { display: inline-flex; align-items: center; min-height: 32px; }
