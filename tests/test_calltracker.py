@@ -1,6 +1,6 @@
-"""Call Tracker integration: connection per workspace, push to the dial queue (idempotent, owner by email, retries),
+"""DialHalo integration: connection per workspace, push to the dial queue (idempotent, owner by email, retries),
 signed webhooks (good / bad / stale / replay / duplicate), call -> lead matching, outcome mapping, task completion,
-sequence stop, opt-outs both ways, workspace isolation and the funnel numbers. Call Tracker is faked in memory."""
+sequence stop, opt-outs both ways, workspace isolation and the funnel numbers. DialHalo is faked in memory."""
 import json
 import time
 from datetime import timedelta
@@ -15,7 +15,7 @@ SECRET = "whsec_test_secret_abc"
 
 
 class FakeCT:
-    """Just enough of Call Tracker's /api/v1 for the integration, with a switch to fail."""
+    """Just enough of DialHalo's /api/v1 for the integration, with a switch to fail."""
 
     def __init__(self):
         self.requests, self.leads, self.calls, self.dnc = [], {}, {}, []
@@ -130,9 +130,51 @@ def test_test_connection_previews_owner_matching(r):
     out = r.c.post("/api/calltracker/test", json={"workspace": "main"}, headers=r.h["owner"]).json()
     assert out["ok"] and out["members"] == 2
     assert {p["email"]: p["matched"] for p in out["owners"]}["ravi@x.in"] is True
+    # people with no DialHalo member are listed with a reason, so their emails can be added there
+    assert out["unmatched"] and all(u["reason"] == "no DialHalo member has this email" for u in out["unmatched"])
+    assert "ravi@x.in" not in {u["email"] for u in out["unmatched"]}
+    assert set(out["unmatched"][0]) == {"name", "email", "reason"}
     r.fake.fail = [401]
     bad = r.c.post("/api/calltracker/test", json={"workspace": "main"}, headers=r.h["owner"]).json()
     assert not bad["ok"] and "API key" in bad["message"] and KEY not in bad["message"]
+
+
+def test_far_future_follow_up_is_not_sent_as_a_time_but_kept_in_the_note(r):
+    """DialHalo refuses follow-up times more than a year out (HTTP 400, which would end the push for good)."""
+    connect(r)
+    acme = r.lead["Acme"]["id"]
+    far = r.c.post("/api/tasks", json={"lead_id": acme, "title": "Call them", "text": "later", "kind": "call", "due_at": "2099-12-01T10:00:00+05:30", "owner": "Ravi"}, headers=r.h["owner"])
+    assert far.status_code == 200
+    body = ct.push_payload(r.store, next(l for l in r.store.read("leads") if l["id"] == acme), "http://x")
+    assert "followupAtMs" not in body and "follow up on 01 Dec 2099" in body["note"]
+    near = (ct.now_utc() + timedelta(days=3)).isoformat()
+    r.store.update("tasks", lambda ts: [{**t, "due_at": near} if t.get("lead_id") == acme else t for t in ts])
+    body = ct.push_payload(r.store, next(l for l in r.store.read("leads") if l["id"] == acme), "http://x")
+    assert isinstance(body.get("followupAtMs"), int)
+
+
+def test_unmatched_reason_when_member_is_switched_off(r):
+    from app import calltracker as ct
+    people = ct.owner_preview(r.store, "main", [{"name": "Ravi CT", "email": "ravi@x.in", "active": 1}],
+                              [{"name": "Ravi CT", "email": "ravi@x.in", "active": 1}, {"name": "Asha Off", "email": "asha@x.in", "active": 0}])
+    by = {p["email"]: p for p in people}
+    assert by["ravi@x.in"]["matched"] and "reason" not in by["ravi@x.in"]
+    if "asha@x.in" in by:
+        assert by["asha@x.in"]["reason"] == "this member is switched off in DialHalo"
+
+
+def test_webhook_accepts_the_new_and_the_old_signature_header(r):
+    connect(r)
+    conn_id = r.c.get("/api/calltracker", headers=r.h["owner"]).json()["connection"]["id"]
+    t = int(time.time())
+
+    def post(payload, header_name, sig=None):
+        raw = json.dumps(payload).encode()
+        return r.c.post(f"/api/calltracker/hook/{conn_id}", content=raw,
+                        headers={header_name: f"t={t},v1={sig or ev.sign(SECRET, t, raw)}", "Content-Type": "application/json"})
+    assert post({"id": "evt-h1", "event": "test", "data": {}}, "X-DialHalo-Signature").status_code == 200
+    assert post({"id": "evt-h2", "event": "test", "data": {}}, "X-CallTracker-Signature").status_code == 200
+    assert post({"id": "evt-h3", "event": "test", "data": {}}, "X-DialHalo-Signature", sig="0" * 64).status_code == 401
 
 
 # ---------------------------------------------------------------- push
@@ -150,11 +192,11 @@ def test_call_task_pushes_once_per_lead_idempotently_with_owner_by_email(r):
     assert "Replied yes" in body["note"] and body["followupAtMs"] and body["url"].endswith(f"#leads?lead={r.lead['Acme']['id']}")
     saved = lead(r, "Acme")
     assert saved["calltracker"]["lead_id"] == "ct-1" and saved["calltracker"]["owner_matched"]
-    assert sum("Sent to Call Tracker" in e["text"] for e in saved["timeline"]) == 1
+    assert sum("Sent to DialHalo" in e["text"] for e in saved["timeline"]) == 1
     call_task(r, "Acme")                                                             # a later task re-pushes the same lead
     ct.process_due(r.store)
     assert len(r.fake.leads) == 1 and len([q for q in r.fake.requests if q[0] == "PUT"]) == 2
-    assert sum("Sent to Call Tracker" in e["text"] for e in lead(r, "Acme")["timeline"]) == 1
+    assert sum("Sent to DialHalo" in e["text"] for e in lead(r, "Acme")["timeline"]) == 1
 
 
 def test_unknown_owner_lets_call_tracker_distribute_and_unconnected_workspace_is_untouched(r):
@@ -214,7 +256,7 @@ def test_signature_good_bad_stale_replay_and_duplicate(r):
     first = hook(r, cid, payload, ts=ts)
     assert first.status_code == 200 and first.json()["applied"] == 1
     assert hook(r, cid, payload, ts=ts).status_code == 409                           # same signature again: replay
-    again = hook(r, cid, payload, ts=ts + 1)                                         # Call Tracker's retry: new signature
+    again = hook(r, cid, payload, ts=ts + 1)                                         # DialHalo's retry: new signature
     assert again.status_code == 200 and again.json()["duplicate"]
     assert len([a for a in r.store.read("activities") if a.get("source") == "calltracker"]) == 1
 
@@ -226,7 +268,7 @@ def test_call_tracker_down_answers_503_so_it_retries(r):
     res = hook(r, conn_id(r), {"id": "evt-2", "event": "call.outcome", "data": {"callId": 9}}, ts=ts)
     assert res.status_code == 503
     r.fake.calls[9] = ct_call(9, ref=r.lead["Acme"]["id"])
-    retry = hook(r, conn_id(r), {"id": "evt-2", "event": "call.outcome", "data": {"callId": 9}}, ts=ts + 60)     # Call Tracker retries later
+    retry = hook(r, conn_id(r), {"id": "evt-2", "event": "call.outcome", "data": {"callId": 9}}, ts=ts + 60)     # DialHalo retries later
     assert retry.json()["applied"] == 1
 
 
@@ -249,17 +291,17 @@ def test_call_on_timeline_closes_call_task_moves_stage_records_consent_and_follo
     assert all(t["status"] == "done" for t in r.store.read("tasks") if t.get("lead_id") == acme and t["kind"] == "call")
     saved = lead(r, "Acme")
     assert saved["stage"] == "interested" and saved["consent"]
-    assert any(t["title"] == "Call back (Call Tracker)" and t["due_at"].startswith("2099-01-02") for t in r.store.read("tasks"))
+    assert any(t["title"] == "Call back (DialHalo)" and t["due_at"].startswith("2099-01-02") for t in r.store.read("tasks"))
     assert any(t["title"] == "Follow up after the yes" for t in r.store.read("tasks") if t.get("lead_id") == acme)
     hook(r, conn_id(r), {"id": "e3", "event": "call.transcribed", "data": {"callId": 1}})       # later events: no second call, no re-apply
     assert len([a for a in r.store.read("activities") if a.get("source") == "calltracker"]) == 1
-    assert len([t for t in r.store.read("tasks") if t["title"] == "Call back (Call Tracker)"]) == 1
+    assert len([t for t in r.store.read("tasks") if t["title"] == "Call back (DialHalo)"]) == 1
     # the call log counts it once
     log = r.c.get("/api/call-log", headers=r.h["owner"]).json()
     assert log["total"] == 1
 
 
-def test_not_interested_and_wrong_number_stop_the_sequence(r):
+def test_not_interested_stops_the_sequence_and_wrong_number_only_marks_the_phone(r):
     connect(r)
     beta, cora = r.lead["Beta Ltd"]["id"], r.lead["Cora Inc"]["id"]
     for lid in (beta, cora):
@@ -270,9 +312,45 @@ def test_not_interested_and_wrong_number_stop_the_sequence(r):
     hook(r, conn_id(r), {"id": "e5", "event": "call.outcome", "data": {"callId": 3}})
     b, c = lead(r, "Beta Ltd"), lead(r, "Cora Inc")
     assert b["stage"] == "disqualified" and b["sequence"]["stopped"].startswith("calltracker:")
-    assert c["sequence"]["stopped"] and c["phone_status"]["status"] == "wrong_number"
-    assert c["do_not_contact"] and "tej@cora.io" in r.store.read("suppressed")       # default: wrong number suppresses the contact
-    assert not r.fake.dnc                                                            # never echoed back to Call Tracker
+    # default: "Wrong number" marks the PHONE invalid; the person, email and sequence are untouched
+    assert c["phone_status"]["status"] == "wrong_number" and c["phone_status"]["number"] == c["phone"]
+    assert not c["sequence"].get("stopped")
+    assert not c.get("do_not_contact") and "tej@cora.io" not in r.store.read("suppressed")
+    assert not r.fake.dnc                                                            # nothing sent to DialHalo's do-not-call list
+    # and Outreach never calls, WhatsApps or texts that number again
+    from app import rep_workflow as rw
+    from app.contact_rules import phone_is_invalid
+    assert phone_is_invalid(c) and not rw.phone_ok(c)
+    from app.whatsapp import WhatsAppError, send as wa_send
+    r.store.update_lead(cora, lambda l: {**l, "consent": [{"text": "yes", "at": "2026-01-01T00:00:00+00:00", "channel": "whatsapp", "source": "reply"}]})
+    with pytest.raises(WhatsAppError, match="wrong or inactive"):
+        wa_send(r.store, cora, "intro", "", ct.now_utc(), "http://x")
+    # a corrected number counts again
+    r.store.update_lead(cora, lambda l: {**l, "phone": "90000 22222"})
+    assert not phone_is_invalid(lead(r, "Cora Inc")) and rw.phone_ok(lead(r, "Cora Inc"))
+
+
+def test_wrong_number_on_an_extra_phone_flags_that_phone_only(r):
+    connect(r)
+    acme = r.lead["Acme"]["id"]
+    r.store.update_lead(acme, lambda l: {**l, "phones": [l["phone"], "80000 33333"]})
+    r.fake.calls[20] = ct_call(20, number="8000033333", ref=acme, outcome="Wrong number", connected=False)
+    hook(r, conn_id(r), {"id": "e20", "event": "call.outcome", "data": {"callId": 20}})
+    a = lead(r, "Acme")
+    assert "80000 33333" in (a.get("bad_numbers") or {}) and not a.get("phone_status")
+    assert not a.get("do_not_contact")
+
+
+def test_a_custom_mapping_keeps_the_old_wrong_number_behaviour(r):
+    mapping = {"wrong number": {"outcome": "wrong_number", "stage": "", "stop_sequence": True, "opt_out": True}}
+    assert connect(r, mapping=mapping).json()["connection"]["mapping_custom"]
+    cora = r.lead["Cora Inc"]["id"]
+    r.store.update_lead(cora, lambda l: {**l, "stage": "contacted", "sequence": {"step": 1, "stopped": None, "history": []}})
+    r.fake.calls[21] = ct_call(21, number="9000011111", ref=cora, outcome="Wrong number", connected=False)
+    hook(r, conn_id(r), {"id": "e21", "event": "call.outcome", "data": {"callId": 21}})
+    c = lead(r, "Cora Inc")
+    assert c["sequence"]["stopped"] and c["do_not_contact"] and "tej@cora.io" in r.store.read("suppressed")
+    assert connect(r, reset_mapping=True).json()["connection"]["mapping"]["wrong number"] == {"outcome": "wrong_number", "stage": "", "stop_sequence": False, "opt_out": False}
 
 
 def test_converted_books_a_meeting_and_mapping_is_editable_per_workspace(r):
@@ -320,7 +398,7 @@ def test_unsubscribe_sends_do_not_call_and_call_tracker_dnc_suppresses_without_e
     ct.process_due(r.store)
     assert r.fake.dnc[-1]["phone"] == "9876543210" and r.fake.dnc[-1]["source"] == "mcn_outreach"
     assert lead(r, "Acme")["calltracker"]["dnc"]
-    # Call Tracker -> Outreach: a number marked do-not-call there
+    # DialHalo -> Outreach: a number marked do-not-call there
     beta = r.lead["Beta Ltd"]["id"]
     res = hook(r, conn_id(r), {"id": "e11", "event": "dnc.added", "data": {"phone": "9123456789", "source": "outcome", "reason": "Asked on the call",
                                                                            "leads": [{"leadId": "ct-2", "externalId": beta, "externalSource": "mcn_outreach"}]}})

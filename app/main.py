@@ -287,7 +287,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                                                  webhook_secret(store, routes_growth.WEBHOOK_SECRET).encode("utf-8")))
                      # Integrations hub: only the exact webhook / OAuth-callback routes, and only when their secret checks out.
                      or (path.startswith(("/api/webhooks/", "/api/oauth/")) and await gate_allows(store, request))
-                     # Call Tracker webhooks: only for a connection that exists; the route checks its signature, timestamp, replays.
+                     # DialHalo webhooks: only for a connection that exists; the route checks its signature, timestamp, replays.
                      or (path.startswith("/api/calltracker/hook/") and request.method == "POST"
                          and calltracker_mod.by_id(store, path.rsplit("/", 1)[-1][:40]) is not None)
                      # Lead capture: only the exact public capture addresses, and only when the token / signature / key checks out.

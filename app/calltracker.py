@@ -1,13 +1,13 @@
-"""Call Tracker connection (one per workspace) and the push of leads to its phone dial queue.
+"""DialHalo connection (one per workspace) and the push of leads to its phone dial queue.
 
-Outreach -> Call Tracker:
+Outreach -> DialHalo:
   * a new "call" task (an employer replied yes, a flow step, or a person added one) queues a push of that lead to
-    Call Tracker's public API: PUT /api/v1/leads/external/mcn_outreach/<lead id>. Re-pushing updates the same Call
-    Tracker lead, never a second one. The owner is the Call Tracker member with the task owner's email, otherwise Call
+    DialHalo's public API: PUT /api/v1/leads/external/mcn_outreach/<lead id>. Re-pushing updates the same Call
+    Tracker lead, never a second one. The owner is the DialHalo member with the task owner's email, otherwise Call
     Tracker's own distribution (round robin etc.) picks one;
   * an opt-out (unsubscribe link, unsubscribe reply, moved to Unsubscribed, do-not-contact, erasure) queues a
     do-not-call entry for the lead's phone;
-  * jobs run in a background worker, retry with back-off when Call Tracker is down and end as "failed" (listed on the
+  * jobs run in a background worker, retry with back-off when DialHalo is down and end as "failed" (listed on the
     Integrations card with a Retry button and noted on the lead), never silently dropped.
 
 Storage (store collections): ct_connections {workspace: connection}, ct_outbox [job], ct_seen [received webhook ids].
@@ -37,7 +37,7 @@ RESOLVER = None                   # tests: fn(host) -> [ip] (no DNS in tests)
 _worker = {"running": False}
 _worker_lock = threading.Lock()
 
-# What each Call Tracker outcome does in Outreach (keys: Call Tracker outcome names, lower case). Editable per workspace.
+# What each DialHalo outcome does in Outreach (keys: DialHalo outcome names, lower case). Editable per workspace.
 #   outcome        the Outreach call outcome logged on the timeline (app/activities.CALL_OUTCOMES)
 #   stage          move the lead forward to this stage ("" = leave it); never backwards, never out of Unsubscribed
 #   stop_sequence  stop the lead's email sequence
@@ -47,9 +47,12 @@ DEFAULT_MAPPING = {
     "call back later": {"outcome": "call_back", "stage": "", "stop_sequence": False, "opt_out": False},
     "converted": {"outcome": "meeting_booked", "stage": "call_done", "stop_sequence": True, "opt_out": False},
     "not interested": {"outcome": "not_interested", "stage": "disqualified", "stop_sequence": True, "opt_out": False},
-    "wrong number": {"outcome": "wrong_number", "stage": "", "stop_sequence": True, "opt_out": True},
+    "wrong number": {"outcome": "wrong_number", "stage": "", "stop_sequence": False, "opt_out": False},   # the PHONE is marked invalid; the person and their email are untouched
     "do not call": {"outcome": "not_interested", "stage": "unsubscribed", "stop_sequence": True, "opt_out": True},
 }
+
+
+FOLLOWUP_WINDOW_DAYS = 360          # DialHalo refuses follow-up times more than 366 days from now (external.service.ts)
 
 
 def now_utc() -> datetime:
@@ -69,7 +72,7 @@ def parse(text) -> Optional[datetime]:
 
 
 def norm_phone(raw) -> str:
-    """Same rule as Call Tracker (lib/logic.ts normalizeNumber): Indian numbers compare on their last 10 digits."""
+    """Same rule as DialHalo (lib/logic.ts normalizeNumber): Indian numbers compare on their last 10 digits."""
     digits = "".join(ch for ch in str(raw or "") if ch.isdigit())
     if digits.startswith("00"):
         digits = digits.lstrip("0")
@@ -99,11 +102,11 @@ def by_id(store, conn_id: str) -> Optional[dict]:
 
 def check_base_url(url: str) -> str:
     """https on a public host, or http(s) to a host:port the server owner allowed in OUTREACH_ALLOW_PRIVATE_HOSTS
-    (e.g. 127.0.0.1:8081: Call Tracker on this same server). Anything else is refused (no SSRF to other hosts)."""
+    (e.g. 127.0.0.1:8081: DialHalo on this same server). Anything else is refused (no SSRF to other hosts)."""
     text = (url or "").strip().rstrip("/")
     parsed = urlparse(text)
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
-        raise ValueError("Enter the Call Tracker address, for example https://calls.example.com")
+        raise ValueError("Enter the DialHalo address, for example https://calls.example.com")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("Enter only the address (no user name, password, ? or #).")
     host = parsed.hostname.lower()
@@ -117,7 +120,7 @@ def check_base_url(url: str) -> str:
 
 
 def check_public_url(url: str) -> str:
-    """The Call Tracker address people open in a browser (links to calls and recordings): https only."""
+    """The DialHalo address people open in a browser (links to calls and recordings): https only."""
     text = (url or "").strip().rstrip("/")
     if not text:
         return ""
@@ -214,7 +217,7 @@ def public_view(store, ws: str) -> Optional[dict]:
 
 # ---------------------------------------------------------------- HTTP client
 class CallTrackerError(OSError):
-    """Call Tracker could not be reached or refused; the message is safe to show (no key, no body echo)."""
+    """DialHalo could not be reached or refused; the message is safe to show (no key, no body echo)."""
 
     def __init__(self, message: str, status: int = 0, retry: bool = True):
         super().__init__(message)
@@ -240,17 +243,17 @@ def ct_request(conn: dict, method: str, path: str, body: Optional[dict] = None) 
             except ValueError:
                 payload = {}
     except (netguard.FetchFailed, OSError, ValueError) as exc:
-        raise CallTrackerError(f"Call Tracker could not be reached ({type(exc).__name__}).") from None
+        raise CallTrackerError(f"DialHalo could not be reached ({type(exc).__name__}).") from None
     if status in (401, 403):
         msg = str((payload or {}).get("message") or "")[:200]
-        raise CallTrackerError(f"Call Tracker refused the API key (HTTP {status}){': ' + msg if msg else ''}.", status, retry=False)
+        raise CallTrackerError(f"DialHalo refused the API key (HTTP {status}){': ' + msg if msg else ''}.", status, retry=False)
     if status == 404:
-        raise CallTrackerError("Not found in Call Tracker (HTTP 404).", status, retry=False)
+        raise CallTrackerError("Not found in DialHalo (HTTP 404).", status, retry=False)
     if status >= 500 or status == 429:
-        raise CallTrackerError(f"Call Tracker is busy or down (HTTP {status}).", status)
+        raise CallTrackerError(f"DialHalo is busy or down (HTTP {status}).", status)
     if status >= 300:
         msg = str((payload or {}).get("message") or "")[:200]
-        raise CallTrackerError(f"Call Tracker did not accept it (HTTP {status}){': ' + msg if msg else ''}.", status, retry=False)
+        raise CallTrackerError(f"DialHalo did not accept it (HTTP {status}){': ' + msg if msg else ''}.", status, retry=False)
     return (payload or {}).get("data", payload or {})
 
 
@@ -272,15 +275,22 @@ def email_of_person(store, name_or_email) -> str:
     return ""
 
 
-def owner_preview(store, ws: str, members: list) -> list:
-    """Outreach people of this workspace and the Call Tracker member each maps to (by email)."""
+def owner_preview(store, ws: str, members: list, all_members: Optional[list] = None) -> list:
+    """Outreach people of this workspace and the DialHalo member each maps to (by email).
+    Unmatched people carry a `reason` (no member with that email, or the member is switched off in DialHalo)."""
     from .auth import users
     by_email = {str(m.get("email") or "").lower(): m for m in members if m.get("email")}
+    off = {str(m.get("email") or "").lower() for m in (all_members or []) if m.get("email") and not m.get("active", 1)}
     people = [u for u in users(store) if u.get("role") == "owner" or not u.get("workspaces") or ws in (u.get("workspaces") or [])]
     out = []
     for u in people[:200]:
-        m = by_email.get(u["email"].lower())
-        out.append({"name": u.get("name") or u["email"], "email": u["email"], "calltracker": (m or {}).get("name"), "matched": bool(m)})
+        email = str(u["email"]).lower()
+        m = by_email.get(email)
+        row = {"name": u.get("name") or u["email"], "email": u["email"], "calltracker": (m or {}).get("name"), "matched": bool(m)}
+        if not m:
+            row["reason"] = ("this member is switched off in DialHalo" if email in off
+                             else "no DialHalo member has this email")
+        out.append(row)
     return out
 
 
@@ -317,7 +327,7 @@ def opted_out(lead: dict) -> str:
 
 
 def on_call_task(store, task: dict) -> Optional[dict]:
-    """A new call task: push its lead to the workspace's Call Tracker (if connected). Never for a lead who opted out."""
+    """A new call task: push its lead to the workspace's DialHalo (if connected). Never for a lead who opted out."""
     lead = next((l for l in store.read("leads") if l.get("id") == task.get("lead_id")), None)
     if not lead or not active_connection(store, ws_of(lead)) or opted_out(lead):
         return None
@@ -326,11 +336,11 @@ def on_call_task(store, task: dict) -> Optional[dict]:
                     merge_key=lambda j: j.get("kind") == "push" and j.get("lead_id") == lead["id"])
 
 
-FROM_CALLTRACKER = threading.local()     # set while applying a Call Tracker event, so its opt-outs are not echoed back
+FROM_CALLTRACKER = threading.local()     # set while applying a DialHalo event, so its opt-outs are not echoed back
 
 
 def on_opt_out(store, lead_id: str, reason: str) -> Optional[dict]:
-    """The contact opted out in Outreach: put the phone on the workspace's Call Tracker do-not-call list."""
+    """The contact opted out in Outreach: put the phone on the workspace's DialHalo do-not-call list."""
     if getattr(FROM_CALLTRACKER, "on", False):
         return None
     lead = next((l for l in store.read("leads") if l.get("id") == lead_id), None)
@@ -347,7 +357,7 @@ def on_opt_out(store, lead_id: str, reason: str) -> Optional[dict]:
 
 
 def push_payload(store, lead: dict, base_url: str) -> dict:
-    """What Call Tracker gets for a lead: contact, the call task's text as the note, its due time, owner, link back."""
+    """What DialHalo gets for a lead: contact, the call task's text as the note, its due time, owner, link back."""
     from .activities import _normalise_task
     tasks = [_normalise_task(t) for t in store.read("tasks") if t.get("lead_id") == lead["id"] and t.get("kind") == "call"]
     open_tasks = [t for t in tasks if t["status"] == "open"]
@@ -361,7 +371,12 @@ def push_payload(store, lead: dict, base_url: str) -> dict:
             "phone": str(phone or "")[:40], "email": (lead.get("email") or "")[:190], "note": note, "sourceLabel": SOURCE_LABEL,
             "url": f"{public_base_url(store, base_url)}/#leads?lead={quote(lead['id'])}", "city": (lead.get("city") or "")[:80]}
     if due:
-        body["followupAtMs"] = int(due.timestamp() * 1000)
+        # DialHalo accepts follow-up times within a year of today (past or future); anything further out would be refused with
+        # a 400 and the whole push would give up. Send such a lead without a follow-up time and keep the date in the note.
+        if abs((due - now_utc()).total_seconds()) <= FOLLOWUP_WINDOW_DAYS * 86400:
+            body["followupAtMs"] = int(due.timestamp() * 1000)
+        else:
+            body["note"] = (f"{note} (follow up on {due.astimezone(timezone(timedelta(hours=5, minutes=30))).strftime('%d %b %Y')})")[:1000]
     if owner:
         body["ownerEmail"] = owner
     return body
@@ -378,12 +393,12 @@ def _run_job(store, job: dict) -> str:
     """Does one job. Returns a short result text; raises CallTrackerError on failure."""
     conn = active_connection(store, job["ws"])
     if not conn:
-        raise CallTrackerError("The workspace's Call Tracker connection is missing or switched off.", retry=False)
+        raise CallTrackerError("The workspace's DialHalo connection is missing or switched off.", retry=False)
     lead = next((l for l in store.read("leads") if l.get("id") == job.get("lead_id")), None)
     if job["kind"] == "dnc":
         ct_request(conn, "POST", "/api/v1/dnc", {"phone": job["phone"], "reason": job.get("reason") or "Opted out in MCN Outreach", "source": SOURCE})
         if lead:
-            _lead_note(store, lead["id"], {"dnc": True, "dnc_at": iso(now_utc())}, "Call Tracker: number put on the do-not-call list")
+            _lead_note(store, lead["id"], {"dnc": True, "dnc_at": iso(now_utc())}, "DialHalo: number put on the do-not-call list")
         return "do-not-call sent"
     if not lead:
         raise CallTrackerError("The lead no longer exists.", retry=False)
@@ -393,15 +408,15 @@ def _run_job(store, job: dict) -> str:
         raise CallTrackerError(f"Not sent: this lead is {why}.", retry=False)
     body = push_payload(store, lead, os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000"))
     if not norm_phone(body["phone"]):
-        raise CallTrackerError("The lead has no phone number, so Call Tracker cannot dial it. Add a phone and retry.", retry=False)
+        raise CallTrackerError("The lead has no phone number, so DialHalo cannot dial it. Add a phone and retry.", retry=False)
     data = ct_request(conn, "PUT", f"/api/v1/leads/external/{SOURCE}/{quote(lead['id'], safe='')}", body)
     ct_lead = data.get("lead") or {}
     owner = data.get("owner") or {}
     first = not (lead.get("calltracker") or {}).get("lead_id")
-    who = owner.get("name") or "Call Tracker's distribution"
+    who = owner.get("name") or "DialHalo's distribution"
     _lead_note(store, lead["id"], {"lead_id": ct_lead.get("id"), "status": "ok", "error": "", "pushed_at": iso(now_utc()), "owner": owner.get("name") or "",
                                    "owner_matched": bool(data.get("ownerMatched")), "dnc": bool(data.get("dnc"))},
-               f"Sent to Call Tracker: in {who}'s dial queue" if first else None)
+               f"Sent to DialHalo: in {who}'s dial queue" if first else None)
     return f"lead {'created' if data.get('created') else 'updated'} ({who})"
 
 
@@ -430,7 +445,7 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
             note_status(store, job["ws"], "last_push", not error, result or error)
         if error and job.get("lead_id") and (attempts == 1 or change.get("status") == "failed"):
             final = change.get("status") == "failed"
-            text = (f"Call Tracker: could not send this lead ({error})" + (" Gave up; use Retry on Integrations → Call Tracker." if final
+            text = (f"DialHalo: could not send this lead ({error})" + (" Gave up; use Retry on Integrations → DialHalo." if final
                     else f" Retrying automatically ({MAX_ATTEMPTS - attempts} tries left)."))
             _lead_note(store, job["lead_id"], {"status": "failed" if final else "retrying", "error": error}, text)
     return len(due)

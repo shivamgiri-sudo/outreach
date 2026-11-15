@@ -140,7 +140,7 @@ def record_consent(store, lead_id: str, event: str, channel: str = "any", text: 
            "source_kind": kind if kind in CONSENT_KINDS else consent_kind(source, by), "by": (by or "")[:120]}
     store.update("consent_ledger", lambda rows: [*rows, row])
     if event in ("withdrawn", "do_not_contact") and lead_id:
-        try:                                       # the phone goes on the workspace's Call Tracker do-not-call list
+        try:                                       # the phone goes on the workspace's DialHalo do-not-call list
             from . import calltracker
             calltracker.on_opt_out(store, lead_id, f"Opted out in MCN Outreach: {source or event}")
         except Exception as exc:

@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from . import flow_actions as act
 from .activities import caller_name, next_call_slot
 from .channels.netguard import check_public_url
-from .contact_rules import LANDLINE_REASON, has_consent_for, lead_is_landline
+from .contact_rules import BAD_PHONE_REASON, LANDLINE_REASON, has_consent_for, lead_is_landline, phone_is_invalid
 from .flows import graph_of, is_trigger, outputs_of, title_of
 from .senders import email_ready
 from .sequence_runner import NO_EMAIL_STAGES, get_settings
@@ -51,6 +51,8 @@ def _simulate_action(store, flow, node, lead, now, base_url) -> tuple:
             return "error", "would not send WhatsApp: no recorded WhatsApp consent", False
         if not lead.get("phone"):
             return "error", "would not send WhatsApp: no phone number", False
+        if phone_is_invalid(lead):
+            return "error", f"would not send WhatsApp: {BAD_PHONE_REASON}", False
         if lead_is_landline(lead):
             return "error", f"would not send WhatsApp: {LANDLINE_REASON}", False
         _, missing = act.text_for(store, lead, WHATSAPP_TEMPLATES.get(c.get("template"), ""), base_url, now)
@@ -60,6 +62,8 @@ def _simulate_action(store, flow, node, lead, now, base_url) -> tuple:
     if t == "sms":
         if not has_consent_for(lead, "sms") or not lead.get("phone"):
             return "error", "would not send SMS: needs recorded SMS consent and a phone number", False
+        if phone_is_invalid(lead):
+            return "error", f"would not send SMS: {BAD_PHONE_REASON}", False
         if lead_is_landline(lead):
             return "error", f"would not send SMS: {LANDLINE_REASON}", False
         return "next", "would send the SMS (practice until SMS is connected and switched on)", True

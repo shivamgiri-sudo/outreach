@@ -99,7 +99,7 @@ def add_task(store, lead_id: Optional[str], kind: str, text: str = "", due_at: O
                             "source": source, "at": iso(now_utc())})
     store.update("tasks", lambda rows: [*rows, task])
     if kind == "call" and lead_id:
-        try:                                       # a connected workspace sends the lead to Call Tracker's dial queue
+        try:                                       # a connected workspace sends the lead to DialHalo's dial queue
             from . import calltracker
             calltracker.on_call_task(store, task)
         except Exception as exc:                   # never block task creation; the integration card shows push problems
@@ -211,8 +211,8 @@ def lead_activity(store, lead: dict) -> list:
             item = {"at": a["at"], "type": a["type"], "direction": a.get("direction", "out"), "title": a.get("subject") or a["type"].title(),
                     "body": a.get("body", ""), "status": a.get("outcome", ""), "detail": a.get("by", ""), "id": a["id"]}
             link = ((a.get("ct") or {}).get("links") or {}).get("call")
-            if link:                                # a Call Tracker call: its page there (recording player), never the audio itself
-                item.update(link=link, link_label="Recording and details in Call Tracker" if a["ct"].get("has_recording") else "Open in Call Tracker")
+            if link:                                # a DialHalo call: its page there (recording player), never the audio itself
+                item.update(link=link, link_label="Recording and details in DialHalo" if a["ct"].get("has_recording") else "Open in DialHalo")
             items.append(item)
     for t in store.read("tasks"):
         if t.get("lead_id") == lid:

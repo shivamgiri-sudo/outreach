@@ -194,6 +194,6 @@ def delete(store, ws_id: str, confirm_name: str, move_to: str = "", delete_leads
             _set_user(store, u["email"], lambda _u, after=after: after)
     store.update("settings", lambda s: {**s, "workspaces": [w for w in s.get("workspaces") or [] if not (isinstance(w, dict) and w.get("id") == ws_id)]})
     from . import calltracker
-    calltracker.delete_connection(store, ws_id)       # its Call Tracker key and webhook secret go with it
+    calltracker.delete_connection(store, ws_id)       # its DialHalo key and webhook secret go with it
     return {"name": row["name"], "moved": moved, "moved_to": target["name"] if target else "", "deleted": deleted,
             "tasks_removed": tasks_removed, "members_removed": lost, "left_without_workspace": emptied}

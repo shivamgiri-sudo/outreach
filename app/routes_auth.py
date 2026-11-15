@@ -123,7 +123,7 @@ ADMIN_WRITES = {
     ("PUT", "/api/assignment"), ("POST", "/api/assignment/run-unowned"),      # lead assignment rules (the routes refuse callers)
     ("POST", "/api/lead-duplicates/merge"), ("POST", "/api/lead-duplicates/merge-undo/{undo_id}"),   # merge duplicate leads (app/merge_flow.py: owner / admin of the workspace only)
     ("POST", "/api/leads/bulk-reassign"),         # hand over a person's leads (app/bulk_reassign.py refuses non-admins and other workspaces)
-    # Call Tracker connection of their own workspaces (app/routes_calltracker.py refuses main and other workspaces)
+    # DialHalo connection of their own workspaces (app/routes_calltracker.py refuses main and other workspaces)
     ("GET", "/api/calltracker"), ("PUT", "/api/calltracker"), ("DELETE", "/api/calltracker"), ("POST", "/api/calltracker/test"), ("POST", "/api/calltracker/retry"),
 }
 # LinkedIn agent per client account (app/linkedin_scope.py): an account's admins run their own account's agent, slots and
