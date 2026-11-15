@@ -8,7 +8,8 @@ import Insights from "./Insights.jsx";
 import Pipeline from "./Pipeline.jsx";
 import HelpLink from "../components/HelpLink.jsx";
 import Abbr from "../components/Abbr.jsx";
-import { PageHeader, DataTable } from "../ui/index.js";
+import "../analytics-pages.css";
+import { Card, CardHeader, DataTable, EmptyState, PageHeader, Select, Skeleton, Tabs } from "../ui/index.js";
 
 // One page for the numbers: Pipeline (where every lead stands), Overview, Funnel, Channels (was Intelligence), Sources (was Insights) and Team, all for one period.
 const TABS = [["pipeline", "Pipeline"], ["overview", "Overview"], ["funnel", "Funnel"], ["channels", "Channels"], ["sources", "Sources"], ["team", "Team"]];
@@ -36,7 +37,7 @@ function Overview({ data }) {
         <DeltaTile label="Customers" kpi={k.customers} tone="tone-green" />
         <DeltaTile label="Unsubscribed" kpi={k.unsubscribed} lowerIsBetter />
       </div>
-      <p className="sub u-mt-12">Counts are of things that happened in the period (a lead counts once per step). Opens are counted for leads emailed in the period.</p>
+      <p className="an-notes">Counts are of things that happened in the period (a lead counts once per step). Opens are counted for leads emailed in the period.</p>
     </>
   );
 }
@@ -60,14 +61,12 @@ function Funnel({ data }) {
   return (
     <>
       <div className="grid g2">
-        <div className="card">
-          <h3 className="u-mt-0">Funnel</h3>
-          <p className="sub">Leads first contacted in this period, and how far they have got by now. Rates are of those contacted.</p>
-          {f.overall.contacted === 0 ? <p className="empty">Nobody was first contacted in this period.</p> : <FunnelBars row={f.overall} steps={f.steps} />}
-        </div>
-        <div className="card">
-          <h3 className="u-mt-0">Stage velocity</h3>
-          <p className="sub">Median days between steps, for leads that reached the later step in this period.</p>
+        <Card>
+          <CardHeader title="Funnel" description="Leads first contacted in this period, and how far they have got by now. Rates are of those contacted." />
+          {f.overall.contacted === 0 ? <EmptyState icon="filter" title="Nobody was first contacted in this period">Pick a longer period above, or start outreach from the Leads page.</EmptyState> : <FunnelBars row={f.overall} steps={f.steps} />}
+        </Card>
+        <Card>
+          <CardHeader title="Stage velocity" description="Median days between steps, for leads that reached the later step in this period." />
           <DataTable><thead><tr><th>Step</th><th>Median days</th><th>Leads</th></tr></thead>
             <tbody>{f.velocity.steps.map((s) => <tr key={s.to}><td>{STEP_LABEL[s.from]} → {STEP_LABEL[s.to]}</td><td>{s.median_days ?? "—"}</td><td>{s.samples}</td></tr>)}</tbody></DataTable>
           {f.velocity.stages.length > 0 && (
@@ -77,36 +76,34 @@ function Funnel({ data }) {
                 <tbody>{f.velocity.stages.map((s) => <tr key={s.stage}><td>{stageLabel(s.stage)}</td><td>{s.median_days ?? "—"}</td><td>{s.samples}</td></tr>)}</tbody></DataTable>
             </>
           )}
-        </div>
+        </Card>
       </div>
-      <div className="card u-mt-16">
-        <div className="row u-between u-wrap">
-          <h3 className="u-m0">Funnel by {GROUP_LABEL[group].toLowerCase()}</h3>
-          <label className="row u-gap-8 u-m0">Group by
-            <select value={group} onChange={(e) => setGroup(e.target.value)} aria-label="Group the funnel by" className="u-w-auto">
+      <Card className="an-section">
+        <CardHeader title={`Funnel by ${GROUP_LABEL[group].toLowerCase()}`}
+          actions={<label className="row u-gap-8 u-m0">Group by
+            <Select value={group} onChange={(e) => setGroup(e.target.value)} aria-label="Group the funnel by">
               {Object.entries(GROUP_LABEL).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-            </select>
-          </label>
-        </div>
+            </Select>
+          </label>} />
         {group !== "campaign" && group !== "source" && <p className="sub">Each lead counts under the email that got its reply (or its latest email).</p>}
-        {rows.length === 0 ? <p className="empty">No data for this period.</p> : (
-          <div className="table-scroll"><DataTable data-testid="funnel-by-group">
+        {rows.length === 0 ? <EmptyState icon="chart" title="No data for this period">Try a longer period.</EmptyState> : (
+          <div className="table-scroll"><DataTable label="Funnel by group" data-testid="funnel-by-group">
             <thead><tr><th>{GROUP_LABEL[group]}</th>{f.steps.map((s) => <th key={s}>{STEP_LABEL[s]}</th>)}</tr></thead>
             <tbody>{rows.map((r) => (
               <tr key={r.name}><td><b>{name(r)}</b></td>{f.steps.map((s) => <td key={s}>{r[s]}{s !== "contacted" && <small className="sub-inline"> {r.rates[s]}%</small>}</td>)}</tr>
             ))}</tbody>
           </DataTable></div>
         )}
-      </div>
+      </Card>
     </>
   );
 }
 
 function Team({ data }) {
   return (
-    <div className="card table-card u-p0">
-      {data.team.length === 0 ? <p className="empty">Nobody did anything with their name on it in this period.</p> : (
-        <div className="table-scroll"><DataTable data-testid="team-table">
+    <Card className="table-card u-p0">
+      {data.team.length === 0 ? <EmptyState icon="users" title="No team activity in this period">Calls, notes and stage changes with a person's name on them will show here.</EmptyState> : (
+        <div className="table-scroll"><DataTable label="Team activity" data-testid="team-table">
           <thead><tr><th>Person</th><th>Actions</th><th>Stage moves</th><th>Calls</th><th>Notes</th><th>Other</th></tr></thead>
           <tbody>{data.team.map((m) => (
             <tr key={m.who}><td><b>{m.who}</b></td><td>{m.total}</td><td>{m.stage_changes}</td><td>{m.calls}</td><td>{m.notes}</td>
@@ -114,8 +111,12 @@ function Team({ data }) {
           ))}</tbody>
         </DataTable></div>
       )}
-    </div>
+    </Card>
   );
+}
+
+function Loading() {
+  return <div className="an-skel" aria-busy="true"><div className="an-skel-tiles">{[0, 1, 2, 3].map((i) => <Skeleton key={i} height={96} />)}</div><Skeleton height={220} /></div>;
 }
 
 export default function Analytics() {
@@ -141,16 +142,12 @@ export default function Analytics() {
       <PageHeader title={<>Analytics <HelpLink chapter="analytics" label="Analytics" /></>}
         description={<>What is working, for the period you pick. All days and times are India Standard Time (<Abbr term="IST">IST</Abbr>).</>} />
       <PeriodPicker value={period} onChange={setPeriod} range={data?.range} />
-      <div className="tabs scroll" role="tablist" aria-label="Analytics sections">
-        {TABS.map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => pick(id)}>{label}</button>
-        ))}
-      </div>
+      <Tabs label="Analytics sections" value={tab} onChange={pick} items={TABS.map(([id, label]) => ({ id, label }))} />
       {error && <ErrorState message="Analytics could not load." detail={error} onRetry={load} />}
       {tab === "channels" && <Intelligence key={JSON.stringify(period)} range={period} embedded />}
       {tab === "pipeline" && <Pipeline period={period} />}
       {tab === "sources" && <Insights key={JSON.stringify(period)} range={period} embedded />}
-      {["overview", "funnel", "team"].includes(tab) && !error && (!data ? <p className="empty">Loading…</p> : (
+      {["overview", "funnel", "team"].includes(tab) && !error && (!data ? <Loading /> : (
         <>
           {tab === "overview" && <Overview data={data} />}
           {tab === "funnel" && <Funnel data={data} />}

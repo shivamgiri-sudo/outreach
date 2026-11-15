@@ -4,7 +4,8 @@ import { ErrorState } from "../states.jsx";
 import { sourceLabel, stageLabel } from "../labels.js";
 import { Donut, HBars, SERIES, TrendChart } from "../charts.jsx";
 import LeadDrawer from "./LeadDrawer.jsx";
-import { DataTable } from "../ui/index.js";
+import "../analytics-pages.css";
+import { Button, Card, CardHeader, DataTable, EmptyState, Skeleton } from "../ui/index.js";
 
 // Where every lead stands now: total -> enriched -> attempted -> connected, what the connected ones said, call
 // outcomes, channels, stages, a daily trend, and the same funnel per owner and per source. Every number opens its leads.
@@ -21,10 +22,10 @@ const COLS = ["total", "enriched", "attempted", "connected", "interested", "not_
 
 function GroupTable({ title, rows, nameOf, onPick, testid }) {
   return (
-    <div className="card table-card u-p0 u-mt-16">
-      <h3 className="u-m-16-16-8">{title}</h3>
-      {rows.length === 0 ? <p className="empty">No leads.</p> : (
-        <div className="table-scroll"><DataTable data-testid={testid}>
+    <Card className="table-card an-card-table an-section">
+      <h3>{title}</h3>
+      {rows.length === 0 ? <EmptyState icon="users" title="No leads yet">Numbers appear here once leads exist.</EmptyState> : (
+        <div className="table-scroll"><DataTable label={title} data-testid={testid}>
           <thead><tr><th>{title.replace("By ", "")}</th>{COLS.map((c) => <th key={c}>{STEP[c].replace("Asked for follow-up", "Follow-up")}</th>)}</tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={r.name}><td><b>{nameOf(r.name)}</b></td>
@@ -34,7 +35,7 @@ function GroupTable({ title, rows, nameOf, onPick, testid }) {
           ))}</tbody>
         </DataTable></div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -46,15 +47,12 @@ function Drill({ pick, period, added, onClose }) {
   useEffect(load, [JSON.stringify(pick), JSON.stringify(period), added]);
   const by = pick.owner ? ` · owner ${pick.owner}` : pick.source ? ` · source ${sourceLabel(pick.source)}` : "";
   return (
-    <div className="card u-mt-16" data-testid="pipeline-drill">
-      <div className="row u-between">
-        <h3 className="u-m0">{STEP[pick.step]}{by}{data ? ` — ${data.count}` : ""}</h3>
-        <button className="btn ghost" onClick={onClose}>Close</button>
-      </div>
+    <Card className="an-section" data-testid="pipeline-drill">
+      <CardHeader title={`${STEP[pick.step]}${by}${data ? ` — ${data.count}` : ""}`} actions={<Button variant="secondary" onClick={onClose}>Close</Button>} />
       {error && <ErrorState message="Could not load these leads." detail={error} onRetry={load} />}
-      {!data && !error && <p className="empty">Loading…</p>}
-      {data && (data.leads.length === 0 ? <p className="empty">No leads.</p> : (
-        <div className="table-scroll"><DataTable>
+      {!data && !error && <div className="an-skel" aria-busy="true"><Skeleton height={20} /><Skeleton height={20} /><Skeleton height={20} /></div>}
+      {data && (data.leads.length === 0 ? <EmptyState icon="users" title="No leads here">Nothing sits at this step right now.</EmptyState> : (
+        <div className="table-scroll"><DataTable label="Leads at this step">
           <thead><tr><th>Company</th><th>Name</th><th>Phone</th><th>Email</th><th>Stage</th><th>Owner</th></tr></thead>
           <tbody>{data.leads.map((l) => (
             <tr key={l.id}><td><button className="link" onClick={() => setLead(l.id)}>{l.company || "—"}</button></td><td>{l.name}</td>
@@ -64,7 +62,7 @@ function Drill({ pick, period, added, onClose }) {
       ))}
       {data && data.count > data.leads.length && <p className="sub">Showing the newest {data.leads.length} of {data.count}.</p>}
       {lead && <LeadDrawer id={lead} ids={data.leads.map((l) => l.id)} onClose={() => setLead(null)} />}
-    </div>
+    </Card>
   );
 }
 
@@ -77,7 +75,7 @@ export default function Pipeline({ period }) {
   useEffect(load, [JSON.stringify(period), added]);
   const open = (step, extra = {}) => setPick({ step, ...extra });
   if (error) return <ErrorState message="The pipeline could not load." detail={error} onRetry={load} />;
-  if (!data) return <p className="empty">Loading…</p>;
+  if (!data) return <div className="an-skel" aria-busy="true"><div className="an-skel-tiles">{[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} height={96} />)}</div><Skeleton height={200} /></div>;
   const o = data.overall;
   const funnel = [
     { key: "total", label: STEP.total, value: o.total, color: SERIES.slate },
@@ -102,35 +100,32 @@ export default function Pipeline({ period }) {
   const stages = Object.entries(data.stages).map(([k, v]) => ({ key: k, label: stageLabel(k), value: v, color: SERIES.violet }));
   return (
     <>
-      <div className="row u-gap-16 u-wrap u-m-4-0-12" role="radiogroup" aria-label="Which leads to count">
-        <label className="row u-gap-8 u-m0"><input type="radio" checked={!added} onChange={() => setAdded(false)} /> All leads (now)</label>
-        <label className="row u-gap-8 u-m0"><input type="radio" checked={added} onChange={() => setAdded(true)} data-testid="pipeline-added" /> Only leads added in this period</label>
+      <div className="an-radios" role="radiogroup" aria-label="Which leads to count">
+        <label><input type="radio" checked={!added} onChange={() => setAdded(false)} /> All leads (now)</label>
+        <label><input type="radio" checked={added} onChange={() => setAdded(true)} data-testid="pipeline-added" /> Only leads added in this period</label>
       </div>
-      <div className="stat-grid pipeline-tiles">
+      <div className="stat-grid pipeline-tiles u-mb-16">
         {[["total", o.total], ["contactable", o.contactable], ["enriched", o.enriched], ["attempted", o.attempted], ["connected", o.connected],
           ["interested", o.interested], ["not_interested", o.not_interested], ["follow_up", o.follow_up], ["bad_number", o.bad_number]].map(([k, v]) => (
           <button key={k} type="button" className="card stat tile-btn" onClick={() => open(k)} data-testid={`pipe-${k}`}><b>{v}</b><span>{STEP[k]}</span></button>
         ))}
       </div>
       {pick && <Drill pick={pick} period={period} added={added} onClose={() => setPick(null)} />}
-      <div className="grid g2 u-mt-16">
-        <div className="card"><h3 className="u-mt-0">Lead funnel</h3>
-          <p className="sub">Where every lead is right now. Click a bar to see the leads.</p>
-          <HBars rows={funnel} onPick={open} testid="pipeline-funnel" /></div>
-        <div className="card"><h3 className="u-mt-0">What connected leads said</h3>
+      <div className="an-grid">
+        <Card><CardHeader title="Lead funnel" description="Where every lead is right now. Click a bar to see the leads." />
+          <HBars rows={funnel} onPick={open} testid="pipeline-funnel" /></Card>
+        <Card><CardHeader title="What connected leads said" />
           <Donut parts={outcomes} label="outcomes" onPick={open} />
-          <h4>Reach</h4><HBars rows={reach} onPick={open} /></div>
+          <h4>Reach</h4><HBars rows={reach} onPick={open} /></Card>
       </div>
-      <div className="card u-mt-16"><h3 className="u-mt-0">Daily trend</h3>
-        <p className="sub">{data.range ? `${data.range.from} to ${data.range.to}` : "Last 30 days"} (India time): leads added, first attempt, first connect, first interest.</p>
+      <Card className="an-section"><CardHeader title="Daily trend" description={`${data.range ? `${data.range.from} to ${data.range.to}` : "Last 30 days"} (India time): leads added, first attempt, first connect, first interest.`} />
         <TrendChart days={data.trend} series={[{ key: "new", label: "Added", color: SERIES.slate }, { key: "attempted", label: "Attempted", color: SERIES.blue },
-          { key: "connected", label: "Connected", color: SERIES.teal }, { key: "interested", label: "Interested", color: SERIES.green }]} /></div>
-      <div className="grid g2 u-mt-16">
-        <div className="card"><h3 className="u-mt-0">Call outcomes</h3>
-          <p className="sub">{data.calls.total} calls to {data.calls.leads} leads{data.range ? " in this period" : ""}.</p>
-          {calls.length ? <HBars rows={calls} testid="call-outcomes" /> : <p className="empty">No calls logged.</p>}</div>
-        <div className="card"><h3 className="u-mt-0">Channels tried</h3><p className="sub">Leads attempted on each channel.</p>
-          <HBars rows={channels} /><h4>Leads by stage</h4><HBars rows={stages} /></div>
+          { key: "connected", label: "Connected", color: SERIES.teal }, { key: "interested", label: "Interested", color: SERIES.green }]} /></Card>
+      <div className="an-grid">
+        <Card><CardHeader title="Call outcomes" description={`${data.calls.total} calls to ${data.calls.leads} leads${data.range ? " in this period" : ""}.`} />
+          {calls.length ? <HBars rows={calls} testid="call-outcomes" /> : <EmptyState icon="headset" title="No calls logged">Calls made from the Call desk show up here.</EmptyState>}</Card>
+        <Card><CardHeader title="Channels tried" description="Leads attempted on each channel." />
+          <HBars rows={channels} /><h4>Leads by stage</h4><HBars rows={stages} /></Card>
       </div>
       <GroupTable title="By owner" rows={data.by_owner} nameOf={(n) => n} onPick={(step, name) => open(step, { owner: name })} testid="pipeline-by-owner" />
       <GroupTable title="By source" rows={data.by_source} nameOf={sourceLabel} onPick={(step, name) => open(step, { source: name })} testid="pipeline-by-source" />

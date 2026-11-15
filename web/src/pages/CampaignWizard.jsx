@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, isOwner } from "../api.js";
 import { PreviewTable, RunReport } from "./CampaignReport.jsx";
+import "../campaigns.css";
+import { Badge, Button, Card, PageHeader } from "../ui/index.js";
 
 const EXAMPLES = {
   industries: ["BPO", "IT services", "Retail", "Logistics", "Healthcare", "BFSI", "Staffing", "EdTech"],
@@ -26,10 +28,10 @@ function Chips({ label, field, values, onChange }) {
   return (
     <div>
       <label htmlFor={`chip-${field}`}>{label}</label>
-      <div className="row">
-        <input id={`chip-${field}`} style={{ flex: "1 1 180px", width: "auto" }} value={text} placeholder="Type and press Enter"
+      <div className="camp-chip-input">
+        <input id={`chip-${field}`} value={text} placeholder="Type and press Enter"
           onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(text); } }} />
-        <button className="btn ghost" type="button" onClick={() => add(text)} aria-label={`Add to ${label}`}>Add</button>
+        <Button variant="secondary" onClick={() => add(text)} aria-label={`Add to ${label}`}>Add</Button>
       </div>
       <div className="chips" aria-label={`${label}: chosen`}>
         {values.map((v) => <button key={v} type="button" className="chip on" aria-label={`Remove ${v}`} onClick={() => onChange(values.filter((x) => x !== v))}>{v} ✕</button>)}
@@ -43,16 +45,16 @@ function Chips({ label, field, values, onChange }) {
 
 function Ready({ state, go }) {
   if (!state) return null;
-  return state.connected ? <span className="pill ok">Connected</span>
-    : <span className="row u-gap-8"><span className="pill warn">Not connected</span>
+  return state.connected ? <Badge tone="success">Connected</Badge>
+    : <span className="row u-gap-8"><Badge tone="warning">Not connected</Badge>
       <button type="button" className="linkish" onClick={() => go("integrations")}>Set up in Integrations</button></span>;
 }
 
 function Check({ checked, onChange, children, hint }) {
   return (
-    <label className="row" style={{ fontWeight: 400, alignItems: "flex-start", margin: "10px 0 0", flexWrap: "nowrap" }}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="u-mt-4" />
-      <span className="u-min0">{children}{hint && <small className="sub u-block u-m0">{hint}</small>}</span>
+    <label className="camp-check">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span className="u-min0">{children}{hint && <small className="hint">{hint}</small>}</span>
     </label>
   );
 }
@@ -66,12 +68,12 @@ function MoreSources({ items, picked, onPick, params, onParams, go, kind }) {
         <div key={src.id}>
           <Check checked={picked.includes(src.id)} onChange={(v) => toggle(src.id, v)}
             hint={`${src.why} ${src.free ? "Free." : src.cost_note}`}>
-            <b>{src.title}</b> {src.keyless || src.connected ? <span className="pill ok">{src.keyless ? "No key needed" : "Connected"}</span>
-              : <span className="row u-gap-8"><span className="pill warn">Not connected</span>
+            <b>{src.title}</b> {src.keyless || src.connected ? <Badge tone="success">{src.keyless ? "No key needed" : "Connected"}</Badge>
+              : <span className="row u-gap-8"><Badge tone="warning">Not connected</Badge>
                 <button type="button" className="linkish" onClick={() => go("integrations")}>Set up in Integrations</button></span>}
           </Check>
           {kind === "discover" && src.takes_identifiers && picked.includes(src.id) && (
-            <div className="u-ml-24">
+            <div className="camp-indent">
               <label htmlFor={`ids-${src.id}`}>Company identifiers for {src.title} (one per line)</label>
               <textarea id={`ids-${src.id}`} rows={3} placeholder="acme-hr" value={(params[src.id] || {}).slugs ?? ""}
                 onChange={(e) => onParams({ ...params, [src.id]: { slugs: e.target.value } })} />
@@ -92,10 +94,10 @@ function LeadPicker({ picked, onChange }) {
   return (
     <div>
       <input aria-label="Search your leads" placeholder="Search your imported leads" value={q} onChange={(e) => setQ(e.target.value)} />
-      <div style={{ maxHeight: 180, overflowY: "auto", marginTop: 6 }}>
+      <div className="camp-scroll">
         {shown.map((l) => (
           <Check key={l.id} checked={picked.includes(l.id)} onChange={(on) => onChange(on ? [...picked, l.id] : picked.filter((x) => x !== l.id))}>
-            {l.company || l.domain} <small className="sub-inline">{l.email || "no email yet"}</small>{l.do_not_contact && <span className="pill warn u-ml-8">Do not contact: left out</span>}
+            {l.company || l.domain} <small className="sub-inline">{l.email || "no email yet"}</small>{l.do_not_contact && <Badge tone="warning" className="u-ml-8">Do not contact: left out</Badge>}
           </Check>
         ))}
       </div>
@@ -158,16 +160,14 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
 
   return (
     <div>
-      <div className="row u-between">
-        <div><h2>{c.id ? `Edit: ${c.name}` : "New campaign"}</h2><p className="sub">Pick who to reach, where to look, and the rules. Preview first; nothing is saved to your leads until you run it for real.</p></div>
-        <button className="btn ghost" onClick={onCancel}>Back to campaigns</button>
-      </div>
+      <PageHeader title={c.id ? `Edit: ${c.name}` : "New campaign"} description="Pick who to reach, where to look, and the rules. Preview first; nothing is saved to your leads until you run it for real."
+        actions={<Button variant="secondary" onClick={onCancel}>Back to campaigns</Button>} />
       <ol className="wizard-steps" aria-label="Campaign steps">
         {STEPS.map((label, i) => <li key={label}><button type="button" className={i === step ? "on" : ""} aria-current={i === step ? "step" : undefined} onClick={() => setStep(i)}>{label}</button></li>)}
       </ol>
 
       {step === 0 && (
-        <div className="card">
+        <Card>
           <label htmlFor="camp-name">Campaign name</label>
           <input id="camp-name" value={c.name} placeholder="e.g. Pune BPOs hiring support staff" onChange={(e) => setC({ ...c, name: e.target.value })} />
           <Chips label="Industries" field="industries" values={t.industries} onChange={(v) => set("target", "industries", v)} />
@@ -182,13 +182,13 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
             })}
           </div>
           <Chips label="Keywords" field="keywords" values={t.keywords} onChange={(v) => set("target", "keywords", v)} />
-        </div>
+        </Card>
       )}
 
       {step === 1 && (
-        <div className="card">
+        <Card className="camp-wiz-sources">
           <p className="sub u-m0">Only lawful sources: provider accounts you connect with your own keys, and companies' own careers pages. Job boards and LinkedIn are never read.</p>
-          <h3 className="u-m-16-0-0">Company careers pages</h3>
+          <h3>Company careers pages</h3>
           <small className="sub-inline">Free. Reads job openings (hiring signals) from each company's own careers page, honouring robots.txt.</small>
           <label htmlFor="camp-pages">Careers page links (one per line)</label>
           <textarea id="camp-pages" rows={3} placeholder="https://company.in/careers" value={pagesText} onChange={(e) => setPagesText(e.target.value)} />
@@ -211,20 +211,20 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
           <Check checked={s.google_places} onChange={(v) => set("sources", "google_places", v)} hint="Businesses by type and city, with website and office phone. Google bills each search.">
             <b>Google Places</b> <Ready state={status?.google_places} go={go} />
           </Check>
-          <h3 className="u-m-16-0-0">More sources (free ones first)</h3>
+          <h3>More sources (free ones first)</h3>
           <small className="sub-inline">Public job-board feeds, official job and search APIs, open data, and your own keys. Each is lawful: no LinkedIn, no job-board scraping.</small>
           <MoreSources kind="discover" items={[...found].sort((a, b) => Number(!a.free) - Number(!b.free))} picked={s.extra || []} go={go}
             onPick={(v) => set("sources", "extra", v)} params={s.extra_params || {}} onParams={(v) => set("sources", "extra_params", v)} />
           <label htmlFor="camp-max">Most results per paid search, per run</label>
-          <input id="camp-max" type="number" min="1" max="100" className="u-maxwidth-140" value={s.max_results} onChange={(e) => set("sources", "max_results", e.target.value)} />
+          <input id="camp-max" type="number" min="1" max="100" className="camp-num" value={s.max_results} onChange={(e) => set("sources", "max_results", e.target.value)} />
           <label>Leads you already imported (optional)</label>
           <LeadPicker picked={s.csv_import_ids} onChange={(v) => set("sources", "csv_import_ids", v)} />
-        </div>
+        </Card>
       )}
 
       {step === 2 && (
         <div className="grid g2">
-          <div className="card">
+          <Card>
             <h3 className="u-mt-0">Fill in missing contacts</h3>
             <Check checked={c.enrich.crawler} onChange={(v) => set("enrich", "crawler", v)} hint="Free. Reads public contact pages and honours robots.txt.">Company website</Check>
             <Check checked={c.enrich.hunter} onChange={(v) => set("enrich", "hunter", v)} hint="One search per company that still has no email.">Hunter <Ready state={status?.hunter} go={go} /></Check>
@@ -235,17 +235,17 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
             <MoreSources kind="enrich" items={[...enrichers].sort((a, b) => Number(!a.free) - Number(!b.free))} picked={c.enrich.extra || []} go={go}
               onPick={(v) => set("enrich", "extra", v)} params={{}} onParams={() => {}} />
             <label htmlFor="camp-credits">Most credits to spend per run</label>
-            <input id="camp-credits" type="number" min="0" max="5000" className="u-maxwidth-140" value={r.credit_cap ?? 100} onChange={(e) => set("rules", "credit_cap", e.target.value)} />
+            <input id="camp-credits" type="number" min="0" max="5000" className="camp-num" value={r.credit_cap ?? 100} onChange={(e) => set("rules", "credit_cap", e.target.value)} />
             <p className="sub u-m-12-0-0">Only empty fields are filled, and each value keeps where it came from. Email check: {status?.email_verifier?.connected ? "your email verifier is used." : "format and business domain only (connect ZeroBounce or NeverBounce for a real check)."}</p>
-          </div>
-          <div className="card">
+          </Card>
+          <Card>
             <h3 className="u-mt-0">Who is ready for email</h3>
             <label htmlFor="camp-score">Lowest score: {r.min_score}</label>
             <input id="camp-score" type="range" min="0" max="100" step="5" value={r.min_score} onChange={(e) => set("rules", "min_score", Number(e.target.value))} />
             <Check checked={r.require_business_email} onChange={(v) => set("rules", "require_business_email", v)}>Only business emails (no Gmail, Yahoo…)</Check>
             <Check checked={r.skip_role_addresses} onChange={(v) => set("rules", "skip_role_addresses", v)}>Skip shared mailboxes (hr@, info@…)</Check>
             <label htmlFor="camp-cap">Most new leads per run</label>
-            <input id="camp-cap" type="number" min="1" max="200" className="u-maxwidth-140" value={r.max_new_leads_per_run} onChange={(e) => set("rules", "max_new_leads_per_run", e.target.value)} />
+            <input id="camp-cap" type="number" min="1" max="200" className="camp-num" value={r.max_new_leads_per_run} onChange={(e) => set("rules", "max_new_leads_per_run", e.target.value)} />
             <label htmlFor="camp-caller">Who gets the update after each run</label>
             <input id="camp-caller" value={r.caller} onChange={(e) => set("rules", "caller", e.target.value)} />
             <Check checked={r.auto_enrol} onChange={(v) => set("rules", "auto_enrol", v)}><b>Start the email sequence automatically for qualifying leads</b></Check>
@@ -264,12 +264,12 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
               </div>
             )}
             {r.auto_enrol && <div className="tip u-mt-8" role="note">Sending still follows the Outbox rules: practice mode until "Send for real" is on, daily caps and warm-up, one email per company a day, Mon–Fri 09:00–18:00 IST, and unsubscribes are never emailed.</div>}
-          </div>
+          </Card>
         </div>
       )}
 
       {step === 3 && (
-        <div className="card">
+        <Card>
           <h3 className="u-mt-0">{c.name || "Unnamed campaign"}</h3>
           <ul className="steps">
             <li>Target: {[t.industries.join(", "), t.cities.join(", "), t.roles_hiring.length ? `hiring ${t.roles_hiring.join(", ")}` : "", t.company_size_buckets.length ? `${t.company_size_buckets.join(", ")} employees` : ""].filter(Boolean).join(" · ") || "anyone (add targeting for better results)"}</li>
@@ -278,22 +278,22 @@ export default function CampaignWizard({ initial, go, onSaved, onOpenLeads, onCa
             <li>{r.auto_enrol ? `Qualifying leads start the email sequence “${(sequences.find((q) => q.id === (r.sequence_id || "default")) || { name: "Default (6 emails)" }).name}” (sending rules still apply).` : "Nobody is emailed automatically; you start the sequence yourself."} {r.caller || "The caller"} gets an update after each run.</li>
           </ul>
           {isOwner() && <div className="row u-mt-12">
-            <button className="btn ghost" disabled={!!busy || !anySource} onClick={() => act("preview")}>{busy === "preview" ? "Searching… (can take a minute)" : "Run now (preview)"}</button>
-            <button className="btn" disabled={!!busy || !anySource} onClick={() => act("real")}>{busy === "real" ? "Running… (can take a few minutes)" : "Run for real"}</button>
-            <button className="btn ghost" disabled={!!busy} onClick={() => { setBusy("save"); setError(""); save().catch((e) => setError(e.message)).finally(() => setBusy("")); }}>Save without running</button>
+            <Button variant="secondary" disabled={!!busy || !anySource} onClick={() => act("preview")}>{busy === "preview" ? "Searching… (can take a minute)" : "Run now (preview)"}</Button>
+            <Button disabled={!!busy || !anySource} onClick={() => act("real")}>{busy === "real" ? "Running… (can take a few minutes)" : "Run for real"}</Button>
+            <Button variant="secondary" disabled={!!busy} onClick={() => { setBusy("save"); setError(""); save().catch((e) => setError(e.message)).finally(() => setBusy("")); }}>Save without running</Button>
           </div>}
           {!anySource && <p className="sub u-m-8-0-0">Pick at least one source in step 2.</p>}
           <p className="sub u-m-8-0-0">The preview searches the sources (paid ones can use credits) but saves nothing and does not look up missing emails.</p>
-        </div>
+        </Card>
       )}
 
       {error && <div className="tip error u-mt-12" role="alert" >{error}</div>}
       {preview && <><RunReport report={preview} /><PreviewTable rows={preview.preview} /></>}
       {report && <RunReport report={report} onOpenLeads={() => onOpenLeads(c.id)} />}
       {step < 3 && (
-        <div className="row u-mt-12 u-between">
-          <button className="btn ghost" disabled={step === 0} onClick={() => setStep(step - 1)}>Back</button>
-          <button className="btn" onClick={() => setStep(step + 1)}>Next</button>
+        <div className="camp-wiz-nav">
+          <Button variant="secondary" disabled={step === 0} onClick={() => setStep(step - 1)}>Back</Button>
+          <Button onClick={() => setStep(step + 1)}>Next</Button>
         </div>
       )}
     </div>

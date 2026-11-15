@@ -3,11 +3,12 @@ import { istLabel } from "../time.js";
 import { api, canWrite, isOwner } from "../api.js";
 import { ops } from "../opsApi.js";
 import { ErrorState } from "../states.jsx";
-import { DataTable } from "../ui/index.js";
+import "../analytics-pages.css";
+import { Button, Card, CardHeader, DataTable, EmptyState, PageHeader, Skeleton, Stat, Stats } from "../ui/index.js";
 
 const when = (iso) => (iso ? istLabel(iso) : "—");
 const role = (k) => ({ chro: "CHRO", ceo_founder: "CEO / founder", ta_head: "TA head", hr_head: "HR head" }[k] || String(k).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()));
-const Stat = ({ n, label, note }) => <div className="card"><b className="big-n">{n ?? "—"}</b><div className="sub">{label}</div>{note && <small className="sub-inline">{note}</small>}</div>;
+const Tile = ({ n, label, note }) => <Stat value={n ?? "—"} label={label} hint={note} />;
 
 function Bars({ rows, label, value }) {
   const max = Math.max(1, ...rows.map((r) => r[value]));
@@ -30,83 +31,82 @@ export default function Intelligence({ range, embedded = false }) {
   const load = () => { setError(""); (range ? ops.intelligence(range) : api.intelligence()).then(setD).catch((e) => setError(e.message)); api.changeLog(50).then(setLog).catch(() => {}); };
   useEffect(() => { load(); }, []);
   if (error) return <ErrorState message="Intelligence could not load." detail={error} onRetry={load} />;
-  if (!d) return <p>Loading…</p>;
+  if (!d) return <div className="an-skel" aria-busy="true"><div className="an-skel-tiles">{[0, 1, 2].map((i) => <Skeleton key={i} height={96} />)}</div><Skeleton height={220} /></div>;
   const { channels: ch, timing: t, quality: q } = d;
   return (
     <>
-      {!embedded && <h2>Intelligence</h2>}
-      <p className="sub">{range ? "For leads created or active in the chosen period. " : ""}What is working, who replies, when, and where the data needs care. Everything here is worked out from what the team has already done.</p>
+      {(() => { const text = `${range ? "For leads created or active in the chosen period. " : ""}What is working, who replies, when, and where the data needs care. Everything here is worked out from what the team has already done.`;
+        return embedded ? <p className="sub">{text}</p> : <PageHeader title="Intelligence" description={text} />; })()}
 
       <h3>Email</h3>
-      <div className="tile-grid">
-        <Stat n={ch.email.sent} label="leads emailed" /><Stat n={ch.email.opened} label="opened" /><Stat n={ch.email.replied} label="replied" note={`${ch.email.reply_rate}% of those emailed`} />
-      </div>
-      <h3>LinkedIn</h3>
-      <div className="tile-grid">
-        <Stat n={ch.linkedin.started} label="started" /><Stat n={ch.linkedin.connect_sent} label="requests sent" />
-        <Stat n={ch.linkedin.accepted} label="accepted" note={`${ch.linkedin.accept_rate}% accept`} /><Stat n={ch.linkedin.replied} label="replied" note={`${ch.linkedin.reply_rate}% of accepted`} /><Stat n={ch.linkedin.open_profiles} label="Open Profiles" note="can be messaged without connecting" />
-      </div>
+      <Stats>
+        <Tile n={ch.email.sent} label="leads emailed" /><Tile n={ch.email.opened} label="opened" /><Tile n={ch.email.replied} label="replied" note={`${ch.email.reply_rate}% of those emailed`} />
+      </Stats>
+      <h3 className="an-section">LinkedIn</h3>
+      <Stats>
+        <Tile n={ch.linkedin.started} label="started" /><Tile n={ch.linkedin.connect_sent} label="requests sent" />
+        <Tile n={ch.linkedin.accepted} label="accepted" note={`${ch.linkedin.accept_rate}% accept`} /><Tile n={ch.linkedin.replied} label="replied" note={`${ch.linkedin.reply_rate}% of accepted`} /><Tile n={ch.linkedin.open_profiles} label="Open Profiles" note="can be messaged without connecting" />
+      </Stats>
 
-      <div className="grid g2 u-mt-16">
-        <div className="card">
-          <h3 className="u-mt-0">When people reply</h3>
+      <div className="an-grid">
+        <Card>
+          <CardHeader title="When people reply" />
           <p className="sub">{t.replies_measured ? <>Best day <b>{t.best_day}</b>, best hour <b>{t.best_hour_ist} IST</b>{t.median_hours_to_reply != null && <>, usually after <b>{t.median_hours_to_reply} h</b></>}.</> : "No replies yet to measure."}</p>
           <Bars rows={t.by_weekday} label="day" value="replies" />
-        </div>
-        <div className="card u-xauto">
-          <h3 className="u-mt-0">Which roles respond</h3>
-          {d.personas.length === 0 ? <p className="empty">No leads yet.</p> : (
-            <DataTable><thead><tr><th>Role</th><th>Leads</th><th>Contacted</th><th>Replied</th><th>Interested</th></tr></thead>
+        </Card>
+        <Card className="an-card-table">
+          <h3>Which roles respond</h3>
+          {d.personas.length === 0 ? <EmptyState icon="users" title="No leads yet" /> : (
+            <DataTable label="Which roles respond"><thead><tr><th>Role</th><th>Leads</th><th>Contacted</th><th>Replied</th><th>Interested</th></tr></thead>
               <tbody>{d.personas.map((p) => <tr key={p.persona}><td>{role(p.persona)}</td><td>{p.leads}</td><td>{p.contacted}</td><td>{p.replied}{p.contacted > 0 && <small> ({p.reply_rate}%)</small>}</td><td>{p.interested}</td></tr>)}</tbody></DataTable>
           )}
-        </div>
+        </Card>
       </div>
-      <div className="card u-mt-12 u-xauto">
-        <b>Connection note test</b> <small className="sub-inline">each new lead gets note A or B, shared evenly</small>
-        <DataTable><thead><tr><th>Note</th><th>Requests sent</th><th>Accepted</th><th>Accept rate</th></tr></thead>
+      <Card className="an-card-table an-section">
+        <h3>Connection note test</h3>
+        <p className="sub">Each new lead gets note A or B, shared evenly.</p>
+        <DataTable label="Connection note test"><thead><tr><th>Note</th><th>Requests sent</th><th>Accepted</th><th>Accept rate</th></tr></thead>
           <tbody>{["A", "B"].map((v) => { const x = ch.linkedin.variants?.[v] || {}; return <tr key={v}><td>{v}</td><td>{x.sent ?? 0}</td><td>{x.accepted ?? 0}</td><td>{x.accept_rate ?? 0}%</td></tr>; })}</tbody></DataTable>
-        <small className="sub-inline">Wait for 30+ requests per note before trusting the gap.</small>
-      </div>
-      {note && <p className="sub u-mt-12" role="status" >{note}</p>}
+        <p className="an-notes u-p-16">Wait for 30+ requests per note before trusting the gap.</p>
+      </Card>
+      {note && <p className="an-notes" role="status">{note}</p>}
 
-      <div className="grid g2 u-mt-16">
-        <div className="card u-xauto">
-          <h3 className="u-mt-0">Companies that engage</h3>
-          {d.companies.length === 0 ? <p className="empty">Nobody has been contacted yet.</p> : (
-            <DataTable><thead><tr><th>Company</th><th>Leads</th><th>Replied</th><th>Interested</th><th>Last touch</th></tr></thead>
+      <div className="an-grid">
+        <Card className="an-card-table">
+          <h3>Companies that engage</h3>
+          {d.companies.length === 0 ? <EmptyState icon="building" title="Nobody has been contacted yet">Companies show here once they reply or are emailed.</EmptyState> : (
+            <DataTable label="Companies that engage"><thead><tr><th>Company</th><th>Leads</th><th>Replied</th><th>Interested</th><th>Last touch</th></tr></thead>
               <tbody>{d.companies.map((c) => <tr key={c.company}><td><b>{c.company}</b></td><td>{c.leads}</td><td>{c.replied}</td><td>{c.interested}</td><td><small>{when(c.last_touch)}</small></td></tr>)}</tbody></DataTable>
           )}
-        </div>
-        <div className="card">
-          <h3 className="u-mt-0">Going cold ({d.stale.count})</h3>
-          <p className="sub">Interested leads with no activity for {d.stale.days} days. Pick them up before they forget you.</p>
-          {d.stale.leads.map((l) => <div key={l.id}><b>{l.company}</b> <small className="sub-inline">{l.stage} · last {when(l.last_touch)}</small></div>)}
-          {d.stale.count === 0 ? <p className="empty">Nothing is going cold.</p> : canWrite() && <button className="btn u-mt-8" onClick={remind} >Create follow-up tasks for all {d.stale.count}</button>}
-        </div>
+        </Card>
+        <Card>
+          <CardHeader title={`Going cold (${d.stale.count})`} description={`Interested leads with no activity for ${d.stale.days} days. Pick them up before they forget you.`} />
+          <ul className="an-list">{d.stale.leads.map((l) => <li key={l.id}><b>{l.company}</b> <small className="sub-inline">{l.stage} · last {when(l.last_touch)}</small></li>)}</ul>
+          {d.stale.count === 0 ? <EmptyState icon="check" title="Nothing is going cold">Every interested lead has been touched recently.</EmptyState> : canWrite() && <Button className="u-mt-12" onClick={remind}>Create follow-up tasks for all {d.stale.count}</Button>}
+        </Card>
       </div>
 
-      <div className="grid g2 u-mt-16">
-        <div className="card">
-          <h3 className="u-mt-0">Team activity ({range ? "this period" : "30 days"})</h3>
-          {d.team.length === 0 ? <p className="empty">No actions with a name on them yet.</p> : d.team.map((m) => (
-            <div key={m.who}><b>{m.who}</b> <small className="sub-inline">{m.total} action{m.total === 1 ? "" : "s"} · {Object.entries(m.by_kind).map(([k, v]) => `${v} ${k.replace(/_/g, " ")}`).join(", ")}</small></div>
-          ))}
-        </div>
-        <div className="card">
-          <h3 className="u-mt-0">Data quality</h3>
+      <div className="an-grid">
+        <Card>
+          <CardHeader title={`Team activity (${range ? "this period" : "30 days"})`} />
+          {d.team.length === 0 ? <EmptyState icon="users" title="No actions with a name on them yet" /> : <ul className="an-list">{d.team.map((m) => (
+            <li key={m.who}><b>{m.who}</b> <small className="sub-inline">{m.total} action{m.total === 1 ? "" : "s"} · {Object.entries(m.by_kind).map(([k, v]) => `${v} ${k.replace(/_/g, " ")}`).join(", ")}</small></li>
+          ))}</ul>}
+        </Card>
+        <Card>
+          <CardHeader title="Data quality" />
           <p className="sub">{q.leads} leads: {q.no_email} without email, {q.no_phone} without phone, {q.no_linkedin} without a LinkedIn link, {q.role_emails} generic (info@…) addresses, {q.invalid_email} failed a mailbox check.</p>
           <p className="sub">{q.manual_corrections} manual corrections{q.corrections_by_person.length ? ": " + q.corrections_by_person.map((p) => `${p.who} ${p.count}`).join(", ") : ""}.</p>
-        </div>
+        </Card>
       </div>
 
-      <div className="card u-mt-16">
-        <div className="row u-between"><h3 className="u-m0">Change log</h3>{isOwner() && <button className="btn" onClick={exportCsv}>Download CSV</button>}</div>
-        <p className="sub">Every manual correction to a lead: who, when, what it was and what it became.</p>
-        {log.length === 0 ? <p className="empty">No corrections yet.</p> : (
-          <div className="table-wrap"><DataTable><thead><tr><th>When</th><th>Who</th><th>Lead</th><th>Field</th><th>Was</th><th>Now</th><th>Why</th></tr></thead>
+      <Card className="an-section">
+        <CardHeader title="Change log" description="Every manual correction to a lead: who, when, what it was and what it became." actions={isOwner() && <Button onClick={exportCsv}>Download CSV</Button>} />
+        {log.length === 0 ? <EmptyState icon="history" title="No corrections yet">Edits people make to a lead's details are listed here.</EmptyState> : (
+          <div className="table-wrap"><DataTable label="Change log"><thead><tr><th>When</th><th>Who</th><th>Lead</th><th>Field</th><th>Was</th><th>Now</th><th>Why</th></tr></thead>
             <tbody>{log.map((r, i) => <tr key={i}><td><small>{when(r.at)}</small></td><td>{r.by}</td><td>{r.company}</td><td>{r.label}</td><td>{r.old || "—"}</td><td>{r.new || "—"}</td><td><small>{r.reason}</small></td></tr>)}</tbody></DataTable></div>
         )}
-      </div>
+      </Card>
     </>
   );
 }

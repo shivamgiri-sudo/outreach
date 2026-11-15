@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { istDate, istDateLabel } from "./time.js";
+import "./analytics-pages.css";
+import { Button, Card, Input, Segmented } from "./ui/index.js";
 
 // The period the numbers cover: last 7 / 30 / 90 days or a custom from–to, in India days. Remembered per browser.
 const KEY = "outreach-period";
@@ -34,26 +36,26 @@ export default function PeriodPicker({ value, onChange, range }) {
   const tooLong = span > MAX_DAYS;
   const ok = from && to && from <= to && !tooLong;
   const apply = () => { if (ok) onChange({ from, to }); };
+  const mode = custom ? "custom" : String(value.days);
+  const pick = (id) => (id === "custom" ? onChange({ from, to }) : onChange({ days: Number(id) }));
   return (
-    <div className="card u-mb-16 u-p-12" data-testid="period-picker">
-      <div className="row u-wrap u-gap-8 u-acenter">
-        <b className="u-mr-4">Period</b>
-        {[7, 30, 90].map((d) => (
-          <button key={d} className={`btn ${value.days === d ? "" : "ghost"}`} aria-pressed={value.days === d} onClick={() => onChange({ days: d })}>Last {d} days</button>
-        ))}
-        <button className={`btn ${custom ? "" : "ghost"}`} aria-pressed={custom} onClick={() => onChange({ from, to })}>Custom</button>
+    <Card className="an-period" data-testid="period-picker">
+      <div className="an-period-row">
+        <b>Period</b>
+        <Segmented label="Period" value={mode} onChange={pick}
+          items={[{ id: "7", label: "Last 7 days" }, { id: "30", label: "Last 30 days" }, { id: "90", label: "Last 90 days" }, { id: "custom", label: "Custom" }]} />
         {custom && (
-          <span className="row u-gap-8 u-wrap">
-            <input type="date" aria-label="From (IST day)" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="u-w-auto" />
+          <span className="an-period-custom">
+            <Input type="date" aria-label="From (IST day)" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
             <span>to</span>
-            <input type="date" aria-label="To (IST day)" value={to} min={from} max={istDate(0)} onChange={(e) => setTo(e.target.value)} className="u-w-auto" />
-            <button className="btn ghost" disabled={!ok} onClick={apply}>Apply</button>
+            <Input type="date" aria-label="To (IST day)" value={to} min={from} max={istDate(0)} onChange={(e) => setTo(e.target.value)} />
+            <Button variant="secondary" disabled={!ok} onClick={apply}>Apply</Button>
             {tooLong && <small className="sub-inline" role="alert">Pick at most {MAX_DAYS} days (about two years).</small>}
           </span>
         )}
       </div>
-      {range && <small className="sub-inline u-block u-mt-8">{rangeText(range)}</small>}
-    </div>
+      {range && <small className="an-range">{rangeText(range)}</small>}
+    </Card>
   );
 }
 
@@ -62,14 +64,13 @@ export function DeltaTile({ label, kpi, suffix = "", tone = "", lowerIsBetter = 
   if (!kpi) return null;
   const up = kpi.delta > 0, down = kpi.delta < 0;
   const good = lowerIsBetter ? down : up, bad = lowerIsBetter ? up : down;
-  const color = good ? "var(--ok, #15803d)" : bad ? "var(--hot, #be123c)" : "var(--muted)";
   const change = kpi.delta === 0 ? "no change" : `${up ? "▲" : "▼"} ${Math.abs(kpi.delta)}${suffix}${kpi.delta_pct != null ? ` (${up ? "+" : ""}${kpi.delta_pct}%)` : ""}`;
   return (
-    <div className={`card stat ${tone}`} data-testid={`kpi-${label}`} style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+    <div className={`card stat delta-tile ${tone}`} data-testid={`kpi-${label}`}>
       <b>{kpi.value}{suffix}</b>
-      <small style={{ color, fontWeight: 600, display: "block" }} aria-label={`Change against the previous period: ${change}`}>{change}</small>
+      <small className={`delta ${good ? "good" : bad ? "bad" : ""}`} aria-label={`Change against the previous period: ${change}`}>{change}</small>
       <span>{label}</span>
-      <small style={{ display: "block", color: "var(--muted)" }}>before: {kpi.previous}{suffix}</small>
+      <small className="prev">before: {kpi.previous}{suffix}</small>
     </div>
   );
 }

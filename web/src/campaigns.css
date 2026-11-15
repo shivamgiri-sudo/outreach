@@ -1,0 +1,47 @@
+/* Campaigns: list cards, detail header, run reports, wizard. Tokens only (both themes). */
+.camp-grid { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.camp-card { display: grid; gap: var(--s3); align-content: start; }
+.camp-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); }
+.camp-card-head h3 { margin: 0; overflow-wrap: anywhere; }
+.camp-card .camp-last { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+.camp-mini { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s2); margin: 0; padding: var(--s3) 0; border-block: 1px solid var(--line); }
+.camp-mini div { display: grid; gap: 0; min-width: 0; }
+.camp-mini dt { color: var(--muted); font-size: var(--fs-xs); }
+.camp-mini dd { margin: 0; font: 700 var(--fs-lg)/1.3 var(--font-head); }
+.camp-target { margin: 0; color: var(--muted); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.camp-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; }
+.camp-stats { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); margin: 0 0 var(--s4); }
+.camp-stats .stat { padding: var(--s3) var(--s4); }
+.camp-stats .stat b { font-size: var(--fs-xl); margin-top: var(--s1); }
+.camp-section { margin-top: var(--s6); }
+.camp-section > .ui-card-head { margin-bottom: var(--s3); }
+.camp-filters { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; margin-bottom: var(--s3); }
+.camp-filters input { flex: 1 1 220px; width: auto; }
+.camp-filters select { flex: 0 1 180px; width: auto; }
+.camp-pager { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; padding: var(--s3) 0 0; }
+.camp-runs { display: grid; gap: var(--s2); }
+.camp-runs details { border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel); }
+.camp-runs summary { cursor: pointer; padding: var(--s3) var(--s4); font-weight: 600; font-size: var(--fs-md); }
+.camp-runs details[open] summary { border-bottom: 1px solid var(--line); }
+.camp-runs details > div { padding: var(--s3) var(--s4); }
+.camp-errors { margin: var(--s2) 0 0; padding-left: var(--s5); }
+.camp-skel { display: grid; gap: var(--s3); }
+.camp-wiz-nav { display: flex; justify-content: space-between; gap: var(--s3); margin-top: var(--s4); }
+.camp-chip-input { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.camp-chip-input input { flex: 1 1 180px; width: auto; }
+.camp-check { display: flex; align-items: flex-start; gap: var(--s3); margin: var(--s3) 0 0; font-weight: 400; }
+.camp-check > input { margin-top: 3px; }
+.camp-check .hint { display: block; color: var(--muted); font-size: var(--fs-sm); }
+.camp-indent { margin-left: var(--s6); }
+.camp-scroll { max-height: 180px; overflow-y: auto; margin-top: var(--s2); }
+.camp-num { max-width: 140px; }
+.camp-wiz-sources h3 { margin: var(--s5) 0 var(--s1); }
+.camp-wiz-sources h3:first-of-type { margin-top: var(--s4); }
+.wizard-steps button { min-height: var(--h-ctl); }
+@media (max-width: 760px) {
+  .camp-mini { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .camp-wiz-nav .btn { flex: 1 1 0; }
+  .camp-check { min-height: var(--h-touch); }
+  .camp-check > input { width: 20px; height: 20px; }
+  .camp-filters select { flex: 1 1 140px; }
+}

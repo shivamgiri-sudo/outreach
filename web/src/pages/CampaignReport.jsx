@@ -1,5 +1,6 @@
 import { istLabel } from "../time.js";
-import { DataTable } from "../ui/index.js";
+import "../campaigns.css";
+import { Badge, Button, Card, CardHeader, DataTable, EmptyState } from "../ui/index.js";
 
 export const STATUS = {
   draft: ["", "Draft"], running: ["ok", "Runs every weekday"], paused: ["warn", "Paused"], done: ["", "Done"],
@@ -11,13 +12,15 @@ const WOULD = {
   attach: "Picked by you: would join", attach_blocked: "Picked by you: left out",
 };
 
+const TONES = { ok: "success", warn: "warning", "": "neutral" };
+
 export function StatusPill({ status }) {
   const [tone, label] = STATUS[status] || ["", status];
-  return <span className={`pill ${tone}`}>{label}</span>;
+  return <Badge tone={TONES[tone] || "neutral"}>{label}</Badge>;
 }
 
 function Num({ label, value }) {
-  return <div className="card stat u-p-12"><span className="sub-inline">{label}</span><b style={{ fontSize: 24, marginTop: 2 }}>{value ?? 0}</b></div>;
+  return <div className="card stat"><b>{value ?? 0}</b><span>{label}</span></div>;
 }
 
 // The numbers of one run (or preview), with what didn't work per source.
@@ -25,12 +28,10 @@ export function RunReport({ report, onOpenLeads }) {
   if (!report) return null;
   const v = report.verification || {};
   return (
-    <div className="card u-mt-16" data-testid="run-report" >
-      <div className="row u-between">
-        <h3 className="u-m0">{report.dry_run ? "Preview: nothing was saved" : "Run report"}</h3>
-        <small className="sub-inline">{istLabel(report.started_at)}{report.trigger === "auto" ? " · automatic" : ""}</small>
-      </div>
-      <div className="grid g4" style={{ marginTop: 12, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 130px), 1fr))" }}>
+    <Card className="camp-section" data-testid="run-report">
+      <CardHeader title={report.dry_run ? "Preview: nothing was saved" : "Run report"}
+        actions={<small className="sub-inline">{istLabel(report.started_at)}{report.trigger === "auto" ? " · automatic" : ""}</small>} />
+      <div className="camp-stats">
         <Num label="Found" value={report.discovered} />
         <Num label={report.dry_run ? "Would add" : "New leads"} value={report.new} />
         <Num label="Already known" value={report.duplicates} />
@@ -40,7 +41,7 @@ export function RunReport({ report, onOpenLeads }) {
         <Num label={report.dry_run ? "Would qualify" : "Ready for email"} value={report.qualified} />
         <Num label={report.dry_run ? "Would start sequence" : "Sequence started"} value={report.enrolled} />
       </div>
-      <p className="sub u-m-12-0-0">
+      <p className="sub u-m0">
         {report.merged ? `${report.merged} existing lead(s) completed. ` : ""}
         {report.attached ? (report.dry_run ? `${report.attached} picked lead(s) would be included. ` : `${report.attached} picked lead(s) joined. `) : ""}
         {report.over_cap ? `${report.over_cap} left for the next run (limit per run). ` : ""}
@@ -50,22 +51,22 @@ export function RunReport({ report, onOpenLeads }) {
       {report.errors?.length > 0 && (
         <div className="tip u-mt-12" role="status">
           <b>What didn't work</b>
-          <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+          <ul className="camp-errors">
             {report.errors.map((e, i) => <li key={i} className="u-anywhere"><b>{e.source}:</b> {e.message}</li>)}
           </ul>
         </div>
       )}
-      {onOpenLeads && !report.dry_run && <button className="btn u-mt-12" onClick={onOpenLeads}>Open these leads</button>}
-    </div>
+      {onOpenLeads && !report.dry_run && <div className="u-mt-12"><Button onClick={onOpenLeads}>Open these leads</Button></div>}
+    </Card>
   );
 }
 
 // What a preview would do with each company it found.
 export function PreviewTable({ rows }) {
-  if (!rows?.length) return <p className="sub u-mt-12">The preview found no companies. Check the errors above or add sources.</p>;
+  if (!rows?.length) return <EmptyState icon="search" title="The preview found no companies">Check the errors above, or go back to step 2 and add a source such as a careers page.</EmptyState>;
   return (
-    <div className="card table-card u-mt-12">
-      <DataTable  tableClass="leads-table" data-testid="preview-table">
+    <Card className="table-card u-mt-12">
+      <DataTable tableClass="leads-table" data-testid="preview-table">
         <thead><tr><th>Company</th><th>Contact</th><th>Found by</th><th>Score</th><th>What would happen</th><th>Ready for email?</th></tr></thead>
         <tbody>
           {rows.map((r, i) => (
@@ -76,13 +77,13 @@ export function PreviewTable({ rows }) {
               <td data-label="Score">{r.score ?? "—"}</td>
               <td data-label="What would happen">{WOULD[r.would] || r.would}</td>
               <td data-label="Ready for email?">
-                {r.score === null ? (r.reasons?.length ? <small>{r.reasons.join("; ")}</small> : "—") : r.qualified ? <span className="pill ok">{r.would_enrol ? "Yes, sequence would start" : "Yes"}</span>
+                {r.score === null ? (r.reasons?.length ? <small>{r.reasons.join("; ")}</small> : "—") : r.qualified ? <Badge tone="success">{r.would_enrol ? "Yes, sequence would start" : "Yes"}</Badge>
                   : <small>{r.reasons.join("; ")}</small>}
               </td>
             </tr>
           ))}
         </tbody>
       </DataTable>
-    </div>
+    </Card>
   );
 }

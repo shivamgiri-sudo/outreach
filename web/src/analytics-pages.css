@@ -1,0 +1,45 @@
+/* Analytics (all tabs), Insights, Intelligence, Reports. Tokens only; both themes. */
+.an-period { grid-template-columns: minmax(0, 1fr); display: grid; gap: var(--s2); margin-bottom: var(--s4); padding: var(--s3) var(--s4); }
+.an-period-row { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; }
+.an-period-row .seg { min-width: 0; max-width: 100%; }
+.an-period-row .seg button { min-height: var(--h-ctl-sm); }
+.an-period-row > b { font-size: var(--fs-md); }
+.an-period-custom { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.an-period-custom input[type="date"] { width: auto; }
+.an-range { color: var(--muted); font-size: var(--fs-sm); }
+.tile-grid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+.delta-tile { min-width: 0; overflow-wrap: anywhere; }
+.delta-tile .delta { display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+.delta-tile .delta.good { color: var(--ok); }
+.delta-tile .delta.bad { color: var(--hot); }
+.delta-tile .prev { display: block; color: var(--muted); font-size: var(--fs-xs); }
+.an-toolbar { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; margin-bottom: var(--s3); }
+.an-radios { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5); margin: 0 0 var(--s3); }
+.an-radios label { display: flex; align-items: center; gap: var(--s2); margin: 0; font-weight: 500; font-size: var(--fs-md); min-height: var(--h-ctl); cursor: pointer; }
+.an-section { margin-top: var(--s5); }
+.an-section > h3 { margin-bottom: var(--s3); }
+.an-grid { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); margin-top: var(--s4); align-items: start; }
+.an-card-table { padding: 0; overflow: hidden; }
+.an-card-table > .ui-card-head, .an-card-table > h3, .an-card-table > p { margin-inline: var(--s5); }
+.an-card-table > .ui-card-head { padding-top: var(--s5); margin-bottom: var(--s3); }
+.an-card-table > h3 { padding-top: var(--s5); }
+.an-card + .an-card, .an-stack > * + * { margin-top: var(--s4); }
+.an-notes { color: var(--muted); font-size: var(--fs-sm); margin: var(--s3) 0 0; }
+.an-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.an-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s1) var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
+.an-list li:last-child { border-bottom: 0; }
+.an-details > summary { cursor: pointer; font-weight: 600; }
+.an-skel { display: grid; gap: var(--s3); }
+.an-skel-tiles { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+/* pages.css sets .hbar-row to inline-flex for touch size; the bars need their grid back */
+.hbars .hbar-row { display: grid; width: 100%; min-height: 36px; }
+.hbar-fill { background: var(--chart-blue); }
+.funnel-row .bar { background: linear-gradient(90deg, var(--brand), var(--brand-2)); }
+.donut-wrap svg text { font-family: var(--font-body); }
+@media (max-width: 760px) {
+  .an-period-row .seg { width: 100%; flex-wrap: wrap; }
+  .an-period-row .seg button { flex: 1 1 40%; min-height: 40px; }
+  .an-period-custom input[type="date"] { flex: 1 1 140px; }
+  .an-grid { grid-template-columns: minmax(0, 1fr); }
+  .an-radios label { min-height: var(--h-touch); }
+}

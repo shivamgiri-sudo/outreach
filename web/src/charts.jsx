@@ -1,5 +1,6 @@
 // Small dependency-free SVG charts: horizontal bars, a donut and a daily trend line. Colours work in light and dark.
-export const SERIES = { blue: "#0284c7", green: "#16a34a", red: "#dc2626", amber: "#d97706", violet: "#7c3aed", slate: "#64748b", teal: "#0d9488" };
+import "./chart-tokens.css";
+export const SERIES = { blue: "var(--chart-blue)", green: "var(--chart-green)", red: "var(--chart-red)", amber: "var(--chart-amber)", violet: "var(--chart-violet)", slate: "var(--chart-slate)", teal: "var(--chart-teal)" };
 
 export function HBars({ rows, onPick, testid }) {
   const max = Math.max(1, ...rows.map((r) => r.value));
@@ -27,7 +28,7 @@ export function Donut({ parts, size = 150, label, onPick }) {
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line)" strokeWidth="18" />
         {total > 0 && parts.filter((p) => p.value).map((p) => {
           const len = (p.value / total) * c;
-          const el = <circle key={p.key} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={p.color} strokeWidth="18"
+          const el = <circle key={p.key} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={p.color || SERIES.blue} strokeWidth="18"
                              strokeDasharray={`${len} ${c - len}`} strokeDashoffset={-offset} transform={`rotate(-90 ${size / 2} ${size / 2})`} />;
           offset += len;
           return el;
