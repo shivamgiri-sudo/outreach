@@ -201,9 +201,9 @@ export default function CallTracker() {
 
       {conn && (conn.unmapped_outcomes || []).length > 0 && (
         <div className="card" role="alert" data-testid="ct-unmapped" style={{ borderLeft: "3px solid var(--warn)" }}>
-          <b>Some Call Tracker outcomes are not mapped</b>
+          <b>Some DialHalo outcomes are not mapped</b>
           <p className="sub" style={{ margin: "4px 0" }}>
-            These outcome names came in on real calls but have no row in the mapping below, so each call was counted as the plain
+            These DialHalo outcome names came in on real calls but have no row in the mapping below, so each call was counted as the plain
             result shown, and nothing else (stage, follow-up or opt-out) was done for it. Add a row with the same name to give
             them a proper meaning.
           </p>
