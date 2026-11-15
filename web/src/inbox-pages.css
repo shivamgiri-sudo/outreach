@@ -5,10 +5,10 @@
 .filter-bar > select { flex: 0 1 200px; width: auto; min-width: 0; }
 .filter-bar .grow { flex: 1 1 220px; min-width: 0; }
 .filter-bar .push { margin-left: auto; }
-.stat-grid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: var(--s4); }
-.stat-grid .ui-stat { padding: var(--s3) var(--s4); }
-.stat-grid .ui-stat b { margin-top: var(--s1); font-size: var(--fs-xl); }
-.stat-grid .stat-icon { display: none; }
+.sum-grid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: var(--s4); }
+.sum-grid .ui-stat { padding: var(--s3) var(--s4); }
+.sum-grid .ui-stat b { margin-top: var(--s1); font-size: var(--fs-xl); }
+.sum-grid .stat-icon { display: none; }
 .stack { display: grid; gap: var(--s3); }
 .muted { color: var(--muted); }
 
@@ -70,7 +70,7 @@
 .co-stats .co-stat { border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--s2) var(--s3); background: var(--panel); }
 .co-stats .co-stat small { display: block; color: var(--muted); }
 .co-stats .co-stat b { font: 700 var(--fs-xl)/1.2 var(--font-head); }
-.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: var(--s4); }
+.co-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: var(--s4); }
 .health-list { margin: var(--s2) 0; padding-left: var(--s5); }
 .health-neg { color: var(--accent); }
 .health-grid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }

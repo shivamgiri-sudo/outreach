@@ -134,13 +134,13 @@ export default function Replies() {
         description={<>Every reply from every channel in one list. The score (0–100) says how much a reply deserves a person's time now. Reply, mark handled, assign or snooze it right here.</>} />
       {error && <ErrorState message="Replies could not load." detail={error} onRetry={load} />}
       {data ? (
-        <div className="stat-grid" data-testid="reply-kpis">
+        <div className="sum-grid" data-testid="reply-kpis">
           <Stat label="need a person" value={data.needs_action} tone={data.needs_action ? "amber" : undefined} />
           <Stat label="unread" value={data.unread ?? 0} />
           <Stat label="said yes" value={data.counts.interested || 0} tone="green" />
           <Stat label="replies in all" value={data.total} />
         </div>
-      ) : !error && <div className="stat-grid" aria-busy="true">{[0, 1, 2, 3].map((i) => <Skeleton key={i} height={72} />)}</div>}
+      ) : !error && <div className="sum-grid" aria-busy="true">{[0, 1, 2, 3].map((i) => <Skeleton key={i} height={72} />)}</div>}
       <div className="filter-bar">
         <Switch checked={onlyAction} onChange={setOnlyAction} label="Only ones that need a person" />
         <span className="sub-inline">Only ones that need a person</span>

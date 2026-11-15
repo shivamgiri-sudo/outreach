@@ -233,7 +233,7 @@ export default function Companies() {
         </Card>
       ))}
       {total > PAGE && (
-        <div className="pager">
+        <div className="co-pager">
           <small className="sub">{offset + 1}–{Math.min(offset + PAGE, total)} of {total}</small>
           <div className="row">
             <Button variant="secondary" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>Previous</Button>

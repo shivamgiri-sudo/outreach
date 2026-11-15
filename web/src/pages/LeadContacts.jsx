@@ -12,7 +12,7 @@ function Point({ kind, value, main, bad, lead, onLead, setMsg }) {
   const edit = canWrite() && canEditContacts();
   const run = async (fn, done) => { setMsg(""); try { onLead(await fn()); setMsg(done); } catch (e) { setMsg(e.message); } };
   return (
-    <li className="row" style={{ gap: 8, flexWrap: "wrap", padding: "4px 0" }} data-testid={`point-${kind}`}>
+    <li className="row dr-point" data-testid={`point-${kind}`}>
       {kind === "phone" ? <a href={dial(value)}>{value}</a> : <a href={`mailto:${value}`}>{value}</a>}
       {main && <span className="pill ok">Main</span>}
       {bad && <span className="pill hot" title={`Marked ${bad.status.replace(/_/g, " ")} by ${bad.by}`}>{bad.status === "wrong_number" ? "Wrong number" : "Inactive"}</span>}
@@ -93,7 +93,7 @@ export function LeadPeople({ lead, onLead }) {
         {edit && form !== "new" && <button className="btn ghost" onClick={() => setForm("new")}>Add person</button>}</div>
       {form === "new" && <PersonForm label="Add person" onCancel={() => setForm(null)} onSave={(v) => run(() => api.addPerson(lead.id, v), `${v.contact_name} added.`)} />}
       <ul className="plain-list">{people.map((p) => (
-        <li key={p._id} style={{ padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
+        <li key={p._id} className="dr-line">
           {form === p._id ? <PersonForm label="Save" start={p} onCancel={() => setForm(null)} onSave={(v) => run(() => api.changePerson(lead.id, p._id, v), "Saved.")} /> : (
             <div className="row u-between u-wrap u-gap-8">
               <span className="u-min0"><b>{p.contact_name || "Unnamed"}</b>{p.title && <small className="sub-inline"> · {p.title}</small>}<br />

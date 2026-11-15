@@ -17,7 +17,7 @@ export default function OtherContacts({ lead }) {
       {data.others.some((o) => o.in_sequence) && <p className="sub u-m-4-0">Someone else here is already in an email sequence — avoid contacting two people on the same day.</p>}
       <div>
         {shown.map((o) => (
-          <div key={o.id} className="row" style={{ justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--line)", gap: 6, flexWrap: "wrap" }}>
+          <div key={o.id} className="dr-line">
             <span className="u-min0">
               <button className="linkish" onClick={() => setOpen(o.id)}>{o.contact_name || o.email || "Unnamed contact"}</button>
               {o.title && <small className="sub-inline"> · {o.title}</small>}
@@ -29,7 +29,7 @@ export default function OtherContacts({ lead }) {
           </div>
         ))}
         {more.map((c, i) => (
-          <div key={`more-${i}`} className="row" data-testid="other-contact-extra" style={{ justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--line)", gap: 6, flexWrap: "wrap" }}>
+          <div key={`more-${i}`} className="dr-line" data-testid="other-contact-extra">
             <span className="u-min0">
               <b>{c.contact_name || c.email || "Unnamed contact"}</b>
               {c.title && <small className="sub-inline"> · {c.title}</small>}

@@ -153,9 +153,9 @@ export default function LeadActivity({ lead, onChanged }) {
   const shown = items.filter((i) => matches(i, filter));
 
   return (
-    <section aria-label="Activity and tasks">
+    <section aria-label="Activity and tasks" className="drawer-stack">
       {summary && (
-        <div className="card u-mb-12" data-testid="history-summary">
+        <div className="card flat" data-testid="history-summary">
           <div className="row u-between u-wrap">
             <b>Every attempt</b>
             <button className="btn ghost" onClick={report}>Contact report (print / PDF)</button>
@@ -179,7 +179,7 @@ export default function LeadActivity({ lead, onChanged }) {
             {lead.email && !["unsubscribed", "disqualified"].includes(lead.stage) && <button className="btn ghost" onClick={() => setComposing(true)}>Write an email</button>}
           </div>}
           {canWrite() && <label className="row u-gap-8 u-mt-8 u-wrap">Remarks
-            <input data-testid="call-remarks" style={{ flex: "1 1 240px", minWidth: 0 }} value={remarks} onChange={(e) => setRemarks(e.target.value)}
+            <input data-testid="call-remarks" className="u-flex1 u-minwidth-200" value={remarks} onChange={(e) => setRemarks(e.target.value)}
               placeholder="Optional: what they said; saved with the call you log" maxLength={500} /></label>}
           {invalidReason !== null && canWrite() && (
             <form className="row u-mt-8" onSubmit={(e) => { e.preventDefault();
@@ -202,6 +202,7 @@ export default function LeadActivity({ lead, onChanged }) {
           {composing && canWrite() && <Composer lead={lead} onCancel={() => setComposing(false)} onDone={(m) => { setComposing(false); setMessage(m); load(); onChanged?.(); }} />}
         </div>
       )}
+      <div className="card flat">
       <h3>Tasks &amp; follow-ups</h3>
       {openTasks.length === 0 ? <p className="sub">No open tasks.</p> : (
         <ul className="task-list">
@@ -271,7 +272,9 @@ export default function LeadActivity({ lead, onChanged }) {
         </form>
       )}
       {message && <p className="sub" role="status">{message}</p>}
+      </div>
 
+      <div className="card flat">
       <div className="row dl-head">
         <h3>Full activity</h3>
         <DownloadButton path={exportPath("activity", { lead_id: lead.id })} label="Download activity" testId="download-activity"
@@ -314,6 +317,7 @@ export default function LeadActivity({ lead, onChanged }) {
           })}
         </ol>
       )}
+      </div>
     </section>
   );
 }

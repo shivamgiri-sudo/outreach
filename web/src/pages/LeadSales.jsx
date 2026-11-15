@@ -63,7 +63,7 @@ export default function LeadSales({ lead, onChanged }) {
               </select></label>
           )}
         </div>
-        {msg.text && <div className={`tip ${msg.ok ? "" : "error"}`} role={msg.ok ? "status" : "alert"} style={{ marginTop: 8 }} data-testid="lead-sales-msg">{msg.text}</div>}
+        {msg.text && <div role={msg.ok ? "status" : "alert"} className={`tip u-mt-8 ${msg.ok ? "" : "error"}`} data-testid="lead-sales-msg">{msg.text}</div>}
         {writable && <button className="btn u-mt-8" type="submit" disabled={busy} data-testid="lead-sales-save">{busy ? "Saving…" : "Save sales stage"}</button>}
       </form>
       {d.backfilled.length > 0 && <p className="sub u-m-8-0-0">Back-filled stages (no real date): {d.backfilled.join(", ")}.</p>}
