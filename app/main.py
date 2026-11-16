@@ -383,7 +383,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     @app.get("/api/leads")
     def list_leads(request: Request):
         seen = lead_access.visible_leads(store, getattr(request.state, "user", None), workspaces_mod.filter_rows(store.read("leads")))   # ownership on: a member sees own leads
-        return linkedin_stages.list_extras(store, with_list_extras(store, sorted((_present(lead) for lead in seen), key=lambda x: -x["score"])))
+        from . import lead_grid
+        return lead_grid.mark_dnd(store, linkedin_stages.list_extras(store, with_list_extras(store, sorted((_present(lead) for lead in seen), key=lambda x: -x["score"]))))
 
     @app.get("/api/leads/{lead_id}")
     def get_lead(lead_id: str, request: Request):
