@@ -49,3 +49,8 @@
 .ec-suggest { display: inline-block; margin-right: var(--s2); }
 .ec-pick { position: relative; }
 .ec-pick:focus-within { box-shadow: var(--ring); }
+/* Reverse lookup (Email checker page) */
+.rl-person { display: flex; gap: var(--s2); align-items: flex-start; min-width: 0; }
+.rl-person > div { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.rl-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: none; background: var(--bg); }
+.rl-logo { border-radius: var(--r-sm); object-fit: contain; }

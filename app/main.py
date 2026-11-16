@@ -659,6 +659,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_analytics_router(store))
     from .routes_email_checker import make_router as make_email_checker_router
     app.include_router(make_email_checker_router(store))
+    from .routes_reverse_lookup import make_router as make_reverse_lookup_router
+    app.include_router(make_reverse_lookup_router(store, fetcher))       # reverse email lookup (free steps only)
     from .routes_hiring_signal import make_router as make_hiring_signal_router
     app.include_router(make_hiring_signal_router(store, fetcher))
     from .routes_funnel import make_router as make_funnel_router
