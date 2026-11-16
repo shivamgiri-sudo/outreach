@@ -657,6 +657,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_account_usage_router(store))
     app.include_router(make_audit_router(store))
     app.include_router(make_analytics_router(store))
+    from .routes_email_checker import make_router as make_email_checker_router
+    app.include_router(make_email_checker_router(store))
     from .routes_funnel import make_router as make_funnel_router
     app.include_router(make_funnel_router(store))
     app.include_router(make_extension_router(store, transactional_sender))

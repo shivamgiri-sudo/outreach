@@ -108,6 +108,7 @@ ADMIN_WRITES = {
     # workspace management of their own workspaces (app/routes_workspaces.py checks the workspace is theirs)
     ("GET", "/api/deliverability"), ("GET", "/api/deliverability/dns"),
     ("POST", "/api/email-gate/check-now"), ("POST", "/api/leads/{lead_id}/email-approve"),     # mailbox checks before the first email (app/routes_email_gate.py)
+    ("POST", "/api/email-checker/runs"),       # the bulk email checker page (app/routes_email_checker.py; free DNS checks, no lead changes)
     ("PUT", "/api/workspaces/{ws_id}"), ("POST", "/api/workspaces/{ws_id}/members"), ("DELETE", "/api/workspaces/{ws_id}/members/{email}"),
     ("POST", "/api/workspaces"),          # a workspace admin's new workspace is created as "requested" (an owner approves it)
     ("POST", "/api/snippets"), ("PUT", "/api/snippets/{snippet_id}"), ("DELETE", "/api/snippets/{snippet_id}"),
