@@ -26,6 +26,8 @@ export default {
       "For a useful one, check the **Company this is about** box (it is filled in when possible) and click **Add as lead**. If the company is already a lead, the article is added to its history instead.",
       "For a useless one, click **Dismiss**.",
     ]],
+    ["h", "Hiring now from career pages (owners)"],
+    ["p", "The **Hiring now from career pages** card reads the jobs your lead companies publish on their own websites. Click **Check 50 websites**: it works in the background on up to 50 company websites whose leads were not checked in the last week, and says how many are hiring and how many empty company details it filled. Leads that are hiring get a **Hiring: N roles** tag on the Leads page. Job boards (Indeed, Glassdoor, Naukri) and LinkedIn are never read, and every site's robots.txt is respected."],
     ["tip", "Keep watches specific. \"hiring\" alone brings too much. \"call centre hiring Pune\" brings better matches."],
     ["p", "Related: [Leads](#help/leads), [Hiring engine](#help/engine), [Prospect search](#help/prospects) (it can also filter by signals)."],
   ],

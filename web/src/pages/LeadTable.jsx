@@ -11,6 +11,7 @@ import { FirstTouchTimer } from "./LeadFirstTouch.jsx";
 import { CONTACT_STATUSES, contactOf } from "../contactStatus.js";
 import { AgedPill } from "./LeadAgeing.jsx";
 import { attributionText } from "./leadFilters.js";
+import HiringChip from "./HiringChip.jsx";
 import { Button, Cell, DataTable } from "../ui/index.js";
 
 function Pager({ total, page, pages, pageSize, setPage, setPageSize }) {
@@ -59,7 +60,7 @@ export default function LeadTable({ leads, shown, visible, picked, setPicked, to
                   {canWrite() && <td className="pick c-pick" onClick={(e) => e.stopPropagation()}>
                     <label className="pick-hit"><input type="checkbox" aria-label={`Select ${name}`} checked={picked.includes(l.id)} onChange={() => togglePick(l.id)} /></label>
                   </td>}
-                  <td className="c-company" data-label="Company"><button className="linkish" title={name} onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{name}</b></button>{l.is_test && <span className="pill warn">Test</span>}</td>
+                  <td className="c-company" data-label="Company"><button className="linkish" title={name} onClick={(e) => { e.stopPropagation(); setOpen(l.id); }}><b>{name}</b></button>{l.is_test && <span className="pill warn">Test</span>}<HiringChip lead={l} /></td>
                   <td className="c-contact" data-label="Contact"><Cell title={l.contact_name || "—"} sub={l.email || l.phone || ""} /><PhoneTag lead={l} /></td>
                   <td className="c-stage" data-label="Stage"><div className="pill-stack">{stageLabel(l.stage)}
                     {l.lead_quality && <span className="pill warn" data-testid="quality-pill" title={`Marked by ${l.lead_quality.by || "a caller"}${l.lead_quality.note ? `: ${l.lead_quality.note}` : ""}`}>{l.lead_quality.kind === "invalid" ? "Invalid lead" : "Consultant"}</span>}

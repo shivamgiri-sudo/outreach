@@ -74,6 +74,8 @@ export default {
       "**Details**: the extra fields your owner set up. **Edit details** then **Save details**.",
       "**Buying signals**: the score out of 100 and a bar for each signal that makes it up.",
       "**Where this lead came from**: every source it appeared in, first seen first, with the campaign, ad or form.",
+      "**Hiring now**: **Check careers page** reads the jobs the company publishes on its own website (the job markup Google for Jobs reads), and the company details its home page states. It shows the number of open roles, the role titles (click to expand), places, the newest posting date and the pages they were found on. It respects each site's robots.txt, never reads job boards or LinkedIn, and reads the same website again at most once an hour.",
+      "The same check fills **only empty** company fields from the website: company name, logo, phone, address and city, and LinkedIn, X, Facebook, Instagram and YouTube pages. Values you already have are never changed. Each filled field is marked with the source \"site markup\" and a line is added to the history. The filled ones show in green.",
       "**Company health**: **Build health report** checks public sources and gives a score.",
       "**Download audit pack** (owner): messages, change log and consent events for this lead as a zip.",
       "**Their data (DPDP)** (owner): **Download their data**, or **Erase their data...** which deletes everything about the person after a confirm. Use it when a person asks to be forgotten. See [Unsubscribe and erase](#help/recipe-unsubscribe-erasure).",

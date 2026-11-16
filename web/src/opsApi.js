@@ -58,5 +58,9 @@ export const ops = {
     const a = Object.assign(document.createElement("a"), { href: url, download: filename || "email-check.csv" });
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   },
+  // Hiring now + company facts from the lead's own website: one lead (callers too), a batch of up to 50 sites (owners).
+  hiringSignalRefresh: (leadId) => request(`/api/leads/${leadId}/hiring-signal`, { method: "POST" }),
+  hiringBatchStart: (limit = 50) => request("/api/hiring-signal/run", { method: "POST", body: { limit } }),
+  hiringBatchState: () => request("/api/hiring-signal/run"),
   campaignLeadsPage: (id, params) => request(`/api/campaigns/${id}/leads${query({ page: 1, ...params })}`),
 };
