@@ -175,7 +175,7 @@ def test_people_report_counts_per_person_merges_dialhalo_and_exports_csv(k):
     long = k.c.get("/api/calltracker/people-report?from=2020-01-01&to=2030-01-01", headers=k.h["owner"]).json()
     assert long["dialhalo"]["ok"] and long["dialhalo"]["clamped_from"]
     asked = [q[1] for q in k.fake.requests if q[1].startswith("/api/v1/stats/members")][-1]
-    assert "from=2020" not in asked
+    assert "from=2020" not in asked and "to=2030" not in asked                  # the window ends today, not in the future
     # DialHalo down: the report still shows Outreach's side
     k.fake.fail = [500, 500, 500]
     assert k.c.get("/api/calltracker/people-report?from=2026-11-01&to=2026-11-30", headers=k.h["owner"]).status_code == 200

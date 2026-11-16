@@ -192,7 +192,7 @@ def report_csv(report: dict) -> str:
 def dialhalo_stats(conn: dict, start: Optional[datetime], end: Optional[datetime]) -> Optional[dict]:
     """DialHalo's own per-member numbers for the same dates; None when it cannot be reached (the report still shows Outreach's side)."""
     today = datetime.now(ev.IST)
-    last = ((end - timedelta(days=1)) if end else today).astimezone(ev.IST)
+    last = min(((end - timedelta(days=1)) if end else today).astimezone(ev.IST), today)     # never ask about days still to come
     first = (start or last - timedelta(days=29)).astimezone(ev.IST)
     clamped = (last - first).days + 1 > STATS_MAX_DAYS
     if clamped:                                    # DialHalo answers at most 93 days at a time: show the latest part and say so
