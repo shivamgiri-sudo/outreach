@@ -67,7 +67,11 @@ def test_follow_up_from_an_activity_becomes_a_task_with_due_time(tmp_path):
     r = c.post(f"/api/leads/{lid}/activity", json={"type": "call", "outcome": "call_back", "notes": "Busy, call Thursday",
                                                    "follow_up_at": "2026-11-05T11:00", "follow_up_text": "Call Ravi back", "by": "Priya"}).json()
     task = r["follow_up_task"]
-    assert task["due_at"] == "2026-11-05T05:30:00+00:00" and task["owner"] == "Priya" and task["title"] == "Follow up"
+    # a call-back is a call to make: a "call" task (a connected workspace sends it to the DialHalo dial queue)
+    assert task["due_at"] == "2026-11-05T05:30:00+00:00" and task["owner"] == "Priya" and task["kind"] == "call" and task["title"] == "Call back"
+    # any other activity with a follow-up time still makes a plain follow-up task
+    r2 = c.post(f"/api/leads/{lid}/activity", json={"type": "meeting", "notes": "Demo done", "follow_up_at": "2026-11-06T11:00", "by": "Priya"}).json()
+    assert r2["follow_up_task"]["kind"] == "follow_up" and r2["follow_up_task"]["title"] == "Follow up"
 
 
 def test_yes_reply_creates_one_call_task_for_priya_and_logging_the_call_closes_it(tmp_path):
