@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { canWrite, isManager } from "../api.js";
 import { harvestApi } from "../harvestApi.js";
 import { istLabel } from "../time.js";
-import { Badge, Button, Card, CardHeader, DataTable, EmptyState, Field, Segmented, useToast } from "../ui/index.js";
+import { Badge, Button, Card, CardHeader, DataTable, EmptyState, Field, Segmented, Select, useToast } from "../ui/index.js";
+import { RATINGS } from "./leadFilters.js";
 
 const STATUS_TONE = { draft: "muted", queued: "info", running: "info", paused: "warning", done: "success", failed: "danger", cancelled: "neutral" };
 const STATUS_TEXT = { draft: "Not started", queued: "Waiting", running: "Running", paused: "Paused", done: "Done", failed: "Failed", cancelled: "Cancelled" };
@@ -26,8 +27,8 @@ export function JobCard({ job, onChanged, open, onToggle }) {
     try { await harvestApi.act(job.id, action); onChanged(); } catch (e) { toast(e.message, "err"); }
     setBusy("");
   };
-  const exportCsv = async () => {
-    try { await harvestApi.exportCsv(job.id); } catch (e) { toast(e.message, "err"); }
+  const exportFile = async (kind) => {
+    try { await (kind === "xlsx" ? harvestApi.exportXlsx(job.id) : harvestApi.exportCsv(job.id)); } catch (e) { toast(e.message, "err"); }
   };
   const c = job.counts || {};
   return (
@@ -56,7 +57,8 @@ export function JobCard({ job, onChanged, open, onToggle }) {
           </Button>
         ))}
         <Button size="sm" variant="secondary" aria-expanded={open} onClick={onToggle}>{open ? "Hide results" : "Show results"}</Button>
-        {isManager() && <Button size="sm" variant="ghost" icon="download" onClick={exportCsv}>Export CSV</Button>}
+        {isManager() && <Button size="sm" variant="ghost" icon="download" onClick={() => exportFile("csv")}>Export CSV</Button>}
+        {isManager() && <Button size="sm" variant="ghost" icon="download" onClick={() => exportFile("xlsx")} data-testid="harvest-export-xlsx">Export Excel</Button>}
       </div>
       {open && <Results job={job} />}
     </Card>
@@ -68,8 +70,33 @@ function PhoneCell({ row }) {
   return <span className="hv-phone">{row.phone} <Badge tone={row.phone_line_type === "mobile" ? "success" : "muted"}>{LINE_TEXT[row.phone_line_type] || "Phone"}</Badge></span>;
 }
 
+// The same quick filters as the Leads grid, on the listings loaded here (app/lead_grid.py has the rules).
+const MOBILE_LINES = ["mobile", "mobile_or_fixed"];
+function keep(r, q) {
+  if (q.phone && !r.phone) return false;
+  if (q.mobile && !(r.phone && MOBILE_LINES.includes(r.phone_line_type))) return false;
+  if (q.noDnd && r.dnd) return false;
+  return !q.rating || (r.rating !== null && r.rating !== undefined && Number(r.rating) >= Number(q.rating));
+}
+
+function ResultFilters({ q, setQ }) {
+  const tick = (k) => (e) => setQ({ ...q, [k]: e.target.checked });
+  return (
+    <div className="hv-filters" role="group" aria-label="Filter results">
+      <label className="check-row"><input type="checkbox" checked={q.phone} onChange={tick("phone")} /> Has phone</label>
+      <label className="check-row"><input type="checkbox" checked={q.mobile} onChange={tick("mobile")} /> Mobile only</label>
+      <label className="check-row"><input type="checkbox" checked={q.noDnd} onChange={tick("noDnd")} /> Hide DND</label>
+      <Select aria-label="Minimum rating" value={q.rating} onChange={(e) => setQ({ ...q, rating: e.target.value })}>
+        <option value="">Any rating</option>
+        {RATINGS.map((r) => <option key={r} value={r}>{r}★ and up</option>)}
+      </Select>
+    </div>
+  );
+}
+
 function Results({ job }) {
   const [outcome, setOutcome] = useState("");
+  const [q, setQ] = useState({ phone: false, mobile: false, noDnd: false, rating: "" });
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -79,18 +106,21 @@ function Results({ job }) {
   }, [job.id, outcome, job.counts?.found]);
   if (error) return <p className="dp-warn" role="alert">{error}</p>;
   if (!data) return <p className="sub">Loading results…</p>;
+  const rows = data.rows.filter((r) => keep(r, q));
   return (
     <div className="hv-results">
       <div className="row u-between">
         <Segmented label="Show" value={outcome} onChange={setOutcome}
           items={[{ id: "", label: "All" }, { id: "new", label: "New" }, { id: "duplicate", label: "Already in Leads" }, { id: "skipped", label: "Skipped" }]} />
-        <small className="sub">{data.total} listing{data.total === 1 ? "" : "s"}{data.total > data.rows.length ? `, first ${data.rows.length} shown` : ""}</small>
+        <small className="sub">{data.total} listing{data.total === 1 ? "" : "s"}{data.total > data.rows.length ? `, first ${data.rows.length} loaded` : ""}{rows.length !== data.rows.length ? `, ${rows.length} match the filters` : ""}</small>
       </div>
-      {data.rows.length === 0 ? <EmptyState icon="search" title="Nothing here yet">Results appear as the job runs.</EmptyState> : (
+      <ResultFilters q={q} setQ={setQ} />
+      {rows.length === 0 ? (data.rows.length ? <EmptyState icon="search" title="No listings match these filters">Untick a filter to see more.</EmptyState>
+        : <EmptyState icon="search" title="Nothing here yet">Results appear as the job runs.</EmptyState>) : (
         <DataTable label="Harvest results" density="dense" maxHeight="480px" data-testid="harvest-results">
           <thead><tr><th>Company</th><th>Category</th><th>Phone</th><th>Website</th><th>Rating</th><th>Reviews</th><th>City</th><th>Status</th><th>Lead</th></tr></thead>
           <tbody>
-            {data.rows.map((r, i) => (
+            {rows.map((r, i) => (
               <tr key={`${r.lead_id || "x"}-${i}`}>
                 <td data-label="Company"><b>{r.company}</b><br /><small className="sub">{SOURCE_TEXT[r.source] || r.source} · {r.keyword} in {r.location}</small></td>
                 <td data-label="Category">{r.category || "—"}</td>

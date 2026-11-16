@@ -5,16 +5,18 @@ import { LinkedInStageFilter, LI_STAGES } from "./LeadLinkedInStage.jsx";
 import { AgeingFilter } from "./LeadAgeing.jsx";
 import { CustomFilters } from "./LeadCustomFields.jsx";
 import { isWaiting } from "./LeadFirstTouch.jsx";
-import { HAS_FIELDS, hasDetail } from "./leadFilters.js";
+import { HAS_FIELDS, gridParams, hasDetail } from "./leadFilters.js";
+import { DndFilter, HarvestFilter, RatingFilter, harvestLabel } from "./LeadGridFilters.jsx";
 import LeadViews from "./LeadViews.jsx";
-import DownloadButton, { exportPath } from "../DownloadButton.jsx";
+import DownloadButton, { DownloadFormat, exportPath } from "../DownloadButton.jsx";
 import Icon from "../icons.jsx";
+import { useState } from "react";
 import { Button, Chip, Input, Popover, Select } from "../ui/index.js";
 
 function HasFilter({ leads, value, onChange }) {
   const count = (w) => leads.filter((l) => hasDetail(l, w)).length;
   const toggle = (w) => onChange(value.includes(w) ? value.filter((x) => x !== w) : [...value, w]);
-  const label = value.length ? `With ${value.map((w) => HAS_FIELDS.find(([k]) => k === w)[1].split(" ")[0].replace("Phone", "phone").replace("Email", "email")).join(" + ")}` : "Any contact details";
+  const label = value.length ? `With ${value.map((w) => HAS_FIELDS.find(([k]) => k === w)[1].split(" ")[0].replace(/^(Phone|Mobile|Email|Hiring)$/, (w) => w.toLowerCase())).join(" + ")}` : "Any contact details";
   return (
     <details className="multi-filter">
       <summary aria-label="Filter by contact details" data-testid="has-filter">{label}</summary>
@@ -73,6 +75,13 @@ export default function LeadToolbar({ leads, shown, f, set, owners, allTags, rul
   if (f.ageing) add("age", `Ageing: ${f.ageing}`, () => set.ageing(""));
   if (f.waitingOnly) add("wait", "Waiting for first touch", () => set.waitingOnly(false));
   if (customOn) add("custom", "Custom fields", () => set.customFilter({}));
+  if (f.minRating) add("rating", `Rating ${f.minRating}★ and up`, () => set.minRating(""));
+  if (f.noDnd) add("dnd", "DND hidden", () => set.noDnd(false));
+  if (f.harvest) add("harvest", harvestLabel(f.harvest), () => set.harvest(""));
+  const [format, setFormat] = useState("csv");
+  const kind = format === "xlsx" ? "Excel file" : "CSV that opens in Excel";
+  // Filters the server cannot apply itself go as the picked ids (the page already knows which leads match).
+  const byIds = f.onlyIds || f.ownerFilter || customOn || f.liStage || f.waitingOnly || f.contact || f.leadType || f.ageing || f.salesStage;
 
   return (
     <div className="lead-toolbar" role="search">
@@ -123,6 +132,9 @@ export default function LeadToolbar({ leads, shown, f, set, owners, allTags, rul
               </Select></label>}
             <div className="field"><span className="field-label">Source</span><SourceFilter leads={leads} value={f.srcFilter} onChange={set.srcFilter} /></div>
             <div className="field"><span className="field-label">Contact details</span><HasFilter leads={leads} value={f.hasFilter} onChange={set.hasFilter} /></div>
+            <label>Minimum rating<RatingFilter leads={leads} value={f.minRating} onChange={set.minRating} /></label>
+            <HarvestFilter leads={leads} value={f.harvest} onChange={set.harvest} />
+            <DndFilter leads={leads} value={f.noDnd} onChange={set.noDnd} />
             <CustomFilters fields={customFields} value={f.customFilter} onChange={set.customFilter} />
             <label className="check-row"><input type="checkbox" checked={f.inboundOnly} onChange={(e) => set.inboundOnly(e.target.checked)} /> Inbound only</label>
           </div>
@@ -142,10 +154,12 @@ export default function LeadToolbar({ leads, shown, f, set, owners, allTags, rul
         <span className="lead-count" role="status">Showing {shown.length} of {leads.length}</span>
         {tools && <span className="lead-tools">{tools}</span>}
         <span className="dl-group lead-download">
-          <DownloadButton path={exportPath("leads")} label="Download all" title="Every lead as a CSV that opens in Excel" testId="download-leads-all" />
-          {filtered && <DownloadButton path={exportPath("leads", { q: f.query.trim(), stage: f.stage, band: f.band, source: f.srcFilter.join(","), inbound: f.inboundOnly ? "1" : "", tag: f.tagFilter })}
-            body={f.onlyIds || f.ownerFilter || customOn || f.hasFilter.length || f.liStage || f.waitingOnly ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
-            title="Only the leads that match the search and filters" testId="download-leads-shown" />}
+          <DownloadButton path={exportPath("leads", {}, format)} label="Download all" title={`Every lead as a ${kind}`} testId={`download-leads-all${format === "xlsx" ? "-xlsx" : ""}`} />
+          {filtered && <DownloadButton path={exportPath("leads", { q: f.query.trim(), stage: f.stage, band: f.band, source: f.srcFilter.join(","), inbound: f.inboundOnly ? "1" : "", tag: f.tagFilter,
+            ...gridParams(f.hasFilter, f) }, format)}
+            body={byIds ? { ids: shown.map((l) => l.id) } : undefined} label={`Download these ${shown.length}`}
+            title={`Only the leads that match the search and filters, as a ${kind}`} testId={`download-leads-shown${format === "xlsx" ? "-xlsx" : ""}`} />}
+          <DownloadFormat value={format} onChange={setFormat} />
         </span>
       </div>
 

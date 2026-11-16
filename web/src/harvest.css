@@ -38,3 +38,6 @@
   .hv-hint { margin-left: 0; }
   .hv-job-head { flex-direction: column; }
 }
+.hv-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
+.hv-filters .check-row { margin: 0; align-items: center; }
+.hv-filters select { width: auto; max-width: 100%; }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, isOwner } from "./api.js";
+import { Select } from "./ui/index.js";
 
 // "/api/export/leads.csv?stage=new" from a dataset name and filters (empty filters are left out).
 export function exportPath(dataset, params = {}, format = "csv") {
@@ -43,5 +44,16 @@ export default function DownloadButton({ path, body, filename = "download.csv", 
       </button>
       {error && <span className="dl-error" role="alert">{error}</span>}
     </span>
+  );
+}
+
+// CSV or Excel (.xlsx) for the download buttons next to it; Excel keeps numbers as numbers, dates as dates and phones as text.
+export function DownloadFormat({ value, onChange }) {
+  if (!isOwner()) return null;
+  return (
+    <Select aria-label="Download format" value={value} onChange={(e) => onChange(e.target.value)} data-testid="download-format">
+      <option value="csv">CSV</option>
+      <option value="xlsx">Excel (.xlsx)</option>
+    </Select>
   );
 }

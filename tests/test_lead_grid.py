@@ -81,3 +81,10 @@ def test_leads_list_marks_numbers_on_the_dnd_list(tmp_path):
     store.write("suppressed", list(SUPPRESSED))
     flags = {l["id"]: l["on_dnd"] for l in c.get("/api/leads").json()}
     assert flags == {"mob": False, "mof": False, "land": False, "old": False, "guess": False, "dnc": True, "sup": True, "sup2": True}
+
+
+def test_saved_views_keep_the_grid_filters():
+    from app.lead_ops import _clean_filters
+    out = _clean_filters({"has": ["mobile", "email", "fax"], "min_rating": "4.5", "no_dnd": 1, "harvest": "job-1"})
+    assert out["has"] == ["mobile", "email"] and out["min_rating"] == "4.5" and out["no_dnd"] is True and out["harvest"] == "job-1"
+    assert _clean_filters({"min_rating": "2"})["min_rating"] == "" and _clean_filters({})["no_dnd"] is False

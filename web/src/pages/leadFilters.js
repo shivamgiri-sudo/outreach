@@ -24,12 +24,16 @@ export function phoneMatches(phone, query) {
 }
 
 // "Has" filter: every ticked detail must be on the lead (tick Phone + Email for leads with both).
-export const HAS_FIELDS = [["phone", "Phone number"], ["email", "Email"], ["linkedin", "LinkedIn profile"], ["hiring", "Hiring now (open roles)"]];
+// Same rules as app/lead_grid.py, so "Download these N" matches the grid.
+export const HAS_FIELDS = [["phone", "Phone number"], ["mobile", "Mobile number"], ["email", "Email"], ["linkedin", "LinkedIn profile"], ["hiring", "Hiring now (open roles)"]];
+// Mobile only: a mobile or "mobile or landline" number; older leads without a line type use phone_type.
+export const isMobile = (lead) => Boolean(String(lead.phone || "").trim()) && (lead.phone_line_type ? ["mobile", "mobile_or_fixed"].includes(lead.phone_line_type) : lead.phone_type === "mobile");
 // Open roles seen on the company's own career pages (hiring_signal) or from a job import (open_roles).
 export const hiringRoles = (lead) => Number(lead.hiring_signal?.open_roles || lead.open_roles || 0);
 export function hasDetail(lead, what) {
   if (what === "phone") return Boolean(String(lead.phone || "").trim());
-  if (what === "email") return Boolean(String(lead.email || "").trim());
+  if (what === "mobile") return isMobile(lead);
+  if (what === "email") return String(lead.email || "").includes("@");   // a pattern guess (email_guess) never counts
   if (what === "hiring") return hiringRoles(lead) > 0;
   if (what === "linkedin") return /linkedin\.com\/(in|pub)\//i.test(String(lead.linkedin_url || ""));
   return true;
@@ -43,6 +47,21 @@ export function matches(lead, query, stage, band, onlyIds, sources = [], inbound
     && (!tag || (lead.tags || []).some((t) => String(t).toLowerCase() === tag.toLowerCase()))
     && has.every((w) => hasDetail(lead, w));
 }
+
+// Grid filters: minimum rating (a lead without one is left out), hide DND (flag or a number on the uploaded DND list),
+// lead harvest ("__any" = any job, else one job id).
+export const RATINGS = ["3", "3.5", "4", "4.5"];
+export const ratingOf = (lead) => (lead.rating === null || lead.rating === undefined || lead.rating === "" || Number.isNaN(Number(lead.rating)) ? null : Number(lead.rating));
+export const isDnd = (lead) => Boolean(lead.dnc || lead.on_dnd);
+export const fromHarvest = (lead, job) => { const jobs = lead.harvest_jobs || []; return job === "__any" ? jobs.length > 0 : jobs.includes(job); };
+export function gridMatches(lead, { minRating = "", noDnd = false, harvest = "" } = {}) {
+  if (minRating && (ratingOf(lead) === null || ratingOf(lead) < Number(minRating))) return false;
+  if (noDnd && isDnd(lead)) return false;
+  return !harvest || fromHarvest(lead, harvest);
+}
+// The same filters as download parameters (app/lead_grid.py).
+export const gridParams = (has, { minRating = "", noDnd = false, harvest = "" } = {}) =>
+  ({ has: has.join(","), min_rating: minRating, no_dnd: noDnd ? "1" : "", harvest: harvest === "__any" ? "any" : harvest });
 
 // A short plain-English line about the campaign, ad or form behind a lead (shown as a tooltip and in the drawer).
 export function attributionText(a = {}) {
