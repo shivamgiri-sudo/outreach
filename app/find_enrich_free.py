@@ -91,7 +91,7 @@ def pattern_step(work: dict, out, domain: str, ctx) -> None:
     try:
         fields = PG.guess(work["contact_name"], domain, ctx.free.book, ctx.free.checker)
     except Exception as exc:                                 # noqa: BLE001 - a failed guess never stops the paid steps
-        ctx.error("pattern_guess", f"Some email guesses could not be checked (last: {str(exc)[:120]}).")
+        ctx.error("Email format guess", f"Some email guesses could not be checked (last: {str(exc)[:120]}).")
         return
     if not fields:
         return
