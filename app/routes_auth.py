@@ -35,6 +35,7 @@ OWNER_ROUTES = {
     ("GET", "/api/lead-quality/review"), ("POST", "/api/leads/{lead_id}/quality-restore"),   # a manager reviews and restores marked leads
     ("GET", "/api/leads/{lead_id}/export"), ("POST", "/api/leads/{lead_id}/erase"),
     ("POST", "/api/find-leads"),          # spends provider credits
+    ("POST", "/api/hiring-signal/run"), ("GET", "/api/hiring-signal/run"),       # batch read of up to 50 company websites
     ("POST", "/api/sequences"), ("PUT", "/api/sequences/{seq_id}"), ("POST", "/api/sequences/{seq_id}/duplicate"),       # sequence library
     ("POST", "/api/sequences/{seq_id}/archive"), ("POST", "/api/sequences/{seq_id}/steps/{index}/send-preview"),
     ("GET", "/api/scoring"), ("PUT", "/api/scoring"), ("PUT", "/api/lead-ageing"),
@@ -81,6 +82,7 @@ CALLER_WRITES = {
     ("POST", "/api/leads/{lead_id}/contact-points"), ("POST", "/api/leads/{lead_id}/contact-points/primary"),
     ("POST", "/api/leads/{lead_id}/contact-points/remove"), ("POST", "/api/leads/{lead_id}/people"),
     ("PUT", "/api/leads/{lead_id}/people/{person_id}"), ("DELETE", "/api/leads/{lead_id}/people/{person_id}"),
+    ("POST", "/api/leads/{lead_id}/hiring-signal"),    # read the company's own career pages and markup (free, public; app/hiring_signal.py)
     ("POST", "/api/leads/{lead_id}/company-health"), ("POST", "/api/leads/{lead_id}/demo-link"), ("POST", "/api/leads/{lead_id}/pilot"),
     ("POST", "/api/leads/{lead_id}/referral"), ("PUT", "/api/leads/{lead_id}/linkedin-account"),
     ("POST", "/api/leads/{lead_id}/linkedin/start"), ("POST", "/api/leads/{lead_id}/linkedin/stop"), ("POST", "/api/leads/{lead_id}/linkedin/sent"),
