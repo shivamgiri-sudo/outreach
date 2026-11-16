@@ -272,7 +272,11 @@ def email_of_person(store, name_or_email) -> str:
     for m in store.read("settings").get("team") or []:
         if isinstance(m, dict) and (m.get("name") or "").strip().lower() == text.lower() and m.get("email"):
             return str(m["email"]).lower()
-    return ""
+    # Owners are often typed short ("Ravi" for "Ravi Kumar"): one person whose first name or e-mail name is that word.
+    word = text.lower()
+    hits = {u["email"].lower() for u in users(store) if u.get("email") and (
+        (u.get("name") or "").strip().lower().split(" ")[0] == word or u["email"].lower().split("@")[0] == word)}
+    return hits.pop() if len(hits) == 1 else ""
 
 
 def owner_preview(store, ws: str, members: list, all_members: Optional[list] = None) -> list:
@@ -365,7 +369,8 @@ def push_payload(store, lead: dict, base_url: str) -> dict:
     phone = lead.get("phone") or next((p for p in lead.get("phones") or [] if p), "")
     note = " — ".join(x for x in [task.get("title"), task.get("text")] if x)[:1000]
     due = parse(task.get("due_at"))
-    owner = email_of_person(store, task.get("owner")) or email_of_person(store, lead.get("owner"))
+    # The lead's owner is who works it, so they get it in DialHalo; the call task's owner only when the lead has none (or theirs has no e-mail).
+    owner = email_of_person(store, lead.get("owner")) or email_of_person(store, task.get("owner"))
     from .growth_core import public_base_url
     body = {"name": (lead.get("contact_name") or lead.get("company") or "")[:120], "company": (lead.get("company") or "")[:120],
             "phone": str(phone or "")[:40], "email": (lead.get("email") or "")[:190], "note": note, "sourceLabel": SOURCE_LABEL,

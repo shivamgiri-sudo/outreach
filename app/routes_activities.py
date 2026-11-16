@@ -97,7 +97,11 @@ def make_router(store, transactional_sender=None) -> APIRouter:
         row = log_activity(store, lead_id, body.type, {**body.model_dump(), "at": iso(at) if at else None, "by_email": mine or ""})
         follow = _parse_when(body.follow_up_at, "follow_up_at")
         task = None
-        if follow:
+        if body.type == "call" and body.outcome == "call_back":
+            # A call-back is a call to make: a "call" task, so a connected workspace puts the lead in the caller's DialHalo dial queue.
+            task = add_task(store, lead_id, "call", body.follow_up_text or body.notes or "They asked to be called back.",
+                            due_at=follow, owner=body.by or None, priority="high", title="Call back", source="activity")
+        elif follow:
             task = add_task(store, lead_id, "follow_up", body.follow_up_text or f"Follow up after the {body.type}",
                             due_at=follow, owner=body.by or None, source="activity")
         return {"activity": row, "follow_up_task": task}

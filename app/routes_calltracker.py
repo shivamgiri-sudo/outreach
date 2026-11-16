@@ -96,6 +96,8 @@ def make_router(store, base_url: str) -> APIRouter:
         for key in ("api_key", "webhook_secret"):
             value = (getattr(body, key) or "").strip()
             if value:
+                if "•" in value or "…" in value:
+                    raise HTTPException(400, f"The {key.replace('_', ' ')} is the masked version (it has • dots). In DialHalo use Show or Copy to get the full value.")
                 if len(value) > 300 or any(ch.isspace() for ch in value):
                     raise HTTPException(400, f"The {key.replace('_', ' ')} looks wrong (spaces or too long).")
                 changes[key] = value

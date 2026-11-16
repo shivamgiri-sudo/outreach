@@ -216,3 +216,43 @@ def test_reconcile_due_runs_only_stale_connections_and_records_failures(k):
     assert kit.reconcile_due(k.store, now=later) == []                                # fails -> not counted, status noted
     assert ct.connection(k.store, "main")["last_reconcile_status"]["ok"] is False
     assert kit.reconcile_due(k.store, now=later) == ["main"]
+
+
+# ---------------------------------------------------------------- coordinator fixes: owner carried, call-back push, call task, masked secret
+def _pushes(k):
+    return [q for q in k.fake.requests if q[1].startswith("/api/v1/leads/external/mcn_outreach/") and q[0] == "PUT"]
+
+
+def test_owner_is_the_leads_owner_even_when_a_call_task_names_someone_else(k):
+    ct.TRANSPORT = k.fake
+    call_task(k, "Acme", owner="Priya")                      # the task was added by Priya; the lead belongs to Ravi
+    ct.process_due(k.store)
+    assert _pushes(k)[-1][2]["ownerEmail"] == "ravi@x.in"
+
+
+def test_short_owner_name_still_resolves_to_the_persons_email(k):
+    k.store.update_lead(k.lead["Acme"]["id"], lambda l: {**l, "owner": "ravi"})   # typed short / lower case
+    out = k.c.post("/api/calltracker/send", json={"lead_ids": [k.lead["Acme"]["id"]]}, headers=k.h["owner"]).json()
+    assert out["sent"] == 1 and k.fake.bulk[-1]["ownerEmail"] == "ravi@x.in"
+
+
+def test_call_back_outcome_logged_by_hand_pushes_the_lead(k):
+    res = k.c.post(f"/api/leads/{k.lead['Beta Ltd']['id']}/activity", json={"type": "call", "outcome": "call_back", "notes": "Call after lunch",
+                                                                          "follow_up_at": "2026-12-01T14:00:00+05:30", "by": "Ravi"}, headers=k.h["owner"])
+    assert res.status_code == 200, res.text
+    assert res.json()["follow_up_task"]["kind"] == "call"
+    ct.process_due(k.store)
+    assert any(q[1].endswith(k.lead["Beta Ltd"]["id"]) for q in _pushes(k))
+
+
+def test_manual_call_task_pushes_the_lead(k):
+    res = k.c.post("/api/tasks", json={"lead_id": k.lead["Cora Inc"]["id"], "title": "Call them", "kind": "call"}, headers=k.h["owner"])
+    assert res.status_code == 200 and res.json()["kind"] == "call"
+    k.store.update_lead(k.lead["Cora Inc"]["id"], lambda l: {**l, "phone": "90000 11111"})
+    ct.process_due(k.store)
+    assert any(q[1].endswith(k.lead["Cora Inc"]["id"]) for q in _pushes(k))
+
+
+def test_a_masked_webhook_secret_is_refused_with_a_clear_message(k):
+    res = k.c.put("/api/calltracker", json={"workspace": "main", "webhook_secret": "whsec_ABCD••••••••••••"}, headers=k.h["owner"])
+    assert res.status_code == 400 and "masked" in res.text
