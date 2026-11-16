@@ -16,6 +16,9 @@ from .places import clean_city, clean_state
 from .sources.osm_overpass import TAGS as BASE_TAGS
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+# Other public instances from the Overpass wiki list, tried in order when the main one is busy (502/504) or unreachable.
+OVERPASS_MIRRORS = (OVERPASS_URL, "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter")
+BUSY_MESSAGE = "the OpenStreetMap search servers are busy or unreachable right now; Resume the job later to try again"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 OVERPASS_GAP, NOMINATIM_GAP = 10.0, 1.1          # seconds between calls (6 a minute; 1 a second)
 MAX_ELEMENTS = 200
@@ -85,7 +88,19 @@ def map_element(el: dict, fallback_city: str = "") -> dict:
 
 
 def overpass(http, query: str, contact: str = "") -> list:
-    reply = http("POST", OVERPASS_URL, agent(contact), None, {"data": query})
+    """Ask the main Overpass server, then each mirror once. Only when all of them fail does the step fail (the job's
+    retry count then applies), with a message that says the servers were busy rather than a bare connection error."""
+    reply = None
+    for url in OVERPASS_MIRRORS:
+        try:
+            reply = http("POST", url, agent(contact), None, {"data": query})
+            break
+        except PermissionError:
+            raise
+        except OSError:
+            continue
+    if reply is None:
+        raise OSError(BUSY_MESSAGE)
     return [e for e in reply.get("elements") or [] if isinstance(e, dict) and (e.get("tags") or {}).get("name")]
 
 

@@ -111,3 +111,30 @@ def test_osm_mapping_and_queries():
         harvest_osm.build_query("gym", hp.parse_location("411001"), None)
     assert '"' not in harvest_osm.tag_filters('evil" ];out;')[0].split('~"')[1].split('"')[0]
     assert "contact: me@example.com" in harvest_osm.agent("me@example.com")["User-Agent"]
+
+
+def test_overpass_falls_back_to_mirrors_and_says_busy_when_all_fail():
+    import pytest
+    from app import harvest_osm
+    calls = []
+
+    def flaky(method, url, headers, body, form):
+        calls.append(url)
+        if "overpass-api.de" in url:
+            raise OSError("HTTP 502")
+        return {"elements": [{"type": "node", "id": 1, "tags": {"name": "Clinic"}}]}
+
+    assert [e["id"] for e in harvest_osm.overpass(flaky, "q")] == [1]
+    assert calls == list(harvest_osm.OVERPASS_MIRRORS[:2])                 # main server, then the first mirror
+
+    def down(method, url, headers, body, form):
+        raise OSError("Could not connect")
+
+    with pytest.raises(OSError, match="busy or unreachable"):
+        harvest_osm.overpass(down, "q")
+
+    def refused(method, url, headers, body, form):
+        raise PermissionError("HTTP 403")
+
+    with pytest.raises(PermissionError):                                     # a refusal is not retried on the mirrors
+        harvest_osm.overpass(refused, "q")
