@@ -69,6 +69,7 @@ ALIASES = {
     "n8n": "zapier_webhook", "whatsapp": "whatsapp_click", "web_form": "website_form", "form": "website_form",
     "landing_page": "website_form", "google_sheet": "sheet_sync", "inbound": "other_inbound",
     "dnb": "directory", "justdial.com": "justdial", "indiamart.com": "indiamart",
+    "osm": "directory", "osm_overpass": "directory", "osm_nominatim": "directory", "openstreetmap": "directory",   # lead harvest / OSM sources
 }
 BY_ID = {sid: {"id": sid, "label": label, "kind": kind} for sid, label, kind in SOURCES}
 INBOUND_IDS = tuple(sid for sid, _, kind in SOURCES if kind == "inbound")
