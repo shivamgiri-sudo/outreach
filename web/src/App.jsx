@@ -20,6 +20,7 @@ import Growth from "./pages/Growth.jsx";
 import Insights from "./pages/Insights.jsx";
 import Setup from "./pages/Setup.jsx";
 import DataSources from "./pages/DataSources.jsx";
+import Harvest from "./pages/Harvest.jsx";
 import Integrations from "./pages/Integrations.jsx";
 import Meetings from "./pages/Meetings.jsx";
 import Tasks from "./pages/Tasks.jsx";
@@ -59,6 +60,7 @@ const PAGES = [
   ["campaigns", "Campaigns", Campaigns, "rocket"],
   ["engine", "Hiring engine", HiringEngine, "bot"],
   ["signals", "Buying signals", Signals, "zap"],
+  ["harvest", "Lead harvest", Harvest, "layers"],
   ["sources", "Data sources", DataSources, "database"],
   ["analytics", "Analytics", Analytics, "chart"],
   ["funnel", "Sales funnel", SalesFunnel, "filter"],
@@ -92,14 +94,14 @@ const GROUPS_ALL = [
   ["Conversations", ["replies", "calls", "calllog", "leaderboard", "linkedin", "tasks", "meetings", "outbox"]],
   ["Content & automation", ["templates", "flows", "workflows", "stories", "prompts"]],
   ["Analytics", ["analytics", "funnel", "reports"]],
-  ["Data", ["sources", "signals", "hygiene", "engine"]],
+  ["Data", ["harvest", "sources", "signals", "hygiene", "engine"]],
   ["Settings", ["setup", "integrations", "help"]],
 ];
 const BY_ID = Object.fromEntries(PAGES.map((p) => [p[0], p]));
 // Pages whose every API call is owner-only: hidden from callers and viewers, and a short note if they open the link.
 const OWNER_PAGES = new Set(["engine"]);
 // A login limited to some workspaces sees only pages built from its own workspace's leads (the server refuses the rest).
-const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "funnel", "replies", "calls", "calllog", "leaderboard", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports", "linkedin", "flows"]);
+const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "funnel", "replies", "calls", "calllog", "leaderboard", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports", "linkedin", "flows", "harvest"]);
 const isLimited = (me) => me.role !== "owner" && ((me.workspaces || []).length > 0 || me.role === "admin");
 // A workspace admin also opens Integrations, for its own workspace's DialHalo connection (the server checks the workspace).
 const pageAllowed = (me, id) => (me.role === "owner" || !OWNER_PAGES.has(id)) && (!isLimited(me) || LIMITED_PAGES.has(id) || (id === "integrations" && me.role === "admin"));

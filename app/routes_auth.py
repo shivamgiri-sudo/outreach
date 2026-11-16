@@ -101,6 +101,9 @@ CALLER_WRITES = {
     ("PUT", "/api/call-script"), ("DELETE", "/api/call-script"), ("POST", "/api/reports/email"), ("POST", "/api/find-leads/estimate"),
     ("POST", "/api/prospects/enrich/estimate"), ("POST", "/api/prospects/people/search"), ("POST", "/api/prospects/saved-searches"),
     ("DELETE", "/api/prospects/saved-searches/{search_id}"),
+    # lead harvest: like an import (app/routes_harvest.py lets only owners pick paid Google Places searches)
+    ("POST", "/api/harvest/estimate"), ("POST", "/api/harvest/jobs"), ("POST", "/api/harvest/jobs/{job_id}/start"),
+    ("POST", "/api/harvest/jobs/{job_id}/pause"), ("POST", "/api/harvest/jobs/{job_id}/resume"), ("POST", "/api/harvest/jobs/{job_id}/cancel"),
 }
 # Templates (snippets, LinkedIn connection notes) are edited only by owners (any workspace) and workspace admins (their
 # own workspace; the template routes / workspace guard check which). Never by callers.
@@ -125,6 +128,7 @@ ADMIN_WRITES = {
     ("POST", "/api/leads/bulk-reassign"),         # hand over a person's leads (app/bulk_reassign.py refuses non-admins and other workspaces)
     # DialHalo connection of their own workspaces (app/routes_calltracker.py refuses main and other workspaces)
     ("GET", "/api/calltracker"), ("PUT", "/api/calltracker"), ("DELETE", "/api/calltracker"), ("POST", "/api/calltracker/test"), ("POST", "/api/calltracker/retry"),
+    ("POST", "/api/harvest/dnd"),         # DND numbers onto the do-not-contact list (app/routes_harvest.py: owners and admins only)
 }
 # LinkedIn agent per client account (app/linkedin_scope.py): an account's admins run their own account's agent, slots and
 # office computer (the routes cut to the admin's account, 404 for another's); callers / viewers only read its status.

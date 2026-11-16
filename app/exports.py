@@ -348,7 +348,8 @@ def suppressed_rows(store, params: dict, present) -> list:
     for value in store.read("suppressed"):
         lead = by_email.get(value) or {}
         hashed = bool(re.fullmatch(r"[0-9a-f]{64}", str(value)))
-        rows.append({"value": value, "type": "sha256 hash" if hashed else "email", "lead_id": lead.get("id"),
+        kind = "sha256 hash" if hashed else "phone" if str(value).startswith("+") else "email"     # phones: DND uploads (app/harvest_dnd.py)
+        rows.append({"value": value, "type": kind, "lead_id": lead.get("id"),
                      "company": lead.get("company") or lead.get("domain") or ""})
     return rows
 

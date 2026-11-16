@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from .privacy import contact_hash, lead_hashes, now_iso, record_consent
 
-LEAD_COLLECTIONS = ("outbox", "whatsapp_outbox", "transactional_outbox", "activities", "tasks", "notifications")
+LEAD_COLLECTIONS = ("outbox", "whatsapp_outbox", "transactional_outbox", "activities", "tasks", "notifications", "harvest_results")
 DEFAULT_RETENTION_DAYS = 365
 # Leads in these stages are (or were) in a real conversation, so they are not "cold".
 WARM_STAGES = ("engaged", "interested", "whatsapp_active", "call_done", "trial", "customer", "advocate")
