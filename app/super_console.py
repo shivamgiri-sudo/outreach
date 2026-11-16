@@ -210,6 +210,10 @@ def delete(store, account_id: str) -> dict:
         raise LookupError("No such account." if account_id != accounts.MCN else "The platform account cannot be deleted.")
     data = _account_data(store, account_id)
     ids, emails, own_ws = data["lead_ids"], data["emails"], data["workspaces"]
+    from . import calltracker, calltracker_erase       # each workspace's Call Tracker: erase the people, then drop the connection
+    ct_failed = calltracker_erase.erase_leads_now(store, [l for l in store.read("leads") if l.get("id") in ids])
+    for ws_id in own_ws:
+        calltracker.delete_connection(store, ws_id)
     store.update("leads", lambda rows: [l for l in rows if l.get("id") not in ids])
     for key in LEAD_COLLECTIONS:
         try:
@@ -226,4 +230,4 @@ def delete(store, account_id: str) -> dict:
                 "extension_tokens": [t for t in s.get("extension_tokens") or [] if not (isinstance(t, dict) and t.get("sub") in subs)],
                 "account_settings": acc_settings}
     store.update("settings", apply)
-    return {"leads": len(ids), "logins": len(emails), "workspaces": len(own_ws)}
+    return {"leads": len(ids), "logins": len(emails), "workspaces": len(own_ws), **({"calltracker_not_erased": ct_failed} if ct_failed else {})}

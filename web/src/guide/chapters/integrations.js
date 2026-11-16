@@ -64,6 +64,8 @@ export default {
       "**Recent captures** at the bottom shows what happened to each: New lead, Added to an existing lead, Refused, Repeat ignored or Problem.",
       "A connector card shows **On**, **Switched off** or **Needs details** and how many leads it has brought.",
     ]],
+    ["h", "Call Tracker (DialHalo)"],
+    ["p", "When Call Tracker (DialHalo) is connected for a workspace, erasing a person in Outreach also erases them in Call Tracker and puts their number on its do-not-call list, so nobody can dial them again. If Call Tracker is down the removal is retried automatically; if it still fails, the card shows it as failed with a **Retry** button and your managers get a notification."],
     ["h", "Custom provider"],
     ["p", "In the **Custom** tab, open a card marked **Any provider**. Describe the provider's address, headers and body once. Use the placeholder buttons to insert fields, paste a sample, and click **Preview what the app reads** to check. The request preview hides keys. Then run the test."],
     ["h", "Webhook addresses"],

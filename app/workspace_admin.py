@@ -148,7 +148,7 @@ def delete(store, ws_id: str, confirm_name: str, move_to: str = "", delete_leads
     elif lead_ids and not delete_leads:
         raise ValueError(f"This workspace has {len(lead_ids)} leads: move them to another workspace or delete them.")
 
-    stamp, moved, deleted, tasks_removed = now_iso(), 0, 0, 0
+    stamp, moved, deleted, tasks_removed, ct_failed = now_iso(), 0, 0, 0, 0
     wanted = set(lead_ids)
     if target and wanted:
         def move_all(leads):
@@ -166,6 +166,8 @@ def delete(store, ws_id: str, confirm_name: str, move_to: str = "", delete_leads
         store.update("leads", move_all)
         moved = len(wanted)
     elif wanted:
+        from . import calltracker_erase                # before the leads and the connection go
+        ct_failed = calltracker_erase.erase_leads_now(store, [l for l in store.read("leads") if isinstance(l, dict) and l.get("id") in wanted])
         store.update("leads", lambda leads: [l for l in leads if not (isinstance(l, dict) and l.get("id") in wanted)])
         deleted = len(wanted)
         before = len(store.read("tasks"))
@@ -196,4 +198,5 @@ def delete(store, ws_id: str, confirm_name: str, move_to: str = "", delete_leads
     from . import calltracker
     calltracker.delete_connection(store, ws_id)       # its DialHalo key and webhook secret go with it
     return {"name": row["name"], "moved": moved, "moved_to": target["name"] if target else "", "deleted": deleted,
-            "tasks_removed": tasks_removed, "members_removed": lost, "left_without_workspace": emptied}
+            "tasks_removed": tasks_removed, "members_removed": lost, "left_without_workspace": emptied,
+            **({"calltracker_not_erased": ct_failed} if ct_failed else {})}

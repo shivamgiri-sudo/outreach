@@ -395,6 +395,9 @@ def _run_job(store, job: dict) -> str:
     if not conn:
         raise CallTrackerError("The workspace's DialHalo connection is missing or switched off.", retry=False)
     lead = next((l for l in store.read("leads") if l.get("id") == job.get("lead_id")), None)
+    if job["kind"] == "erase":
+        from . import calltracker_erase
+        return calltracker_erase.run(store, conn, job)
     if job["kind"] == "dnc":
         ct_request(conn, "POST", "/api/v1/dnc", {"phone": job["phone"], "reason": job.get("reason") or "Opted out in MCN Outreach", "source": SOURCE})
         if lead:
@@ -440,10 +443,13 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
             change = {"attempts": attempts, "error": error, "next_at": iso(now + timedelta(minutes=BACKOFF_MINUTES[attempts - 1]))}
         else:
             change = {"status": "failed", "attempts": attempts, "error": error, "failed_at": stamp}
+        if job["kind"] == "erase":
+            from . import calltracker_erase
+            change = calltracker_erase.settle(store, job, change)
         store.update("ct_outbox", lambda jobs, jid=job["id"], change=change: [{**j, **change, "updated_at": stamp} if j["id"] == jid else j for j in jobs])
         if job["ws"] in connections(store):
             note_status(store, job["ws"], "last_push", not error, result or error)
-        if error and job.get("lead_id") and (attempts == 1 or change.get("status") == "failed"):
+        if error and job.get("lead_id") and job["kind"] != "erase" and (attempts == 1 or change.get("status") == "failed"):
             final = change.get("status") == "failed"
             text = (f"DialHalo: could not send this lead ({error})" + (" Gave up; use Retry on Integrations → DialHalo." if final
                     else f" Retrying automatically ({MAX_ATTEMPTS - attempts} tries left)."))

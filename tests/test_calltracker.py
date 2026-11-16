@@ -20,6 +20,8 @@ class FakeCT:
     def __init__(self):
         self.requests, self.leads, self.calls, self.dnc = [], {}, {}, []
         self.fail = []                     # statuses to answer with, one per request
+        self.erased, self.blocked = [], set()   # DELETE /leads/external/...: references erased, numbers put on do-not-call
+        self.old = False                   # an old Call Tracker without the DELETE endpoint (answers 404)
 
     def __call__(self, method, url, headers, body):
         path = url.split("://", 1)[1].split("/", 1)[1]
@@ -34,12 +36,22 @@ class FakeCT:
             row.update(data)
             owner = {"id": "u1", "name": "Ravi CT", "email": data["ownerEmail"]} if data.get("ownerEmail") == "ravi@x.in" else {"id": "u9", "name": "Round Robin"}
             return (201 if created else 200), {"data": {"lead": row, "created": created, "owner": owner, "ownerMatched": owner["id"] == "u1", "dnc": False}}
+        if path.startswith("api/v1/leads/external/mcn_outreach/") and method == "DELETE":
+            if self.old:
+                return 404, {"message": "Not found"}
+            ref = path.rsplit("/", 1)[1]
+            row = self.leads.pop(ref, None)                  # like the real one: unknown reference = 200 erased:false, number blocked when held
+            if row:
+                self.erased.append(ref)
+                self.blocked.add(ct.norm_phone(row.get("phone")))
+            return 200, {"data": {"erased": bool(row), "dnc": bool(row)}}
         if path == "api/v1/members":
             return 200, {"data": [{"name": "Ravi CT", "email": "ravi@x.in", "active": 1}, {"name": "Asha", "email": "asha@ct.in", "active": 1}]}
         if path.startswith("api/v1/dnc") and method == "GET":
             return 200, {"data": []}
         if path == "api/v1/dnc" and method == "POST":
             self.dnc.append(data)
+            self.blocked.add(ct.norm_phone(data["phone"]))
             return 200, {"data": {"added": True}}
         if path.startswith("api/v1/calls/"):
             call = self.calls.get(int(path.rsplit("/", 1)[1]))

@@ -168,7 +168,7 @@ export default function CallTracker() {
           <p className="sub">{q.pending} waiting · {q.failed} failed · {q.done} sent recently. Failed sends are retried with back-off, then wait here.</p>
           {q.failed_rows.length > 0 && (
             <>
-              <ul>{q.failed_rows.map((j) => <li key={j.id}>{j.company || j.lead_id} ({j.kind === "dnc" ? "do-not-call" : "lead"}): {j.error}</li>)}</ul>
+              <ul>{q.failed_rows.map((j) => <li key={j.id}>{j.company || j.lead_id} ({j.kind === "dnc" ? "do-not-call" : j.kind === "erase" ? "erase" : "lead"}): {j.error}</li>)}</ul>
               <button className="btn" disabled={busy} onClick={() => run(() => api.retryCalltracker(ws))} data-testid="ct-retry">Retry failed</button>
             </>
           )}

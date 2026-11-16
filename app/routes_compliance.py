@@ -73,6 +73,11 @@ def make_router(store) -> APIRouter:
         hashes = lead_hashes(lead)
         ref = "erased:" + contact_hash(lead_id)[:12]
         counts = {}
+        try:                                        # before the lead goes: the job needs its id and phones, then lives on its own
+            from . import calltracker_erase
+            calltracker_erase.on_erase(store, lead)
+        except Exception as exc:                    # never block an erasure; the person is erased here either way
+            print(f"calltracker erase not queued: {type(exc).__name__}")
 
         def drop(key, keep):
             def apply(rows):

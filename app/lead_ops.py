@@ -247,6 +247,16 @@ def _one_change(lead: dict, action: str, value, who: str, force: bool):
         return None, str(exc)
 
 
+def _erase_in_calltracker(store, leads: list) -> None:
+    """A permanently deleted lead that was sent to Call Tracker is erased there too (and its number blocked)."""
+    from . import calltracker_erase
+    for lead in leads:
+        try:
+            calltracker_erase.on_erase(store, lead, only_known=True)
+        except Exception as exc:
+            print(f"calltracker erase not queued: {type(exc).__name__}")
+
+
 def _log_delete(lead: dict, actor: dict) -> dict:
     return {"lead_id": lead["id"], "field": "deleted", "label": "Lead deleted", "old": lead.get("company") or lead.get("email") or "",
             "new": "", "by": actor["name"], "by_email": actor["email"], "at": now_iso(), "reason": "bulk delete",
@@ -325,6 +335,7 @@ def run_bulk(store, lead_ids: list, action: str, value, actor: dict, force: bool
             return out
         store.update("leads", apply)
         if action == "delete" and gone:
+            _erase_in_calltracker(store, gone)
             rows = [_log_delete(l, actor) for l in gone]
             from .audit import MAX_AUDIT_ROWS, record
             store.update("audit", lambda audit_rows: [*audit_rows, *rows][-MAX_AUDIT_ROWS:])
