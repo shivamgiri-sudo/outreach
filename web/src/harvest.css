@@ -1,0 +1,40 @@
+/* Lead harvest page. Tokens only, so light and dark themes both work; one column on phones. */
+.hv-layout { display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); align-items: start; }
+.hv-main, .hv-side { display: grid; gap: var(--s4); min-width: 0; }
+.hv-form { display: grid; gap: var(--s3); }
+.hv-form textarea { width: 100%; resize: vertical; }
+.hv-two { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.hv-sources { border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--s3); margin: 0; display: grid; gap: var(--s2); }
+.hv-sources legend { padding: 0 var(--s1); font-weight: 600; }
+.hv-source .dp-check { margin: 0; }
+.hv-hint { margin: var(--s1) 0 0 var(--s6); font-size: var(--fs-sm); color: var(--warn); }
+.hv-file { position: relative; overflow: hidden; cursor: pointer; }
+.hv-file input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.hv-switch { gap: var(--s2); font-weight: 400; }
+.hv-estimate { background: var(--brand-soft); color: var(--ink); border-radius: var(--r-sm); padding: var(--s3); font-size: var(--fs-sm); }
+.hv-jobs { display: grid; gap: var(--s3); }
+.hv-jobs > h3 { margin: 0; }
+.hv-job { display: grid; gap: var(--s2); }
+.hv-job-head { display: flex; gap: var(--s3); justify-content: space-between; align-items: flex-start; }
+.hv-job-title { display: grid; gap: 2px; min-width: 0; }
+.hv-job-title b { overflow-wrap: anywhere; }
+.hv-progress { width: 100%; height: 10px; border: 0; border-radius: var(--r-pill); background: var(--line); overflow: hidden; appearance: none; }
+.hv-progress::-webkit-progress-bar { background: var(--line); border-radius: var(--r-pill); }
+.hv-progress::-webkit-progress-value { background: linear-gradient(90deg, var(--brand), var(--brand-2)); border-radius: var(--r-pill); }
+.hv-progress::-moz-progress-bar { background: linear-gradient(90deg, var(--brand), var(--brand-2)); border-radius: var(--r-pill); }
+.hv-job-nums { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin: 0; font-size: var(--fs-sm); color: var(--muted); }
+.hv-job-nums b { color: var(--ink); }
+.hv-notes { margin: 0; padding-left: var(--s5); font-size: var(--fs-sm); color: var(--muted); }
+.hv-results { display: grid; gap: var(--s2); margin-top: var(--s2); }
+.hv-phone { white-space: nowrap; }
+.hv-badges { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.hv-attrib { margin: 0; font-size: var(--fs-xs); color: var(--muted); }
+.hv-legal p { margin: var(--s2) 0 0; }
+
+@media (max-width: 900px) {
+  .hv-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .hv-hint { margin-left: 0; }
+  .hv-job-head { flex-direction: column; }
+}
