@@ -1,11 +1,11 @@
-"""Downloads (CSV / JSON of every list) and full backup / restore (owner only)."""
+"""Downloads (CSV / Excel / JSON of every list) and full backup / restore (owner only)."""
 from typing import Optional
 
 from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
-from . import audit, backup, exports
+from . import audit, backup, exports, exports_xlsx
 
 OWNER_ROLES = ("owner", "admin")
 
@@ -60,6 +60,11 @@ def make_router(store, present) -> APIRouter:
         return StreamingResponse(exports.csv_chunks(columns, found), media_type="text/csv; charset=utf-8",
                                  headers=_attachment(exports.filename(dataset, params, "csv")))
 
+    def as_xlsx(dataset: str, params: dict, request: Request) -> StreamingResponse:
+        columns, found = rows(dataset, params, request, "xlsx")
+        return StreamingResponse(exports_xlsx.chunks(columns, found, dataset.replace("_", " ").title()), media_type=exports_xlsx.MEDIA_TYPE,
+                                 headers=_attachment(exports.filename(dataset, params, "xlsx")))
+
     @router.get("/api/export")
     def catalogue():
         return exports.catalogue()
@@ -72,6 +77,14 @@ def make_router(store, present) -> APIRouter:
     def export_csv_post(dataset: str, request: Request, body: Optional[dict] = Body(default=None)):
         """Same as the GET, for filters too long for an address (e.g. hundreds of picked lead ids)."""
         return as_csv(dataset, {**dict(request.query_params), **(body or {})}, request)
+
+    @router.get("/api/export/{dataset}.xlsx")
+    def export_xlsx(dataset: str, request: Request):
+        return as_xlsx(dataset, dict(request.query_params), request)
+
+    @router.post("/api/export/{dataset}.xlsx")
+    def export_xlsx_post(dataset: str, request: Request, body: Optional[dict] = Body(default=None)):
+        return as_xlsx(dataset, {**dict(request.query_params), **(body or {})}, request)
 
     @router.get("/api/export/{dataset}.json")
     def export_json(dataset: str, request: Request):
