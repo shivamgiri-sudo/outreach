@@ -1,5 +1,15 @@
 """Tests use fixed 'now' values in early Nov 2026, so enrolment must happen before them, whatever today is."""
+import os
+import tempfile
+
 import pytest
+
+# `app.main` builds a module-level app on import, which writes its data file. Under pytest-xdist every worker imports it
+# at once, and they raced on data/store.json(.tmp). Each worker (and a plain run) gets its own throwaway file instead.
+_WORKER = os.environ.get("PYTEST_XDIST_WORKER", "main")
+if os.environ.get("OUTREACH_TEST_DATA_FOR") != _WORKER:           # workers inherit the controller's env: re-pick per worker
+    os.environ["OUTREACH_DATA_FILE"] = os.path.join(tempfile.mkdtemp(prefix=f"outreach-test-{_WORKER}-"), "store.json")
+    os.environ["OUTREACH_TEST_DATA_FOR"] = _WORKER
 
 ENROL_TIME = "2026-11-03T04:00:00+00:00"
 
