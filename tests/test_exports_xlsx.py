@@ -146,3 +146,20 @@ def test_harvest_job_xlsx(tmp_path, monkeypatch):
     assert any(a["action"] == "export.download" and "harvest.xlsx" in str(a) for a in store.read("audit"))
     caller = login_as("cal@example.com", "caller")
     assert c.get(f"/api/harvest/jobs/{job['id']}/export.xlsx", headers=caller).status_code == 403
+
+
+def test_harvest_xlsx_workspace_admin_sees_only_its_jobs(tmp_path, monkeypatch):
+    from app import accounts, harvest, workspaces
+    from tests.test_harvest_routes import rig, run
+    monkeypatch.setattr(harvest, "KICK", False)
+    monkeypatch.setattr(harvest, "_last_call", {})
+    c, owner, store, login_as, _ = rig(tmp_path)
+    acct = accounts.create(store, "Client Co", "test")["id"]
+    ws = workspaces.create(store, "Client One", "test", account_id=acct)["id"]
+    ada = login_as("ada@client.example", "admin", [ws], acct)
+    osm = {"keywords": "dentist", "locations": "Pune", "sources": ["osm"], "start": True}
+    main_job = c.post("/api/harvest/jobs", json=osm, headers=owner).json()
+    mine = c.post("/api/harvest/jobs", json=osm, headers={**ada, "X-Workspace": ws}).json()
+    run(store)
+    assert c.get(f"/api/harvest/jobs/{main_job['id']}/export.xlsx", headers=ada).status_code == 404
+    assert len(table(book(c.get(f"/api/harvest/jobs/{mine['id']}/export.xlsx", headers=ada)))) == 1
