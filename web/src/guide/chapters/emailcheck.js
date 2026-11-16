@@ -1,0 +1,36 @@
+export default {
+  id: "emailcheck", title: "Email checker", group: "Menu pages", order: 312, kind: "page", menu: "Email checker",
+  roles: ["owner", "admin"],
+  summary: "Check a pasted list or a CSV of up to 10,000 email addresses before you send: spelling, throwaway inboxes, mail servers, and whether they are already leads, bounced or on your do-not-contact list.",
+  blocks: [
+    ["p", "{{menu:Email checker}} is a stand-alone tool. It does not change any lead. Use it on a list someone sent you, a bought list, or an event sign-up sheet, before you import or email it."],
+    ["h", "Who can use it"],
+    ["ul", [
+      "Owners and workspace admins. Callers and viewers do not see the page.",
+      "A check belongs to the person who ran it. Nobody else can open its results or download its file.",
+      "\"Already a lead\" and \"bounced before\" only look at the leads of your own workspaces.",
+    ]],
+    ["h", "Check a list"],
+    ["steps", [
+      "Paste the addresses, one per line or separated by commas. Or click **Choose CSV file**: the column called email is read, or the first cell with an @ in each row.",
+      "Click **Check addresses**. Small lists finish in seconds. A big list runs in the background and the page shows how far it has got.",
+      "Read the counts at the top, then the table (the first 200 rows).",
+      "Click **Download CSV** for every row with its status, notes and any suggested spelling fix.",
+    ]],
+    ["h", "What each status means"],
+    ["ul", [
+      "**Valid**: passed every check.",
+      "**Risky**: a shared mailbox such as info@ or hr@, or a company domain that keeps bouncing.",
+      "**Catch-all**: an earlier check found that the company's mail server accepts any address, so this one cannot be confirmed. It is never counted as valid.",
+      "**Unknown**: the domain could not be looked up just now. Try again later. It is never counted as valid.",
+      "**No mail server**: the domain does not exist or takes no email.",
+      "**Typo**: looks like a misspelling of a popular domain (gmial.com). The suggested address is shown next to it.",
+      "**Throwaway**, **Bounced before**, **Do not contact**, **Duplicate** (already earlier in the same list) and **Not an email** speak for themselves.",
+    ]],
+    ["p", "Extra tags say when an address is a shared mailbox, a free provider (Gmail, Yahoo and similar) or already one of your leads."],
+    ["h", "Add the good ones as leads"],
+    ["p", "When the check finds valid addresses that are not leads yet, **Add N valid ones as leads** imports them through the normal quick import, with the source \"email checker\". Duplicates and the do-not-contact list are skipped as in any import."],
+    ["tip", "No mailbox is contacted and no email is sent. The checker uses spelling rules, public DNS records and your own sending history, so it costs nothing and cannot hurt your sender name."],
+    ["p", "Related: [Data hygiene](#help/hygiene), [Importing leads](#help/leads-import)."],
+  ],
+};

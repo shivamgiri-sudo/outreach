@@ -48,5 +48,15 @@ export const ops = {
   auditVerify: () => request("/api/audit/verify"),
   auditPackPath: (params) => `/api/audit/pack${query(params)}`,
   health: () => request("/api/system/health"),
+  // Bulk email checker (owners and workspace admins): start a run, follow it, CSV of every row, valid new addresses.
+  emailCheckStart: (text, filename = "") => request("/api/email-checker/runs", { method: "POST", body: { text, filename } }),
+  emailCheckRun: (id) => request(`/api/email-checker/runs/${id}`),
+  emailCheckValid: (id) => request(`/api/email-checker/runs/${id}/valid`),
+  async emailCheckCsv(id) {
+    const { blob, filename } = await apiDownload(`/api/email-checker/runs/${id}/export.csv`, { withName: true });
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement("a"), { href: url, download: filename || "email-check.csv" });
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  },
   campaignLeadsPage: (id, params) => request(`/api/campaigns/${id}/leads${query({ page: 1, ...params })}`),
 };

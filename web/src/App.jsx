@@ -30,6 +30,7 @@ import Companies from "./pages/Companies.jsx";
 import Intelligence from "./pages/Intelligence.jsx";
 import Signals from "./pages/Signals.jsx";
 import Hygiene from "./pages/Hygiene.jsx";
+import EmailChecker from "./pages/EmailChecker.jsx";
 import Campaigns from "./pages/Campaigns.jsx";
 import HiringEngine from "./pages/HiringEngine.jsx";
 import MyDay from "./pages/MyDay.jsx";
@@ -54,6 +55,7 @@ const PAGES = [
   ["prospects", "Prospect search", ProspectSearch, "search"],
   ["leads", "Leads", Leads, "users"],
   ["hygiene", "Data hygiene", Hygiene, "sparkles"],
+  ["emailcheck", "Email checker", EmailChecker, "mail"],
   ["lists", "Lists", Lists, "list"],
   ["companies", "Companies", Companies, "building"],
   ["campaigns", "Campaigns", Campaigns, "rocket"],
@@ -92,17 +94,19 @@ const GROUPS_ALL = [
   ["Conversations", ["replies", "calls", "calllog", "leaderboard", "linkedin", "tasks", "meetings", "outbox"]],
   ["Content & automation", ["templates", "flows", "workflows", "stories", "prompts"]],
   ["Analytics", ["analytics", "funnel", "reports"]],
-  ["Data", ["sources", "signals", "hygiene", "engine"]],
+  ["Data", ["sources", "signals", "hygiene", "emailcheck", "engine"]],
   ["Settings", ["setup", "integrations", "help"]],
 ];
 const BY_ID = Object.fromEntries(PAGES.map((p) => [p[0], p]));
 // Pages whose every API call is owner-only: hidden from callers and viewers, and a short note if they open the link.
 const OWNER_PAGES = new Set(["engine"]);
+// Pages for owners and workspace admins only (the server refuses callers and viewers).
+const MANAGER_PAGES = new Set(["emailcheck"]);
 // A login limited to some workspaces sees only pages built from its own workspace's leads (the server refuses the rest).
-const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "funnel", "replies", "calls", "calllog", "leaderboard", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports", "linkedin", "flows"]);
+const LIMITED_PAGES = new Set(["myday", "dashboard", "leads", "companies", "lists", "analytics", "funnel", "replies", "calls", "calllog", "leaderboard", "tasks", "meetings", "outbox", "templates", "setup", "help", "reports", "linkedin", "flows", "emailcheck"]);
 const isLimited = (me) => me.role !== "owner" && ((me.workspaces || []).length > 0 || me.role === "admin");
 // A workspace admin also opens Integrations, for its own workspace's DialHalo connection (the server checks the workspace).
-const pageAllowed = (me, id) => (me.role === "owner" || !OWNER_PAGES.has(id)) && (!isLimited(me) || LIMITED_PAGES.has(id) || (id === "integrations" && me.role === "admin"));
+const pageAllowed = (me, id) => (me.role === "owner" || !OWNER_PAGES.has(id)) && (!MANAGER_PAGES.has(id) || ["owner", "admin"].includes(me.role)) && (!isLimited(me) || LIMITED_PAGES.has(id) || (id === "integrations" && me.role === "admin"));
 const GROUPS = GROUPS_ALL.map(([g, ids]) => [g, ids.filter((id) => BY_ID[id])]).filter(([, ids]) => ids.length);
 // Old links to the separate Go live page now open the checklist inside Setup.
 const ALIASES = { golive: "setup" };
