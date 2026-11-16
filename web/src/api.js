@@ -417,6 +417,10 @@ export const api = {
   deleteCalltracker: (ws) => request(`/api/calltracker?workspace=${encodeURIComponent(ws || "")}`, { method: "DELETE" }),
   testCalltracker: (ws) => request("/api/calltracker/test", { method: "POST", body: { workspace: ws } }),
   retryCalltracker: (ws) => request("/api/calltracker/retry", { method: "POST", body: { workspace: ws } }),
+  calltrackerSend: (body) => request("/api/calltracker/send", { method: "POST", body }),
+  calltrackerPeople: (ws) => request(`/api/calltracker/people?workspace=${encodeURIComponent(ws || "")}`),
+  calltrackerPeopleReport: (ws, from, to) => request(`/api/calltracker/people-report?workspace=${encodeURIComponent(ws || "")}&from=${encodeURIComponent(from || "")}&to=${encodeURIComponent(to || "")}`),
+  calltrackerReconcile: (ws) => request("/api/calltracker/reconcile", { method: "POST", body: { workspace: ws } }),
   calltrackerFunnel: (from, to) => request(`/api/calltracker/funnel?from=${encodeURIComponent(from || "")}&to=${encodeURIComponent(to || "")}`),
   // Integrations hub
   channels: () => request("/api/channels"),

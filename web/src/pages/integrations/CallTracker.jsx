@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, getWorkspace, isOwner } from "../../api.js";
 import { istLabel } from "../../time.js";
 import { CopyRow } from "./Fields.jsx";
+import CallTrackerKit from "./CallTrackerKit.jsx";
 
 // Integrations → DialHalo: one connection per workspace (owners: any workspace; a workspace admin: its own).
 // Leads with a new call task go to DialHalo's phone dial queue; calls, outcomes and opt-outs come back by webhook.
@@ -198,6 +199,8 @@ export default function CallTracker() {
           </table>
         </div>
       )}
+
+      {conn && <CallTrackerKit ws={ws} conn={conn} onSaved={apply} />}
 
       {conn && (conn.unmapped_outcomes || []).length > 0 && (
         <div className="card" role="alert" data-testid="ct-unmapped" style={{ borderLeft: "3px solid var(--warn)" }}>
