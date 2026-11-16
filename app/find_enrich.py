@@ -1,7 +1,9 @@
 """Fill in contacts for leads the owner already has (the second half of "Find & enrich leads").
 
 Per lead, cheapest first: a fresh verified email already in the prospect database (free, see app/prospect_waterfall.py),
-the company's own public contact pages (robots.txt respected, free), then the paid APIs in the owner's order (priority,
+the company's own public contact pages (robots.txt respected, free; with the team / press pages step also team, leadership,
+press, investor, partner and event pages), an email GUESS from the company's own format checked without sending (stored as
+`email_guess`, never `email`), a public Gravatar profile (name, photo, LinkedIn; see app/find_enrich_free.py), then the paid APIs in the owner's order (priority,
 then cost per lookup; by default Apollo: organisation lookup, people search by domain for HR / talent / founder titles,
 one email reveal; then Hunter and Firecrawl when they are connected). Email lookups stop once the lead has an email.
 Only empty fields are filled, every value keeps where it came from, closed leads are never picked, and paid calls stop
@@ -16,6 +18,7 @@ from typing import Optional
 from . import campaign_pipeline as pipe
 from . import prospect_waterfall as cost
 from . import campaign_sources as src
+from . import find_enrich_free as FE
 from .apollo import match_person_by_id
 from .enrich import find_public_contacts
 from .hygiene import business_domain, is_role_address, normalise_email
@@ -46,8 +49,10 @@ def make_meter(store, now=None):
 class Context:
     """Everything one run shares: transports, connected providers, the credit budget, and what went wrong."""
 
-    def __init__(self, transports: dict, status: dict, titles: list, cap: int, taken: set, suppressed: set, erased: set, meter=None):
+    def __init__(self, transports: dict, status: dict, titles: list, cap: int, taken: set, suppressed: set, erased: set, meter=None,
+                 free=None):
         self.transports, self.status, self.titles, self.cap = transports, status, titles, cap
+        self.free = free                        # find_enrich_free.FreeTools: team pages, email format guess, Gravatar
         self.taken, self.suppressed, self.erased = taken, suppressed, erased
         self.credits, self.disabled, self.out_of_budget, self.budget_hit = 0, set(), False, False
         self.meter = meter                      # cost.Meter: cache, monthly budget, ledger (None = credit limit only)
@@ -180,6 +185,7 @@ class Outcome:
         self.changes, self.notes, self.prov, self.others = {}, [], {}, []
         self.emails = self.phones = self.people = 0
         self.stop = False
+        self.looked_up = set()                  # addresses already asked about on Gravatar this run
 
 
 def _usable_emails(emails: list, ctx: Context) -> list:
@@ -213,11 +219,13 @@ def _fill_contact(work: dict, out: Outcome, domain: str, emails: list, phones: l
 
 
 def _crawl(work: dict, out: Outcome, domain: str, ctx: Context) -> None:
-    found = find_public_contacts(domain, ctx.transports["fetch"])
+    found = find_public_contacts(domain, ctx.transports["fetch"], wide=FE.on(ctx, "team_pages"))
     if not found["pages_checked"]:
         ctx.error("website", "Some websites could not be read (not reachable, or they do not allow automatic reading).")
         return
     emails = [{"value": e, "source": url} for e, url in found["emails"].items()]
+    if found.get("people"):
+        emails = FE.site_people(work, out, found["people"], emails)
     phones = [{"value": p, "source": url} for p, url in found["phones"].items()]
     _fill_contact(work, out, domain, emails, phones, "website", ctx)
 
@@ -351,6 +359,8 @@ def enrich_lead(lead: dict, ctx: Context) -> Outcome:
         return out
     _cached(work, out, domain, ctx)
     _crawl(work, out, domain, ctx)
+    FE.pattern_step(work, out, domain, ctx)                 # free: a guess is never stored as `email`, so paid steps still run
+    FE.gravatar_step(work, out, ctx)
     for pid in ctx.order(PAID):
         if ctx.out_of_budget:
             break
@@ -359,6 +369,12 @@ def enrich_lead(lead: dict, ctx: Context) -> Outcome:
                 _apollo(work, out, domain, ctx)
         else:
             _other_provider(pid, work, out, domain, ctx)
+    FE.pattern_step(work, out, domain, ctx)                 # a name the paid steps found, but no email
+    FE.gravatar_step(work, out, ctx)
+    if work.get("email"):                                   # a real address was found: no guess is kept
+        for field in GUESS_FIELDS:
+            out.changes.pop(field, None)
+            out.prov.pop(field, None)
     out.stop = ctx.out_of_budget
     if ctx.meter is not None:
         ctx.meter.flush()                       # the ledger is written per lead, so a crash mid-run loses no spend
@@ -367,6 +383,7 @@ def enrich_lead(lead: dict, ctx: Context) -> Outcome:
 
 # ---------- saving ----------
 EMAIL_FIELDS = ("email", "email_is_role", "email_source", "dedupe_key")
+GUESS_FIELDS = FE.PG.GUESS_FIELDS
 
 
 def _merge_people(current: list, added: list) -> list:
@@ -394,6 +411,8 @@ def save_outcome(store, lead_id: str, out: Outcome, label: str) -> bool:
                   and k not in ("provenance", "other_contacts", CHECKED_MARKER)}
         if lead.get("email") or filled.get("email") in suppressed:
             filled = {k: v for k, v in filled.items() if k not in EMAIL_FIELDS}
+        if lead.get("email") or filled.get("email") or lead.get("email_guess_status"):
+            filled = {k: v for k, v in filled.items() if k not in GUESS_FIELDS}     # a guess only for a lead with no email
         updated = {**lead, **filled, **({} if out.stop else {CHECKED_MARKER: now_iso()})}
         others = _merge_people(lead.get("other_contacts") or [], out.others if open_lead else [])
         if others != (lead.get("other_contacts") or []):

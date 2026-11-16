@@ -12,6 +12,14 @@ export default {
     ["img", "leads-list", "The Leads list with filters across the top and columns for company, contact, stage, sales stage, score, owner, tags and source"],
     ["h", "Add leads"],
     ["p", "The buttons at the top right are **Find contacts on a website**, **Read job pages**, **Quick paste** and **Import leads**. The main one is **Import leads**: upload a sheet, check the columns and import. The steps are in [Importing leads](#help/leads-import). **Find & enrich leads** runs the one-click finder from the card under the title (see [Dashboard](#help/dashboard))."],
+    ["h", "Free ways Find & enrich looks for a person"],
+    ["p", "Before it uses any paid lookup, Find & enrich tries three free things. Each one only fills empty fields, and the lead shows where every value came from."],
+    ["ul", [
+      "**Team and press pages**: besides the contact and about pages, it reads the company's own team, leadership, press, investor, partner and event pages (at most 10 pages per company, and only pages the site allows). When a name and an email sit together on one card, it keeps them together. Addresses meant for privacy, security, legal or no-reply mail are never used for sales.",
+      "**Email format guess**: when a lead has a person's name and a company website but no email, it works out how that company writes its addresses (for example asha.rao@ or arao@) from addresses that already worked, and checks the likely one without sending anything. The result is shown in the lead as a **Guessed email** with how sure it is. A guess is never emailed: add it as the main email yourself only once you trust it.",
+      "**Gravatar profiles**: if the email (or the guess) has a public Gravatar profile, the lead gets the person's photo, name and LinkedIn link from it when those are empty.",
+    ]],
+    ["p", "An owner can switch each of these off in {{menu:Prospect search}}, tab **Spend & sources**, table **Lookup spend** (tick **On**, then **Save spend settings**). All three are on at the start."],
     ["h", "Read the columns"],
     ["table", { head: ["Column", "What it shows"], rows: [
       ["Company", "The company name, or its website if no name. Click it to open the lead. A **Test** tag marks a practice lead."],

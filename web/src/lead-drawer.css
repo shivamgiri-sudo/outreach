@@ -43,3 +43,9 @@
 .dr-line { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s2); padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
 .dr-line:last-child { border-bottom: 0; }
 .dr-point { gap: var(--s2); padding: var(--s1) 0; }
+/* Guessed email + Gravatar photo (LeadGuess.jsx) */
+.lead-guess-row { display: flex; gap: var(--s3); align-items: flex-start; min-width: 0; }
+.lead-photo { width: 48px; height: 48px; border-radius: 50%; flex: none; object-fit: cover; border: 1px solid var(--line); background: var(--raised); }
+.lead-guess-email { margin: 0 0 var(--s1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); overflow-wrap: anywhere; }
+.lead-guess-addr { font-family: var(--font-mono, monospace); font-size: var(--fs-md); }
+.lead-guess small.sub { display: block; margin: 0 0 var(--s1); }

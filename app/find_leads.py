@@ -172,6 +172,8 @@ def _ensure_campaign(store, spec: dict) -> dict:
 
 def _fill_steps(lead: dict, status: dict) -> list:
     steps = ["Read the website's public contact pages"] if fe.valid_domain(lead.get("domain")) else ["No website known"]
+    if fe.valid_domain(lead.get("domain")) and lead.get("contact_name"):
+        steps.append("Guess the email from the company's format and check it without sending (kept as a guess, never sent to)")
     if status["apollo"]["connected"]:
         steps.append("Apollo: find the HR / talent / founder contact" + ("" if fe.valid_domain(lead.get("domain")) else " (and the website)"))
     for pid, label in (("hunter", "Hunter"), ("firecrawl", "Firecrawl")):
@@ -350,7 +352,8 @@ class Runner:
         ctx = fe.Context(self.transports, {pid: provider_status(saved, pid) for pid in ("apollo", "hunter", "firecrawl")},
                          params["titles"], max(0, params["max_credits"] - spent), {l.get("dedupe_key") for l in self.store.read("leads")},
                          set(self.store.read("suppressed")), set(self.store.read("suppressed_hashes")),
-                         meter=fe.make_meter(self.store, now))         # cache first, owner's order, monthly budget, spend ledger
+                         meter=fe.make_meter(self.store, now),         # cache first, owner's order, monthly budget, spend ledger
+                         free=fe.FE.FreeTools(self.store, self.transports, now))   # team pages, email format guess, Gravatar
         for n, lead in enumerate(picks, start=1):
             out = fe.enrich_lead(lead, ctx)
             if fe.save_outcome(self.store, lead["id"], out, CAMPAIGN_NAME):

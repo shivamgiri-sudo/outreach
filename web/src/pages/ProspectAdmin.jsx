@@ -44,10 +44,11 @@ function Spend() {
           <tbody>
             {d.providers.map((p) => (
               <tr key={p.id}>
-                <td>{p.title}<div><small className="sub">{[p.finds && "finds", p.verifies && "verifies"].filter(Boolean).join(", ")}</small></div></td>
+                <td>{p.title}<div><small className="sub">{p.note || [p.finds && "finds", p.verifies && "verifies"].filter(Boolean).join(", ")}</small></div></td>
                 <td><input type="checkbox" aria-label={`Use ${p.title}`} checked={form.providers[p.id].enabled} onChange={(e) => setP(p.id, "enabled", e.target.checked)} /></td>
+                {p.note ? <><td>—</td><td>Free</td></> : <>
                 <td><input aria-label={`Order of ${p.title}`} inputMode="numeric" className="u-width-70" value={form.providers[p.id].priority} onChange={(e) => setP(p.id, "priority", e.target.value)} /></td>
-                <td><input aria-label={`Cost of ${p.title}`} inputMode="decimal" className="u-width-90" value={form.providers[p.id].cost} onChange={(e) => setP(p.id, "cost", e.target.value)} /></td>
+                <td><input aria-label={`Cost of ${p.title}`} inputMode="decimal" className="u-width-90" value={form.providers[p.id].cost} onChange={(e) => setP(p.id, "cost", e.target.value)} /></td></>}
                 <td>{p.connected ? <span className="pill ok">Yes</span> : <span className="pill">No</span>}</td>
               </tr>
             ))}

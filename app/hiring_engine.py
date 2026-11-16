@@ -14,6 +14,7 @@ import re
 from collections import Counter
 from typing import Optional
 
+from . import email_patterns as EP
 from .hygiene import business_domain, is_role_address, normalise_email
 from .providers import valid_domain
 from .sources import registry, waterfall
@@ -28,16 +29,7 @@ KNOWN_AGENCIES = ("teamlease", "randstad", "adecco", "quess", "ikya", "manpowerg
                   "naukri", "indeed", "timesjobs", "monster", "shine.com", "apna", "workindia", "foundit", "justjob")
 DOMAIN_HINTS = ("staffing", "recruit", "manpower", "placement", "headhunt", "jobs", "hrsolutions", "talent")
 
-PATTERNS = {
-    "first.last": lambda f, l: f"{f}.{l}" if l else "",
-    "first": lambda f, l: f,
-    "flast": lambda f, l: f"{f[0]}{l}" if l else "",
-    "firstl": lambda f, l: f"{f}{l[0]}" if l else "",
-    "first_last": lambda f, l: f"{f}_{l}" if l else "",
-    "firstlast": lambda f, l: f"{f}{l}" if l else "",
-    "last.first": lambda f, l: f"{l}.{f}" if l else "",
-    "last": lambda f, l: l,
-}
+PATTERNS = {pid: EP.PATTERNS[pid] for pid in EP.HIRING_PATTERNS}   # the shared formats (app/email_patterns.py)
 COMMON_ORDER = ("first.last", "first", "flast")          # when the company's own format is unknown
 VERIFY_STATUS = {"valid": "confirmed", "risky": "risky", "invalid": "rejected"}
 
@@ -55,7 +47,7 @@ TRUST_LABELS = {
 
 
 def _clean(text: str) -> str:
-    return re.sub(r"[^a-z]", "", (text or "").lower())
+    return EP.clean(text)
 
 
 # ---------- step 2: who posted it ----------
@@ -79,14 +71,7 @@ def classify_poster(company: str = "", domain: str = "", title: str = "") -> dic
 
 # ---------- step 4: email format ----------
 def which_pattern(first: str, last: str, local: str) -> Optional[str]:
-    f, l = _clean(first), _clean(last)
-    if not f or not local:
-        return None
-    for pid, build in PATTERNS.items():
-        if l or pid == "first":
-            if build(f, l) == local.lower():
-                return pid
-    return None
+    return EP.which_pattern(first, last, local, EP.HIRING_PATTERNS)
 
 
 def infer_pattern(leads: list, domain: str) -> Optional[str]:
@@ -112,8 +97,8 @@ def guess_emails(first: str, last: str, domain: str, preferred: Optional[str] = 
     order = [preferred] if preferred else list(COMMON_ORDER)
     out, seen = [], set()
     for pid in order:
-        local = PATTERNS[pid](f, l)
-        if not local or local in seen or (not l and pid != "first"):
+        local = EP.build(pid, f, l)
+        if not local or local in seen:
             continue
         seen.add(local)
         out.append({"email": f"{local}@{domain}", "pattern": pid,

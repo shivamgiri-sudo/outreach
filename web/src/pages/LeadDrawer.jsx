@@ -13,6 +13,7 @@ import LeadStage from "./LeadStage.jsx";
 import LeadSales from "./LeadSales.jsx";
 import { EditDetails, LeadOrigin, PrivacyActions, SIGNAL_LABELS } from "./LeadDrawerParts.jsx";
 import LeadOutreachTab from "./LeadOutreachTab.jsx";
+import LeadGuess from "./LeadGuess.jsx";
 import LeadProductTab from "./LeadProductTab.jsx";
 import { Card, CardHeader, Button, Badge, Skeleton } from "../ui/index.js";
 import "../lead-drawer.css";
@@ -97,6 +98,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
         {canWrite() && canEditContacts() && <EditDetails lead={lead} onSaved={(r) => setLead(r)} />}
       </Card>
       <ContactPoints lead={lead} onLead={setLead} />
+      <LeadGuess lead={lead} />
       <div className="tip">
         <b>Suggested next step ({s.priority} priority, via {s.channel}):</b> {s.action}
         {s.pitch && <p className="u-m-8-0-0"><b>What to say:</b> {s.pitch}</p>}
