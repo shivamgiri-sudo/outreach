@@ -24,7 +24,7 @@ export default function CallTrackerKit({ ws, conn, onSaved }) {
   useEffect(() => { setPeople(null); setReport(null); loadPeople(); loadReport(); }, [ws]);
 
   const sendUnsent = () => safe(() => api.calltrackerSend({ workspace: ws, unsent_only: true }),
-    (o) => `Sent ${o.sent} (${o.created} new, ${o.updated} updated). ${o.errors.length} refused, ${o.skipped.length} skipped (no phone). ${o.owner_unmatched.length} have an owner with no DialHalo member.`);
+    (o) => o.message || `Sent ${o.sent} (${o.created} new, ${o.updated} updated). ${o.errors.length} refused, ${o.skipped.length} skipped (no phone). ${o.owner_unmatched.length} have an owner with no DialHalo member.`);
   const toggleAuto = () => api.saveCalltracker({ workspace: ws, auto_send: !conn.auto_send }).then((c) => onSaved(c.card || c)).catch((e) => setMsg({ ok: false, text: e.message }));
   const reconcile = () => safe(() => api.calltrackerReconcile(ws), (o) => `Checked DialHalo: ${o.matched} calls on your leads, ${o.applied} added or updated.`).then(() => loadReport());
 

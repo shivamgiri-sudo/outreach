@@ -110,6 +110,12 @@ def test_bulk_send_skips_opted_out_and_no_phone_and_chunks_at_500(k, monkeypatch
     assert sizes == [500, 500, 200]
 
 
+def test_send_unsent_with_nothing_left_says_so_instead_of_failing(k):
+    assert k.c.post("/api/calltracker/send", json={"unsent_only": True}, headers=k.h["owner"]).json()["sent"] >= 1
+    again = k.c.post("/api/calltracker/send", json={"unsent_only": True}, headers=k.h["owner"])
+    assert again.status_code == 200 and again.json()["sent"] == 0 and "already in DialHalo" in again.json()["message"]
+
+
 def test_bulk_failure_is_reported_not_silent(k):
     k.fake.fail = [500]
     res = k.c.post("/api/calltracker/send", json={"lead_ids": leads_of(k, "Acme")}, headers=k.h["owner"])

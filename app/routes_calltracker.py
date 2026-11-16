@@ -181,6 +181,9 @@ def make_router(store, base_url: str) -> APIRouter:
         from . import calltracker_kit as kit
         ws = workspace_for(request, body.workspace)
         leads = kit.select_leads(store, ws, body.lead_ids, body.campaign_id, body.owner, body.stage, body.unsent_only)
+        if not leads and body.unsent_only:
+            return {"requested": 0, "sent": 0, "created": 0, "updated": 0, "skipped": [], "errors": [], "owner_unmatched": [],
+                    "message": "Every lead is already in DialHalo (opted-out leads are never sent)."}
         if not leads:
             raise HTTPException(400, "No leads match. Opted-out leads are never sent.")
         try:
