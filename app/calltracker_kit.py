@@ -18,6 +18,7 @@ from .workspaces import ws_of
 
 BULK_MAX = 500                    # DialHalo's per-request cap
 SEND_MAX = 5000                   # one click never queues more than this
+STATS_MAX_DAYS = 90
 RECONCILE_PAGES = 20
 RECONCILE_MATCH_MAX = 2000
 
@@ -168,10 +169,11 @@ def people_report(store, ws: str, start: Optional[datetime], end: Optional[datet
                  dialhalo_lead_calls=int(m.get("lead_calls") or 0), dialhalo_leads_called=int(m.get("unique_leads_called") or 0))
     rows = []
     for r in per.values():
-        r = {**r, "leads_called": len(r.pop("leads")), "talk_minutes": round(r["talk_minutes"], 1)}
-        rows.append(r)
+        leads = r.pop("leads")
+        rows.append({**r, "leads_called": len(leads), "talk_minutes": round(r["talk_minutes"], 1)})
     rows.sort(key=lambda r: (-(r["calls"] + r.get("dialhalo_calls", 0)), r["email"]))
-    return {"rows": rows, "totals": {k: round(sum(r.get(k, 0) for r in rows), 1) for k in ("calls", "connected", "interested", "meetings", "talk_minutes", "leads_called")}}
+    return {"dialhalo": {"ok": dialhalo is not None, "clamped_from": (dialhalo or {}).get("clamped_from")},
+            "rows": rows, "totals": {k: round(sum(r.get(k, 0) for r in rows), 1) for k in ("calls", "connected", "interested", "meetings", "talk_minutes", "leads_called")}}
 
 
 REPORT_COLUMNS = ("name", "email", "calls", "connected", "interested", "meetings", "talk_minutes", "leads_called",
@@ -190,12 +192,16 @@ def report_csv(report: dict) -> str:
 def dialhalo_stats(conn: dict, start: Optional[datetime], end: Optional[datetime]) -> Optional[dict]:
     """DialHalo's own per-member numbers for the same dates; None when it cannot be reached (the report still shows Outreach's side)."""
     today = datetime.now(ev.IST)
-    f = (start or today - timedelta(days=29)).astimezone(ev.IST).date().isoformat()
-    t = ((end - timedelta(days=1)) if end else today).astimezone(ev.IST).date().isoformat()
+    last = ((end - timedelta(days=1)) if end else today).astimezone(ev.IST)
+    first = (start or last - timedelta(days=29)).astimezone(ev.IST)
+    clamped = (last - first).days + 1 > STATS_MAX_DAYS
+    if clamped:                                    # DialHalo answers at most 93 days at a time: show the latest part and say so
+        first = last - timedelta(days=STATS_MAX_DAYS - 1)
     try:
-        return ct.ct_request(conn, "GET", f"/api/v1/stats/members?from={f}&to={t}")
+        data = ct.ct_request(conn, "GET", f"/api/v1/stats/members?from={first.date().isoformat()}&to={last.date().isoformat()}")
     except ct.CallTrackerError:
         return None
+    return {**data, "clamped_from": first.date().isoformat() if clamped else None}
 
 
 # ---------------------------------------------------------------- 4. reconcile

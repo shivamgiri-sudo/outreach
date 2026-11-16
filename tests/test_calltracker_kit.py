@@ -163,6 +163,13 @@ def test_people_report_counts_per_person_merges_dialhalo_and_exports_csv(k):
     assert all(r["calls"] == 0 for r in late)
     csv_res = k.c.get("/api/calltracker/people-report?from=2026-11-01&to=2026-11-30&format=csv", headers=k.h["owner"])
     assert csv_res.status_code == 200 and csv_res.text.splitlines()[0].startswith("name,email,calls") and "ravi@x.in" in csv_res.text
+    assert res.json()["dialhalo"] == {"ok": True, "clamped_from": None}
+    assert all("leads" not in r for r in res.json()["rows"])                    # the working set never leaks into the JSON
+    # a very long range asks DialHalo for the latest 90 days only and says so
+    long = k.c.get("/api/calltracker/people-report?from=2020-01-01&to=2030-01-01", headers=k.h["owner"]).json()
+    assert long["dialhalo"]["ok"] and long["dialhalo"]["clamped_from"]
+    asked = [q[1] for q in k.fake.requests if q[1].startswith("/api/v1/stats/members")][-1]
+    assert "from=2020" not in asked
     # DialHalo down: the report still shows Outreach's side
     k.fake.fail = [500, 500, 500]
     assert k.c.get("/api/calltracker/people-report?from=2026-11-01&to=2026-11-30", headers=k.h["owner"]).status_code == 200
