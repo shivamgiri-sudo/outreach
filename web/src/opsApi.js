@@ -48,5 +48,19 @@ export const ops = {
   auditVerify: () => request("/api/audit/verify"),
   auditPackPath: (params) => `/api/audit/pack${query(params)}`,
   health: () => request("/api/system/health"),
+  // Bulk email checker (owners and workspace admins): start a run, follow it, CSV of every row, valid new addresses.
+  emailCheckStart: (text, filename = "") => request("/api/email-checker/runs", { method: "POST", body: { text, filename } }),
+  emailCheckRun: (id) => request(`/api/email-checker/runs/${id}`),
+  emailCheckValid: (id) => request(`/api/email-checker/runs/${id}/valid`),
+  async emailCheckCsv(id) {
+    const { blob, filename } = await apiDownload(`/api/email-checker/runs/${id}/export.csv`, { withName: true });
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement("a"), { href: url, download: filename || "email-check.csv" });
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  },
+  // Hiring now + company facts from the lead's own website: one lead (callers too), a batch of up to 50 sites (owners).
+  hiringSignalRefresh: (leadId) => request(`/api/leads/${leadId}/hiring-signal`, { method: "POST" }),
+  hiringBatchStart: (limit = 50) => request("/api/hiring-signal/run", { method: "POST", body: { limit } }),
+  hiringBatchState: () => request("/api/hiring-signal/run"),
   campaignLeadsPage: (id, params) => request(`/api/campaigns/${id}/leads${query({ page: 1, ...params })}`),
 };

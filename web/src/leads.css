@@ -88,3 +88,12 @@
   .ui-table-wrap { max-height: none; }
   .bulkbar { top: 60px; }
 }
+/* Hiring now chip (lead row) and panel (lead drawer) */
+.hiring-chip { margin-left: var(--s2); white-space: nowrap; cursor: help; }
+.c-company .hiring-chip { display: inline-block; margin-top: var(--s1); }
+.hiring-roles { margin: var(--s2) 0; }
+.hiring-roles summary { cursor: pointer; font-weight: 600; }
+.hiring-roles ul { margin: var(--s2) 0; padding-left: var(--s5); }
+.hiring-sources { display: block; overflow-wrap: anywhere; margin-bottom: var(--s2); }
+.hiring-facts { display: grid; gap: var(--s2); margin: var(--s3) 0; }
+.hiring-facts .pill { overflow-wrap: anywhere; max-width: 100%; }

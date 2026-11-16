@@ -41,3 +41,11 @@
 .dp-watch .ui-chip button { width: 32px; height: 32px; }
 @media (max-width: 760px) { .dp-watch .ui-chip { min-height: 40px; } .dp-watch .ui-chip button { width: 40px; height: 40px; } }
 .dp-article > 
+/* Email checker page */
+.ec-paste { min-height: 160px; font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--fs-sm); }
+.ec-file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.ec-progress { width: 100%; height: 10px; accent-color: var(--brand); }
+.ec-flag { margin-right: var(--s1); }
+.ec-suggest { display: inline-block; margin-right: var(--s2); }
+.ec-pick { position: relative; }
+.ec-pick:focus-within { box-shadow: var(--ring); }

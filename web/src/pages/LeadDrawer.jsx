@@ -5,6 +5,7 @@ import { istLabel } from "../time.js";
 import LeadMeetings from "./LeadMeetings.jsx";
 import LeadActivity from "./LeadActivity.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
+import HiringSignal from "./HiringSignal.jsx";
 import OtherContacts from "./OtherContacts.jsx";
 import { ContactPoints, LeadPeople } from "./LeadContacts.jsx";
 import LeadPlan from "./LeadPlan.jsx";
@@ -154,6 +155,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
         ))}
       </Card>
       <LeadOrigin lead={lead} />
+      <HiringSignal lead={lead} onChanged={load} />
       <CompanyHealth lead={lead} />
       <Card flat className="dsec"><LeadAuditPack lead={lead} /></Card>
       {isOwner() && <PrivacyActions lead={lead} onErased={onClose} />}

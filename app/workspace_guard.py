@@ -47,6 +47,8 @@ LIMITED_OK = {
     ("GET", "/api/notifications"), ("POST", "/api/notifications/read"),
     ("GET", "/api/intelligence"), ("GET", "/api/analytics"), ("GET", "/api/analytics/overview"), ("GET", "/api/analytics/pipeline"),
     ("GET", "/api/analytics/pipeline/leads"), ("GET", "/api/insights"),
+    ("POST", "/api/email-checker/runs"), ("GET", "/api/email-checker/runs/{run_id}"), ("GET", "/api/email-checker/runs/{run_id}/export.csv"),
+    ("GET", "/api/email-checker/runs/{run_id}/valid"),          # bulk email checker: compares only with the login's own workspaces' leads
     ("GET", "/api/email-gate"), ("POST", "/api/email-gate/check-now"), ("GET", "/api/deliverability"), ("GET", "/api/deliverability/dns"),      # counts and checks cut to the login's workspaces
     ("GET", "/api/outbox"), ("GET", "/api/outbox/message"), ("GET", "/api/inbox"),
     ("GET", "/api/outbox/internal"), ("GET", "/api/outbox/export.csv"),      # owner/admin only; rows filtered by lead scope

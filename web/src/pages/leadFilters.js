@@ -24,10 +24,13 @@ export function phoneMatches(phone, query) {
 }
 
 // "Has" filter: every ticked detail must be on the lead (tick Phone + Email for leads with both).
-export const HAS_FIELDS = [["phone", "Phone number"], ["email", "Email"], ["linkedin", "LinkedIn profile"]];
+export const HAS_FIELDS = [["phone", "Phone number"], ["email", "Email"], ["linkedin", "LinkedIn profile"], ["hiring", "Hiring now (open roles)"]];
+// Open roles seen on the company's own career pages (hiring_signal) or from a job import (open_roles).
+export const hiringRoles = (lead) => Number(lead.hiring_signal?.open_roles || lead.open_roles || 0);
 export function hasDetail(lead, what) {
   if (what === "phone") return Boolean(String(lead.phone || "").trim());
   if (what === "email") return Boolean(String(lead.email || "").trim());
+  if (what === "hiring") return hiringRoles(lead) > 0;
   if (what === "linkedin") return /linkedin\.com\/(in|pub)\//i.test(String(lead.linkedin_url || ""));
   return true;
 }
