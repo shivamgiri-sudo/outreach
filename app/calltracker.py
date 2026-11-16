@@ -159,7 +159,7 @@ def save_connection(store, ws: str, changes: dict, who: str) -> dict:
         cur = dict(rows.get(ws) or {})
         if not cur:
             cur = {"id": uuid.uuid4().hex[:20], "workspace": ws, "created_at": stamp, "created_by": who, "enabled": True}
-        for key in ("base_url", "public_url", "api_key", "webhook_secret", "enabled", "mapping"):
+        for key in ("base_url", "public_url", "api_key", "webhook_secret", "enabled", "mapping", "auto_send"):
             if key in changes and changes[key] is not None:
                 cur[key] = changes[key]
         cur.update(updated_at=stamp, updated_by=who)
@@ -210,7 +210,7 @@ def public_view(store, ws: str) -> Optional[dict]:
     return {"id": conn["id"], "workspace": ws, "base_url": conn.get("base_url", ""), "public_url": conn.get("public_url", ""),
             "enabled": conn.get("enabled", True), "api_key_set": bool(key), "api_key_hint": ("••••" + key[-4:]) if len(key) > 8 else ("set" if key else ""),
             "webhook_secret_set": bool(conn.get("webhook_secret")), "mapping": mapping_of(conn), "mapping_custom": bool(conn.get("mapping")),
-            "last_push": conn.get("last_push"), "last_event": conn.get("last_event"), "last_test": conn.get("last_test"),
+            "auto_send": bool(conn.get("auto_send")), "last_reconcile": conn.get("last_reconcile"), "last_reconcile_status": conn.get("last_reconcile_status"), "last_push": conn.get("last_push"), "last_event": conn.get("last_event"), "last_test": conn.get("last_test"),
             "unmapped_outcomes": sorted((conn.get("unmapped_outcomes") or {}).values(), key=lambda r: -r.get("count", 0)),
             "created_at": conn.get("created_at"), "updated_at": conn.get("updated_at")}
 

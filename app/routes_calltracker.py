@@ -35,6 +35,7 @@ class ConnectionBody(BaseModel):
     enabled: Optional[bool] = None
     mapping: Optional[dict] = None
     reset_mapping: bool = False
+    auto_send: Optional[bool] = None
 
 
 class WorkspaceBody(BaseModel):
@@ -102,6 +103,8 @@ def make_router(store, base_url: str) -> APIRouter:
             raise HTTPException(400, "A DialHalo API key starts with ctk_. Create one in DialHalo: Settings → Integrations → API keys.")
         if body.enabled is not None:
             changes["enabled"] = bool(body.enabled)
+        if body.auto_send is not None:
+            changes["auto_send"] = bool(body.auto_send)
         if body.reset_mapping:
             changes["mapping"] = {}
         elif body.mapping is not None:
@@ -163,6 +166,63 @@ def make_router(store, base_url: str) -> APIRouter:
         leads = real(workspaces.filter_rows(store.read("leads")))
         return {"from": date_from[:10], "to": date_to[:10], **events.funnel(store, leads, start, end),
                 "connected_workspaces": len([c for c in ct.connections(store).values() if isinstance(c, dict) and c.get("enabled", True)])}
+
+    class SendBody(BaseModel):
+        workspace: str = ""
+        lead_ids: list = []
+        campaign_id: str = ""
+        owner: str = ""
+        stage: str = ""
+        unsent_only: bool = False
+
+    @router.post("/api/calltracker/send")
+    def send(body: SendBody, request: Request):
+        """Bulk 'Send to DialHalo' for chosen leads or a campaign / owner / stage filter of THIS workspace."""
+        from . import calltracker_kit as kit
+        ws = workspace_for(request, body.workspace)
+        leads = kit.select_leads(store, ws, body.lead_ids, body.campaign_id, body.owner, body.stage, body.unsent_only)
+        if not leads:
+            raise HTTPException(400, "No leads match. Opted-out leads are never sent.")
+        try:
+            result = kit.send_leads(store, ws, leads, base_url)
+        except ct.CallTrackerError as exc:
+            raise HTTPException(400 if not exc.retry else 502, str(exc))
+        audit.record(store, _user(request), "calltracker.bulk_send", f"workspace {ws}", f"{result['sent']} sent, {len(result['errors'])} errors")
+        return result
+
+    @router.get("/api/calltracker/people")
+    def people(request: Request, workspace: str = ""):
+        from . import calltracker_kit as kit
+        ws = workspace_for(request, workspace)
+        try:
+            return kit.people(store, ws)
+        except ct.CallTrackerError as exc:
+            raise HTTPException(400 if not exc.retry else 502, str(exc))
+
+    @router.get("/api/calltracker/people-report")
+    def people_report(request: Request, workspace: str = "", date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"), fmt: str = Query("", alias="format")):
+        from . import calltracker_kit as kit
+        ws = workspace_for(request, workspace)
+        try:
+            start = datetime.fromisoformat(date_from[:10]).replace(tzinfo=events.IST) if date_from else None
+            end = (datetime.fromisoformat(date_to[:10]).replace(tzinfo=events.IST) + timedelta(days=1)) if date_to else None
+        except ValueError:
+            raise HTTPException(400, "Dates must look like 2026-11-13")
+        conn = ct.active_connection(store, ws)
+        report = kit.people_report(store, ws, start, end, kit.dialhalo_stats(conn, start, end) if conn else None)
+        if fmt == "csv":
+            from fastapi.responses import Response
+            return Response(kit.report_csv(report), media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="calling-by-person.csv"'})
+        return {"from": date_from[:10], "to": date_to[:10], **report}
+
+    @router.post("/api/calltracker/reconcile")
+    def reconcile_now(body: WorkspaceBody, request: Request):
+        from . import calltracker_kit as kit
+        ws = workspace_for(request, body.workspace)
+        try:
+            return kit.reconcile(store, ws)
+        except ct.CallTrackerError as exc:
+            raise HTTPException(400 if not exc.retry else 502, str(exc))
 
     @router.post(HOOK_PATH + "{conn_id}")
     async def hook(conn_id: str, request: Request):
