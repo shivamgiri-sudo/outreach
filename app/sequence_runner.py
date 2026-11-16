@@ -160,7 +160,7 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
                 _set_sequence(store, lead["id"], blocked=bad)
             continue
         if live and gate_live and email_gate.is_first_email(lead):
-            what, why = email_gate.decision(lead, gate_live["ready"], gate_live["approve_risky"])
+            what, why = email_gate.decision(lead, gate_live["ready"], gate_live["approve_risky"], gate_live.get("stale_days"), now)
             if what == "block":
                 counts["blocked"] += 1
                 _set_sequence(store, lead["id"], blocked=why)
@@ -170,6 +170,13 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
                 if seq.get("blocked") != why:
                     _set_sequence(store, lead["id"], blocked=why)
                 continue
+            email_gate.clear_stale_note(store, lead)
+        elif live and gate_live and email_gate.needs_recheck(lead, gate_live, now):
+            counts["held"] = counts.get("held", 0) + 1          # a later step waits for a fresh check (the last one is too old)
+            if seq.get("blocked") != email_gate.STALE_NOTE:
+                _set_sequence(store, lead["id"], blocked=email_gate.STALE_NOTE)
+            continue
+        elif live and gate_live:
             email_gate.clear_stale_note(store, lead)
         held = icp_gate_reason(lead, icp_rules)
         if held:

@@ -212,6 +212,7 @@ def test_check_pending_respects_limit_and_skips_started_leads(tmp_path):
     assert email_gate.check_pending(store, {"get": v.get}, limit=2)["checked"] == 2
     assert len(v.calls) == 2
     store.update_lead(lead_of(store, 4)["id"], lambda l: {**l, "sequence": {**l["sequence"], "sent_days": [0]}})
+    store.update("settings", lambda s: {**s, "email_gate": {**s["email_gate"], "recheck_enabled": False}})   # fresh-check rule: test_email_recheck.py
     assert email_gate.check_pending(store, {"get": v.get})["checked"] == 2           # 5 - 2 done - 1 already emailed
 
 
@@ -251,7 +252,7 @@ def test_routes_roles_scope_and_no_personal_data(tmp_path):
         assert r.c.get("/api/email-gate", headers=r.h[who]).status_code == 200
     body = r.c.get("/api/email-gate", headers=r.h["owner"]).json()
     assert body["enabled"] is True and body["verifier"] == {"connected": False, "provider": "", "supported": False}
-    assert set(body["counts"]) == {"waiting_for_check", "valid", "invalid", "risky", "unverified", "held"}
+    assert set(body["counts"]) == {"waiting_for_check", "valid", "invalid", "risky", "unverified", "held", "stale"}
     assert "@" not in str(body)
     assert body["counts"]["unverified"] == 4                                                          # three in Main, one in the second workspace
     adm = r.c.get("/api/email-gate", headers=r.h["adm2"]).json()["counts"]["unverified"]
@@ -259,7 +260,7 @@ def test_routes_roles_scope_and_no_personal_data(tmp_path):
     assert r.c.put("/api/email-gate", json={"enabled": False}, headers=r.h["adm"]).status_code == 403
     assert r.c.put("/api/email-gate", json={"enabled": False}, headers=r.h["priya"]).status_code == 403
     assert r.c.put("/api/email-gate", json={"enabled": False, "approve_risky": True}, headers=r.h["owner"]).json()["enabled"] is False
-    assert email_gate.settings_of(r.store) == {"enabled": False, "approve_risky": True}
+    assert email_gate.settings_of(r.store) == {"enabled": False, "approve_risky": True, "recheck_enabled": True, "recheck_days": 90}
     assert r.c.post("/api/email-gate/check-now", headers=r.h["priya"]).status_code == 403
     assert r.c.post("/api/email-gate/check-now", headers=r.h["view"]).status_code == 403
     out = r.c.post("/api/email-gate/check-now", headers=r.h["adm"])

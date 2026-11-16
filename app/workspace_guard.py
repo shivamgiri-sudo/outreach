@@ -51,6 +51,7 @@ LIMITED_OK = {
     ("GET", "/api/email-checker/runs/{run_id}/valid"),          # bulk email checker: compares only with the login's own workspaces' leads
     ("POST", "/api/email-checker/reverse"), ("GET", "/api/email-checker/reverse/{run_id}"),     # reverse lookup: the login's own workspaces'
     ("GET", "/api/email-checker/reverse/{run_id}/export.csv"), ("GET", "/api/email-checker/reverse/{run_id}/import"),  # leads; no prospect DB
+    ("POST", "/api/email-gate/recheck-stale"), ("GET", "/api/email-gate/recheck-stale"),       # counts only, the login's own leads
     ("GET", "/api/email-gate"), ("POST", "/api/email-gate/check-now"), ("GET", "/api/deliverability"), ("GET", "/api/deliverability/dns"),      # counts and checks cut to the login's workspaces
     ("GET", "/api/outbox"), ("GET", "/api/outbox/message"), ("GET", "/api/inbox"),
     ("GET", "/api/outbox/internal"), ("GET", "/api/outbox/export.csv"),      # owner/admin only; rows filtered by lead scope

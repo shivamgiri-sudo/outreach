@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, isOwner, isWorkspaceAdmin } from "../api.js";
 import { istLabel } from "../time.js";
 import { Badge, Button, Card, Switch } from "../ui/index.js";
+import EmailRecheck from "./EmailRecheck.jsx";
 
 const COUNT_LABELS = [
   ["waiting_for_check", "Waiting for a check"], ["held", "Waiting to be emailed"], ["valid", "Valid"],
@@ -50,6 +51,7 @@ export default function EmailGateCard() {
       {state.last_run && <p className="sub">Last check: {istLabel(state.last_run)}.</p>}
       {note && <div className="tip" role="status">{note}</div>}
       {(error || state.error) && <div className="tip error" role="alert">{((e) => e.charAt(0).toUpperCase() + e.slice(1))(error || state.error)}</div>}
+      <EmailRecheck state={state} owner={owner} manager={manager} onChange={load} />
       {owner ? (
         <div className="switch-block">
           <Switch showState label="Email checks before the first send" checked={state.enabled} disabled={busy} onChange={(on) => run(() => api.setEmailGate(on, state.approve_risky))} />

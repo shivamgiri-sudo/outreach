@@ -113,6 +113,7 @@ ADMIN_WRITES = {
     # workspace management of their own workspaces (app/routes_workspaces.py checks the workspace is theirs)
     ("GET", "/api/deliverability"), ("GET", "/api/deliverability/dns"),
     ("POST", "/api/email-gate/check-now"), ("POST", "/api/leads/{lead_id}/email-approve"),     # mailbox checks before the first email (app/routes_email_gate.py)
+    ("POST", "/api/email-gate/recheck-stale"),     # re-check addresses not checked in N days, max 500 (the caller's own leads)
     ("POST", "/api/email-checker/runs"),       # the bulk email checker page (app/routes_email_checker.py; free DNS checks, no lead changes)
     ("POST", "/api/email-checker/reverse"),    # reverse email lookup on the same page (app/routes_reverse_lookup.py; free steps, no lead changes)
     ("PUT", "/api/workspaces/{ws_id}"), ("POST", "/api/workspaces/{ws_id}/members"), ("DELETE", "/api/workspaces/{ws_id}/members/{email}"),
