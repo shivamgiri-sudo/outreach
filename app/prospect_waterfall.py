@@ -47,6 +47,8 @@ def provider_config(store) -> list:
         out.append({"id": spec.id, "title": spec.title, "cost": cost, "priority": int(o.get("priority", 0 if cost == 0 else 10)),
                     "enabled": o.get("enabled", True) is not False, "connected": registry.connection(spec, saved)["connected"],
                     "finds": bool(spec.find_email or spec.find_people), "verifies": spec.verify is not None, "free": cost == 0})
+    from .find_enrich_free import config_rows
+    out += config_rows(over)                           # Find & enrich's free steps: on/off switches only
     return sorted(out, key=lambda p: (p["priority"], p["cost"], p["id"]))
 
 
