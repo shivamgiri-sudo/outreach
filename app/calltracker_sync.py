@@ -47,14 +47,14 @@ def sweep(store, ws: Optional[str] = None) -> int:
     for j in jobs:
         if j.get("kind") == "push" and j.get("status") == "pending":
             per_link[j.get("link")] = per_link.get(j.get("link"), 0) + 1
-    queue = []
+    queue, memo = [], {}
     for lead in store.peek("leads"):                  # read-only pass
         w = ws_of(lead)
         if w not in by_ws or lead.get("id") in waiting or (lead.get("calltracker") or {}).get("lead_id") or ct.opted_out(lead):
             continue
         if not any(ct.norm_phone(p) for p in [lead.get("phone"), *(lead.get("phones") or [])]):
             continue
-        link = links.route(store, lead, links=by_ws[w])
+        link = links.route(store, lead, links=by_ws[w], memo=memo)
         if not link or link.get("lead_sync") not in links.SWEEP_MODES or per_link.get(link["id"], 0) >= SWEEP_MAX:
             continue
         per_link[link["id"]] = per_link.get(link["id"], 0) + 1

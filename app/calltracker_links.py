@@ -267,22 +267,29 @@ def pairing(store, link: dict) -> dict:
 
 
 # ---------------------------------------------------------------- which link a lead is pushed to
-def owner_emails(store, lead: dict, task: Optional[dict] = None) -> set:
+def owner_emails(store, lead: dict, task: Optional[dict] = None, memo: Optional[dict] = None) -> set:
+    """Emails of the lead's owner and the task's owner. `memo` (name -> email) saves a users read per lead in a sweep."""
     ct = _ct()
-    return {e for e in (ct.email_of_person(store, lead.get("owner")), ct.email_of_person(store, (task or {}).get("owner"))) if e}
+    memo = {} if memo is None else memo
+    out = set()
+    for who in (lead.get("owner"), (task or {}).get("owner")):
+        key = str(who or "")
+        if key not in memo:
+            memo[key] = ct.email_of_person(store, who)
+        if memo[key]:
+            out.add(memo[key])
+    return out
 
 
-def qualifies(store, link: dict, lead: dict, call_task: bool = False, task: Optional[dict] = None, phone_ok: Optional[bool] = None) -> bool:
+def qualifies(store, link: dict, lead: dict, call_task: bool = False, task: Optional[dict] = None, memo: Optional[dict] = None) -> bool:
     mode = link.get("lead_sync") or "call_tasks"
     if mode == "call_tasks":
         return call_task
     if mode == "owners_members":
-        return bool(owner_emails(store, lead, task) & member_emails(link))
+        return bool(owner_emails(store, lead, task, memo) & member_emails(link))
     if mode == "all_with_phone":
-        if phone_ok is None:
-            ct = _ct()
-            phone_ok = any(ct.norm_phone(p) for p in [lead.get("phone"), *(lead.get("phones") or [])])
-        return bool(phone_ok)
+        ct = _ct()
+        return any(ct.norm_phone(p) for p in [lead.get("phone"), *(lead.get("phones") or [])])
     return False
 
 
@@ -296,11 +303,12 @@ def pushed_link(store, lead: dict, links: list) -> Optional[str]:
     return None
 
 
-def route(store, lead: dict, call_task: bool = False, task: Optional[dict] = None, links: Optional[list] = None) -> Optional[dict]:
+def route(store, lead: dict, call_task: bool = False, task: Optional[dict] = None, links: Optional[list] = None,
+          memo: Optional[dict] = None) -> Optional[dict]:
     """The one link a lead is pushed to, or None (see the module doc)."""
     from .workspaces import ws_of
     links = active_links(store, ws_of(lead)) if links is None else links
-    cands = [l for l in links if qualifies(store, l, lead, call_task, task)]
+    cands = [l for l in links if qualifies(store, l, lead, call_task, task, memo)]
     if not cands:
         return None
     sticky = pushed_link(store, lead, links)
