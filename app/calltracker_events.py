@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import urlparse
 
-from . import calltracker as ct
+from . import calltracker as ct, calltracker_match as ct_match
 from .workspaces import ws_of
 
 TOLERANCE_SECONDS = 300
@@ -27,6 +27,7 @@ SIG_KEEP = timedelta(days=1)
 EVENT_KEEP = timedelta(days=14)
 SEEN_MAX = 5000
 MAX_CALLS_PER_EVENT = 50
+MAX_UNMATCHED_PER_EVENT = 1000
 IST = timezone(timedelta(hours=5, minutes=30))
 CALL_EVENTS = ("call.outcome", "calls.synced", "call.transcribed")
 
@@ -111,7 +112,9 @@ def process(store, conn: dict, event: str, data: dict) -> int:
         ids = [data.get("callId")]
     elif event == "calls.synced":
         numbers = {ct.norm_phone(p) for l in store.read("leads") if ws_of(l) == ws for p in [l.get("phone"), *(l.get("phones") or [])] if p}
-        ids = [c.get("id") for c in data.get("calls") or [] if isinstance(c, dict) and ct.norm_phone(c.get("number_norm")) in numbers]
+        synced = [c for c in data.get("calls") or [] if isinstance(c, dict)]
+        ids = [c.get("id") for c in synced if ct.norm_phone(c.get("number_norm")) in numbers]
+        ct_match.note_calls(store, ws, {c.get("number_norm"): None for c in synced[:MAX_UNMATCHED_PER_EVENT] if ct.norm_phone(c.get("number_norm")) not in numbers})
     elif event == "dnc.added":
         return apply_dnc(store, conn, data)
     elif event == "dnc.removed":
@@ -133,7 +136,6 @@ def process(store, conn: dict, event: str, data: dict) -> int:
 # ---------------------------------------------------------------- matching
 def match_lead(store, ws: str, call: dict) -> Optional[dict]:
     """The workspace's lead for this call, or None. Never looks outside `ws`."""
-    from .activities import _normalise_task
     leads = [l for l in store.read("leads") if ws_of(l) == ws]
     ref = call.get("lead") or {}
     if ref.get("external_source") == ct.SOURCE and ref.get("external_id"):
@@ -147,7 +149,12 @@ def match_lead(store, ws: str, call: dict) -> Optional[dict]:
     number = ct.norm_phone(call.get("number"))
     if len(number) < 6:
         return None
-    cands = [l for l in leads if number in {ct.norm_phone(p) for p in [l.get("phone"), *(l.get("phones") or [])] if p}]
+    return pick_lead(store, [l for l in leads if number in {ct.norm_phone(p) for p in [l.get("phone"), *(l.get("phones") or [])] if p}])
+
+
+def pick_lead(store, cands: list) -> Optional[dict]:
+    """Several leads share the number: the one DialHalo already has, then one with an open call task, then the latest."""
+    from .activities import _normalise_task
     if len(cands) <= 1:
         return cands[0] if cands else None
     open_call = {t.get("lead_id") for t in map(_normalise_task, store.read("tasks")) if t.get("kind") == "call" and t["status"] == "open"}
@@ -196,6 +203,7 @@ def apply_call(store, conn: dict, call: dict) -> bool:
     from .activities import add_task, close_call_tasks, now_utc
     from .provenance import build, person
     lead = match_lead(store, conn["workspace"], call)
+    ct_match.note_calls(store, conn["workspace"], {call.get("number"): lead})      # DialHalo's "Outreach match" page
     if not lead:
         return False
     rule = ct.mapping_of(conn).get(" ".join(str(call.get("outcome") or "").lower().split())) if call.get("outcome") else None
