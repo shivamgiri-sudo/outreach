@@ -139,6 +139,7 @@ ADMIN_WRITES = {
     # DialHalo connection of their own workspaces (app/routes_calltracker.py refuses main and other workspaces)
     ("GET", "/api/calltracker"), ("PUT", "/api/calltracker"), ("DELETE", "/api/calltracker"), ("POST", "/api/calltracker/test"), ("POST", "/api/calltracker/retry"),
     ("POST", "/api/calltracker/backfill"),      # match past calls (the route: owner or the workspace's admin)
+    ("POST", "/api/calltracker/send"), ("POST", "/api/calltracker/reconcile"),   # integration kit: send now, missed-call check (same owner / own-admin check)
     ("POST", "/api/calltracker/connect/start"), ("POST", "/api/calltracker/connect/finish"),   # one-click DialHalo connect (same rule)
     ("POST", "/api/harvest/dnd"),         # DND numbers onto the do-not-contact list (app/routes_harvest.py: owners and admins only)
 }

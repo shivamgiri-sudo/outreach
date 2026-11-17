@@ -5,7 +5,8 @@ webhook_secret at rest and app/backup.py still scrubs it. A link:
   id, workspace (the Outreach workspace), base_url (server to server), public_url (browser links), api_key, webhook_secret,
   enabled, mapping, via ("connect" = one-click, "manual" = API key form), dh_workspace {id, name, slug}, dh_connection_id,
   dh_webhook_id, lead_sync, primary, members {at, rows: [{name, email, active}]} (GET /api/v1/members, cached),
-  last_push / last_event / last_test / last_match, unmapped_outcomes, created_at/by, updated_at/by.
+  last_push / last_event / last_test / last_match, unmapped_outcomes, created_at/by, updated_at/by,
+  sync_cursor / last_reconcile / last_reconcile_status (the integration kit's nightly reconcile, app/calltracker_kit.py).
 
 Migration (idempotent; at start-up and on first read): the old shape {workspace: connection} is re-keyed by the
 connection's own id, so its receiver URL /api/calltracker/hook/<id> keeps working. It becomes the workspace's primary link
@@ -344,5 +345,6 @@ def public_view(store, link: dict) -> dict:
             "primary": bool(link.get("primary")), "pairing": pairing(store, link), "auth_failed": link.get("auth_failed") or None,
             "backfill": backfill.public(backfill.state(store, link["id"])),
             "last_push": link.get("last_push"), "last_event": link.get("last_event"), "last_test": link.get("last_test"), "last_match": link.get("last_match"),
+            "last_reconcile": link.get("last_reconcile"), "last_reconcile_status": link.get("last_reconcile_status"),
             "unmapped_outcomes": sorted((link.get("unmapped_outcomes") or {}).values(), key=lambda r: -r.get("count", 0)),
             "created_at": link.get("created_at"), "updated_at": link.get("updated_at")}

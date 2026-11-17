@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from app import calltracker as ct, calltracker_events as ev, calltracker_kit as kit
+from app import calltracker as ct, calltracker_events as ev, calltracker_kit as kit, calltracker_links as links_mod
 from tests.test_calltracker import FakeCT, KEY, SECRET, call_task, connect, conn_id, ct_call, hook, r as base_rig  # noqa: F401  (r = the shared rig fixture)
 
 
@@ -105,7 +105,7 @@ def test_bulk_send_skips_opted_out_and_no_phone_and_chunks_at_500(k, monkeypatch
     rows = [{**k.lead["Acme"], "id": f"bulk-{i}", "phone": f"9{i:09d}", "phones": []} for i in range(1200)]
     monkeypatch.setattr(ct, "push_payload", lambda store, lead, base: {"name": "x", "company": "y", "note": "", "sourceLabel": "MCN Outreach", "url": "u", "city": "", "email": ""})
     monkeypatch.setattr(ct, "_lead_note", lambda *a, **kw: None)
-    kit.send_leads(k.store, "main", rows, "http://localhost")
+    kit.send_leads(k.store, "main", rows, "http://localhost", kit.link_for(k.store, "main"))
     sizes = [len(q[2]["leads"]) for q in k.fake.requests if q[1] == "/api/v1/leads/bulk"][1:]
     assert sizes == [500, 500, 200]
 
@@ -122,13 +122,18 @@ def test_bulk_failure_is_reported_not_silent(k):
     assert res.status_code == 502 and "busy or down" in res.text
 
 
-def test_auto_send_only_for_people_who_are_dialhalo_members(k):
-    assert kit.auto_send(k.store, "main", "http://x")["sent"] == 0          # off by default
-    assert k.c.put("/api/calltracker", json={"workspace": "main", "auto_send": True}, headers=k.h["owner"]).json()["connection"]["auto_send"] is True
-    out = kit.auto_send(k.store, "main", "http://x")
-    # Acme belongs to Ravi (a DialHalo member); Beta belongs to Priya (no DialHalo member): only Acme goes
-    assert out["sent"] == 1 and {l["externalId"] for l in k.fake.bulk} == {k.lead["Acme"]["id"]}
-    assert kit.auto_send(k.store, "main", "http://x")["sent"] == 0          # already sent: nothing again
+def test_what_auto_send_did_is_the_links_owners_members_lead_sync_and_never_pushes_twice(k):
+    """The kit has no auto-send of its own: 'owners who are members' lead sync on the link sweeps Acme (Ravi is a member),
+    not Beta (Priya is not). A lead the kit already sent is never queued again by the sweep."""
+    from app import calltracker_sync as sync
+    lid = conn_id(k)
+    assert k.c.put("/api/calltracker", json={"workspace": "main", "link": lid, "lead_sync": "owners_members"}, headers=k.h["owner"]).status_code == 200
+    sync.sweep(k.store)                                                     # switching the mode already swept once
+    queued = [j for j in k.store.read("ct_outbox") if j["kind"] == "push" and j["status"] == "pending"]
+    assert [j["lead_id"] for j in queued] == [k.lead["Acme"]["id"]] and queued[0]["link"] == lid
+    k.store.update("ct_outbox", lambda jobs: [j for j in jobs if j["kind"] != "push"])
+    k.c.post("/api/calltracker/send", json={"lead_ids": leads_of(k, "Acme")}, headers=k.h["owner"])       # sent now by the kit
+    assert sync.sweep(k.store) == 0                                                                        # the sweep leaves it alone
 
 
 def test_people_matching_warns_about_owners_with_leads_but_no_member(k):
@@ -209,13 +214,13 @@ def test_reconcile_fills_missed_calls_once_and_resumes_from_the_cursor(k):
 
 def test_reconcile_due_runs_only_stale_connections_and_records_failures(k):
     ran = kit.reconcile_due(k.store)
-    assert ran == ["main"]
+    assert ran == [conn_id(k)]
     assert kit.reconcile_due(k.store) == []                                           # ran just now
     later = ct.now_utc() + timedelta(hours=21)
     k.fake.fail = [500]
     assert kit.reconcile_due(k.store, now=later) == []                                # fails -> not counted, status noted
     assert ct.connection(k.store, "main")["last_reconcile_status"]["ok"] is False
-    assert kit.reconcile_due(k.store, now=later) == ["main"]
+    assert kit.reconcile_due(k.store, now=later) == [conn_id(k)]
 
 
 # ---------------------------------------------------------------- coordinator fixes: owner carried, call-back push, call task, masked secret
@@ -256,3 +261,117 @@ def test_manual_call_task_pushes_the_lead(k):
 def test_a_masked_webhook_secret_is_refused_with_a_clear_message(k):
     res = k.c.put("/api/calltracker", json={"workspace": "main", "webhook_secret": "whsec_ABCD••••••••••••"}, headers=k.h["owner"])
     assert res.status_code == 400 and "masked" in res.text
+
+
+# ---------------------------------------------------------------- release 3: the kit on DialHalo links (app/calltracker_links.py)
+KEY2 = "ctk_bmi_key_987654321"
+
+
+def second_link(k):
+    """main -> the first link (primary) and BMI (KEY2) added with the manual form. Returns (a, b) link ids."""
+    body = {"workspace": "main", "new": True, "base_url": "https://bmi.example.com", "public_url": "https://bmi.example.com", "api_key": KEY2,
+            "webhook_secret": "whsec_bmi_secret_xyz"}
+    res = k.c.put("/api/calltracker", json=body, headers=k.h["owner"])
+    assert res.status_code == 200, res.text
+    a, b = res.json()["links"]
+    return a["id"], b["id"]
+
+
+def _bulk_auths(k):
+    return [q[3] for q in k.fake.requests if q[1] == "/api/v1/leads/bulk"]
+
+
+def _match_jobs(k):
+    return [j for j in k.store.read("ct_outbox") if j["kind"] == "match"]
+
+
+def test_reconcile_also_feeds_the_outreach_match_of_the_same_link(k):
+    lead_id = k.lead["Acme"]["id"]
+    k.c.post("/api/calltracker/send", json={"lead_ids": [lead_id]}, headers=k.h["owner"])
+    k.fake.calls = {11: ct_call(11, ref=lead_id, outcome="interested")}
+    k.fake.feed = [{"id": 11, "number": "9876543210", "lead_id": "ct-1"},
+                   {"id": 99, "number": "9111111111", "lead_id": None},                   # not an Outreach lead
+                   {"id": 98, "number": "98******10", "lead_id": None}]                   # masked: never sent
+    out = k.c.post("/api/calltracker/reconcile", json={"workspace": "main"}, headers=k.h["owner"]).json()
+    assert out["applied"] == 1
+    jobs = _match_jobs(k)
+    items = {n: v for j in jobs for n, v in (j.get("items") or {}).items()}
+    assert items["9876543210"]["status"] == "matched" and items["9876543210"]["externalId"] == lead_id
+    assert items["9111111111"] == {"status": "not_found"} and not any("*" in n for n in items)
+    assert {j["link"] for j in jobs} == {conn_id(k)}
+
+
+def test_send_now_keeps_a_lead_in_one_dialhalo_workspace(k):
+    a, b = second_link(k)
+    acme, beta = leads_of(k, "Acme", "Beta Ltd")
+    # several links and no `link`: refused, nothing sent to the wrong DialHalo workspace
+    assert k.c.post("/api/calltracker/send", json={"lead_ids": [acme]}, headers=k.h["owner"]).status_code == 400
+    assert k.c.post("/api/calltracker/send", json={"link": a, "lead_ids": [acme]}, headers=k.h["owner"]).json()["sent"] == 1
+    out = k.c.post("/api/calltracker/send", json={"link": b, "lead_ids": [acme, beta]}, headers=k.h["owner"]).json()
+    assert out["sent"] == 1 and [s["lead_id"] for s in out["skipped"]] == [acme] and out["skipped"][0]["reason"].startswith("already in")
+    assert _bulk_auths(k) == [f"Bearer {KEY}", f"Bearer {KEY2}"]
+    assert [l["externalId"] for l in k.fake.bulk] == [acme, beta]
+    info = {l["id"]: l.get("calltracker") or {} for l in k.store.read("leads")}
+    assert info[acme]["link"] == a and info[beta]["link"] == b                  # written like the queue writes it
+    # a call task on Beta pushes to the link it already went to (B), not the primary
+    call_task(k, "Beta Ltd")
+    push = [j for j in k.store.read("ct_outbox") if j["kind"] == "push" and j["lead_id"] == beta]
+    assert push and push[-1]["link"] == b
+    # a lead waiting to be pushed to A is not sent to B either
+    cora = k.lead["Cora Inc"]["id"]
+    k.store.update_lead(cora, lambda l: {**l, "phone": "9000011111"})
+    call_task(k, "Cora Inc")
+    assert k.c.post("/api/calltracker/send", json={"link": b, "lead_ids": [cora]}, headers=k.h["owner"]).json()["skipped"][0]["lead_id"] == cora
+    # a link with lead sending off refuses "send now"
+    k.c.put("/api/calltracker", json={"workspace": "main", "link": b, "lead_sync": "off"}, headers=k.h["owner"])
+    res = k.c.post("/api/calltracker/send", json={"link": b, "unsent_only": True}, headers=k.h["owner"])
+    assert res.status_code == 400 and "off" in res.text
+    # a link of another workspace is not found
+    assert k.c.post("/api/calltracker/send", json={"workspace": k.w2, "link": a, "lead_ids": [acme]}, headers=k.h["owner"]).status_code == 404
+
+
+def test_reconcile_per_link_cursor_status_and_match(k):
+    a, b = second_link(k)
+    lead_id = k.lead["Acme"]["id"]
+    k.c.post("/api/calltracker/send", json={"link": a, "lead_ids": [lead_id]}, headers=k.h["owner"])
+    k.fake.calls = {11: ct_call(11, ref=lead_id)}
+    k.fake.feed = [{"id": 11, "number": "9876543210", "lead_id": "ct-1"}, {"id": 99, "number": "9111111111", "lead_id": None}]
+    one = k.c.post("/api/calltracker/reconcile", json={"workspace": "main", "link": b}, headers=k.h["owner"]).json()
+    assert [r["link"] for r in one["links"]] == [b]
+    assert links_mod.get(k.store, b)["sync_cursor"] and not links_mod.get(k.store, a).get("sync_cursor")
+    assert {j["link"] for j in _match_jobs(k)} == {b}                           # results go to the link the calls came from
+    both = k.c.post("/api/calltracker/reconcile", json={"workspace": "main"}, headers=k.h["owner"]).json()
+    assert sorted(r["link"] for r in both["links"]) == sorted([a, b]) and {r["link"]: r["matched"] for r in both["links"]}[b] == 0
+    card = k.c.get("/api/calltracker", headers=k.h["owner"]).json()
+    assert all(l["last_reconcile"] for l in card["links"])
+    assert sorted(kit.reconcile_due(k.store, now=ct.now_utc() + timedelta(hours=21))) == sorted([a, b])
+
+
+def test_people_and_report_are_per_link(k):
+    a, b = second_link(k)
+    k.fake.members = [{"name": "Ravi CT", "email": "ravi@x.in", "active": 1}]
+    p = k.c.get(f"/api/calltracker/people?link={a}", headers=k.h["owner"]).json()
+    assert p["link"] == a and links_mod.get(k.store, a)["members"]["rows"]     # refreshes the members cache the link's pairing uses
+    conn_a, conn_b = links_mod.get(k.store, a), links_mod.get(k.store, b)
+    for cid, conn in ((1, conn_a), (2, conn_b), (3, conn_b)):
+        call = ct_call(cid, ref=k.lead["Acme"]["id"])
+        assert ev.apply_call(k.store, conn, call)
+    ra = k.c.get(f"/api/calltracker/people-report?link={a}&from=2026-11-01&to=2026-11-30", headers=k.h["owner"]).json()
+    rb = k.c.get(f"/api/calltracker/people-report?link={b}&from=2026-11-01&to=2026-11-30", headers=k.h["owner"]).json()
+    assert ra["totals"]["calls"] == 1 and rb["totals"]["calls"] == 2 and ra["link"] == a
+    assert k.c.get("/api/calltracker/people?link=nope", headers=k.h["owner"]).status_code == 404
+
+
+def test_workspace_admin_can_use_the_kit_for_its_own_workspace_only(k):
+    assert connect(k, ws=k.w2, who="adm2").status_code == 200
+    k.store.update("leads", lambda rows: [{**l, "phone": "9822233344"} if l["id"] == k.other["id"] else l for l in rows])
+    res = k.c.post("/api/calltracker/send", json={"workspace": k.w2, "lead_ids": [k.other["id"]]}, headers=k.h["adm2"])
+    assert res.status_code == 200 and res.json()["sent"] == 1, res.text
+    assert k.c.get(f"/api/calltracker/people?workspace={k.w2}", headers=k.h["adm2"]).status_code == 200
+    assert k.c.get(f"/api/calltracker/people-report?workspace={k.w2}", headers=k.h["adm2"]).status_code == 200
+    assert k.c.post("/api/calltracker/reconcile", json={"workspace": k.w2}, headers=k.h["adm2"]).status_code == 200
+    for method, path, body in (("POST", "/api/calltracker/send", {"workspace": "main", "unsent_only": True}),
+                               ("GET", "/api/calltracker/people?workspace=main", None),
+                               ("POST", "/api/calltracker/reconcile", {"workspace": "main"})):
+        assert k.c.request(method, path, json=body, headers=k.h["adm2"]).status_code == 403, path
+    assert k.c.post("/api/calltracker/send", json={"workspace": "main", "unsent_only": True}, headers=k.h["priya"]).status_code == 403

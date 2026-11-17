@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, getWorkspace } from "../../api.js";
 import { Button, Card, CardHeader, Field, Select } from "../../ui";
+import CallTrackerKit from "./CallTrackerKit.jsx";
 import { ConnectCard, LinkCard, linkName } from "./CallTrackerLinks.jsx";
 import { ManualConnect, MappingEditor } from "./CallTrackerManual.jsx";
 import { readConnectReturn } from "./dialhaloReturn.js";
@@ -103,6 +104,8 @@ export default function CallTracker({ connectReturn } = {}) {
           )}
         </Card>
       )}
+
+      {links.length > 0 && <CallTrackerKit key={ws} ws={ws} links={links} onRefresh={load} />}
 
       {unmatched.length > 0 && (
         <Card className="dh-warn" data-testid="ct-unmatched">

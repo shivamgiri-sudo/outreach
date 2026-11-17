@@ -15,6 +15,10 @@ no `link` is refused, so nothing is changed on the wrong DialHalo workspace).
   POST   /api/calltracker/connect/finish          the SPA, signed in, finishes: code exchange, link saved and tested
   GET    /api/calltracker/funnel                  called / connected / meetings booked from real calls (leads in scope)
   POST   /api/calltracker/hook/{conn_id}          receiver for DialHalo's signed webhooks (no login: the signature is the key)
+  POST   /api/calltracker/send                    integration kit: "send now" of chosen / filtered leads to one link
+  GET    /api/calltracker/people                  integration kit: people matching against one link's members
+  GET    /api/calltracker/people-report           integration kit: calling by person (+ CSV), one link
+  POST   /api/calltracker/reconcile               integration kit: check one link (or all) for calls a webhook missed
 
 Owners manage any workspace; a workspace admin only its own workspaces (never main). Connect / change / disconnect
 are written to the change log with key names only, never values.
@@ -273,43 +277,55 @@ def make_router(store, base_url: str) -> APIRouter:
         return {"from": date_from[:10], "to": date_to[:10], **events.funnel(store, leads, start, end),
                 "connected_workspaces": len({l["workspace"] for l in links.all_links(store) if l.get("enabled", True)})}
 
+    # ---------------------------------------------------------------- integration kit (app/calltracker_kit.py), per link
     class SendBody(BaseModel):
         workspace: str = ""
+        link: str = ""
         lead_ids: list = []
         campaign_id: str = ""
         owner: str = ""
         stage: str = ""
         unsent_only: bool = False
 
+    def kit_link(ws: str, link_id: str, change: bool = False) -> dict:
+        from . import calltracker_kit as kit
+        if not link_id and change and len(links.links_of(store, ws)) > 1:
+            raise HTTPException(400, "This workspace is linked to several DialHalo workspaces: say which one.")
+        try:
+            return kit.link_for(store, ws, link_id)
+        except ct.CallTrackerError as exc:
+            raise HTTPException(exc.status if exc.status == 404 else 400, str(exc))
+
     @router.post("/api/calltracker/send")
     def send(body: SendBody, request: Request):
-        """Bulk 'Send to DialHalo' for chosen leads or a campaign / owner / stage filter of THIS workspace."""
+        """'Send now' for chosen leads or a campaign / owner / stage filter of THIS workspace, to ONE DialHalo link. Leads that
+        already belong to another link are skipped (a lead lives in one DialHalo workspace)."""
         from . import calltracker_kit as kit
         ws = workspace_for(request, body.workspace)
+        link = kit_link(ws, body.link, change=True)
         leads = kit.select_leads(store, ws, body.lead_ids, body.campaign_id, body.owner, body.stage, body.unsent_only)
         if not leads and body.unsent_only:
-            return {"requested": 0, "sent": 0, "created": 0, "updated": 0, "skipped": [], "errors": [], "owner_unmatched": [],
+            return {"link": link["id"], "requested": 0, "sent": 0, "created": 0, "updated": 0, "skipped": [], "errors": [], "owner_unmatched": [],
                     "message": "Every lead is already in DialHalo (opted-out leads are never sent)."}
         if not leads:
             raise HTTPException(400, "No leads match. Opted-out leads are never sent.")
         try:
-            result = kit.send_leads(store, ws, leads, base_url)
+            result = kit.send_leads(store, ws, leads, base_url, link)
         except ct.CallTrackerError as exc:
             raise HTTPException(400 if not exc.retry else 502, str(exc))
-        audit.record(store, _user(request), "calltracker.bulk_send", f"workspace {ws}", f"{result['sent']} sent, {len(result['errors'])} errors")
+        audit.record(store, _user(request), "calltracker.bulk_send", f"workspace {ws} link {link['id']}",
+                     f"{result['sent']} sent, {len(result['skipped'])} skipped, {len(result['errors'])} errors")
         return result
 
     @router.get("/api/calltracker/people")
-    def people(request: Request, workspace: str = ""):
+    def people(request: Request, workspace: str = "", link: str = ""):
         from . import calltracker_kit as kit
         ws = workspace_for(request, workspace)
-        try:
-            return kit.people(store, ws)
-        except ct.CallTrackerError as exc:
-            raise HTTPException(400 if not exc.retry else 502, str(exc))
+        return kit.people(store, ws, kit_link(ws, link))
 
     @router.get("/api/calltracker/people-report")
-    def people_report(request: Request, workspace: str = "", date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"), fmt: str = Query("", alias="format")):
+    def people_report(request: Request, workspace: str = "", link: str = "", date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"),
+                      fmt: str = Query("", alias="format")):
         from . import calltracker_kit as kit
         ws = workspace_for(request, workspace)
         try:
@@ -317,8 +333,11 @@ def make_router(store, base_url: str) -> APIRouter:
             end = (datetime.fromisoformat(date_to[:10]).replace(tzinfo=events.IST) + timedelta(days=1)) if date_to else None
         except ValueError:
             raise HTTPException(400, "Dates must look like 2026-11-13")
-        conn = ct.active_connection(store, ws)
-        report = kit.people_report(store, ws, start, end, kit.dialhalo_stats(conn, start, end) if conn else None)
+        chosen = None
+        if link or links.active_links(store, ws):
+            chosen = kit_link(ws, link)
+        report = kit.people_report(store, ws, start, end, kit.dialhalo_stats(store, chosen, start, end) if chosen else None,
+                                   link_id=chosen["id"] if chosen else "")
         if fmt == "csv":
             from fastapi.responses import Response
             return Response(kit.report_csv(report), media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="calling-by-person.csv"'})
@@ -326,12 +345,15 @@ def make_router(store, base_url: str) -> APIRouter:
 
     @router.post("/api/calltracker/reconcile")
     def reconcile_now(body: WorkspaceBody, request: Request):
+        """Check DialHalo for missed calls now: one link, or every active link of the workspace without `link`."""
         from . import calltracker_kit as kit
         ws = workspace_for(request, body.workspace)
+        if body.link:
+            kit_link(ws, body.link)
         try:
-            return kit.reconcile(store, ws)
+            return kit.reconcile_workspace(store, ws, body.link)
         except ct.CallTrackerError as exc:
-            raise HTTPException(400 if not exc.retry else 502, str(exc))
+            raise HTTPException(exc.status if exc.status == 404 else (400 if not exc.retry else 502), str(exc))
 
     @router.post(HOOK_PATH + "{conn_id}")
     async def hook(conn_id: str, request: Request):
