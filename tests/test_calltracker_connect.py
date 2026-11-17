@@ -21,6 +21,7 @@ class ConnectFake(FakeCT):
         self.exchange = None             # (status, body) to answer the exchange with
         self.codes = {"good-code": True}
         self.self_status = 200
+        self.self_ws = {}                 # Authorization header -> workspace GET connect/self answers with
 
     def __call__(self, method, url, headers, body):
         path = "/" + url.split("://", 1)[1].split("/", 1)[1]
@@ -35,12 +36,13 @@ class ConnectFake(FakeCT):
             return 200, {"data": {"apiKey": NEW_KEY, "webhookSecret": NEW_SECRET, "webhookId": 41, "connectionId": "dc_7",
                                   "workspace": {"id": "ws_bmi", "name": "BMI", "slug": "bmi"}}}
         if path == "/api/v1/connect/self":
-            self.requests.append((method, path, None, auth))
+            self.requests.append((method, path, json.loads(body) if body else None, auth))
             if self.self_status != 200:
                 return self.self_status, {"message": "nope"}
             if method == "DELETE":
                 return 200, {"data": {"revoked": True}}
-            return 200, {"data": {"workspace": {"id": "ws_bmi", "name": "BMI", "slug": "bmi"}, "connectionId": "dc_7", "scopes": ["leads"], "webhook": {"id": 41}}}
+            ws = self.self_ws.get(auth, {"id": "ws_bmi", "name": "BMI", "slug": "bmi"})
+            return 200, {"data": {"workspace": ws, "connectionId": "dc_7", "scopes": ["leads"], "webhook": {"id": 41}}}
         return super().__call__(method, url, headers, body)
 
 

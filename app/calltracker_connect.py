@@ -167,8 +167,12 @@ def finish(store, row: dict, code: str, error: str, who: str) -> dict:
         raise ConnectError("DialHalo answered without a usable API key. Nothing was saved; try again or connect manually.")
     wsinfo = data.get("workspace") if isinstance(data.get("workspace"), dict) else {}
     dh = {"id": str(wsinfo.get("id") or "")[:60], "name": str(wsinfo.get("name") or "")[:120], "slug": str(wsinfo.get("slug") or "")[:80]}
-    same = [l for l in links.links_of(store, row["workspace"]) if dh["id"] and (l.get("dh_workspace") or {}).get("id") == dh["id"]
-            and (l.get("public_url") or l.get("base_url")) in (row["dialhalo_url"], row["server_url"])]
+    urls = {row["dialhalo_url"], row["server_url"], os.environ.get("OUTREACH_DIALHALO_INTERNAL_URL", "").strip().rstrip("/")} - {""}
+    here = [l for l in links.links_of(store, row["workspace"]) if {(l.get("public_url") or "").rstrip("/"), (l.get("base_url") or "").rstrip("/")} & urls]
+    for old in here:                                   # a manual / migrated link may not know its DialHalo workspace yet: ask
+        if not (old.get("dh_workspace") or {}).get("id"):
+            fill_workspace(store, old)
+    same = [l for l in (links.get(store, x["id"]) for x in here) if l and dh["id"] and (l.get("dh_workspace") or {}).get("id") == dh["id"]]
     keep = {k: same[0][k] for k in ("lead_sync", "mapping", "enabled") if same and k in same[0]}
     link = links.save(store, row["workspace"], None, {"base_url": row["server_url"], "public_url": row["dialhalo_url"], "api_key": key,
                                                       "webhook_secret": secret or None, "via": "connect", "dh_workspace": dh,
@@ -185,6 +189,49 @@ def finish(store, row: dict, code: str, error: str, who: str) -> dict:
     elif same:
         message += " The earlier link to the same DialHalo workspace was replaced."
     return {"link": links.get(store, link["id"]), "message": message, "replaced": len(same), "test": test}
+
+
+def receiver_of(store, link: dict) -> str:
+    """The receiver address DialHalo has for this link (its webhook URL): the public base + /api/calltracker/hook/<id>."""
+    from .growth_core import public_base_url
+    from .routes_calltracker import HOOK_PATH
+    return f"{public_base_url(store, os.environ.get('OUTREACH_BASE_URL', 'http://localhost:8000'))}{HOOK_PATH}{link['id']}"
+
+
+def _workspace_of(me: Optional[dict]) -> Optional[dict]:
+    w = (me or {}).get("workspace")
+    if not isinstance(w, dict) or not w.get("id"):
+        return None
+    return {"id": str(w.get("id") or "")[:60], "name": str(w.get("name") or "")[:120], "slug": str(w.get("slug") or "")[:80]}
+
+
+def fill_workspace(store, link: dict) -> Optional[dict]:
+    """Ask DialHalo which workspace this link's key belongs to (GET connect/self) and keep it on the link. Best effort:
+    an older DialHalo (404), a refused key or DialHalo being down leave the link as it is. Returns the workspace or None."""
+    from . import calltracker_links as links
+    if not links.is_active(link):
+        return None
+    try:
+        dh = _workspace_of(whoami(link))
+    except Exception:                                  # never fail a connect or the start-up over this
+        return None
+    if dh:
+        links.save(store, link["workspace"], link["id"], {"dh_workspace": dh}, link.get("updated_by") or "")
+    return dh
+
+
+def fill_missing_workspaces(store) -> int:
+    """Start-up: links made by hand or migrated from the single connection learn their DialHalo workspace, so a later
+    one-click connect to the same workspace replaces them instead of adding a second link. Never raises."""
+    from . import calltracker_links as links
+    n = 0
+    try:
+        for link in links.all_links(store):
+            if not (link.get("dh_workspace") or {}).get("id") and fill_workspace(store, link):
+                n += 1
+    except Exception as exc:
+        print(f"calltracker workspace names not filled: {type(exc).__name__}")
+    return n
 
 
 def whoami(link: dict) -> Optional[dict]:
@@ -210,11 +257,11 @@ def run_test(store, link: dict) -> dict:
         ct.ct_request(link, "GET", "/api/v1/dnc?limit=1")
     except ct.CallTrackerError as exc:
         links.note(store, link["id"], "last_test", False, str(exc))
+        if exc.status in (401, 403):
+            links.note_auth(store, link["id"], True, str(exc))
         return {"ok": False, "message": str(exc)}
-    if me and isinstance(me.get("workspace"), dict):
-        w = me["workspace"]
-        links.save(store, link["workspace"], link["id"], {"dh_workspace": {"id": str(w.get("id") or "")[:60], "name": str(w.get("name") or "")[:120],
-                                                                            "slug": str(w.get("slug") or "")[:80]}}, link.get("updated_by") or "")
+    if _workspace_of(me):
+        links.save(store, link["workspace"], link["id"], {"dh_workspace": _workspace_of(me)}, link.get("updated_by") or "")
     all_members = links.save_members(store, link["id"], members if isinstance(members, list) else [])
     active = [m for m in all_members if m.get("active", 1)]
     preview = ct.owner_preview(store, link["workspace"], active, all_members)
@@ -226,24 +273,30 @@ def run_test(store, link: dict) -> dict:
     if not link.get("webhook_secret"):
         msg += " Add the webhook secret so calls come back."
     links.note(store, link["id"], "last_test", True, msg)
+    links.note_auth(store, link["id"], False)
     unmatched = [{"name": p["name"], "email": p["email"], "reason": p["reason"]} for p in preview if not p["matched"]]
     return {"ok": True, "message": msg, "members": len(active), "owners": preview, "unmatched": unmatched, "workspace": name or ""}
 
 
 def disconnect(store, link: dict) -> str:
-    """Tell DialHalo (best effort), then remove the link here. Returns the sentence for the person."""
+    """Tell DialHalo (best effort), then remove the link here. Returns the sentence for the person.
+    DELETE /api/v1/connect/self turns the key off; the body {"receiver": <this link's receiver URL>} also makes DialHalo
+    delete that workspace's webhooks to exactly that URL (a hand-made webhook of a manual link would otherwise keep
+    retrying a receiver that no longer exists)."""
     ct = _ct()
     from . import calltracker_links as links
-    note = "DialHalo was told and turned the key off."
+    receiver = receiver_of(store, link)
+    note = "DialHalo was told: it turned the key off and removed its webhook to this link."
     if link.get("api_key") and link.get("base_url"):
         try:
-            ct.ct_request(link, "DELETE", "/api/v1/connect/self")
+            ct.ct_request(link, "DELETE", "/api/v1/connect/self", {"receiver": receiver})
         except ct.CallTrackerError as exc:
+            hook = f" Also delete the webhook to {receiver} in DialHalo Settings → Webhooks."
             if exc.status == 404:
-                note = "This DialHalo is older and cannot be told: revoke the key in DialHalo (Settings → Integrations → API keys)."
+                note = "This DialHalo is older and cannot be told: revoke the key in DialHalo (Settings → Integrations → API keys)." + hook
             elif exc.status in (401, 403):
-                note = "DialHalo no longer accepts this key (it was already revoked there)."
+                note = "DialHalo no longer accepts this key (it was already revoked there)." + hook
             else:
-                note = f"DialHalo could not be told ({exc}) Revoke the key in DialHalo (Settings → Integrations → API keys)."
+                note = f"DialHalo could not be told ({exc}) Revoke the key in DialHalo (Settings → Integrations → API keys)." + hook
     links.delete(store, link["id"])
     return note

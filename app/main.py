@@ -1,6 +1,7 @@
 """Outreach OS API."""
 import hmac
 import os
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -271,6 +272,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     from . import calltracker as calltracker_mod
     from . import calltracker_links, calltracker_sync
     calltracker_links.rows(store)             # one DialHalo connection per workspace -> links keyed by id (idempotent)
+    if any(not (l.get("dh_workspace") or {}).get("id") for l in calltracker_links.all_links(store)):
+        from . import calltracker_connect         # best effort, in the background: never slows or fails the start-up
+        threading.Thread(target=calltracker_connect.fill_missing_workspaces, args=(store,), daemon=True, name="calltracker-names").start()
     ensure_cutover(store)                     # signed unsubscribe links start now; older unsigned ones get 60 days
     source_names.backfill(store)              # adds source_id next to source on older leads (idempotent, never rewrites source)
 
