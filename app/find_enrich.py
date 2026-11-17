@@ -343,6 +343,7 @@ def _other_provider(pid: str, work: dict, out: Outcome, domain: str, ctx: Contex
 def enrich_lead(lead: dict, ctx: Context) -> Outcome:
     """Look one lead up and return what to fill (nothing is saved here). `out.stop` means the credit limit was reached."""
     out, work = Outcome(), dict(lead)
+    FE.register_step(work, out, ctx)                        # free, local: the Indian company register (high matches only)
     domain = valid_domain(work.get("domain"))
     if not domain and ctx.usable("apollo") and (work.get("company") or "").strip():
         org = _paid("apollo", ORG_LOOKUP_CREDITS, ctx, lambda: apollo_org_by_name(work["company"], ctx), "domain", work["company"],

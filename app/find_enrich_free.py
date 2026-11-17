@@ -5,6 +5,8 @@
   pattern_guess  an email GUESS from the company's own format, checked without sending (app/pattern_guess.py); stored
                  as `email_guess`, never as `email`, so nothing is ever sent to it
   gravatar       a public Gravatar profile for the lead's email (or its guess): name, photo, LinkedIn (app/gravatar.py)
+  company_register  the local Indian company register (app/company_register_leads.py): attached only on a high-confidence
+                 match; medium / low matches are left for a person in the lead drawer
 
 Each step fills empty fields only, records where every value came from, and has an on/off switch in Prospect search >
 Spend (settings.prospect_db.providers.<id>.enabled, on by default).
@@ -17,6 +19,7 @@ STEPS = {
     "team_pages": "Team and press pages (free)",
     "pattern_guess": "Email format guess (free, never sent to)",
     "gravatar": "Gravatar profiles (free)",
+    "company_register": "Company register match (free, local MCA data)",
 }
 NOTE = "free step in Find & enrich"
 
@@ -122,3 +125,23 @@ def gravatar_step(work: dict, out, ctx) -> None:
             out.changes["email_guess_reason"] + "; a public Gravatar profile uses this address")
     if added:
         out.notes.append("Gravatar profile (" + ", ".join(added) + ")")
+
+
+def register_step(work: dict, out, ctx) -> None:
+    """Attach the lead's company from the local register when the match is high-confidence (empty fields only)."""
+    if not on(ctx, "company_register") or work.get("registry") or not (work.get("company_legal") or work.get("company") or "").strip():
+        return
+    from . import company_register_leads as CRL
+    try:
+        result = CRL.find(ctx.free.store, work)
+    except ValueError:                                       # no register imported yet, or no usable name
+        return
+    except Exception as exc:                                 # noqa: BLE001 - never stops the other steps
+        ctx.error("Company register", f"The company register could not be read (last: {str(exc)[:120]}).")
+        return
+    if result["confidence"] != "high":
+        return
+    reg = CRL.registry_of(result["best"], "high", "Find & enrich")
+    filled = [field for field, key in CRL.FILL if _set(work, out, field, reg.get(key), CRL.SOURCE)]
+    work["registry"] = out.changes["registry"] = {**reg, "filled": filled}
+    out.notes.append(f"company register CIN {reg['cin']}")
