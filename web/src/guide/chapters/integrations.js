@@ -67,6 +67,29 @@ export default {
     ]],
     ["h", "Call Tracker (DialHalo)"],
     ["p", "When Call Tracker (DialHalo) is connected for a workspace, erasing a person in Outreach also erases them in Call Tracker and puts their number on its do-not-call list, so nobody can dial them again. If Call Tracker is down the removal is retried automatically; if it still fails, the card shows it as failed with a **Retry** button and your managers get a notification."],
+    ["h", "Connect a DialHalo workspace"],
+    ["p", "Who can do it: the owner (any workspace), or a workspace admin for their own workspace. Callers and viewers cannot. One Outreach workspace can be linked to several DialHalo workspaces, for example Main to **MAS Callnet** and to **BMI**."],
+    ["steps", [
+      "Open {{menu:Integrations}} → **DialHalo** and, at the top, pick the Outreach workspace you want to link.",
+      "Check the **DialHalo address** (it remembers the last one used) and click **Connect a DialHalo workspace**. DialHalo opens in the same tab.",
+      "Sign in to DialHalo if asked and pick the right DialHalo workspace: the one whose callers should get these leads (for BMI calls, pick BMI). Click allow.",
+      "DialHalo sends you back to Outreach, which shows **Connected to** and the workspace name. There are no keys to copy. If you wait more than 10 minutes, or press Cancel in DialHalo, nothing is saved: just start again.",
+      "Repeat for each DialHalo workspace you want to link. Connecting the same DialHalo workspace again replaces its old link.",
+    ]],
+    ["p", "Each linked workspace has its own card: name, address, status, last call event, **Send leads to this DialHalo workspace**, a star for the primary link, **Test**, **Match past calls** and **Disconnect**. Calls made in a DialHalo workspace come back to this workspace's leads, and the Outreach match goes back to that same DialHalo workspace."],
+    ["table", { head: ["Send leads to this DialHalo workspace", "What is sent"], rows: [
+      ["Leads that get a call task", "A lead goes to the dial queue when it gets a call task (an employer replied yes, a flow step, or someone added a call). This is the default."],
+      ["Leads whose owner is a member there", "Every lead with a phone whose Outreach owner's email is a member of that DialHalo workspace, plus their call tasks. Checked against DialHalo's member list every few hours."],
+      ["Every lead with a phone", "Every lead of the workspace that has a phone number, a few hundred at a time."],
+      ["Off: send no leads", "Nothing is sent from Outreach; calls made there still come back."],
+    ] }],
+    ["ul", [
+      "A lead goes to **one** DialHalo workspace only: the one it was already sent to; otherwise the **primary** (★) link; otherwise the oldest. Click the star on a card to make it the primary.",
+      "People who opted out, are on the do-not-contact list, or were erased are never sent. Erasing a person and do-not-call reach **every** linked DialHalo workspace.",
+      "**People matched by email** on each card shows how many Outreach people are members of that DialHalo workspace (for example Priya ✓ on BMI). A lead whose owner is not a member is shared out by DialHalo's own distribution. Press **Test** to refresh it.",
+      "**Disconnect** asks DialHalo to turn the key off, then removes the link here. With an older DialHalo the card says so: then revoke the key in DialHalo under Settings → Integrations → API keys.",
+      "**Advanced: connect manually** at the bottom is the old way (an API key and webhook secret made in DialHalo by hand) for a DialHalo without one-click connect.",
+    ]],
     ["h", "Outreach match: which DialHalo calls were to your leads"],
     ["p", "Every number your team dials in DialHalo is checked against the workspace's leads. In DialHalo, open the **Outreach match** page to see each call either matched to an Outreach lead or marked **Not in Outreach**."],
     ["ul", [
@@ -77,7 +100,7 @@ export default {
     ]],
     ["steps", [
       "To match calls made before this was switched on, open {{menu:Integrations}} → **DialHalo** (owner or the workspace's admin).",
-      "Under **Match past calls**, choose 7, 30 or 90 days and click **Match past calls**.",
+      "On the card of the DialHalo workspace, click **Match past calls**, choose 7, 30 or 90 days and click **Match past calls** again. Each linked DialHalo workspace is matched on its own.",
       "The card shows the progress: calls checked, matched to a lead, and not in Outreach. One run checks up to 20,000 calls. If it stops early, click **Continue**. Running it again is safe.",
     ]],
     ["h", "Lead webhook (owners)"],
