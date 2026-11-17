@@ -358,8 +358,10 @@ def enrich_lead(lead: dict, ctx: Context) -> Outcome:
     if not domain:
         ctx.error("website", "Some leads have no website, and Apollo could not supply one (not connected, or no match), so there was nothing to look up for them.")
         return out
+    FE.domain_step(work, out, domain, ctx)                  # free: MX / SPF / DMARC + domain age (public DNS, RDAP)
     _cached(work, out, domain, ctx)
     _crawl(work, out, domain, ctx)
+    FE.profiles_step(work, out, domain, ctx)                # free, off by default: public GitHub emails on the domain
     FE.pattern_step(work, out, domain, ctx)                 # free: a guess is never stored as `email`, so paid steps still run
     FE.gravatar_step(work, out, ctx)
     for pid in ctx.order(PAID):

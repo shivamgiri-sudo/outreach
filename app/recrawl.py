@@ -15,6 +15,7 @@ phone, social}). After a read, real changes only become timeline lines:
   "Stopped hiring", "New roles: ...", "Phone on website changed", "New social link: ..."
 No change means no line. The first read of a lead only stores the snapshot (the hiring reader's own line says what it found).
 A site that cannot be read keeps the old snapshot and is tried again after `days`.
+A domain that was read also gets its domain trust signals refreshed (app/domain_signals.py, cached 30 days).
 """
 import re
 import threading
@@ -148,6 +149,15 @@ def _notify(store, lead_id: str, text: str) -> None:
         pass
 
 
+def _domain_signals(store, domain: str, now: datetime) -> None:
+    """Mail records + domain age for a domain just read (app/domain_signals.py; cached 30 days, so usually no lookup)."""
+    from . import domain_signals
+    try:
+        domain_signals.refresh_domain(store, domain, now)
+    except Exception:                                    # noqa: BLE001 - never stops the re-crawl
+        pass
+
+
 # ---------- one run ----------
 def run_once(store, fetch: Callable, now: Optional[datetime] = None, limit: int = BATCH) -> dict:
     """Read up to `limit` due domains now. Never raises for a single site."""
@@ -168,6 +178,7 @@ def run_once(store, fetch: Callable, now: Optional[datetime] = None, limit: int 
                 store.update_lead(lead_id, lambda l, s=snap: {**l, "site_snapshot": s})
             continue
         new = snapshot_of(result, now)
+        _domain_signals(store, domain, now)
         for lead_id, lead in by_id.items():
             prev = baseline(lead)
             changes = diff(prev, new) if prev else []

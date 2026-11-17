@@ -430,7 +430,7 @@ def _clean_filters(raw) -> dict:
         if key == "sources":
             out[key] = [str(s)[:60] for s in (value or []) if s][:30] if isinstance(value, list) else []
         elif key == "has":                          # contact-details filter: phone / email / linkedin
-            out[key] = [w for w in ("phone", "mobile", "email", "linkedin", "hiring") if isinstance(value, list) and w in value]
+            out[key] = [w for w in ("phone", "mobile", "email", "linkedin", "hiring", "young_domain", "no_mail_auth") if isinstance(value, list) and w in value]
         elif key in ("inbound", "no_dnd"):
             out[key] = bool(value)
         elif key == "li_stage":                      # LinkedIn stage filter (app/linkedin_stages.FILTER_KEYS)

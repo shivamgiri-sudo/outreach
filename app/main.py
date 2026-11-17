@@ -664,6 +664,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_reverse_lookup_router(store, fetcher))       # reverse email lookup (free steps only)
     from .routes_hiring_signal import make_router as make_hiring_signal_router
     app.include_router(make_hiring_signal_router(store, fetcher))
+    from .routes_lead_research import make_router as make_lead_research_router
+    app.include_router(make_lead_research_router(store, (campaign_transports or {}).get("domain_signals")))   # domain signals, search links, ask-contact
     from .routes_company_register import make_router as make_company_register_router
     app.include_router(make_company_register_router(store, {"fetch": fetcher, **(campaign_transports or {})}))   # MCA company register
     from .routes_funnel import make_router as make_funnel_router

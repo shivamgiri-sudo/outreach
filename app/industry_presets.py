@@ -139,7 +139,7 @@ def _snippets(store, preset: dict, by: str, overwrite: bool, out: dict) -> None:
     if not wanted and not (overwrite and others):
         out["unchanged"].append("snippets")
         return
-    if rows and not overwrite and any(not r.get("preset") for r in rows):
+    if rows and not overwrite and any(not r.get("preset") and not r.get("builtin") for r in rows):
         out["kept"].append({"what": "snippets", "why": "You have your own snippets; apply with overwrite to add the preset's."})
         return
     stamp = _now()
