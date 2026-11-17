@@ -293,14 +293,15 @@ def process_delivery_event(store, event: dict, now: Optional[datetime] = None) -
 def _pause_if_unhealthy(store, now: datetime) -> tuple:
     rates = _rates(store, now)
     from . import sender_health
-    if sender_health.multi_mailbox(store, now):     # more than one sending mailbox in 7 days: each is judged (and paused) on its own
-        return rates, sender_health.pause_unhealthy(store, now)
+    # More than one sending mailbox in 7 days: each is also judged (and paused) on its own at the per-mailbox limit.
+    # The blended 2% / 0.3% pause below always applies as well, so adding a mailbox never loosens protection.
+    per_mailbox = sender_health.pause_unhealthy(store, now) if sender_health.multi_mailbox(store, now) else None
     paused = None
     if rates["sent"] >= MIN_SENDS_FOR_RATE and (rates["bounce_rate"] > BOUNCE_PAUSE_RATE or rates["complaint_rate"] > COMPLAINT_PAUSE_RATE):
         paused = (f"{rates['bounces']} bounces and {rates['complaints']} complaints from {rates['sent']} emails in 7 days. "
                   "Check the list quality, then resume sending on the Outbox page.")
         store.update("settings", lambda s: {**s, "sending_paused": {"reason": paused, "at": now.isoformat(timespec="seconds"), "resume_at": None}})
-    return rates, paused
+    return rates, " ".join(t for t in (per_mailbox, paused) if t) or None
 
 
 def _count_reply_bounce(store, email: Optional[str], message_id: str = "") -> None:

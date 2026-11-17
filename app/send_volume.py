@@ -16,7 +16,7 @@ from typing import Optional
 from . import email_state
 
 SETTING = "email_volume"
-DEFAULT_SHARE = 20
+DEFAULT_SHARE = 100                      # off until the owner lowers it (20 recommended once addresses are verified by a real mailbox check)
 LIMITED = ("domain_ready", "candidate")
 NOTE = "the mailbox of this address is not confirmed, and today's share for unconfirmed addresses is used up (it goes on a later day)"
 

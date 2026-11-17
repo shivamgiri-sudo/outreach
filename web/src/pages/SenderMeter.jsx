@@ -70,7 +70,7 @@ export function UnconfirmedShare({ volume, onChanged }) {
       <p className="sub m0">{meaning}</p>
       {isOwner() && (
         <div className="row mt-3">
-          <Field label="Share of daily sends (%)" help={`0 = never, 100 = no limit. Default ${volume.default_share}%.`}>
+          <Field label="Share of daily sends (%)" help={`0 = never, 100 = no limit (the default). 20 is a good setting once most addresses have a real mailbox check.`}>
             <Input type="number" min={0} max={100} step={1} inputMode="numeric" value={value} onChange={(e) => setValue(e.target.value)} aria-label="Share of daily sends for unconfirmed addresses" />
           </Field>
           <Button disabled={!valid || n === volume.domain_ready_share} onClick={save}>Save</Button>

@@ -75,7 +75,7 @@ def test_levels_warn_at_2_and_red_above_5_with_minimum_sends():
 
 def test_two_mailboxes_pause_only_the_bad_one_and_the_owner_resumes_it(tmp_path):
     c, store = make(tmp_path)
-    seed(store, OLD, 60, bounced=1, prefix="o")                                   # 1.7%: fine
+    seed(store, OLD, 400, bounced=1, prefix="o")                                  # 0.25%: fine, and keeps the blended rate under 2%
     seed(store, CURRENT, 60, bounced=3, prefix="n")                               # exactly 5%: not above it yet
     assert sender_health.multi_mailbox(store, NOW) and sender_health.pause_unhealthy(store, NOW) is None
     out = inbound.process_delivery_event(store, {"type": "bounce", "email": "n3@hello-co.in", "provider_id": "p2", "at": at(0)}, NOW)
@@ -142,3 +142,12 @@ def test_sent_messages_carry_their_mailbox(tmp_path):
     c.post(f"/api/leads/{lead['id']}/enroll")
     assert run_due(store, T0, "", Sender())["sent"] == 1
     assert store.read("outbox")[-1]["from_email"] == CURRENT
+
+
+def test_several_mailboxes_still_get_the_blended_2_percent_pause(tmp_path):
+    c, store = make(tmp_path)
+    seed(store, OLD, 60, bounced=1, prefix="o")                                   # 1.7%
+    seed(store, CURRENT, 60, bounced=2, prefix="n")                               # 3.3%: under the 5% per-mailbox limit
+    out = inbound.process_delivery_event(store, {"type": "bounce", "email": "n2@hello-co.in", "provider_id": "pz", "at": at(0)}, NOW)
+    assert sender_health.multi_mailbox(store, NOW)
+    assert out["paused"] and "sending_paused" in store.read("settings")          # 4 of 120 = 3.3% blended: the global pause holds all mail

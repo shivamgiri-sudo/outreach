@@ -13,7 +13,8 @@ Auto-pause (inbound._pause_if_unhealthy calls pause_unhealthy): only for Mas Cal
 pause it extends.
   * one mailbox sent in the last 7 days (the usual case): the global pause is used exactly as before (above 2% bounces
     or 0.3% complaints with 50 sends in 7 days -> settings.sending_paused, "Resume" on the Outbox page);
-  * more than one mailbox sent in the last 7 days (the from address was changed): each mailbox is judged on its own: above
+  * more than one mailbox sent in the last 7 days (the from address was changed): the global 2% pause still applies to
+    all mail together, AND each mailbox is also judged on its own: above
     PAUSE_RATE bounces (or the complaint level) with MIN_SENDS sends in 7 days, THAT mailbox is paused
     (settings.mailbox_paused[address]); the others keep sending. Sending from a paused mailbox stops until an owner
     clicks "Resume" on its row (POST /api/deliverability/senders/resume) or on the Outbox page.

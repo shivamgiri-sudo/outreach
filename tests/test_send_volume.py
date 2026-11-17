@@ -1,4 +1,4 @@
-"""Unconfirmed addresses at a lower volume (app/send_volume.py): a share of each mailbox's daily sends (default 20%),
+"""Unconfirmed addresses at a lower volume (app/send_volume.py): a share of each mailbox's daily sends (default 100 = off; 20 recommended),
 0 and 100, overflow waits for a later day (never dropped), confirmed addresses are never held, practice is not limited."""
 from datetime import timedelta
 
@@ -41,8 +41,8 @@ def test_allowance_rules():
     assert send_volume.allowance(0, 50) == 0 and send_volume.allowance(200, 15) == 30
 
 
-def test_default_is_20_percent_and_the_rest_wait_for_the_next_day(tmp_path):
-    c, store = make(tmp_path)
+def test_share_of_20_percent_and_the_rest_wait_for_the_next_day(tmp_path):
+    c, store = make(tmp_path, share=20)
     assert send_volume.share_of(store) == 20
     out = run_due(store, T0, "", Sender())
     assert out["sent"] == 2 and out["waiting_unconfirmed"] == 4 and out["held"] == 4
@@ -78,7 +78,7 @@ def test_hundred_is_no_limit(tmp_path):
 
 
 def test_confirmed_sends_do_not_use_the_share(tmp_path):
-    c, store = make(tmp_path, n=6, confirmed=3)          # 3 confirmed + 3 unconfirmed; share 20% of 10 = 2 unconfirmed
+    c, store = make(tmp_path, n=6, confirmed=3, share=20)          # 3 confirmed + 3 unconfirmed; share 20% of 10 = 2 unconfirmed
     out = run_due(store, T0, "", Sender())
     assert out["sent"] == 5 and out["waiting_unconfirmed"] == 1
 
@@ -91,8 +91,13 @@ def test_practice_runs_are_not_limited(tmp_path):
 
 def test_owner_sets_the_share_and_it_is_shown(tmp_path):
     c, store = make(tmp_path, n=1)
-    assert c.get("/api/deliverability").json()["volume"] == {"domain_ready_share": 20, "default_share": 20}
+    assert c.get("/api/deliverability").json()["volume"] == {"domain_ready_share": 100, "default_share": 100}
     r = c.put("/api/deliverability/volume", json={"domain_ready_share": 35})
     assert r.status_code == 200 and r.json()["domain_ready_share"] == 35 and send_volume.share_of(store) == 35
     assert c.put("/api/deliverability/volume", json={"domain_ready_share": 101}).status_code == 422
     assert any(a.get("action") == "deliverability.volume" for a in store.read("audit"))
+
+
+def test_default_is_off_so_deploying_changes_nothing(tmp_path):
+    c, store = make(tmp_path)
+    assert send_volume.DEFAULT_SHARE == 100 and send_volume.share_of(store) == 100
