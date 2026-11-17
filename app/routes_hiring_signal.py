@@ -3,17 +3,24 @@
 POST /api/leads/{lead_id}/hiring-signal   one lead, on the request (callers may: free public pages, like company health)
 POST /api/hiring-signal/run               a bounded batch (at most 50 domains) in the background: owners only
 GET  /api/hiring-signal/run               the batch's progress: owners only
+GET  /api/recrawl                         the monthly re-crawl switch, days and last run (app/recrawl.py): owners only
+PUT  /api/recrawl                         {enabled, days}: owners only
 """
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import audit, hiring_signal as hs, workspaces
+from . import audit, hiring_signal as hs, recrawl, workspaces
 
 BACKGROUND = True                  # tests set False: the batch then runs inside the request
 
 
 class BatchBody(BaseModel):
     limit: int = Field(default=hs.BATCH_MAX, ge=1, le=hs.BATCH_MAX)
+
+
+class RecrawlBody(BaseModel):
+    enabled: bool
+    days: int = Field(default=recrawl.DEFAULT_DAYS, ge=recrawl.MIN_DAYS, le=recrawl.MAX_DAYS)
 
 
 def make_router(store, fetch) -> APIRouter:
@@ -47,5 +54,19 @@ def make_router(store, fetch) -> APIRouter:
     @router.get("/api/hiring-signal/run")
     def progress():
         return dict(batch.state)
+
+    def recrawl_view() -> dict:
+        return {**recrawl.settings_of(store), "batch": recrawl.BATCH, "last_run": recrawl.status_of(store)}
+
+    @router.get("/api/recrawl")
+    def get_recrawl():
+        return recrawl_view()
+
+    @router.put("/api/recrawl")
+    def put_recrawl(body: RecrawlBody, request: Request):
+        store.update("settings", lambda s: {**s, recrawl.SETTINGS_KEY: {"enabled": body.enabled, "days": body.days}})
+        audit.record(store, getattr(request.state, "user", None), "recrawl.settings", "monthly website re-check",
+                     f"{'on' if body.enabled else 'off'}; every {body.days} days")
+        return recrawl_view()
 
     return router

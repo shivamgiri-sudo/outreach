@@ -659,6 +659,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_analytics_router(store))
     from .routes_email_checker import make_router as make_email_checker_router
     app.include_router(make_email_checker_router(store))
+    from .routes_reverse_lookup import make_router as make_reverse_lookup_router
+    app.include_router(make_reverse_lookup_router(store, fetcher))       # reverse email lookup (free steps only)
     from .routes_hiring_signal import make_router as make_hiring_signal_router
     app.include_router(make_hiring_signal_router(store, fetcher))
     from .routes_company_register import make_router as make_company_register_router
@@ -707,6 +709,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             store, now, campaign_io, campaign_notify, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"),
                          gate_runner=lambda: email_gate.check_pending(store, campaign_io, background=True))
         start_imap_poller(store, imap_factory)
+        from . import recrawl
+        recrawl.start_loop(store, fetcher)            # monthly re-read of active leads' websites: 20 domains an hour at most
     return app
 
 

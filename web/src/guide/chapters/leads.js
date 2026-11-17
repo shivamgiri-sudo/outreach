@@ -39,6 +39,7 @@ export default {
       "Use the drop-downs to narrow the list: **All stages**, **All sales stages**, **Hot, warm and cold**, **All sources**, **Any contact details**, **All owners**, **All tags**, **Any LinkedIn stage**.",
       "**Any contact details** lets you tick Phone number, Email, LinkedIn profile and **Hiring now (open roles)**. Ticking two shows only leads that have both. Hiring now keeps the companies that publish open jobs on their own website or came in with a job list.",
       "A **Hiring: N roles** tag next to a company name means it has open jobs right now. Point at it to see the role titles. Open the lead and look under **Hiring now** for details.",
+      "Active leads' websites are read again about once a month. When something really changes (started or stopped hiring, new roles, a new phone or social link), a line is added to the lead's timeline. See [Buying signals](#help/signals).",
       "**All owners** has **My leads** and **Unassigned**.",
       "Tick **Inbound only** to see only leads that came to you.",
       "**Any ageing** finds open leads that have gone cold: **Untouched** (never contacted), **Gone quiet** (last attempt long ago and no reply) and **Stuck in stage**. The days are shown in the list and an owner can change them with **Ageing days**. Aged leads carry an **Aged** tag. Closed leads, marked invalid or consultant leads and do-not-contact people are never aged.",

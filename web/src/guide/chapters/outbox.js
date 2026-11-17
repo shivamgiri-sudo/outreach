@@ -48,6 +48,13 @@ export default {
       "The built-in checker cannot look inside a mailbox, so it cannot know whether a company's server accepts every address. A mailbox-level check only runs on a computer where the mail port is open, and never blocks sending.",
       "If the domain could not be looked up right now, the lead stays \"not checked yet\" and is tried again, it is never marked invalid for that.",
     ]],
+    ["h", "Re-check old addresses"],
+    ["p", "People change jobs, so a check gets old. The same card shows how many addresses were **not checked in 90 days** (or never checked). While the email checks are on, an address whose last check is older than that waits for a fresh check before its next email. Later emails of a sequence that is already running only wait while a checker (your verifier or the built-in checker) is connected, so nothing stalls."],
+    ["ul", [
+      "Owners can switch **Re-check old addresses before sending** off, or change the number of days (7 to 365, default 90), and click **Save days**.",
+      "Owners and workspace admins can click **Re-check now (max 500)** to re-check up to 500 old addresses of their own leads in the background. It uses your verifier when one is connected (that can use its credits), else the free built-in checker, and it never adds mailbox-level (SMTP) checks.",
+      "An address that failed a check stays invalid: it is never re-checked into a send.",
+    ]],
     ["h", "Deliverability: which source bounces"],
     ["p", "Owners and workspace admins can open **Deliverability: which source bounces** under the email checks card. It shows sent, delivered, bounced and spam complaints for the last 7, 30 or 90 days, with a plain verdict (green under 1% bounces, amber 1 to 2%, red above 2%, where sending pauses by itself). The tables show the worst sources first, then domains, email steps, the email check result and shared versus named mailboxes, and a bar strip per day. It shows counts and domains only, never addresses or names."],
     ["p", "Below it, **Sending domain records** looks up your sending domain's mail servers, SPF, DKIM and DMARC and says in plain words what to fix. Where providers differ it says to check with your provider. It is read-only, and the result is kept for 10 minutes."],

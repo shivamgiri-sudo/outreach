@@ -58,9 +58,21 @@ export const ops = {
     const a = Object.assign(document.createElement("a"), { href: url, download: filename || "email-check.csv" });
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   },
+  // Reverse lookup on the same page: who is behind each address (free steps only), CSV, rows for the smart import.
+  reverseStart: (text, filename = "") => request("/api/email-checker/reverse", { method: "POST", body: { text, filename } }),
+  reverseRun: (id) => request(`/api/email-checker/reverse/${id}`),
+  reverseImport: (id) => request(`/api/email-checker/reverse/${id}/import`),
+  async reverseCsv(id) {
+    const { blob, filename } = await apiDownload(`/api/email-checker/reverse/${id}/export.csv`, { withName: true });
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement("a"), { href: url, download: filename || "reverse-lookup.csv" });
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  },
   // Hiring now + company facts from the lead's own website: one lead (callers too), a batch of up to 50 sites (owners).
   hiringSignalRefresh: (leadId) => request(`/api/leads/${leadId}/hiring-signal`, { method: "POST" }),
   hiringBatchStart: (limit = 50) => request("/api/hiring-signal/run", { method: "POST", body: { limit } }),
   hiringBatchState: () => request("/api/hiring-signal/run"),
+  recrawl: () => request("/api/recrawl"),
+  setRecrawl: (enabled, days) => request("/api/recrawl", { method: "PUT", body: { enabled, days: Number(days) } }),
   campaignLeadsPage: (id, params) => request(`/api/campaigns/${id}/leads${query({ page: 1, ...params })}`),
 };

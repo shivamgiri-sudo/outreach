@@ -1,7 +1,7 @@
 export default {
   id: "emailcheck", title: "Email checker", group: "Menu pages", order: 312, kind: "page", menu: "Email checker",
   roles: ["owner", "admin"],
-  summary: "Check a pasted list or a CSV of up to 10,000 email addresses before you send: spelling, throwaway inboxes, mail servers, and whether they are already leads, bounced or on your do-not-contact list.",
+  summary: "Check a pasted list or a CSV of up to 10,000 email addresses before you send: spelling, throwaway inboxes, mail servers, and whether they are already leads, bounced or on your do-not-contact list. The Reverse lookup tab finds who is behind each address.",
   blocks: [
     ["p", "{{menu:Email checker}} is a stand-alone tool. It does not change any lead. Use it on a list someone sent you, a bought list, or an event sign-up sheet, before you import or email it."],
     ["h", "Who can use it"],
@@ -30,6 +30,15 @@ export default {
     ["p", "Extra tags say when an address is a shared mailbox, a free provider (Gmail, Yahoo and similar) or already one of your leads."],
     ["h", "Add the good ones as leads"],
     ["p", "When the check finds valid addresses that are not leads yet, **Add N valid ones as leads** imports them through the normal quick import, with the source \"email checker\". Duplicates and the do-not-contact list are skipped as in any import."],
+    ["h", "Reverse lookup: who is behind an address"],
+    ["p", "The **Reverse lookup** tab answers \"who is this?\" for up to 2,000 addresses at a time. Paste them or choose a CSV, then click **Find who they are**. Big lists run in the background."],
+    ["ul", [
+      "Your own data is looked at first: your leads, the other contacts on your leads, and the prospect database (a login limited to some workspaces only sees its own workspaces' leads, never the prospect database).",
+      "Then free public signals: the company's own website (team and contact pages, where a name sits next to the address, plus the company name and logo) and the person's public Gravatar profile. Gmail, Yahoo and other webmail addresses only get the Gravatar step.",
+      "No paid lookup is ever used, and no email is sent.",
+    ]],
+    ["p", "Each row shows the name, title, company, LinkedIn and photo found, which step found what, the email check status, and a confidence: **High** (an exact match in your own data, or the name and address on the same card of the company's website), **Medium** (a name from Gravatar) or **Low** (only the company is known). A **Webmail for a company contact** tag means a Gmail-type address belongs to someone your data ties to a company."],
+    ["p", "**Download CSV** gives every row. **Create/fill leads** sends the useful rows through the normal smart import: new addresses become new leads, and leads you already have only get their EMPTY fields filled. Nothing you typed is overwritten."],
     ["tip", "No mailbox is contacted and no email is sent. The checker uses spelling rules, public DNS records and your own sending history, so it costs nothing and cannot hurt your sender name."],
     ["p", "Related: [Data hygiene](#help/hygiene), [Importing leads](#help/leads-import)."],
   ],

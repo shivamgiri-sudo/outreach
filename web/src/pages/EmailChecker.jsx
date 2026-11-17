@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { api, canAdminister, canWrite } from "../api.js";
 import { ops } from "../opsApi.js";
-import { Badge, Button, Card, CardHeader, DataTable, EmptyState, Field, PageHeader, Stat, Stats, useToast } from "../ui/index.js";
+import { Badge, Button, Card, CardHeader, DataTable, EmptyState, Field, PageHeader, Stat, Stats, Tabs, useToast } from "../ui/index.js";
+import ReverseLookup from "./ReverseLookup.jsx";
 import "../data-pages.css";
 
 const MAX = 10000;
@@ -76,6 +77,7 @@ export default function EmailChecker() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [tab, setTab] = useState("check");
   const timer = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
 
@@ -119,6 +121,9 @@ export default function EmailChecker() {
     <>
       <PageHeader title="Email checker" help="emailcheck"
         description="Check a list of email addresses before you send: spelling, throwaway inboxes, mail servers, and whether they are already leads, bounced or on your do-not-contact list." />
+      <Tabs label="Email checker tools" value={tab} onChange={setTab}
+        items={[{ id: "check", label: "Check addresses" }, { id: "reverse", label: "Reverse lookup", testId: "tab-reverse" }]} />
+      {tab === "reverse" ? <ReverseLookup /> : <>
       <Card>
         <CardHeader title="Your list" description={`Paste addresses (one per line, or separated by commas) or choose a CSV with an email column. Up to ${MAX.toLocaleString()} at a time.`} />
         <div className="dp-fields">
@@ -144,6 +149,7 @@ export default function EmailChecker() {
         </Card>
       )}
       {run?.status === "done" && <Results run={run} onImport={addAsLeads} importing={importing} />}
+      </>}
     </>
   );
 }

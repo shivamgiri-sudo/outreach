@@ -173,8 +173,9 @@ def lookup(store, domain: str, fetch: Callable, now: Optional[datetime] = None, 
 
 
 # ---------- writing onto leads ----------
-def apply(store, lead_id: str, result: dict) -> dict:
-    """Save hiring_signal (and the job fields) and fill empty company fields on the latest copy of the lead."""
+def apply(store, lead_id: str, result: dict, job_event: bool = True) -> dict:
+    """Save hiring_signal (and the job fields) and fill empty company fields on the latest copy of the lead.
+    job_event=False leaves out the "Hiring now" timeline line (app/recrawl.py writes its own change lines)."""
     out = {"filled": []}
     erased = set(store.read("suppressed_hashes"))
 
@@ -187,7 +188,7 @@ def apply(store, lead_id: str, result: dict) -> dict:
         if n:
             lead.update(open_roles=n, max_job_age_days=result["hiring"].get("max_job_age_days", 0),
                         role=lead.get("role") or " and ".join(hiring["titles"][:2]))
-            if n != before.get("open_roles"):
+            if job_event and n != before.get("open_roles"):
                 events.append(event("jobs", f"Hiring now: {n} open role(s) on the company's website"))
         elif before.get("open_roles") and lead.get("open_roles") == before.get("open_roles"):
             lead["open_roles"] = 0                      # the roles we counted earlier are gone from the site
