@@ -1,0 +1,18 @@
+/* Company register: the lead drawer panel and the Data sources cards. Tokens only, so dark mode follows the theme. */
+.reg-grid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin: var(--s3) 0; }
+.reg-grid > div { min-width: 0; overflow-wrap: anywhere; }
+.reg-grid small { display: block; color: var(--muted); font-size: var(--fs-xs); }
+.reg-wide { grid-column: 1 / -1; }
+.reg-ask { border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--raised); padding: var(--s3); margin: var(--s3) 0; }
+.reg-cand { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2);
+  padding: var(--s2) 0; border-top: 1px solid var(--line); }
+.reg-cand:first-of-type { border-top: 0; }
+.reg-cand-text { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+.reg-actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
+.reg-note { color: var(--muted); font-size: var(--fs-xs); margin: var(--s2) 0 0; }
+.reg-states { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); margin: var(--s2) 0; }
+.reg-progress { width: 100%; height: 8px; accent-color: var(--brand); }
+.reg-files { margin: var(--s2) 0; padding-left: var(--s5); color: var(--muted); font-size: var(--fs-sm); }
+.reg-upload { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin: var(--s3) 0; }
+.reg-upload input[type="file"] { max-width: 100%; min-width: 0; }
+@media (max-width: 560px) { .reg-actions .btn, .reg-upload .btn { flex: 1 1 auto; } }

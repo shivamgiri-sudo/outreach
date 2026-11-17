@@ -49,7 +49,7 @@ OWNER_ROUTES = {
     ("GET", "/api/security/settings"), ("PUT", "/api/security/settings"), ("POST", "/api/security/two-step/{email}/reset"),
     ("PUT", "/api/insights/source-spend"), ("GET", "/api/inbound/log"), ("POST", "/api/inbound/{connector_id}/test"), ("POST", "/api/inbound/{connector_id}/sync"),
 }
-OWNER_PREFIXES = ("/api/users", "/api/compliance", "/api/backup", "/api/export/", "/api/capture", "/api/hiring-engine", "/api/linkedin-agent", "/api/linkedin-cloud", "/api/audit", "/api/system")    # any method (exports: no CSV for callers)
+OWNER_PREFIXES = ("/api/users", "/api/compliance", "/api/backup", "/api/export/", "/api/capture", "/api/hiring-engine", "/api/linkedin-agent", "/api/linkedin-cloud", "/api/audit", "/api/system", "/api/company-register")    # any method (exports: no CSV for callers)
 OWNER_WRITE_PREFIXES = ("/api/integrations", "/api/channels", "/api/workflows", "/api/flows", "/api/brand", "/api/labels", "/api/onboarding")   # anything but GET
 READ_METHODS = ("GET", "HEAD", "OPTIONS")
 
@@ -83,6 +83,8 @@ CALLER_WRITES = {
     ("POST", "/api/leads/{lead_id}/contact-points/remove"), ("POST", "/api/leads/{lead_id}/people"),
     ("PUT", "/api/leads/{lead_id}/people/{person_id}"), ("DELETE", "/api/leads/{lead_id}/people/{person_id}"),
     ("POST", "/api/leads/{lead_id}/hiring-signal"),    # read the company's own career pages and markup (free, public; app/hiring_signal.py)
+    ("POST", "/api/leads/{lead_id}/company-register"), ("POST", "/api/leads/{lead_id}/company-register/confirm"),   # local register lookup (app/company_register_leads.py)
+    ("POST", "/api/leads/{lead_id}/company-register/reject"),
     ("POST", "/api/leads/{lead_id}/company-health"), ("POST", "/api/leads/{lead_id}/demo-link"), ("POST", "/api/leads/{lead_id}/pilot"),
     ("POST", "/api/leads/{lead_id}/referral"), ("PUT", "/api/leads/{lead_id}/linkedin-account"),
     ("POST", "/api/leads/{lead_id}/linkedin/start"), ("POST", "/api/leads/{lead_id}/linkedin/stop"), ("POST", "/api/leads/{lead_id}/linkedin/sent"),
