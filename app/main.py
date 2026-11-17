@@ -37,6 +37,7 @@ from .autorun import start_background
 from . import email_gate
 from .routes_email_gate import make_router as make_email_gate_router
 from .routes_deliverability import make_router as make_deliverability_router
+from .routes_lead_sources import make_router as make_lead_sources_router
 from .http_util import post_json
 from . import routes_growth
 from .growth_core import webhook_secret
@@ -383,15 +384,16 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     @app.get("/api/leads")
     def list_leads(request: Request):
         seen = lead_access.visible_leads(store, getattr(request.state, "user", None), workspaces_mod.filter_rows(store.read("leads")))   # ownership on: a member sees own leads
-        from . import lead_grid
-        return lead_grid.mark_dnd(store, linkedin_stages.list_extras(store, with_list_extras(store, sorted((_present(lead) for lead in seen), key=lambda x: -x["score"]))))
+        from . import email_state, lead_grid
+        return email_state.mark(store, lead_grid.mark_dnd(store, linkedin_stages.list_extras(store, with_list_extras(store, sorted((_present(lead) for lead in seen), key=lambda x: -x["score"])))))
 
     @app.get("/api/leads/{lead_id}")
     def get_lead(lead_id: str, request: Request):
         leads, i = find(lead_id)
         if not workspaces_mod.visible(leads[i]) or not lead_access.can_see(store, getattr(request.state, "user", None), leads[i]):
             raise HTTPException(404, "Lead not found")
-        return _present(leads[i])
+        from . import email_state
+        return email_state.mark_one(store, _present(leads[i]))
 
     @app.post("/api/leads/import")
     def import_leads(body: ImportBody, request: Request):
@@ -698,6 +700,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_sources_router(store, campaign_io))
     app.include_router(make_email_gate_router(store, campaign_io))
     app.include_router(make_deliverability_router(store))
+    app.include_router(make_lead_sources_router(store))
     from .routes_calltracker import make_router as make_calltracker_router
     app.include_router(make_calltracker_router(store, BASE_URL))
     from .routes_harvest import make_router as make_harvest_router

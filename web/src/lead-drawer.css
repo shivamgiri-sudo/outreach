@@ -49,3 +49,10 @@
 .lead-guess-email { margin: 0 0 var(--s1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); overflow-wrap: anywhere; }
 .lead-guess-addr { font-family: var(--font-mono, monospace); font-size: var(--fs-md); }
 .lead-guess small.sub { display: block; margin: 0 0 var(--s1); }
+/* "Where this came from" (LeadSources.jsx) */
+.src-list { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: var(--s2); }
+.src-row { border-top: 1px solid var(--line); padding-top: var(--s2); min-width: 0; }
+.src-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.src-value { overflow-wrap: anywhere; margin: 2px 0; }
+.src-meta { display: block; overflow-wrap: anywhere; }
+.email-state { margin-left: var(--s1); vertical-align: middle; }

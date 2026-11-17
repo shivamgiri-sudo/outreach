@@ -15,6 +15,8 @@ import LeadSales from "./LeadSales.jsx";
 import { EditDetails, LeadOrigin, PrivacyActions, SIGNAL_LABELS } from "./LeadDrawerParts.jsx";
 import LeadOutreachTab from "./LeadOutreachTab.jsx";
 import LeadGuess from "./LeadGuess.jsx";
+import EmailStateBadge from "./EmailStateBadge.jsx";
+import LeadSources from "./LeadSources.jsx";
 import LeadProductTab from "./LeadProductTab.jsx";
 import { Card, CardHeader, Button, Badge, Skeleton } from "../ui/index.js";
 import "../lead-drawer.css";
@@ -94,7 +96,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
   const overview = (
     <>
       <Card flat className="dsec">
-        <p className="lead-contact">{lead.email} {lead.phone && `· ${lead.phone}`}<PhoneTag lead={lead} />
+        <p className="lead-contact">{lead.email}{lead.email && <> <EmailStateBadge lead={lead} /></>} {lead.phone && `· ${lead.phone}`}<PhoneTag lead={lead} />
           <small className="lead-source">Source: {sourceLabel(lead)}</small></p>
         {canWrite() && canEditContacts() && <EditDetails lead={lead} onSaved={(r) => setLead(r)} />}
       </Card>
@@ -158,6 +160,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
         ))}
       </Card>
       <LeadOrigin lead={lead} />
+      <LeadSources lead={lead} />
       <HiringSignal lead={lead} onChanged={load} />
       <CompanyRegisterPanel lead={lead} onChanged={load} />
       <CompanyHealth lead={lead} />
