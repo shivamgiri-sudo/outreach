@@ -3,23 +3,23 @@ import { api, getWorkspace } from "../../api.js";
 import { Button, Card, CardHeader, Field, Select } from "../../ui";
 import { ConnectCard, LinkCard, linkName } from "./CallTrackerLinks.jsx";
 import { ManualConnect, MappingEditor } from "./CallTrackerManual.jsx";
+import { readConnectReturn } from "./dialhaloReturn.js";
 import "./dialhalo.css";
 
 // Integrations → DialHalo: one Outreach workspace can be linked to several DialHalo workspaces (owners: any workspace;
 // a workspace admin: its own). Each link has its own lead sending; calls, outcomes and opt-outs come back by webhook.
-// DialHalo's one-click connect sends the browser back to #integrations/dialhalo/connected?dh_state&dh_code (or dh_error):
-// this page then finishes it through the signed-in API (app/calltracker_connect.py).
+// DialHalo's one-click connect sends the browser back to #integrations/dialhalo/connected?dh_state&dh_code (or dh_error).
+// Integrations.jsx reads that on its first render (it tidies the hash on mount, before this page loads) and passes it
+// as connectReturn; this page then finishes it through the signed-in API (app/calltracker_connect.py).
 const handled = new Set();                // a return is finished once, even when React runs the effect twice
-function connectReturn() {
-  const q = new URLSearchParams(window.location.hash.split("?")[1] || "");
-  const state = q.get("dh_state");
-  if (!state || handled.has(state)) return null;
-  handled.add(state);
-  try { window.history.replaceState(null, "", "#integrations?tab=calltracker"); } catch { /* old browser: the hash stays */ }
-  return { state, code: q.get("dh_code") || "", error: q.get("dh_error") || "" };
+function takeReturn(ret) {
+  if (!ret?.state || handled.has(ret.state)) return null;
+  handled.add(ret.state);
+  try { if (window.location.hash.includes("dh_state=")) window.history.replaceState(null, "", "#integrations?tab=calltracker"); } catch { /* old browser */ }
+  return ret;
 }
 
-export default function CallTracker() {
+export default function CallTracker({ connectReturn } = {}) {
   const [workspaces, setWorkspaces] = useState([]);
   const [ws, setWs] = useState(getWorkspace() || "main");
   const [card, setCard] = useState(null);
@@ -33,7 +33,7 @@ export default function CallTracker() {
   useEffect(() => { api.workspaces().then((w) => setWorkspaces(Array.isArray(w) ? w : [])).catch(() => {}); }, []);
   useEffect(() => { setTested(null); load(); }, [ws]);
   useEffect(() => {
-    const ret = connectReturn();
+    const ret = takeReturn(connectReturn || readConnectReturn(window.location.hash));
     if (!ret) return;
     setBusy(true);
     setMsg({ ok: true, text: "Finishing the connection with DialHalo…" });
