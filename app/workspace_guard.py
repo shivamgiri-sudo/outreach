@@ -105,7 +105,7 @@ LIMITED_OK = {
     # lead harvest: jobs live in one workspace and are only listed / run / exported there (app/routes_harvest.py)
     ("GET", "/api/harvest"), ("GET", "/api/harvest/template.csv"), ("POST", "/api/harvest/estimate"), ("GET", "/api/harvest/jobs"),
     ("POST", "/api/harvest/jobs"), ("GET", "/api/harvest/jobs/{job_id}"), ("GET", "/api/harvest/jobs/{job_id}/results"),
-    ("GET", "/api/harvest/jobs/{job_id}/export.csv"), ("POST", "/api/harvest/jobs/{job_id}/start"), ("POST", "/api/harvest/jobs/{job_id}/pause"),
+    ("GET", "/api/harvest/jobs/{job_id}/export.csv"), ("GET", "/api/harvest/jobs/{job_id}/export.xlsx"), ("POST", "/api/harvest/jobs/{job_id}/start"), ("POST", "/api/harvest/jobs/{job_id}/pause"),
     ("POST", "/api/harvest/jobs/{job_id}/resume"), ("POST", "/api/harvest/jobs/{job_id}/cancel"), ("GET", "/api/harvest/dnd"), ("POST", "/api/harvest/dnd"),
 }
 # The LinkedIn agent program's calls, for a pairing / slot token of a client account only (never a web login): its own

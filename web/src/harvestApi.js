@@ -17,6 +17,7 @@ export const harvestApi = {
   act: (id, action) => request(`/api/harvest/jobs/${encodeURIComponent(id)}/${action}`, { method: "POST" }),
   results: (id, outcome = "") => request(`/api/harvest/jobs/${encodeURIComponent(id)}/results${outcome ? `?outcome=${encodeURIComponent(outcome)}` : ""}`),
   exportCsv: (id) => save(`/api/harvest/jobs/${encodeURIComponent(id)}/export.csv`, `harvest-${id}.csv`),
+  exportXlsx: (id) => save(`/api/harvest/jobs/${encodeURIComponent(id)}/export.xlsx`, `harvest-${id}.xlsx`),
   template: () => save("/api/harvest/template.csv", "harvest-template.csv"),
   uploadDnd: (text) => request("/api/harvest/dnd", { method: "POST", body: { text } }),
 };

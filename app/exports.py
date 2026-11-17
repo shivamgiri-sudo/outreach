@@ -11,7 +11,7 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 
-from . import linkedin_bridge, linkedin_seq, source_names
+from . import lead_grid, linkedin_bridge, linkedin_seq, source_names
 from .activities import ensure_task_ids, lead_activity, now_utc, task_buckets
 from .channels.meetings import all_meetings, parse_time
 from . import hiring_engine
@@ -84,9 +84,9 @@ def _companies(store) -> dict:
 
 
 # ---------------------------------------------------------------- leads
-LEAD_PLAIN = ("id", "company", "contact_name", "title", "seniority", "department", "email", "phone", "website", "domain",
+LEAD_PLAIN = ("id", "company", "contact_name", "title", "seniority", "department", "email", "phone", "phone_line_type", "website", "domain",
               "linkedin_url", "city", "state", "country", "sector", "company_size", "open_roles", "role", "source",
-              "campaign_id")
+              "campaign_id", "category", "rating", "reviews_count", "maps_url", "dnc")
 LEAD_COLUMNS = cols(*LEAD_PLAIN, "tags", "stage", "stage_name", "score", "band", "consent", "@consent_at", "consent_channel",
                     "consent_proof", "sequence_status", "emails_sent", "@last_activity_at", "owner", "linkedin_status",
                     "replies", "@created_at")
@@ -168,10 +168,16 @@ def _lead_matches(lead: dict, params: dict, ids: set) -> bool:
 
 def leads_rows(store, params: dict, present) -> list:
     ids, owners = _ids(params), _task_owners(store)
-    shown = sorted((present(l) for l in store.read("leads")), key=lambda l: -(l.get("score") or 0))
+    try:
+        grid = lead_grid.parse(params)                   # Leads grid filters: has phone / mobile / email, rating, DND, harvest
+    except ValueError as exc:
+        raise ExportError(400, str(exc)) from None
+    dnd = lead_grid.suppressed_phones(store) if grid["no_dnd"] else set()
+    from .workspaces import filter_rows                  # the selected workspace (and lead ownership), as the Leads page
+    shown = sorted((present(l) for l in filter_rows(store.read("leads"))), key=lambda l: -(l.get("score") or 0))
     from .brand import stage_labels
     names = stage_labels(store)
-    return [_lead_row(l, owners, names) for l in shown if _lead_matches(l, params, ids)]
+    return [_lead_row(l, owners, names) for l in shown if _lead_matches(l, params, ids) and lead_grid.matches(l, grid, dnd)]
 
 
 def _campaign(store, params: dict) -> dict:
@@ -356,7 +362,7 @@ def suppressed_rows(store, params: dict, present) -> list:
 
 # dataset: (builder, columns, filters people can pass)
 DATASETS = {
-    "leads": (leads_rows, LEAD_COLUMNS, ("stage", "band", "source", "inbound", "campaign_id", "tag", "q", "ids")),
+    "leads": (leads_rows, LEAD_COLUMNS, ("stage", "band", "source", "inbound", "campaign_id", "tag", "q", "ids", *lead_grid.FILTERS)),
     "outbox": (outbox_rows, cols("@sent_at", "lead_id", "company", "to", "step", "variant", "subject", "status", "delivered",
                                  "@delivered_at", "error"), ("status", "lead_id", "include_body")),
     "inbox": (inbox_rows, cols("@received_at", "channel", "from", "subject", "text", "label", "matched", "lead_id", "company",

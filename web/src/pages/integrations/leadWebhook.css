@@ -1,0 +1,8 @@
+/* Integrations → Lead webhook (LeadWebhook.jsx): tokens only, so dark mode follows the theme. */
+.lw-stack { display: grid; gap: var(--s4); }
+.lw-form { display: grid; gap: var(--s3); max-width: 720px; }
+.lw-set { border: 1px solid var(--line, var(--raised)); border-radius: var(--r-sm); padding: var(--s2) var(--s3); margin: 0; min-width: 0; }
+.lw-set legend { font-weight: 600; font-size: var(--fs-sm); padding: 0 var(--s1); }
+.lw-set .check-row { margin: var(--s1) 0; overflow-wrap: anywhere; }
+.lw-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0 var(--s3); }
+.lw-code { background: var(--raised); color: var(--ink); border-radius: var(--r-sm); padding: var(--s3); overflow-x: auto; font-size: var(--fs-xs); margin: 0 0 var(--s2); white-space: pre; max-width: 100%; }

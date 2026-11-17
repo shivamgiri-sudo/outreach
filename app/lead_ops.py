@@ -25,7 +25,8 @@ BULK_MAX = 5000
 VIEWS_KEY = "lead_views"
 VIEWS_PER_USER = 30
 VIEW_NAME_MAX = 60
-VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort", "has", "li_stage", "contact", "quality", "ageing")
+VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort", "has", "li_stage", "contact", "quality", "ageing",
+                    "min_rating", "no_dnd", "harvest")
 BULK_ACTIONS = ("stage", "owner", "tag_add", "tag_remove", "do_not_contact", "delete", "enroll", "list_add")
 UNDOABLE = ("stage", "owner", "tag_add", "tag_remove")
 
@@ -429,8 +430,8 @@ def _clean_filters(raw) -> dict:
         if key == "sources":
             out[key] = [str(s)[:60] for s in (value or []) if s][:30] if isinstance(value, list) else []
         elif key == "has":                          # contact-details filter: phone / email / linkedin
-            out[key] = [w for w in ("phone", "email", "linkedin") if isinstance(value, list) and w in value]
-        elif key == "inbound":
+            out[key] = [w for w in ("phone", "mobile", "email", "linkedin", "hiring") if isinstance(value, list) and w in value]
+        elif key in ("inbound", "no_dnd"):
             out[key] = bool(value)
         elif key == "li_stage":                      # LinkedIn stage filter (app/linkedin_stages.FILTER_KEYS)
             from .linkedin_stages import FILTER_KEYS
@@ -439,6 +440,8 @@ def _clean_filters(raw) -> dict:
             out[key] = value if value in ("never", "tried", "connected", "replied", "invalid", "consultant", "fresh") else ""
         elif key == "ageing":                        # untouched / stale / stuck (app/lead_ageing.py)
             out[key] = value if value in ("untouched", "stale", "stuck") else ""
+        elif key == "min_rating":                    # Leads grid filters (app/lead_grid.py)
+            out[key] = value if value in ("3", "3.5", "4", "4.5") else ""
         elif key == "quality":                       # lead type: valid / invalid / consultant (marked by a caller on a call)
             out[key] = value if value in ("valid", "invalid", "consultant") else ""
         else:

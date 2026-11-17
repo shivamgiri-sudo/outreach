@@ -69,7 +69,10 @@ function CampaignDetail({ id, go, onBack, onEdit }) {
 
       <section className="camp-section">
         <CardHeader title={`Leads from this campaign (${leadCount})`}
-          actions={<DownloadButton path={exportPath("campaign_leads", { campaign_id: id })} label="Download leads" disabled={leadCount === 0} testId="download-campaign-leads" />} />
+          actions={<span className="dl-group">
+            <DownloadButton path={exportPath("campaign_leads", { campaign_id: id })} label="Download leads" disabled={leadCount === 0} testId="download-campaign-leads" />
+            <DownloadButton path={exportPath("campaign_leads", { campaign_id: id }, "xlsx")} label="Excel" title="The same leads as an Excel file" disabled={leadCount === 0} testId="download-campaign-leads-xlsx" />
+          </span>} />
         <CampaignLeadsTable id={id} onOpen={setOpen} onTotal={setLeadCount} refreshKey={refresh} />
       </section>
 

@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import accounts, audit, exports, harvest, harvest_dnd, workspaces
+from . import accounts, audit, exports, exports_xlsx, harvest, harvest_dnd, workspaces
 from .harvest_pairs import (DEFAULT_MAX_TILES, MAX_CREDIT_CAP, MAX_CSV_CHARS, MAX_PAIRS, MAX_TILES_CAP, TEMPLATE_CSV, PairError,
                             estimate, pairs_from_csv, pairs_from_form)
 from .sources.base import default_http
@@ -201,15 +201,23 @@ def make_router(store, transports: Optional[dict] = None) -> APIRouter:
         return {"total": len(rows), "offset": offset, "rows": rows[offset:offset + RESULTS_PAGE],
                 "attribution": "Google Places results: Google Maps. OpenStreetMap results: (c) OpenStreetMap contributors (ODbL)."}
 
-    @router.get("/api/harvest/jobs/{job_id}/export.csv")
-    def export(job_id: str, request: Request):
+    def export_rows(job_id: str, request: Request, kind: str) -> tuple:
         _manager(request)
         job = visible_job(job_id)
         rows = [{c: r.get(c) for c in EXPORT_COLUMNS} for r in result_rows(job)]
-        audit.record(store, _user(request), "export.download", "harvest.csv", f"{len(rows)} rows; job {job_id}")
-        name = f"outreach-harvest-{job_id}-{exports.ist_date()}.csv"
-        return StreamingResponse(exports.csv_chunks(EXPORT_COLUMNS, rows), media_type="text/csv; charset=utf-8",
-                                 headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})
+        audit.record(store, _user(request), "export.download", f"harvest.{kind}", f"{len(rows)} rows; job {job_id}")
+        headers = {"Content-Disposition": f'attachment; filename="outreach-harvest-{job_id}-{exports.ist_date()}.{kind}"', "Cache-Control": "no-store"}
+        return rows, headers
+
+    @router.get("/api/harvest/jobs/{job_id}/export.csv")
+    def export(job_id: str, request: Request):
+        rows, headers = export_rows(job_id, request, "csv")
+        return StreamingResponse(exports.csv_chunks(EXPORT_COLUMNS, rows), media_type="text/csv; charset=utf-8", headers=headers)
+
+    @router.get("/api/harvest/jobs/{job_id}/export.xlsx")
+    def export_xlsx(job_id: str, request: Request):
+        rows, headers = export_rows(job_id, request, "xlsx")
+        return StreamingResponse(exports_xlsx.chunks(EXPORT_COLUMNS, rows, "Harvest"), media_type=exports_xlsx.MEDIA_TYPE, headers=headers)
 
     @router.get("/api/harvest/dnd")
     def dnd_count():

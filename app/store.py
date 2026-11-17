@@ -14,7 +14,7 @@ from pathlib import Path
 from .privacy import guard_leads
 from .secretbox import SecretBox
 
-EMPTY = {"leads": [], "integrations": {}, "stories": [], "templates": [], "tasks": [], "outbox": [], "settings": {}, "suppressed": [], "jobs": [], "partners": [], "whatsapp_outbox": [], "workflows": [], "inbox": [], "delivery_events": [], "activities": [], "notifications": [], "transactional_outbox": [], "campaigns": [], "revoked_tokens": [], "consent_ledger": [], "suppressed_hashes": [], "source_cache": [], "capture_log": [], "capture_seen": [], "audit": [], "lists": [], "brand_assets": {}, "login_history": [], "ct_connections": {}, "ct_outbox": [], "ct_seen": [], "harvest_jobs": [], "harvest_results": [], "gravatar_cache": []}
+EMPTY = {"leads": [], "integrations": {}, "stories": [], "templates": [], "tasks": [], "outbox": [], "settings": {}, "suppressed": [], "jobs": [], "partners": [], "whatsapp_outbox": [], "workflows": [], "inbox": [], "delivery_events": [], "activities": [], "notifications": [], "transactional_outbox": [], "campaigns": [], "revoked_tokens": [], "consent_ledger": [], "suppressed_hashes": [], "source_cache": [], "capture_log": [], "capture_seen": [], "audit": [], "lists": [], "brand_assets": {}, "login_history": [], "ct_connections": {}, "ct_outbox": [], "ct_seen": [], "harvest_jobs": [], "harvest_results": [], "gravatar_cache": [], "lead_hooks": {}, "lead_hook_outbox": [], "lead_hook_log": []}
 BACKUPS_KEPT = 5
 BACKUP_EVERY_SECONDS = 60
 # Flush every save to disk so a power cut can't lose it. Tests switch this off for speed.
@@ -28,6 +28,7 @@ class Store:
         self._box = box or SecretBox()
         self._data = self._load()
         self.versions = {}                    # collection -> number of writes since start (a cheap "did it change" stamp)
+        self.lead_observer = None             # (store, leads before, leads after) after each leads save (app/lead_webhook_events.py)
         if self._box.enabled and self._box.plain_secrets(self._data) and self._path.exists():
             with self._lock:
                 self._save()                  # migrate: encrypt keys that were saved in plain text
@@ -144,18 +145,33 @@ class Store:
 
     def write(self, key: str, value) -> None:
         with self._lock:
+            before = self._data.get(key)
             self._data[key] = self._guard(key, value)
             self.versions[key] = self.versions.get(key, 0) + 1
             self._save()
+            after = self._data[key]
+        self._observe(key, before, after)
 
     def update(self, key: str, change):
         """Replace a collection with change(current) atomically; `change` must not call the store."""
         with self._lock:
-            current = json.loads(json.dumps(self._data[key]))
+            before = self._data[key]
+            current = json.loads(json.dumps(before))
             self._data[key] = self._guard(key, change(current))
             self.versions[key] = self.versions.get(key, 0) + 1
             self._save()
-            return json.loads(json.dumps(self._data[key]))
+            after = self._data[key]
+            out = json.loads(json.dumps(after))
+        self._observe(key, before, after)
+        return out
+
+    def _observe(self, key: str, before, after) -> None:
+        """Outside the lock: tell the lead webhook what changed (it only reads both lists and queues events)."""
+        if key == "leads" and self.lead_observer is not None and before is not after:
+            try:
+                self.lead_observer(self, before, after)
+            except Exception as exc:          # noqa: BLE001 - a webhook problem must never fail the save that caused it
+                print(f"lead observer failed: {type(exc).__name__}")
 
     def update_lead(self, lead_id: str, change):
         """Change one lead on its latest saved copy, atomically. `change(lead)` returns the new lead (or None to keep it).

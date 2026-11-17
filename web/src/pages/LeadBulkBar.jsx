@@ -126,6 +126,7 @@ export default function LeadBulkBar({ picked, pageIds, owners, spaces, onDone, o
           <option value="">Move to workspace…</option>{spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>}
       </>}
       {isOwner() && <DownloadButton path={exportPath("leads")} body={{ ids: picked }} label="Download CSV" testId="download-leads-picked" />}
+      {isOwner() && <DownloadButton path={exportPath("leads", {}, "xlsx")} body={{ ids: picked }} label="Download Excel" testId="download-leads-picked-xlsx" />}
       <button className="btn ghost" onClick={onClear}>Clear</button>
       {ask && (
         <ConfirmDialog title={ask.title} confirmLabel={ask.label} danger={ask.danger} busy={Boolean(busy)}

@@ -40,6 +40,7 @@ export default {
     ]],
     ["h", "Results"],
     ["p", "Click **Show results** for the list: company, category, phone with its type (mobile, landline, toll-free), website, rating, reviews, city, and badges. **New** means a lead was made. **Already in Leads** means it matched a lead you had. **DND** means the number is on your do-not-call list. Click **Open in Leads** to open the lead."],
+    ["p", "Above the list, tick **Has phone**, **Mobile only** (mobile, or mobile-or-landline) or **Hide DND**, or pick a **Minimum rating**, to narrow the listings shown. Owners and workspace admins can save a job with **Export CSV** or **Export Excel**. In {{menu:Leads}} the same filters are under **More filters**, and **Lead harvest** there shows only leads a harvest found. To send each find to another system as it happens, use **harvest.lead_found** on {{menu:Integrations}} → **Lead webhook**."],
     ["h", "Cleaning and duplicates"],
     ["ul", [
       "Phone numbers are checked and written in one standard form (+91...). Numbers that are too short or invalid are dropped. Extra numbers are kept on the lead.",

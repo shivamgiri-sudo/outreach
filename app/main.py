@@ -383,7 +383,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     @app.get("/api/leads")
     def list_leads(request: Request):
         seen = lead_access.visible_leads(store, getattr(request.state, "user", None), workspaces_mod.filter_rows(store.read("leads")))   # ownership on: a member sees own leads
-        return linkedin_stages.list_extras(store, with_list_extras(store, sorted((_present(lead) for lead in seen), key=lambda x: -x["score"])))
+        from . import lead_grid
+        return lead_grid.mark_dnd(store, linkedin_stages.list_extras(store, with_list_extras(store, sorted((_present(lead) for lead in seen), key=lambda x: -x["score"]))))
 
     @app.get("/api/leads/{lead_id}")
     def get_lead(lead_id: str, request: Request):
@@ -701,6 +702,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_calltracker_router(store, BASE_URL))
     from .routes_harvest import make_router as make_harvest_router
     app.include_router(make_harvest_router(store, campaign_io))          # lead harvest (keyword x location jobs)
+    from .routes_lead_webhook import make_router as make_lead_webhook_router
+    app.include_router(make_lead_webhook_router(store))                  # lead webhook / Google Sheets push (owner only)
     if any(j.get("status") == "pending" for j in store.read("ct_outbox")):
         calltracker_mod.kick(store)               # pushes queued before a restart carry on
     if os.environ.get("OUTREACH_AUTORUN") == "1":
