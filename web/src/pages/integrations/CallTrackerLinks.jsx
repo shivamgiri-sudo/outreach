@@ -62,7 +62,8 @@ function People({ pairing }) {
 
 export function LinkCard({ ws, link, card, busy, run, onRefresh, many }) {
   const [matchOpen, setMatchOpen] = useState(false);
-  const status = !link.api_key_set ? ["warning", "Key missing"] : link.enabled ? ["success", "Connected"] : ["warning", "Paused"];
+  const status = link.auth_failed ? ["danger", "Not authorised — reconnect"] : !link.api_key_set ? ["warning", "Key missing"]
+    : link.enabled ? ["success", "Connected"] : ["warning", "Paused"];
   const save = (changes, okText) => run(() => api.saveCalltracker({ workspace: ws, link: link.id, ...changes }), okText);
   return (
     <div className={`dh-link${link.primary ? " is-primary" : ""}`} data-testid="ct-link">
@@ -76,6 +77,11 @@ export function LinkCard({ ws, link, card, busy, run, onRefresh, many }) {
         <Badge tone="muted">{link.via === "connect" ? "One-click" : "Manual"}</Badge>
       </div>
       <p className="dh-meta">{link.public_url || link.base_url}{link.dh_workspace?.slug ? ` · workspace ${link.dh_workspace.slug}` : ""}</p>
+      {link.auth_failed && (
+        <p className="dh-status bad" role="alert" data-testid="ct-auth-failed">
+          DialHalo refused this link's key {istLabel(link.auth_failed.at)} (it may have been revoked there). Press Connect a DialHalo workspace and pick the same workspace: the new link replaces this one.
+        </p>
+      )}
       <StatusLine title="Last call event" row={link.last_event} testid="ct-last-call-event" />
       <People pairing={link.pairing} />
       <div className="dh-row">

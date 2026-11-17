@@ -396,11 +396,11 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
     now = now or now_utc()
     due = [j for j in store.read("ct_outbox") if j.get("status") == "pending" and (parse(j.get("next_at")) or now) <= now][:limit]
     for job in due:
-        result, error, retry = "", "", False
+        result, error, retry, status = "", "", False, 0
         try:
             result = _run_job(store, job)
         except CallTrackerError as exc:
-            error, retry = str(exc), exc.retry
+            error, retry, status = str(exc), exc.retry, exc.status
         except Exception as exc:                  # a bug must not stop the queue; the job stays visible
             error, retry = f"Unexpected error ({type(exc).__name__}).", True
         attempts = job.get("attempts", 0) + 1
@@ -418,6 +418,8 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
         link = job_link(store, job)
         if link:
             note_status(store, link["id"], "last_match" if job["kind"] == "match" else "last_push", not error, result or error)
+            if status in (401, 403) or not error:          # a refused key shows on the card; a later success clears it
+                links.note_auth(store, link["id"], status in (401, 403), error)
         if error and job.get("lead_id") and job["kind"] != "erase" and (attempts == 1 or change.get("status") == "failed"):
             final = change.get("status") == "failed"
             text = (f"DialHalo: could not send this lead ({error})" + (" Gave up; use Retry on Integrations → DialHalo." if final

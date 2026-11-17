@@ -207,6 +207,23 @@ def note(store, link_id: str, key: str, ok: bool, detail: str = "") -> None:
     store.update("ct_connections", lambda data: {**data, link_id: {**data[link_id], key: row}} if link_id in data else data)
 
 
+def note_auth(store, link_id: str, failed: bool, detail: str = "") -> None:
+    """DialHalo refused this link's key (401 / 403) on a test, a send or a call fetch: the card says "Not authorised —
+    reconnect" until a later test or send succeeds. Writes only when the state changes."""
+    ct = _ct()
+    cur = get(store, link_id)
+    if not cur or bool(cur.get("auth_failed")) == bool(failed):
+        return
+    row = {"at": ct.iso(ct.now_utc()), "detail": str(detail or "")[:300]} if failed else None
+
+    def apply(data: dict) -> dict:
+        if link_id not in data:
+            return data
+        link = {k: v for k, v in data[link_id].items() if k != "auth_failed"}
+        return {**data, link_id: {**link, **({"auth_failed": row} if row else {})}}
+    store.update("ct_connections", apply)
+
+
 def note_unmapped(store, link_id: str, name: str, counted_as: str) -> None:
     """A DialHalo outcome name with no row in the mapping was counted as `counted_as`: the card says so."""
     ct = _ct()
@@ -324,7 +341,7 @@ def public_view(store, link: dict) -> dict:
             "enabled": link.get("enabled", True), "api_key_set": bool(key), "api_key_hint": ("••••" + key[-4:]) if len(key) > 8 else ("set" if key else ""),
             "webhook_secret_set": bool(link.get("webhook_secret")), "mapping": ct.mapping_of(link), "mapping_custom": bool(link.get("mapping")),
             "via": link.get("via") or "manual", "dh_workspace": link.get("dh_workspace") or None, "lead_sync": link.get("lead_sync") or "call_tasks",
-            "primary": bool(link.get("primary")), "pairing": pairing(store, link),
+            "primary": bool(link.get("primary")), "pairing": pairing(store, link), "auth_failed": link.get("auth_failed") or None,
             "backfill": backfill.public(backfill.state(store, link["id"])),
             "last_push": link.get("last_push"), "last_event": link.get("last_event"), "last_test": link.get("last_test"), "last_match": link.get("last_match"),
             "unmapped_outcomes": sorted((link.get("unmapped_outcomes") or {}).values(), key=lambda r: -r.get("count", 0)),
