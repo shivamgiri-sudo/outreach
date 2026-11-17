@@ -3,12 +3,14 @@
 DialHalo's dashboard ("Outreach match" page) then shows matched calls next to numbers that are not in Outreach.
 
   * The webhook receiver (app/calltracker_events.py) matches each call it is told about; the result is queued here.
-  * Results go out as ONE coalescing ct_outbox job of kind "match" per workspace: a dict number -> result. New results
+  * Results go out as ONE coalescing ct_outbox job of kind "match" per DialHalo link (the link the call came from, never
+    another DialHalo workspace): a dict number -> result. New results
     merge into the pending job (latest result for a number wins), at most 500 numbers per job; more start a new job.
     The queue's retries / back-off apply. A failure shows on the Integrations card only: no lead notes, no alerts.
   * Sent as PUT /api/v1/external-matches/mcn_outreach {"matches": [{number, status, externalId, label}]}; label is only
     the contact name, company, stage label and a link back to the lead. Nothing else (no email, no notes).
-  * Numbers DialHalo reported that are not in Outreach are kept in a small cache (ct_unmatched {ws: {norm: row}}, at most
+  * Numbers DialHalo reported that are not in Outreach are kept in a small cache (ct_unmatched {ws: {norm: row with the
+    ids of the links that reported it}}, at most
     5,000 per workspace, oldest dropped). The calltracker worker re-checks the cache every few minutes against the
     workspace's leads (one pass over the leads, no copy), so a lead created, imported or edited later with that phone is
     sent as "matched" and leaves the cache. This avoids a hook in every lead save (the store has a single observer and
@@ -63,35 +65,45 @@ def result_for(store, lead: Optional[dict]) -> dict:
 
 
 # ---------------------------------------------------------------- queue
-def queue_results(store, ws: str, found: dict) -> int:
-    """found = {number exactly as DialHalo gave it: lead or None}. Updates the cache and merges into the match job(s)."""
+def queue_results(store, target, found: dict) -> int:
+    """found = {number exactly as DialHalo gave it: lead or None}. Updates the cache and merges into the match job(s) of
+    the link the numbers came from (`target`: a link, a link id, or a workspace = its primary link). A number that now
+    matches is also sent as matched to the other links of the workspace that had reported it as not found."""
+    from . import calltracker_links as links
     ct = _ct()
+    link = links.resolve(store, target)
     results = {str(n)[:40]: result_for(store, lead) for n, lead in found.items() if usable(n)}
-    if not results or not ct.active_connection(store, ws):
+    if not results or not links.is_active(link):
         return 0
-    _update_cache(store, ws, results)
-    _merge(store, ws, results)
+    others = _update_cache(store, link["workspace"], link["id"], results)
+    _merge(store, link, results)
+    for other_id, more in others.items():
+        other = links.get(store, other_id)
+        if links.is_active(other) and other["workspace"] == link["workspace"]:
+            _merge(store, other, more)
     ct.kick(store)
     return len(results)
 
 
-def note_calls(store, ws: str, found: dict) -> None:
-    """Calls from the receiver ({number: lead or None}). Never fails the webhook."""
+def note_calls(store, target, found: dict) -> None:
+    """Calls from the receiver ({number: lead or None}), once per webhook. Never fails the webhook."""
     try:
-        queue_results(store, ws, found)
+        queue_results(store, target, found)
     except Exception as exc:                          # matching for DialHalo must never break applying the call
         print(f"calltracker match not queued: {type(exc).__name__}")
 
 
-def _merge(store, ws: str, results: dict) -> None:
+def _merge(store, link: dict, results: dict) -> None:
     ct = _ct()
     stamp = ct.iso(ct.now_utc())
+    ws, lid = link["workspace"], link["id"]
+    mine = lambda j: j.get("kind") == "match" and j.get("ws") == ws and j.get("link") == lid
 
     def apply(jobs: list) -> list:
-        open_jobs = [j for j in jobs if j.get("kind") == "match" and j.get("ws") == ws and j.get("status") == "pending" and not j.get("sending")]
+        open_jobs = [j for j in jobs if mine(j) and j.get("status") == "pending" and not j.get("sending")]
         rest = dict(results)
         for j in jobs:                                # a failed job never re-sends an older result for these numbers
-            if j.get("kind") == "match" and j.get("ws") == ws and j.get("status") == "failed":
+            if mine(j) and j.get("status") == "failed":
                 j["items"] = {k: v for k, v in (j.get("items") or {}).items() if k not in rest}
         for j in open_jobs:                           # a number already waiting: the newest result replaces it
             items = j.setdefault("items", {})
@@ -108,7 +120,7 @@ def _merge(store, ws: str, results: dict) -> None:
             chunk = dict(list(rest.items())[:MAX_PER_JOB])
             for n in chunk:
                 rest.pop(n)
-            new.append({"id": uuid.uuid4().hex[:12], "kind": "match", "ws": ws, "items": chunk, "attempts": 0,
+            new.append({"id": uuid.uuid4().hex[:12], "kind": "match", "ws": ws, "link": lid, "items": chunk, "attempts": 0,
                         "status": "pending", "next_at": stamp, "created_at": stamp, "updated_at": stamp})
         done = [j for j in jobs if j.get("status") == "done"]
         keep = {j["id"] for j in done[-ct.DONE_KEPT:]}
@@ -179,22 +191,30 @@ def scrub_lead(jobs: list, ws: str, lead_id: str) -> list:
 
 
 # ---------------------------------------------------------------- not-found cache
-def _update_cache(store, ws: str, results: dict) -> None:
+def _update_cache(store, ws: str, link_id: str, results: dict) -> dict:
+    """Not found: cached with the links that reported it. Matched: leaves the cache. Returns {other link id: {number:
+    result}} for matched numbers that other links of the workspace had reported (they get the match too)."""
     ct = _ct()
     stamp = ct.iso(ct.now_utc())
+    others = {}
 
     def apply(rows: dict) -> dict:
         cache = dict(rows.get(ws) or {})
         for number, r in results.items():
             key = ct.norm_phone(number)
             if r.get("status") == "matched":
-                cache.pop(key, None)
+                old = cache.pop(key, None) or {}
+                for other in old.get("links") or []:
+                    if other != link_id:
+                        others.setdefault(other, {})[old.get("number") or number] = r
             else:
-                cache[key] = {"number": number, "last_seen": stamp}
+                old = cache.get(key) or {}
+                cache[key] = {"number": number, "last_seen": stamp, "links": sorted({*(old.get("links") or []), link_id})}
         if len(cache) > CACHE_MAX:
             cache = dict(sorted(cache.items(), key=lambda kv: kv[1].get("last_seen", ""))[-CACHE_MAX:])
         return {**rows, ws: cache} if cache else {k: v for k, v in rows.items() if k != ws}
     store.update("ct_unmatched", apply)
+    return others
 
 
 def waiting(store) -> int:
@@ -202,12 +222,13 @@ def waiting(store) -> int:
 
 
 def recheck(store) -> int:
-    """Numbers in the cache that a lead of the same workspace now has: sent as matched. Returns how many."""
-    from . import calltracker_events as events
-    ct = _ct()
+    """Numbers in the cache that a lead of the same workspace now has: sent as matched to the link(s) that reported them
+    (rows cached before links existed: the workspace's primary link). Returns how many."""
+    from . import calltracker_events as events, calltracker_links as links
     found_total = 0
     for ws, cache in list((store.read("ct_unmatched") or {}).items()):
-        if not cache or not ct.active_connection(store, ws):
+        active = {l["id"]: l for l in links.active_links(store, ws)}
+        if not cache or not active:
             continue
         hits = {}
         for lead in store.peek("leads"):              # read-only pass, no copy of every lead
@@ -215,9 +236,13 @@ def recheck(store) -> int:
                 continue
             for key in phones_of(lead) & cache.keys():
                 hits.setdefault(key, []).append(lead)
-        if hits:
-            found = {cache[k]["number"]: events.pick_lead(store, [dict(l) for l in cands]) for k, cands in hits.items()}
-            found_total += queue_results(store, ws, found)
+        by_link = {}
+        fallback = links.primary_of(list(active.values()))
+        for key, cands in hits.items():
+            first = next((lid for lid in cache[key].get("links") or [] if lid in active), None) or fallback["id"]
+            by_link.setdefault(first, {})[cache[key]["number"]] = events.pick_lead(store, [dict(l) for l in cands])
+        for lid, found in by_link.items():            # queue_results also tells the row's other links
+            found_total += queue_results(store, active[lid], found)
     return found_total
 
 
@@ -234,6 +259,18 @@ def tick(store, now: Optional[float] = None) -> bool:
     return bool(waiting(store))
 
 
+def forget_link(store, ws: str, link_id: str) -> None:
+    """A link was removed but the workspace has others: numbers only that link reported leave the cache."""
+    def apply(rows: dict) -> dict:
+        cache = {}
+        for key, row in (rows.get(ws) or {}).items():
+            left = [l for l in row.get("links") or [] if l != link_id]
+            if row.get("links") and not left:
+                continue
+            cache[key] = {**row, "links": left} if row.get("links") else row
+        return {**rows, ws: cache} if cache else {k: v for k, v in rows.items() if k != ws}
+    store.update("ct_unmatched", apply)
+
+
 def forget_workspace(store, ws: str) -> None:
     store.update("ct_unmatched", lambda rows: {k: v for k, v in rows.items() if k != ws})
-    store.update("ct_backfill", lambda rows: {k: v for k, v in rows.items() if k != ws})

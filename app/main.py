@@ -1,6 +1,7 @@
 """Outreach OS API."""
 import hmac
 import os
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -119,7 +120,8 @@ from .unsubscribe import ensure_cutover
 BASE_URL = os.environ.get("OUTREACH_BASE_URL", "http://localhost:8000")
 PUBLIC_API_PATHS = ("/api/login", "/api/auth/status", "/api/login/code", "/api/login/setup/start", "/api/login/setup/confirm")
 # Read-only without a login: the sign-in page shows the brand, and recipients' mail apps load the logo.
-PUBLIC_GET_PATHS = ("/api/brand/public", "/api/brand/logo")
+PUBLIC_GET_PATHS = ("/api/brand/public", "/api/brand/logo",
+                    "/api/calltracker/connect/callback")   # DialHalo sends the browser back here; it only redirects to the app
 def open_store(data_file):
     """JSON file by default; MySQL when OUTREACH_DATABASE_URL is set (the data file path is then only used for restore copies)."""
     url = os.environ.get("OUTREACH_DATABASE_URL", "").strip()
@@ -268,6 +270,11 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     from . import account_limits as account_limits_mod
     accounts_mod.migrate(store)               # existing data becomes account "mcn" (settings only; idempotent)
     from . import calltracker as calltracker_mod
+    from . import calltracker_links, calltracker_sync
+    calltracker_links.rows(store)             # one DialHalo connection per workspace -> links keyed by id (idempotent)
+    if any(not (l.get("dh_workspace") or {}).get("id") for l in calltracker_links.all_links(store)):
+        from . import calltracker_connect         # best effort, in the background: never slows or fails the start-up
+        threading.Thread(target=calltracker_connect.fill_missing_workspaces, args=(store,), daemon=True, name="calltracker-names").start()
     ensure_cutover(store)                     # signed unsubscribe links start now; older unsigned ones get 60 days
     source_names.backfill(store)              # adds source_id next to source on older leads (idempotent, never rewrites source)
 
@@ -709,8 +716,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_harvest_router(store, campaign_io))          # lead harvest (keyword x location jobs)
     from .routes_lead_webhook import make_router as make_lead_webhook_router
     app.include_router(make_lead_webhook_router(store))                  # lead webhook / Google Sheets push (owner only)
-    if any(j.get("status") == "pending" for j in store.read("ct_outbox")) or store.read("ct_unmatched"):
-        calltracker_mod.kick(store)               # pushes queued before a restart carry on; numbers not in Outreach are re-checked
+    if any(j.get("status") == "pending" for j in store.read("ct_outbox")) or store.read("ct_unmatched") or calltracker_sync.wanted(store):
+        calltracker_mod.kick(store)               # pushes queued before a restart carry on; numbers not in Outreach are re-checked; lead sync sweeps
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender, capture_runner=lambda: run_sheet_syncs(store, capture_sheet_fetcher),
                          campaign_runner=lambda now: run_due_campaigns(

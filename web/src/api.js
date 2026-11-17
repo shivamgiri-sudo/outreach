@@ -422,10 +422,13 @@ export const api = {
   // DialHalo (per workspace; app/routes_calltracker.py)
   calltracker: (ws) => request(`/api/calltracker?workspace=${encodeURIComponent(ws || "")}`),
   saveCalltracker: (body) => request("/api/calltracker", { method: "PUT", body }),
-  deleteCalltracker: (ws) => request(`/api/calltracker?workspace=${encodeURIComponent(ws || "")}`, { method: "DELETE" }),
-  testCalltracker: (ws) => request("/api/calltracker/test", { method: "POST", body: { workspace: ws } }),
-  retryCalltracker: (ws) => request("/api/calltracker/retry", { method: "POST", body: { workspace: ws } }),
-  backfillCalltracker: (ws, days) => request("/api/calltracker/backfill", { method: "POST", body: { workspace: ws, days } }),
+  deleteCalltracker: (ws, link) => request(`/api/calltracker?workspace=${encodeURIComponent(ws || "")}&link=${encodeURIComponent(link || "")}`, { method: "DELETE" }),
+  testCalltracker: (ws, link) => request("/api/calltracker/test", { method: "POST", body: { workspace: ws, link: link || "" } }),
+  retryCalltracker: (ws, link) => request("/api/calltracker/retry", { method: "POST", body: { workspace: ws, link: link || "" } }),
+  backfillCalltracker: (ws, days, link) => request("/api/calltracker/backfill", { method: "POST", body: { workspace: ws, days, link: link || "" } }),
+  // one-click "Connect a DialHalo workspace" (app/calltracker_connect.py): start, then DialHalo sends the browser back
+  startCalltrackerConnect: (ws, dialhaloUrl) => request("/api/calltracker/connect/start", { method: "POST", body: { workspace: ws, dialhalo_url: dialhaloUrl } }),
+  finishCalltrackerConnect: (body) => request("/api/calltracker/connect/finish", { method: "POST", body }),
   calltrackerFunnel: (from, to) => request(`/api/calltracker/funnel?from=${encodeURIComponent(from || "")}&to=${encodeURIComponent(to || "")}`),
   // Integrations hub
   channels: () => request("/api/channels"),

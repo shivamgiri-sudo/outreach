@@ -1,7 +1,8 @@
 """Erasing a person in Outreach also erases them in Call Tracker (DialHalo) and blocks their number there.
 
 When a person is erased (routes_compliance) or permanently deleted (bulk delete, workspace/account delete) and the
-workspace has an active Call Tracker connection, a job {"kind": "erase"} is queued in ct_outbox. The job runs after the
+workspace has active DialHalo links, a job {"kind": "erase"} is queued in ct_outbox for EACH link (every DialHalo
+workspace linked to it may hold the person). The job runs after the
 lead is gone, so it carries only what it needs: the lead id, the phone numbers and a fixed reason. Never a name or email.
   1. DELETE /api/v1/leads/external/mcn_outreach/<lead id>   Call Tracker erases the person and blocks their number
   2. POST /api/v1/dnc for each phone                         belt and braces, in case Call Tracker never held the lead
@@ -58,19 +59,24 @@ def _scrub_old_jobs(store, ws: str, lead_id: str) -> None:
 
 
 def on_erase(store, lead: dict, only_known: bool = False) -> Optional[dict]:
-    """Queue the removal of this person from the lead's workspace Call Tracker. Call it with the lead as it was BEFORE
-    it was removed. Returns the job, or None when nothing is needed (no active connection, never sent, no id)."""
+    """Queue the removal of this person from EVERY DialHalo link of the lead's workspace (one job per link). Call it with
+    the lead as it was BEFORE it was removed. Returns the last job, or None when nothing is needed (no active link,
+    never sent, no id)."""
+    from . import calltracker_links as links
     ct = _calltracker()
     ws, lead_id = ws_of(lead), lead.get("id")
-    if not lead_id or not ct.active_connection(store, ws):
+    targets = links.active_links(store, ws) if lead_id else []
+    if not targets:
         return None
     if only_known and not known_to_calltracker(store, lead):
         return None
     _scrub_old_jobs(store, ws, lead_id)
-    for j in store.read("ct_outbox"):
-        if j.get("kind") == "erase" and j.get("ws") == ws and j.get("lead_id") == lead_id:
-            return j                                  # erasing twice queues one job
-    return ct._enqueue(store, {"kind": "erase", "ws": ws, "lead_id": lead_id, "phones": phones_of(lead), "reason": REASON})
+    job = None
+    for link in targets:
+        existing = next((j for j in store.read("ct_outbox") if j.get("kind") == "erase" and j.get("ws") == ws and j.get("lead_id") == lead_id
+                         and j.get("link", link["id"]) == link["id"]), None)
+        job = existing or ct._enqueue(store, {"kind": "erase", "ws": ws, "link": link["id"], "lead_id": lead_id, "phones": phones_of(lead), "reason": REASON})
+    return job                                        # erasing twice queues one job per link
 
 
 def run(store, conn: dict, job: dict) -> str:

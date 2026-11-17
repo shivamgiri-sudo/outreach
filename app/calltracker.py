@@ -1,4 +1,4 @@
-"""DialHalo connection (one per workspace) and the push of leads to its phone dial queue.
+"""DialHalo links (several per workspace) and the push of leads to its phone dial queue.
 
 Outreach -> DialHalo:
   * a new "call" task (an employer replied yes, a flow step, or a person added one) queues a push of that lead to
@@ -10,19 +10,20 @@ Outreach -> DialHalo:
   * jobs run in a background worker, retry with back-off when DialHalo is down and end as "failed" (listed on the
     Integrations card with a Retry button and noted on the lead), never silently dropped.
 
-Storage (store collections): ct_connections {workspace: connection}, ct_outbox [job], ct_seen [received webhook ids].
+Several DialHalo workspaces can be linked to one Outreach workspace (app/calltracker_links.py: which link a push goes
+to, erase / do-not-call to every link). Storage (store collections): ct_connections {link_id: link}, ct_outbox [job,
+each with its link id], ct_seen [received webhook ids].
 The API key and webhook secret are sealed at rest by app/secretbox.py and never returned or logged.
 """
 import json
 import os
 import threading
-import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import quote, urlparse
 
-from . import calltracker_match
+from . import calltracker_links as links, calltracker_match
 from .channels import netguard
 from .workspaces import MAIN, ws_of
 
@@ -37,6 +38,7 @@ TRANSPORT = None                  # tests: fn(method, url, headers, body_bytes) 
 RESOLVER = None                   # tests: fn(host) -> [ip] (no DNS in tests)
 _worker = {"running": False}
 _worker_lock = threading.Lock()
+_wake = threading.Event()         # kick() sets it: the idle worker starts the new job at once
 
 # What each DialHalo outcome does in Outreach (keys: DialHalo outcome names, lower case). Editable per workspace.
 #   outcome        the Outreach call outcome logged on the timeline (app/activities.CALL_OUTCOMES)
@@ -82,23 +84,23 @@ def norm_phone(raw) -> str:
     return digits[-15:] if len(digits) > 15 else digits
 
 
-# ---------------------------------------------------------------- connections
+# ---------------------------------------------------------------- connections (links: app/calltracker_links.py)
 def connections(store) -> dict:
-    return store.read("ct_connections") or {}
+    """{link_id: link}: every DialHalo link of every workspace."""
+    return links.rows(store)
 
 
 def connection(store, ws: str) -> Optional[dict]:
-    conn = connections(store).get(ws or MAIN)
-    return conn if isinstance(conn, dict) else None
+    """The workspace's primary link (the one shown first; pushes prefer it)."""
+    return links.primary(store, ws or MAIN)
 
 
 def active_connection(store, ws: str) -> Optional[dict]:
-    conn = connection(store, ws)
-    return conn if conn and conn.get("enabled", True) and conn.get("base_url") and conn.get("api_key") else None
+    return links.primary_active(store, ws or MAIN)
 
 
 def by_id(store, conn_id: str) -> Optional[dict]:
-    return next((c for c in connections(store).values() if isinstance(c, dict) and c.get("id") == conn_id), None)
+    return links.get(store, conn_id)
 
 
 def check_base_url(url: str) -> str:
@@ -152,69 +154,22 @@ def mapping_of(conn: Optional[dict]) -> dict:
     return saved if isinstance(saved, dict) and saved else DEFAULT_MAPPING
 
 
-def save_connection(store, ws: str, changes: dict, who: str) -> dict:
-    """Create or change the workspace's connection. Secrets are kept when not sent again."""
-    stamp = iso(now_utc())
-
-    def apply(rows: dict) -> dict:
-        cur = dict(rows.get(ws) or {})
-        if not cur:
-            cur = {"id": uuid.uuid4().hex[:20], "workspace": ws, "created_at": stamp, "created_by": who, "enabled": True}
-        for key in ("base_url", "public_url", "api_key", "webhook_secret", "enabled", "mapping"):
-            if key in changes and changes[key] is not None:
-                cur[key] = changes[key]
-        cur.update(updated_at=stamp, updated_by=who)
-        return {**rows, ws: cur}
-    return store.update("ct_connections", apply)[ws]
-
-
 def delete_connection(store, ws: str) -> bool:
-    found = {}
-
-    def apply(rows: dict) -> dict:
-        found["yes"] = ws in rows
-        return {k: v for k, v in rows.items() if k != ws}
-    store.update("ct_connections", apply)
-    store.update("ct_outbox", lambda jobs: [j for j in jobs if j.get("ws") != ws or j.get("status") == "done"])
-    calltracker_match.forget_workspace(store, ws)                     # its not-found cache and backfill state
-    return bool(found.get("yes"))
+    """Every link of the workspace (workspace / account delete), with its unsent jobs, cache and backfill state."""
+    return links.delete_workspace(store, ws)
 
 
-def note_status(store, ws: str, key: str, ok: bool, detail: str = "") -> None:
-    """last_push / last_event / last_test on the card (no secrets: messages come from our own wording)."""
-    row = {"at": iso(now_utc()), "ok": bool(ok), "detail": str(detail or "")[:300]}
-    store.update("ct_connections", lambda rows: {**rows, ws: {**rows[ws], key: row}} if ws in rows else rows)
+def note_status(store, link_id: str, key: str, ok: bool, detail: str = "") -> None:
+    links.note(store, link_id, key, ok, detail)
 
 
-def note_unmapped(store, ws: str, name: str, counted_as: str) -> None:
-    """A Call Tracker outcome name with no row in the mapping was counted as `counted_as`: remember it so the card can say so."""
-    key = " ".join(name.lower().split())[:80]
-    stamp = iso(now_utc())
-
-    def apply(rows: dict) -> dict:
-        conn = rows.get(ws)
-        if not conn:
-            return rows
-        seen = dict(conn.get("unmapped_outcomes") or {})
-        cur = seen.get(key) or {"name": name[:80], "count": 0}
-        seen[key] = {**cur, "count": cur["count"] + 1, "last_at": stamp, "counted_as": counted_as}
-        if len(seen) > 30:                     # keep the 30 most recent names
-            seen = dict(sorted(seen.items(), key=lambda kv: kv[1].get("last_at", ""))[-30:])
-        return {**rows, ws: {**conn, "unmapped_outcomes": seen}}
-    store.update("ct_connections", apply)
+def note_unmapped(store, link_id: str, name: str, counted_as: str) -> None:
+    links.note_unmapped(store, link_id, name, counted_as)
 
 
 def public_view(store, ws: str) -> Optional[dict]:
     conn = connection(store, ws)
-    if not conn:
-        return None
-    key = str(conn.get("api_key") or "")
-    return {"id": conn["id"], "workspace": ws, "base_url": conn.get("base_url", ""), "public_url": conn.get("public_url", ""),
-            "enabled": conn.get("enabled", True), "api_key_set": bool(key), "api_key_hint": ("••••" + key[-4:]) if len(key) > 8 else ("set" if key else ""),
-            "webhook_secret_set": bool(conn.get("webhook_secret")), "mapping": mapping_of(conn), "mapping_custom": bool(conn.get("mapping")),
-            "last_push": conn.get("last_push"), "last_event": conn.get("last_event"), "last_test": conn.get("last_test"), "last_match": conn.get("last_match"),
-            "unmapped_outcomes": sorted((conn.get("unmapped_outcomes") or {}).values(), key=lambda r: -r.get("count", 0)),
-            "created_at": conn.get("created_at"), "updated_at": conn.get("updated_at")}
+    return links.public_view(store, conn) if conn else None
 
 
 # ---------------------------------------------------------------- HTTP client
@@ -229,7 +184,9 @@ class CallTrackerError(OSError):
 
 def ct_request(conn: dict, method: str, path: str, body: Optional[dict] = None) -> dict:
     url = conn["base_url"].rstrip("/") + path
-    headers = {"Authorization": f"Bearer {conn['api_key']}", "Accept": "application/json", "User-Agent": "MCN-Outreach/1.0"}
+    headers = {"Accept": "application/json", "User-Agent": "MCN-Outreach/1.0"}
+    if conn.get("api_key"):                    # the connect exchange (app/calltracker_connect.py) has no key yet
+        headers["Authorization"] = f"Bearer {conn['api_key']}"
     data = json.dumps(body).encode("utf-8") if body is not None else None
     if data is not None:
         headers["Content-Type"] = "application/json"
@@ -329,12 +286,15 @@ def opted_out(lead: dict) -> str:
 
 
 def on_call_task(store, task: dict) -> Optional[dict]:
-    """A new call task: push its lead to the workspace's DialHalo (if connected). Never for a lead who opted out."""
+    """A new call task: push its lead to ONE DialHalo link of its workspace (app/calltracker_links.route: lead sync per
+    link, the link it already went to, else the primary). Never for a lead who opted out."""
     lead = next((l for l in store.read("leads") if l.get("id") == task.get("lead_id")), None)
-    if not lead or not active_connection(store, ws_of(lead)) or opted_out(lead):
+    if not lead or opted_out(lead):
         return None
-    ws = ws_of(lead)
-    return _enqueue(store, {"kind": "push", "ws": ws, "lead_id": lead["id"], "task_id": task.get("id")},
+    link = links.route(store, lead, call_task=True, task=task)
+    if not link:
+        return None
+    return _enqueue(store, {"kind": "push", "ws": ws_of(lead), "link": link["id"], "lead_id": lead["id"], "task_id": task.get("id")},
                     merge_key=lambda j: j.get("kind") == "push" and j.get("lead_id") == lead["id"])
 
 
@@ -342,19 +302,17 @@ FROM_CALLTRACKER = threading.local()     # set while applying a DialHalo event, 
 
 
 def on_opt_out(store, lead_id: str, reason: str) -> Optional[dict]:
-    """The contact opted out in Outreach: put the phone on the workspace's DialHalo do-not-call list."""
+    """The contact opted out in Outreach: put the phone on the do-not-call list of EVERY DialHalo link of the workspace."""
     if getattr(FROM_CALLTRACKER, "on", False):
         return None
     lead = next((l for l in store.read("leads") if l.get("id") == lead_id), None)
-    if not lead or not active_connection(store, ws_of(lead)):
-        return None
-    phones = [p for p in [lead.get("phone"), *(lead.get("phones") or [])] if norm_phone(p)]
-    if not phones:
-        return None
+    targets = links.active_links(store, ws_of(lead)) if lead else []
+    phones = [p for p in [lead.get("phone"), *(lead.get("phones") or [])] if norm_phone(p)] if lead else []
     job = None
-    for phone in dict.fromkeys(norm_phone(p) for p in phones):
-        job = _enqueue(store, {"kind": "dnc", "ws": ws_of(lead), "lead_id": lead_id, "phone": phone, "reason": str(reason or "Opted out")[:200]},
-                       merge_key=lambda j, phone=phone: j.get("kind") == "dnc" and j.get("phone") == phone and j.get("ws") == ws_of(lead))
+    for link in targets:
+        for phone in dict.fromkeys(norm_phone(p) for p in phones):
+            job = _enqueue(store, {"kind": "dnc", "ws": ws_of(lead), "link": link["id"], "lead_id": lead_id, "phone": phone, "reason": str(reason or "Opted out")[:200]},
+                           merge_key=lambda j, phone=phone, lid=link["id"]: j.get("kind") == "dnc" and j.get("phone") == phone and j.get("link") == lid)
     return job
 
 
@@ -391,11 +349,17 @@ def _lead_note(store, lead_id: str, state: dict, event: Optional[str]) -> None:
     store.update_lead(lead_id, change)
 
 
+def job_link(store, job: dict) -> Optional[dict]:
+    """The link a job belongs to (jobs queued before links existed: the workspace's primary link)."""
+    link = links.get(store, job["link"]) if job.get("link") else links.primary(store, job["ws"])
+    return link if link and link.get("workspace") == job["ws"] else None
+
+
 def _run_job(store, job: dict) -> str:
     """Does one job. Returns a short result text; raises CallTrackerError on failure."""
-    conn = active_connection(store, job["ws"])
-    if not conn:
-        raise CallTrackerError("The workspace's DialHalo connection is missing or switched off.", retry=False)
+    conn = job_link(store, job)
+    if not links.is_active(conn):
+        raise CallTrackerError("This DialHalo link is missing or switched off.", retry=False)
     lead = next((l for l in store.read("leads") if l.get("id") == job.get("lead_id")), None)
     if job["kind"] in ("erase", "match"):              # erase: app/calltracker_erase.py; match: app/calltracker_match.py
         from . import calltracker_erase
@@ -417,11 +381,13 @@ def _run_job(store, job: dict) -> str:
     data = ct_request(conn, "PUT", f"/api/v1/leads/external/{SOURCE}/{quote(lead['id'], safe='')}", body)
     ct_lead = data.get("lead") or {}
     owner = data.get("owner") or {}
-    first = not (lead.get("calltracker") or {}).get("lead_id")
+    info = lead.get("calltracker") or {}
+    first = not info.get("lead_id") or links.pushed_link(store, lead, links.links_of(store, job["ws"])) != conn["id"]
     who = owner.get("name") or "DialHalo's distribution"
-    _lead_note(store, lead["id"], {"lead_id": ct_lead.get("id"), "status": "ok", "error": "", "pushed_at": iso(now_utc()), "owner": owner.get("name") or "",
-                                   "owner_matched": bool(data.get("ownerMatched")), "dnc": bool(data.get("dnc"))},
-               f"Sent to DialHalo: in {who}'s dial queue" if first else None)
+    where = ((conn.get("dh_workspace") or {}).get("name") or "")[:80]
+    _lead_note(store, lead["id"], {"lead_id": ct_lead.get("id"), "link": conn["id"], "status": "ok", "error": "", "pushed_at": iso(now_utc()),
+                                   "owner": owner.get("name") or "", "owner_matched": bool(data.get("ownerMatched")), "dnc": bool(data.get("dnc"))},
+               f"Sent to DialHalo{f' ({where})' if where else ''}: in {who}'s dial queue" if first else None)
     return f"lead {'created' if data.get('created') else 'updated'} ({who})"
 
 
@@ -430,11 +396,11 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
     now = now or now_utc()
     due = [j for j in store.read("ct_outbox") if j.get("status") == "pending" and (parse(j.get("next_at")) or now) <= now][:limit]
     for job in due:
-        result, error, retry = "", "", False
+        result, error, retry, status = "", "", False, 0
         try:
             result = _run_job(store, job)
         except CallTrackerError as exc:
-            error, retry = str(exc), exc.retry
+            error, retry, status = str(exc), exc.retry, exc.status
         except Exception as exc:                  # a bug must not stop the queue; the job stays visible
             error, retry = f"Unexpected error ({type(exc).__name__}).", True
         attempts = job.get("attempts", 0) + 1
@@ -449,8 +415,11 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
             from . import calltracker_erase
             change = (calltracker_erase if job["kind"] == "erase" else calltracker_match).settle(store, job, change)
         store.update("ct_outbox", lambda jobs, jid=job["id"], change=change: [{**j, **change, "updated_at": stamp} if j["id"] == jid else j for j in jobs])
-        if job["ws"] in connections(store):
-            note_status(store, job["ws"], "last_match" if job["kind"] == "match" else "last_push", not error, result or error)
+        link = job_link(store, job)
+        if link:
+            note_status(store, link["id"], "last_match" if job["kind"] == "match" else "last_push", not error, result or error)
+            if status in (401, 403) or not error:          # a refused key shows on the card; a later success clears it
+                links.note_auth(store, link["id"], status in (401, 403), error)
         if error and job.get("lead_id") and job["kind"] != "erase" and (attempts == 1 or change.get("status") == "failed"):
             final = change.get("status") == "failed"
             text = (f"DialHalo: could not send this lead ({error})" + (" Gave up; use Retry on Integrations → DialHalo." if final
@@ -459,14 +428,14 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
     return len(due)
 
 
-def retry_failed(store, ws: str) -> int:
+def retry_failed(store, ws: str, link_id: Optional[str] = None) -> int:
     stamp = iso(now_utc())
     n = {"n": 0}
 
     def apply(jobs):
         out = []
         for j in jobs:
-            if j.get("ws") == ws and j.get("status") == "failed":
+            if j.get("ws") == ws and j.get("status") == "failed" and (not link_id or j.get("link") == link_id):
                 j = {**j, "status": "pending", "attempts": 0, "next_at": stamp, "updated_at": stamp}
                 n["n"] += 1
             out.append(j)
@@ -482,34 +451,40 @@ def queue_summary(store, ws: str) -> dict:
     failed = [j for j in jobs if j.get("status") == "failed"]
     pending = [j for j in jobs if j.get("status") == "pending"]
     leads = {l["id"]: l for l in store.read("leads") if l.get("id") in {j.get("lead_id") for j in failed + pending}}
-    row = lambda j: {"id": j["id"], "kind": j["kind"], "lead_id": j.get("lead_id"), "attempts": j.get("attempts", 0), "error": j.get("error", ""), "numbers": len(j.get("items") or {}),
+    row = lambda j: {"id": j["id"], "kind": j["kind"], "link": j.get("link"), "lead_id": j.get("lead_id"), "attempts": j.get("attempts", 0), "error": j.get("error", ""), "numbers": len(j.get("items") or {}),
                      "next_at": j.get("next_at"), "company": (leads.get(j.get("lead_id")) or {}).get("company") or ""}
     return {"pending": len(pending), "failed": len(failed), "done": len([j for j in jobs if j.get("status") == "done"]),
             "failed_rows": [row(j) for j in failed[-20:]], "pending_rows": [row(j) for j in pending[:20]]}
 
 
 def kick(store) -> None:
-    """Start the background worker (one at a time). It keeps going while jobs are pending, sleeping until the next one
-    is due (at most a minute), so retries happen without OUTREACH_AUTORUN."""
+    """Start the background worker (one at a time), or wake it at once when it is already idling. It keeps going while
+    jobs are pending, numbers wait for a re-check or a link sweeps its leads (app/calltracker_sync.py), waiting on an
+    Event until the next job is due (at most a minute), so a new job never waits for the idle timer."""
     if not KICK:
         return
     with _worker_lock:
         if _worker["running"]:
+            _wake.set()
             return
         _worker["running"] = True
+        _wake.clear()
 
     def loop():
+        from . import calltracker_sync
         try:
             while True:
+                _wake.clear()                 # cleared before the pass: a kick during it makes the next wait return at once
                 process_due(store)
                 waiting = calltracker_match.tick(store)   # re-checks numbers not in Outreach every few minutes; stays up while any wait
+                sweeping = calltracker_sync.tick(store)   # owners_members / all_with_phone links: leads never pushed
                 with _worker_lock:            # checked under the lock kick() uses, so a job queued right now is never stranded
                     pending = [parse(j.get("next_at")) for j in store.read("ct_outbox") if j.get("status") == "pending"]
-                    if not pending and not waiting:
+                    if not pending and not waiting and not sweeping:
                         _worker["running"] = False
                         return
                 wait = min(60.0, max(1.0, (min(p for p in pending if p) - now_utc()).total_seconds())) if any(pending) else (1.0 if pending else 60.0)
-                time.sleep(wait)
+                _wake.wait(wait)
         except Exception as exc:                  # never kill the app; the next kick restarts it
             print(f"calltracker worker stopped: {type(exc).__name__}")
             with _worker_lock:

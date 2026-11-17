@@ -21,7 +21,8 @@ PREFIX = "enc:v1:"
 ENV_KEY = "OUTREACH_SECRET_KEY"
 SECRET_SETTINGS = ("server_secret", "webhook_secret")
 CONTAINERS = ("tokens", "webhook_tokens")       # every string inside is a secret
-CT_SECRET_KEYS = ("api_key", "webhook_secret")  # DialHalo connections (ct_connections: {workspace: {...}})
+CT_SECRET_KEYS = ("api_key", "webhook_secret")  # DialHalo links (ct_connections: {link_id: {...}}; older data {workspace: {...}})
+CT_PENDING_KEYS = ("verifier",)                 # one-click DialHalo connect, waiting for the browser (ct_pending: {state: {...}})
 HOOK_SECRET_KEYS = ("url", "secret")            # lead webhooks (lead_hooks: {workspace: {...}}): the address can be a key too
 EXTRA_SECRET_KEYS = ("access_token", "refresh_token", "id_token")
 
@@ -106,6 +107,9 @@ class SecretBox:
         if isinstance(data.get("ct_connections"), dict):
             out["ct_connections"] = {ws: ({k: (fn(v) if k in CT_SECRET_KEYS and isinstance(v, str) else v) for k, v in conn.items()}
                                           if isinstance(conn, dict) else conn) for ws, conn in data["ct_connections"].items()}
+        if isinstance(data.get("ct_pending"), dict):
+            out["ct_pending"] = {st: ({k: (fn(v) if k in CT_PENDING_KEYS and isinstance(v, str) else v) for k, v in row.items()}
+                                      if isinstance(row, dict) else row) for st, row in data["ct_pending"].items()}
         if isinstance(data.get("lead_hooks"), dict):
             out["lead_hooks"] = {ws: ({k: (fn(v) if k in HOOK_SECRET_KEYS and isinstance(v, str) else v) for k, v in hook.items()}
                                       if isinstance(hook, dict) else hook) for ws, hook in data["lead_hooks"].items()}

@@ -5,11 +5,13 @@ import { Badge, Button, Card, CardHeader, Field, Select, Stat, Stats } from "../
 
 // Integrations → DialHalo → "Outreach match": every number your team dials in DialHalo is checked against this
 // workspace's leads, and DialHalo's "Outreach match" page shows which calls were to Outreach leads. Here: what is
-// shared, the last send, and "Match past calls" (backfill from DialHalo's call history).
+// shared, the last send, and "Match past calls" (backfill from this link's DialHalo call history; one run per link).
 const STATUS = { running: ["info", "Running"], done: ["success", "Finished"], failed: ["danger", "Stopped with a problem"], stopped: ["warning", "Stopped"] };
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
 
-export default function CallTrackerMatch({ ws, match, lastMatch, busy, run, onRefresh }) {
+const sentence = (text) => (/[.!?]$/.test(String(text || "").trim()) ? text : `${text}.`);
+
+export default function CallTrackerMatch({ ws, link, match, lastMatch, busy, run, onRefresh }) {
   const [days, setDays] = useState(30);
   const bf = match?.backfill || {};
   const [tone, label] = STATUS[bf.status] || ["neutral", "Not run yet"];
@@ -30,7 +32,7 @@ export default function CallTrackerMatch({ ws, match, lastMatch, busy, run, onRe
         <li>People on the do-not-contact list still show as matched (their stage says so). Erasing a person here also removes their match from DialHalo.</li>
       </ul>
       <p className="sub" data-testid="ct-match-last">
-        {lastMatch ? <>{lastMatch.ok ? "Last sent" : "Last send failed"} {istLabel(lastMatch.at)}: {lastMatch.detail}</> : "Nothing sent yet."}
+        {lastMatch ? <>{lastMatch.ok ? "Last sent" : "Last send failed"} {istLabel(lastMatch.at)}: {sentence(lastMatch.detail)}</> : "Nothing sent yet."}
         {match?.waiting ? ` ${n(match.waiting)} number(s) not in Outreach are being watched for a new lead.` : ""}
       </p>
 
@@ -43,7 +45,7 @@ export default function CallTrackerMatch({ ws, match, lastMatch, busy, run, onRe
           </Select>
         </Field>
         <Button disabled={running || busy} data-testid="ct-backfill"
-          onClick={() => run(() => api.backfillCalltracker(ws, days))}>
+          onClick={() => run(() => api.backfillCalltracker(ws, days, link))}>
           {running ? "Matching…" : canResume ? "Continue" : "Match past calls"}
         </Button>
         {running && <Button variant="secondary" disabled={busy} onClick={() => onRefresh?.()}>Refresh</Button>}

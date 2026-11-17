@@ -7,6 +7,7 @@ import Wizard, { guideKeys } from "./integrations/Wizard.jsx";
 import { GuideButton } from "../GuidePanel.jsx";
 import LeadCapture from "./integrations/LeadCapture.jsx";
 import CallTracker from "./integrations/CallTracker.jsx";
+import { readConnectReturn } from "./integrations/dialhaloReturn.js";
 import LeadWebhook from "./integrations/LeadWebhook.jsx";
 import Abbr from "../components/Abbr.jsx";
 import { PageHeader } from "../ui/index.js";
@@ -88,6 +89,8 @@ export default function Integrations({ go }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [query] = useState(hashQuery);
+  // DialHalo one-click connect return: read now, before the mount effect below tidies the hash (CallTracker finishes it)
+  const [dhReturn] = useState(() => readConnectReturn(window.location.hash));
   const [tab, setTab] = useState(query.get("tab") || (query.get("connected") || query.get("oauth_error") ? "calendar" : !isOwner() && canAdminister() ? "calltracker" : "email_send"));
   const [open, setOpen] = useState(null);
   const [hooks, setHooks] = useState(null);
@@ -143,7 +146,7 @@ export default function Integrations({ go }) {
         </>
       )}
 
-      {tab === "calltracker" && (canAdminister() ? <CallTracker /> : <p className="sub">Only the owner or a workspace admin can connect DialHalo.</p>)}
+      {tab === "calltracker" && (canAdminister() ? <CallTracker connectReturn={dhReturn} /> : <p className="sub">Only the owner or a workspace admin can connect DialHalo.</p>)}
 
       {tab === "capture" && (isOwner() ? <LeadCapture go={go} /> : <p className="sub">Only the owner can connect lead sources.</p>)}
 
