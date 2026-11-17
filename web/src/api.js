@@ -425,6 +425,7 @@ export const api = {
   deleteCalltracker: (ws) => request(`/api/calltracker?workspace=${encodeURIComponent(ws || "")}`, { method: "DELETE" }),
   testCalltracker: (ws) => request("/api/calltracker/test", { method: "POST", body: { workspace: ws } }),
   retryCalltracker: (ws) => request("/api/calltracker/retry", { method: "POST", body: { workspace: ws } }),
+  backfillCalltracker: (ws, days) => request("/api/calltracker/backfill", { method: "POST", body: { workspace: ws, days } }),
   calltrackerFunnel: (from, to) => request(`/api/calltracker/funnel?from=${encodeURIComponent(from || "")}&to=${encodeURIComponent(to || "")}`),
   // Integrations hub
   channels: () => request("/api/channels"),
