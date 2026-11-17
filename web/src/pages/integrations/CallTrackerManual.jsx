@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../../api.js";
+import { api, getRole } from "../../api.js";
 import { Button, Field, Input, Select } from "../../ui";
 import { linkName } from "./CallTrackerLinks.jsx";
 
@@ -17,6 +17,7 @@ export function ManualConnect({ ws, links, busy, run }) {
     setForm(link ? { base_url: link.base_url || "", public_url: link.public_url || "", api_key: "", webhook_secret: "", enabled: link.enabled !== false } : EMPTY);
   }, [target, link?.updated_at]);
   const save = () => run(() => api.saveCalltracker({ workspace: ws, ...(link ? { link: link.id } : { new: true }), ...form }), "Saved.");
+  if (!["owner", "admin"].includes(getRole())) return null;   // the server refuses callers and viewers too
   return (
     <details className="card dh-details" data-testid="ct-manual">
       <summary>Advanced: connect manually</summary>
