@@ -17,7 +17,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 
 from .template_vars import brand_variables
-from . import email_domain, email_gate, provenance
+from . import email_domain, email_gate, provenance, sender_health
 from . import sequence_library, sequences
 from .channels.security import server_secret
 from .growth_core import ensure_demo, get_offer, offer_line
@@ -73,10 +73,10 @@ def run_due(store, now: datetime, base_url: str, sender, ignore_hours: bool = Fa
 
 
 def sending_paused(store, now: datetime):
-    """The active provider pause, or None. A pause with `resume_at` lifts itself once that time has passed."""
+    """The active provider / bounce pause, or None. A pause with `resume_at` lifts itself once that time has passed."""
     pause = store.read("settings").get("sending_paused")
     if not pause:
-        return None
+        return sender_health.mailbox_pause(store)     # the mailbox in use was paused on its own (app/sender_health.py)
     resume_at = pause.get("resume_at")
     if resume_at and now >= datetime.fromisoformat(resume_at):
         store.update("settings", lambda s: {k: v for k, v in s.items() if k != "sending_paused"})
@@ -117,8 +117,9 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
     gate_live = email_gate.for_run(store, True)       # "verify before the first email" (app/email_gate.py); None = off
     icp_rules = get_icp(store)
     _decide_ab_winners(store)
-    from . import account_limits, account_sending
+    from . import account_limits, account_sending, send_volume
     amap, outbox_all, other = account_sending.accounts.ws_account_map(store), store.read("outbox"), {}
+    volume = send_volume.Limit(store, today.isoformat(), outbox_all)     # unconfirmed addresses: a share of the day (app/send_volume.py)
     mcn_vars = (cfg, live, days_key, last_key, mode_status, counts["mode"])
     for lead in sorted(store.read("leads"), key=lambda l: (l.get("sequence") or {}).get("enrolled_at", "")):
         seq = lead.get("sequence")
@@ -208,6 +209,8 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
         message["origin"] = provenance.for_sequence(store, lead, seq, step, day, live, cfg)
         key = f"{lead['id']}:{day}:{mode_name}"
         account_sending.stamp(message, acct)
+        if volume.waits(lead, acct["account"], live, cap if acct["account"] == "mcn" else cfg["daily_cap"], message, counts):
+            continue                                   # over today's share for unconfirmed addresses: waits, never dropped
         # The Message-ID comes from the key: a retry must be the same request, or Resend refuses it (409).
         message.update({"idempotency_key": key,
                         "message_id": f"<{uuid.uuid5(uuid.NAMESPACE_URL, key).hex}.{lead['id']}@{_message_domain(store)}>"})
@@ -232,6 +235,7 @@ def _run(store, now: datetime, base_url: str, sender) -> dict:
             store.update_lead(lead["id"], lambda r: _record_failure(r, now))
             continue
         store.update_lead(lead["id"], lambda r: _record_send(r, day, message, demo, now, days_key, last_key))
+        volume.sent(acct["account"], message)
         if acct["account"] != "mcn":
             account_limits.record(store, acct["account"], "daily_sends")
             other[acct["account"]] = other.get(acct["account"], 0) + 1

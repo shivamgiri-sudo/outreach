@@ -6,6 +6,7 @@ import { AgeingFilter } from "./LeadAgeing.jsx";
 import { CustomFilters } from "./LeadCustomFields.jsx";
 import { isWaiting } from "./LeadFirstTouch.jsx";
 import { HAS_FIELDS, gridParams, hasDetail } from "./leadFilters.js";
+import { EMAIL_STATE_FILTERS, emailStateOf } from "../emailState.js";
 import { DndFilter, HarvestFilter, RatingFilter, harvestLabel } from "./LeadGridFilters.jsx";
 import LeadViews from "./LeadViews.jsx";
 import DownloadButton, { DownloadFormat, exportPath } from "../DownloadButton.jsx";
@@ -79,10 +80,11 @@ export default function LeadToolbar({ leads, shown, f, set, owners, allTags, rul
   if (f.minRating) add("rating", `Rating ${f.minRating}★ and up`, () => set.minRating(""));
   if (f.noDnd) add("dnd", "DND hidden", () => set.noDnd(false));
   if (f.harvest) add("harvest", harvestLabel(f.harvest), () => set.harvest(""));
+  if (f.emailState) add("email", `Email: ${(EMAIL_STATE_FILTERS.find(([k]) => k === f.emailState) || [, f.emailState])[1]}`, () => set.emailState(""));
   const [format, setFormat] = useState("csv");
   const kind = format === "xlsx" ? "Excel file" : "CSV that opens in Excel";
   // Filters the server cannot apply itself go as the picked ids (the page already knows which leads match).
-  const byIds = f.onlyIds || f.ownerFilter || customOn || f.liStage || f.waitingOnly || f.contact || f.leadType || f.ageing || f.salesStage;
+  const byIds = f.onlyIds || f.ownerFilter || customOn || f.liStage || f.waitingOnly || f.contact || f.leadType || f.ageing || f.salesStage || f.emailState;
 
   return (
     <div className="lead-toolbar" role="search">
@@ -133,6 +135,11 @@ export default function LeadToolbar({ leads, shown, f, set, owners, allTags, rul
               </Select></label>}
             <div className="field"><span className="field-label">Source</span><SourceFilter leads={leads} value={f.srcFilter} onChange={set.srcFilter} /></div>
             <div className="field"><span className="field-label">Contact details</span><HasFilter leads={leads} value={f.hasFilter} onChange={set.hasFilter} /></div>
+            <label>Email
+              <Select aria-label="Filter by how sure the email is" value={f.emailState} onChange={(e) => set.emailState(e.target.value)} data-testid="email-state-filter">
+                <option value="">Any email</option>
+                {EMAIL_STATE_FILTERS.map(([k, v]) => <option key={k} value={k}>{v} ({leads.filter((l) => emailStateOf(l) === k).length})</option>)}
+              </Select></label>
             <label>Minimum rating<RatingFilter leads={leads} value={f.minRating} onChange={set.minRating} /></label>
             <HarvestFilter leads={leads} value={f.harvest} onChange={set.harvest} />
             <DndFilter leads={leads} value={f.noDnd} onChange={set.noDnd} />

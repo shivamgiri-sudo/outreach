@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from .privacy import contact_hash, lead_hashes, now_iso, record_consent
+from . import lead_sources_view
 
 LEAD_COLLECTIONS = ("outbox", "whatsapp_outbox", "transactional_outbox", "activities", "tasks", "notifications", "harvest_results")
 DEFAULT_RETENTION_DAYS = 365
@@ -57,6 +58,7 @@ def make_router(store) -> APIRouter:
                 "delivery_events": [e for e in store.read("delivery_events") if e.get("email") and e["email"] in mine],
                 "consent_ledger": [r for r in store.read("consent_ledger") if r.get("lead_id") == lead_id],
                 "suppressed": bool(lead.get("email") and lead["email"] in store.read("suppressed")),
+                "where_each_value_came_from": lead_sources_view.build(store, lead)["fields"],
                 "data_source_runs": [{"run_id": run.get("id"), "provider": pid, **row}
                                      for run in _optional(store, "provider_runs")
                                      for pid, rows in (run.get("rows") or {}).items() for row in rows if row.get("lead_id") == lead_id]}

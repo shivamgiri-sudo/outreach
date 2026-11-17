@@ -84,6 +84,18 @@ export default {
       "**Download audit pack** (owner): messages, change log and consent events for this lead as a zip.",
       "**Their data (DPDP)** (owner): **Download their data**, or **Erase their data...** which deletes everything about the person after a confirm. Use it when a person asks to be forgotten. See [Unsubscribe and erase](#help/recipe-unsubscribe-erasure).",
     ]],
+    ["h", "How sure is this email?"],
+    ["p", "A small badge next to the email (in the drawer and in the Leads table) says how sure we are that a real mailbox is behind it. Hover it for the reason."],
+    ["ul", [
+      "**Mailbox confirmed**: a mailbox check said the mailbox exists, or an email to it was delivered before.",
+      "**Domain ready**: the company's domain takes email, but the mailbox itself is not confirmed (never checked, catch-all, unknown, or only the domain was checked). These get a lower daily volume (see [Outbox](#help/outbox)).",
+      "**Guess only**: built from the company's email format. A guess is never emailed until someone confirms it.",
+      "**Bad address**: a check said it does not work, or an email to it bounced. It is not emailed.",
+    ]],
+    ["p", "On the Leads page, **More filters > Email** shows only confirmed, domain ready, guess only or bad addresses."],
+    ["h", "Where this came from"],
+    ["p", "On the **Data** tab, open **Where this came from** to see, for every filled detail (email, phone, name, title, company, LinkedIn, website, address, city, state, logo, social links, company register record, guessed email), where it came from, when, and whether it was **Found**, **Guessed**, **Confirmed** or **Typed by a person**. It is read only and built from what the app recorded: an edit by a person, Find & enrich, the website markup, the company register, Gravatar, the prospect database, an email check."],
+    ["p", "**Source not recorded** means the app kept no record for that value; nothing is guessed. The first line says where the lead itself first came from (an import file, a harvest, a form): values without a record of their own most likely came with it. The same list is in a person's data download (DPDP)."],
     ["tip", "Press Esc to close the drawer, and J or K to move between leads, when you are not typing in a box."],
   ],
 };

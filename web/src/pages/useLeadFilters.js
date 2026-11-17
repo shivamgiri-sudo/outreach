@@ -25,27 +25,28 @@ export default function useLeadFilters({ leads, me, customFields, initialOnlyIds
   const [minRating, setMinRating] = useState("");     // "" any | "3" | "3.5" | "4" | "4.5"
   const [noDnd, setNoDnd] = useState(false);          // hide DND numbers (flag or uploaded DND list)
   const [harvest, setHarvest] = useState("");         // "" any | "__any" found by a harvest | a harvest job id
+  const [emailState, setEmailState] = useState("");   // "" any | confirmed | domain_ready | candidate | bad (web/src/emailState.js)
   const [customFilter, setCustomFilter] = useState({});
   const [sort, setSort] = useState("score");
   const [onlyIds, setOnlyIds] = useState(initialOnlyIds);
   const customOn = Object.values(customFilter).some((v) => (typeof v === "object" ? v.min || v.max : v));
 
   const shown = useMemo(() => leads.filter((l) => matches(l, query, stage, band, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, hasFilter)
-    && customMatches(l, customFilter, customFields) && liStageMatches(l, liStage) && (!salesStage || salesStageOf(l) === salesStage) && (!waitingOnly || isWaiting(l)) && (!leadType || (leadType === "valid" ? !l.lead_quality : l.lead_quality?.kind === leadType)) && (!contact || (contact === "fresh" ? isFresh(l) : contactOf(l).status === contact)) && (!ageing || l.ageing === ageing) && gridMatches(l, { minRating, noDnd, harvest })).sort(SORTS[sort]),
-  [minRating, noDnd, harvest, leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter, liStage, salesStage, waitingOnly, contact, leadType, ageing]);
+    && customMatches(l, customFilter, customFields) && liStageMatches(l, liStage) && (!salesStage || salesStageOf(l) === salesStage) && (!waitingOnly || isWaiting(l)) && (!leadType || (leadType === "valid" ? !l.lead_quality : l.lead_quality?.kind === leadType)) && (!contact || (contact === "fresh" ? isFresh(l) : contactOf(l).status === contact)) && (!ageing || l.ageing === ageing) && gridMatches(l, { minRating, noDnd, harvest, emailState })).sort(SORTS[sort]),
+  [minRating, noDnd, harvest, emailState, leads, query, stage, band, sort, onlyIds, srcFilter, inboundOnly, ownerFilter, tagFilter, me, customFilter, customFields, hasFilter, liStage, salesStage, waitingOnly, contact, leadType, ageing]);
 
-  const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, has: hasFilter, li_stage: liStage, contact, quality: leadType, ageing, min_rating: minRating, no_dnd: noDnd, harvest, sort };
+  const viewFilters = { query, stage, band, sources: srcFilter, inbound: inboundOnly, owner: ownerFilter, tag: tagFilter, has: hasFilter, li_stage: liStage, contact, quality: leadType, ageing, min_rating: minRating, no_dnd: noDnd, harvest, email_state: emailState, sort };
   const applyView = (v) => {
     setQuery(v.query || ""); setStage(v.stage || ""); setBand(v.band || ""); setSrcFilter(v.sources || []); setInboundOnly(Boolean(v.inbound));
-    setOwnerFilter(v.owner || ""); setTagFilter(v.tag || ""); setHasFilter(Array.isArray(v.has) ? v.has : []); setLiStage(v.li_stage || ""); setContact(v.contact || ""); setLeadType(v.quality || ""); setAgeing(v.ageing || ""); setMinRating(v.min_rating || ""); setNoDnd(Boolean(v.no_dnd)); setHarvest(v.harvest || ""); setSort(SORTS[v.sort] ? v.sort : "score"); setOnlyIds(null);
+    setOwnerFilter(v.owner || ""); setTagFilter(v.tag || ""); setHasFilter(Array.isArray(v.has) ? v.has : []); setLiStage(v.li_stage || ""); setContact(v.contact || ""); setLeadType(v.quality || ""); setAgeing(v.ageing || ""); setMinRating(v.min_rating || ""); setNoDnd(Boolean(v.no_dnd)); setHarvest(v.harvest || ""); setEmailState(v.email_state || ""); setSort(SORTS[v.sort] ? v.sort : "score"); setOnlyIds(null);
   };
-  const filtered = Boolean(waitingOnly || query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter || customOn || hasFilter.length || liStage || contact || leadType || ageing || minRating || noDnd || harvest);
-  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); setHasFilter([]); setLiStage(""); setSalesStage(""); setWaitingOnly(false); setContact(""); setLeadType(""); setAgeing(""); setMinRating(""); setNoDnd(false); setHarvest(""); };
+  const filtered = Boolean(waitingOnly || query.trim() || stage || band || onlyIds || srcFilter.length || inboundOnly || ownerFilter || tagFilter || customOn || hasFilter.length || liStage || contact || leadType || ageing || minRating || noDnd || harvest || emailState);
+  const clearFilters = () => { setQuery(""); setStage(""); setBand(""); setOnlyIds(null); setSrcFilter([]); setInboundOnly(false); setOwnerFilter(""); setTagFilter(""); setCustomFilter({}); setHasFilter([]); setLiStage(""); setSalesStage(""); setWaitingOnly(false); setContact(""); setLeadType(""); setAgeing(""); setMinRating(""); setNoDnd(false); setHarvest(""); setEmailState(""); };
   // How many of the filters tucked under "More filters" are active (shown as a badge on that button).
-  const nMore = [salesStage, band, leadType, liStage, tagFilter, inboundOnly, srcFilter.length, hasFilter.length, customOn, minRating, noDnd, harvest].filter(Boolean).length;
+  const nMore = [salesStage, band, leadType, liStage, tagFilter, inboundOnly, srcFilter.length, hasFilter.length, customOn, minRating, noDnd, harvest, emailState].filter(Boolean).length;
 
-  const f = { query, stage, band, srcFilter, inboundOnly, ownerFilter, tagFilter, hasFilter, liStage, salesStage, waitingOnly, leadType, contact, ageing, minRating, noDnd, harvest, customFilter, onlyIds };
-  const set = { query: setQuery, stage: setStage, band: setBand, srcFilter: setSrcFilter, inboundOnly: setInboundOnly, ownerFilter: setOwnerFilter, tagFilter: setTagFilter, hasFilter: setHasFilter, liStage: setLiStage, salesStage: setSalesStage, waitingOnly: setWaitingOnly, leadType: setLeadType, contact: setContact, ageing: setAgeing, minRating: setMinRating, noDnd: setNoDnd, harvest: setHarvest, customFilter: setCustomFilter };
+  const f = { query, stage, band, srcFilter, inboundOnly, ownerFilter, tagFilter, hasFilter, liStage, salesStage, waitingOnly, leadType, contact, ageing, minRating, noDnd, harvest, emailState, customFilter, onlyIds };
+  const set = { query: setQuery, stage: setStage, band: setBand, srcFilter: setSrcFilter, inboundOnly: setInboundOnly, ownerFilter: setOwnerFilter, tagFilter: setTagFilter, hasFilter: setHasFilter, liStage: setLiStage, salesStage: setSalesStage, waitingOnly: setWaitingOnly, leadType: setLeadType, contact: setContact, ageing: setAgeing, minRating: setMinRating, noDnd: setNoDnd, harvest: setHarvest, emailState: setEmailState, customFilter: setCustomFilter };
   const resetBasic = () => { setQuery(""); setStage(""); setBand(""); };
   return { f, set, sort, setSort, onlyIds, setOnlyIds, shown, viewFilters, applyView, filtered, clearFilters, customOn, nMore, resetBasic };
 }

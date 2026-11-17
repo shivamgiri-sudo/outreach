@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, isOwner, isWorkspaceAdmin } from "../api.js";
 import { sourceId, sourceLabel, useSourceRegistry } from "../labels.js";
 import { DataTable } from "../ui/index.js";
+import { SenderMeter, UnconfirmedShare } from "./SenderMeter.jsx";
 
 const pct = (x) => `${(x * 100).toFixed(1)}%`;
 const VERDICT_COLOR = { good: "var(--ok)", warn: "var(--warn)", bad: "var(--mcn-red)", none: "var(--muted)" };
@@ -94,12 +95,13 @@ export default function DeliverabilityCard() {
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
   const allowed = isOwner() || isWorkspaceAdmin();
-  useEffect(() => { if (allowed && open) api.deliverability(days).then(setData).catch((e) => setError(e.message)); }, [allowed, open, days]);
+  const load = () => api.deliverability(days).then(setData).catch((e) => setError(e.message));
+  useEffect(() => { if (allowed && open) load(); }, [allowed, open, days]);
   if (!allowed) return null;
   const v = data && data.verdict;
   return (
     <details className="card" data-testid="deliverability" onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary className="card-summary">Deliverability: which source bounces</summary>
+      <summary className="card-summary">Deliverability: which source and mailbox bounces</summary>
       {error && <div className="tip error mt-3" role="alert">{error}</div>}
       {open && !data && !error && <p className="sub">Loading...</p>}
       {data && (
@@ -118,6 +120,8 @@ export default function DeliverabilityCard() {
             {data.sending.paused ? `Sending is paused: ${data.sending.reason || "too many bounces"}` : "Sending is running."}{" "}
             It pauses by itself above {pct(data.sending.pause_above_bounce_rate)} bounces or {pct(data.sending.pause_above_complaint_rate)} spam complaints (needs {data.sending.min_sends_for_pause} sends in 7 days). Counts only: no addresses are shown here.
           </p>
+          {data.by_sender && <SenderMeter rows={data.by_sender} limits={data.sender_thresholds} onChanged={load} />}
+          {data.volume && <UnconfirmedShare volume={data.volume} onChanged={load} />}
           <DayStrip days={data.by_day} />
           <Table title="By source" rows={mergeSources(data.by_source)} labelOf={(r) => r.label} />
           <Table title="By domain" rows={data.by_domain} />

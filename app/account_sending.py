@@ -18,7 +18,9 @@ def for_lead(store, lead: Optional[dict], global_cfg: dict, global_live: bool, a
     aid = accounts.account_of_lead(amap, lead or {})
     if aid == accounts.MCN:
         from .platform_controls import stop_reason
-        return {"account": aid, "cfg": global_cfg, "live": global_live, "hold": stop_reason(store), "own": False}
+        from .senders import email_ready
+        return {"account": aid, "cfg": global_cfg, "live": global_live, "hold": stop_reason(store), "own": False,
+                "from_email": str((email_ready(store) or {}).get("from_email") or "").strip().lower()}
     return for_account(store, aid, global_cfg, global_live)
 
 
@@ -31,13 +33,21 @@ def for_account(store, aid: str, global_cfg: dict, global_live: bool) -> dict:
     cap = accounts.limit_of(store, aid, "daily_sends")
     if cap is not None:
         cfg["daily_cap"] = min(int(cfg["daily_cap"]), cap)
-    own = bool(accounts.sending_config(store, aid))
+    sending = accounts.sending_config(store, aid)
+    own = bool(sending)
     live = bool(cfg.get("live_sending")) and (own or global_live)
-    return {"account": aid, "cfg": cfg, "live": live, "hold": accounts.hold_reason(store, aid, "email"), "own": own}
+    if not own:                                   # the platform's provider, granted by the super admin
+        from .senders import email_ready
+        sending = email_ready(store) or {}
+    return {"account": aid, "cfg": cfg, "live": live, "hold": accounts.hold_reason(store, aid, "email"), "own": own,
+            "from_email": str(sending.get("from_email") or "").strip().lower()}
 
 
 def stamp(message: dict, mode: dict) -> dict:
-    """Mark a message with its account so the sender uses that account's keys (mcn messages are left as they were)."""
+    """Mark a message with its account so the sender uses that account's keys, and with the mailbox it goes from
+    (`from_email`, for the per-sender bounce meter in app/sender_health.py)."""
+    if mode.get("from_email"):
+        message["from_email"] = mode["from_email"]
     if mode["account"] != accounts.MCN:
         message.update({"account_id": mode["account"], "account_live": mode["live"]})
     return message

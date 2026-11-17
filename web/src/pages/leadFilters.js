@@ -1,5 +1,6 @@
 import { STAGE_ORDER, sourceId } from "../labels.js";
 import { isYoungDomain, noMailAuth } from "./domainSignals.js";
+import { emailStateOf } from "../emailState.js";
 
 // Pure Leads filter and sort logic (no React), kept apart from the page so the page stays small.
 export const SORTS = {
@@ -59,9 +60,11 @@ export const RATINGS = ["3", "3.5", "4", "4.5"];
 export const ratingOf = (lead) => (lead.rating === null || lead.rating === undefined || lead.rating === "" || Number.isNaN(Number(lead.rating)) ? null : Number(lead.rating));
 export const isDnd = (lead) => Boolean(lead.dnc || lead.on_dnd);
 export const fromHarvest = (lead, job) => { const jobs = lead.harvest_jobs || []; return job === "__any" ? jobs.length > 0 : jobs.includes(job); };
-export function gridMatches(lead, { minRating = "", noDnd = false, harvest = "" } = {}) {
+// emailState: "" any, else one state of web/src/emailState.js (confirmed | domain_ready | candidate | bad).
+export function gridMatches(lead, { minRating = "", noDnd = false, harvest = "", emailState = "" } = {}) {
   if (minRating && (ratingOf(lead) === null || ratingOf(lead) < Number(minRating))) return false;
   if (noDnd && isDnd(lead)) return false;
+  if (emailState && emailStateOf(lead) !== emailState) return false;
   return !harvest || fromHarvest(lead, harvest);
 }
 // The same filters as download parameters (app/lead_grid.py).

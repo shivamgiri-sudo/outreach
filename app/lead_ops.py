@@ -26,7 +26,7 @@ VIEWS_KEY = "lead_views"
 VIEWS_PER_USER = 30
 VIEW_NAME_MAX = 60
 VIEW_FILTER_KEYS = ("query", "stage", "band", "sources", "inbound", "owner", "tag", "sort", "has", "li_stage", "contact", "quality", "ageing",
-                    "min_rating", "no_dnd", "harvest")
+                    "min_rating", "no_dnd", "harvest", "email_state")
 BULK_ACTIONS = ("stage", "owner", "tag_add", "tag_remove", "do_not_contact", "delete", "enroll", "list_add")
 UNDOABLE = ("stage", "owner", "tag_add", "tag_remove")
 
@@ -442,6 +442,8 @@ def _clean_filters(raw) -> dict:
             out[key] = value if value in ("untouched", "stale", "stuck") else ""
         elif key == "min_rating":                    # Leads grid filters (app/lead_grid.py)
             out[key] = value if value in ("3", "3.5", "4", "4.5") else ""
+        elif key == "email_state":                   # how sure the email is (app/email_state.py)
+            out[key] = value if value in ("confirmed", "domain_ready", "candidate", "bad") else ""
         elif key == "quality":                       # lead type: valid / invalid / consultant (marked by a caller on a call)
             out[key] = value if value in ("valid", "invalid", "consultant") else ""
         else:
