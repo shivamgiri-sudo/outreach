@@ -122,6 +122,9 @@ def strip_secrets(data: dict) -> dict:
     for key in SCRUBBED_COLLECTIONS:
         if key in out:
             out[key] = _scrub(out[key], extra)
+    if isinstance(out.get("lead_hooks"), dict):       # a lead webhook / Sheets address is a key too (app/lead_webhook.py)
+        out["lead_hooks"] = {ws: {**h, "url": "", "secret": "", "enabled": False} if isinstance(h, dict) else h
+                             for ws, h in out["lead_hooks"].items()}
     return out
 
 

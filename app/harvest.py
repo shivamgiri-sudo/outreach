@@ -307,7 +307,18 @@ def step(store, env_for) -> Optional[dict]:
                 pair["status"] = "failed"
     except Exception as exc:                          # noqa: BLE001 - an unexpected bug fails this job, never the server
         job.update(status="failed", error=f"{type(exc).__name__}: {str(exc)[:200]}", finished_at=now_iso())
+    if results:
+        _tell_webhook(store, job, results)
     return _save(store, job, results)
+
+
+def _tell_webhook(store, job: dict, results: list) -> None:
+    """harvest.lead_found events for the workspace's lead webhook, if one is on (app/lead_webhook_events.py)."""
+    from . import lead_webhook_events
+    try:
+        lead_webhook_events.on_harvest(store, job, results)
+    except Exception as exc:                          # noqa: BLE001 - a webhook problem never stops the harvest
+        print(f"harvest webhook skipped: {type(exc).__name__}")
 
 
 def run_until_idle(store, env_for, max_steps: int = 10000) -> int:
