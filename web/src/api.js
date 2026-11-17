@@ -429,6 +429,10 @@ export const api = {
   // one-click "Connect a DialHalo workspace" (app/calltracker_connect.py): start, then DialHalo sends the browser back
   startCalltrackerConnect: (ws, dialhaloUrl) => request("/api/calltracker/connect/start", { method: "POST", body: { workspace: ws, dialhalo_url: dialhaloUrl } }),
   finishCalltrackerConnect: (body) => request("/api/calltracker/connect/finish", { method: "POST", body }),
+  calltrackerSend: (body) => request("/api/calltracker/send", { method: "POST", body }),
+  calltrackerPeople: (ws, link) => request(`/api/calltracker/people?workspace=${encodeURIComponent(ws || "")}&link=${encodeURIComponent(link || "")}`),
+  calltrackerPeopleReport: (ws, from, to, link) => request(`/api/calltracker/people-report?workspace=${encodeURIComponent(ws || "")}&from=${encodeURIComponent(from || "")}&to=${encodeURIComponent(to || "")}&link=${encodeURIComponent(link || "")}`),
+  calltrackerReconcile: (ws, link) => request("/api/calltracker/reconcile", { method: "POST", body: { workspace: ws, link: link || "" } }),
   calltrackerFunnel: (from, to) => request(`/api/calltracker/funnel?from=${encodeURIComponent(from || "")}&to=${encodeURIComponent(to || "")}`),
   // Integrations hub
   channels: () => request("/api/channels"),

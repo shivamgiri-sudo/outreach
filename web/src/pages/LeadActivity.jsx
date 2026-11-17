@@ -146,7 +146,8 @@ export default function LeadActivity({ lead, onChanged }) {
   const saveTask = (e) => {
     e.preventDefault();
     run(() => api.createTask({ lead_id: lead.id, title: taskForm.title, text: taskForm.text, due_at: withIst(taskForm.due_at),
-      owner: taskForm.owner || null, priority: taskForm.priority }), "Task added.").then(() => setTaskForm(null));
+      owner: taskForm.owner || null, priority: taskForm.priority, kind: taskForm.kind || "follow_up" }),
+      taskForm.kind === "call" ? "Call task added. If DialHalo is connected, the lead goes to the owner's dial queue." : "Task added.").then(() => setTaskForm(null));
   };
 
   const openTasks = items.filter((i) => i.type === "task" && i.status === "open");
@@ -220,12 +221,17 @@ export default function LeadActivity({ lead, onChanged }) {
         </ul>
       )}
       {canWrite() && <div className="row u-m-8-0">
-        <button className="btn ghost" onClick={() => setTaskForm({ title: "", text: "", due_at: "", owner: "", priority: "normal" })}>Add a task</button>
+        <button className="btn ghost" onClick={() => setTaskForm({ kind: "follow_up", title: "", text: "", due_at: "", owner: "", priority: "normal" })}>Add a task</button>
         <button className="btn ghost" onClick={() => setLogging(true)}>Log a call / meeting / note</button>
       </div>}
 
       {taskForm && canWrite() && (
         <form className="inline-form" onSubmit={saveTask}>
+          <label>Kind
+            <select value={taskForm.kind} data-testid="task-kind" onChange={(e) => setTaskForm({ ...taskForm, kind: e.target.value, title: taskForm.title || (e.target.value === "call" ? "Call them" : taskForm.title) })}>
+              <option value="follow_up">Follow up</option><option value="call">Call (goes to the DialHalo dial queue)</option><option value="meeting">Meeting</option>
+            </select>
+          </label>
           <label>What needs doing?<input required value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
             placeholder="e.g. Send the pricing deck" /></label>
           <label>Due (IST)<input type="datetime-local" value={taskForm.due_at} onChange={(e) => setTaskForm({ ...taskForm, due_at: e.target.value })} /></label>

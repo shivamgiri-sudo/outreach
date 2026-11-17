@@ -718,6 +718,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     app.include_router(make_lead_webhook_router(store))                  # lead webhook / Google Sheets push (owner only)
     if any(j.get("status") == "pending" for j in store.read("ct_outbox")) or store.read("ct_unmatched") or calltracker_sync.wanted(store):
         calltracker_mod.kick(store)               # pushes queued before a restart carry on; numbers not in Outreach are re-checked; lead sync sweeps
+    from . import calltracker_kit as _kit
+    _kit.start_loop(store)                        # nightly reconcile of calls a webhook missed (no-op in tests)
     if os.environ.get("OUTREACH_AUTORUN") == "1":
         start_background(store, email_sender, capture_runner=lambda: run_sheet_syncs(store, capture_sheet_fetcher),
                          campaign_runner=lambda now: run_due_campaigns(
