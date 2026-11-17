@@ -2,9 +2,10 @@
 
 Reads the workspace's DialHalo call history (POST /api/v1/reports/history {from, to, page, pageSize}, newest first, 500
 per page; rows carry `client_number`), matches each distinct number against the workspace's leads with the receiver's
-phone rule (app/calltracker_events.py pick_lead), and sends the results through the coalescing "match" job
-(app/calltracker_match.py). One run per workspace at a time, in a background thread, bounded to MAX_CALLS calls.
-Progress is saved after every page (ct_backfill {ws: state}); a run that stopped (DialHalo down, server restart)
+phone rule (app/calltracker_events.py pick_lead), and sends the results through the coalescing "match" job of THAT link
+(app/calltracker_match.py). Runs per DialHalo link (a workspace linked to two DialHalo workspaces matches each one's
+history separately): one run per link at a time, in a background thread, bounded to MAX_CALLS calls.
+Progress is saved after every page (ct_backfill {link_id: state}); a run that stopped (DialHalo down, server restart)
 continues from its last page when started again with the same number of days. Repeating a run is harmless: DialHalo
 keeps one match per number, so the same results only overwrite themselves.
 """
@@ -20,7 +21,7 @@ MAX_CALLS = 20000
 PAGE_TRIES = 3
 BACKGROUND = True                 # tests run the backfill inline
 SLEEP = time.sleep
-_running = set()                  # workspaces with a live backfill thread in this process
+_running = set()                  # links with a live backfill thread in this process
 _lock = threading.Lock()
 
 
@@ -29,7 +30,19 @@ def _ct():
     return calltracker
 
 
-def state(store, ws: str) -> dict:
+def _key(store, target) -> str:
+    """A link id, or a workspace id (its primary link), or a link dict."""
+    from . import calltracker_links as links
+    if isinstance(target, dict):
+        return target["id"]
+    if links.get(store, target):
+        return target
+    link = links.primary(store, target)
+    return link["id"] if link else str(target)
+
+
+def state(store, target) -> dict:
+    ws = _key(store, target)
     row = dict((store.read("ct_backfill") or {}).get(ws) or {})
     if row.get("status") == "running" and ws not in _running:
         row["status"] = "stopped"                 # the server restarted mid-run: it can be continued
@@ -47,16 +60,20 @@ def _save(store, ws: str, changes: dict) -> dict:
     return out
 
 
-def start(store, ws: str, days: int, who: str) -> dict:
-    """Start (or continue) a backfill. Raises ValueError with a message for the person when it cannot start."""
+def start(store, target, days: int, who: str) -> dict:
+    """Start (or continue) a backfill for one link (`target`: link id, or a workspace = its primary link). Raises
+    ValueError with a message for the person when it cannot start."""
+    from . import calltracker_links as links
     ct = _ct()
     if days not in DAYS:
         raise ValueError("Choose 7, 30 or 90 days.")
-    if not ct.active_connection(store, ws):
+    link = links.get(store, _key(store, target))
+    if not links.is_active(link):
         raise ValueError("Connect DialHalo (address and API key) and switch it on first.")
+    ws = link["id"]                                   # the state key is the link id
     with _lock:
         if ws in _running:
-            raise ValueError("Past calls are already being matched for this workspace. Wait for it to finish.")
+            raise ValueError("Past calls are already being matched for this DialHalo workspace. Wait for it to finish.")
         _running.add(ws)
     prev = state(store, ws)
     resume = prev.get("status") in ("stopped", "failed") and prev.get("days") == days and prev.get("page")
@@ -90,16 +107,20 @@ def _index(store, ws: str) -> dict:
 
 
 def _run(store, ws: str) -> None:
+    """`ws` here is the link id (the state key)."""
     ct = _ct()
-    from . import calltracker_events as events, calltracker_match as match
+    from . import calltracker_events as events, calltracker_links as links, calltracker_match as match
     try:
         row = state(store, ws)
-        index = _index(store, ws)
+        first = links.get(store, ws)
+        if not first:
+            raise ct.CallTrackerError("The DialHalo link was removed.", retry=False)
+        index = _index(store, first["workspace"])
         seen = set(row.get("seen") or [])
         page = int(row.get("page") or 0)
         while row["calls"] < MAX_CALLS:
-            conn = ct.active_connection(store, ws)
-            if not conn:
+            conn = links.get(store, ws)
+            if not links.is_active(conn):
                 raise ct.CallTrackerError("The DialHalo connection was removed or switched off.", retry=False)
             data = _page(conn, row, page + 1)
             rows = [r for r in (data.get("rows") or []) if isinstance(r, dict)][:MAX_CALLS - row["calls"]]
@@ -115,7 +136,7 @@ def _run(store, ws: str) -> None:
                 seen.add(key)
                 cands = index.get(key) or []
                 found[str(number)] = events.pick_lead(store, [dict(l) for l in cands])
-            match.queue_results(store, ws, found)
+            match.queue_results(store, conn, found)
             hits = sum(1 for lead in found.values() if lead)
             page += 1
             row = _save(store, ws, {"page": page, "calls": row["calls"] + len(rows), "numbers": len(seen), "matched": row["matched"] + hits,

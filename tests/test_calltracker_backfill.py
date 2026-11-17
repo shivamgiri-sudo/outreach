@@ -2,6 +2,7 @@
 match job, the call cap, progress, continuing after a failure, re-runs, a too-old DialHalo, and who may start it."""
 from app import calltracker as ct, calltracker_backfill as bf
 from tests.test_calltracker import connect
+from tests.test_calltracker import conn_id
 from tests.test_calltracker_match import ACME, BETA, PATH, base_r, match_jobs, r  # noqa: F401  (fixtures)
 
 HISTORY = "/api/v1/reports/history"
@@ -39,7 +40,7 @@ def test_pages_through_history_dedupes_numbers_and_sends_through_the_match_job(r
         pass
     assert r.fake.matches[ACME]["status"] == "matched" and r.fake.matches[ACME]["externalId"] == r.lead["Acme"]["id"]
     assert all(len(d["matches"]) <= 500 for meth, p, d, _ in r.fake.requests if p == PATH)
-    assert not r.store.read("ct_backfill")["main"].get("seen")               # numbers are not kept after the run
+    assert not r.store.read("ct_backfill")[conn_id(r)].get("seen")         # keyed by the DialHalo link               # numbers are not kept after the run
 
 
 def test_rerun_is_idempotent(r):
@@ -94,7 +95,7 @@ def test_failure_saves_progress_and_a_new_start_continues(r):
 
 def test_interrupted_run_shows_stopped(r):
     connect(r)
-    r.store.update("ct_backfill", lambda rows: {**rows, "main": {"status": "running", "days": 30, "page": 2}})
+    r.store.update("ct_backfill", lambda rows: {**rows, conn_id(r): {"status": "running", "days": 30, "page": 2}})
     card = r.c.get("/api/calltracker", headers=r.h["owner"]).json()
     assert card["match"]["backfill"]["status"] == "stopped" and "restarted" in card["match"]["backfill"]["error"]
 
@@ -120,8 +121,8 @@ def test_who_may_start_it_and_input_checks(r):
     assert start(r, who="adm2", ws=r.w2).status_code == 200                  # but does for its own workspace
     assert start(r, days=45).status_code == 400
     assert any(a["action"] == "calltracker.backfill" for a in r.store.read("audit"))
-    bf._running.add("main")
+    bf._running.add(conn_id(r))
     try:
-        assert start(r).status_code == 409                                   # one run per workspace at a time
+        assert start(r).status_code == 409                                   # one run per link at a time
     finally:
-        bf._running.discard("main")
+        bf._running.discard(conn_id(r))

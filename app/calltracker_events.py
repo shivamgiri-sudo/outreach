@@ -75,46 +75,49 @@ def handle(store, conn_id: str, header: str, raw: bytes, now: Optional[float] = 
     conn = ct.by_id(store, str(conn_id or "")[:40])
     if not conn or not conn.get("enabled", True) or not conn.get("webhook_secret"):
         return 404, {"detail": "Unknown receiver"}
-    ws = conn["workspace"]
+    lid = conn["id"]                                   # replays, duplicates and statuses are per link
     ok, reason, given = verify(conn["webhook_secret"], header, raw, now)
     if not ok:
-        ct.note_status(store, ws, "last_event", False, f"Refused a delivery: {reason} signature")
+        ct.note_status(store, lid, "last_event", False, f"Refused a delivery: {reason} signature")
         return 401, {"detail": f"Signature {reason}"}
-    if _seen(store, "sig", given, ws):
+    if _seen(store, "sig", given, lid):
         return 409, {"detail": "Replayed delivery"}
-    _remember(store, "sig", given, ws)
+    _remember(store, "sig", given, lid)
     try:
         payload = json.loads(raw.decode("utf-8") or "{}")
     except ValueError:
         return 400, {"detail": "Body is not JSON"}
     event, event_id, data = str(payload.get("event") or ""), str(payload.get("id") or "")[:80], payload.get("data") or {}
-    if event_id and _seen(store, "event", event_id, ws):
+    if event_id and _seen(store, "event", event_id, lid):
         return 200, {"ok": True, "duplicate": True}
     ct.FROM_CALLTRACKER.on = True
     try:
         applied = process(store, conn, event, data)
     except ct.CallTrackerError as exc:
-        ct.note_status(store, ws, "last_event", False, f"{event}: {exc}")
+        ct.note_status(store, lid, "last_event", False, f"{event}: {exc}")
         if exc.retry:
             return 503, {"detail": "DialHalo API unavailable; retry later"}
         applied = 0
     finally:
         ct.FROM_CALLTRACKER.on = False
     if event_id:
-        _remember(store, "event", event_id, ws)
-    ct.note_status(store, ws, "last_event", True, f"{event}: {applied} lead(s) updated")
+        _remember(store, "event", event_id, lid)
+    ct.note_status(store, lid, "last_event", True, f"{event}: {applied} lead(s) updated")
     return 200, {"ok": True, "applied": applied}
 
 
 def process(store, conn: dict, event: str, data: dict) -> int:
+    """Applies one event. Every number it saw (synced calls not in Outreach, and each call fetched) is gathered and sent
+    to DialHalo's Outreach match in ONE note_calls at the end: one coalesced job for the link the call came from."""
     ws = conn["workspace"]
+    found = {}
     if event in ("call.outcome", "call.transcribed"):
         ids = [data.get("callId")]
     elif event == "calls.synced":
         numbers = {ct.norm_phone(p) for l in store.read("leads") if ws_of(l) == ws for p in [l.get("phone"), *(l.get("phones") or [])] if p}
         synced = [c for c in data.get("calls") or [] if isinstance(c, dict)]
         ids = [c.get("id") for c in synced if ct.norm_phone(c.get("number_norm")) in numbers]
-        ct_match.note_calls(store, ws, {c.get("number_norm"): None for c in synced[:MAX_UNMATCHED_PER_EVENT] if ct.norm_phone(c.get("number_norm")) not in numbers})
+        found.update({c.get("number_norm"): None for c in synced[:MAX_UNMATCHED_PER_EVENT] if ct.norm_phone(c.get("number_norm")) not in numbers})
     elif event == "dnc.added":
         return apply_dnc(store, conn, data)
     elif event == "dnc.removed":
@@ -122,14 +125,18 @@ def process(store, conn: dict, event: str, data: dict) -> int:
     else:
         return 0
     applied = 0
-    for call_id in [i for i in ids if isinstance(i, int) or str(i or "").isdigit()][:MAX_CALLS_PER_EVENT]:
-        try:
-            call = ct.ct_request(conn, "GET", f"/api/v1/calls/{int(call_id)}")
-        except ct.CallTrackerError as exc:
-            if exc.status == 404:
-                continue
-            raise
-        applied += 1 if apply_call(store, conn, call) else 0
+    try:
+        for call_id in [i for i in ids if isinstance(i, int) or str(i or "").isdigit()][:MAX_CALLS_PER_EVENT]:
+            try:
+                call = ct.ct_request(conn, "GET", f"/api/v1/calls/{int(call_id)}")
+            except ct.CallTrackerError as exc:
+                if exc.status == 404:
+                    continue
+                raise
+            applied += 1 if apply_call(store, conn, call, found) else 0
+    finally:
+        if found:
+            ct_match.note_calls(store, conn, found)
     return applied
 
 
@@ -198,12 +205,16 @@ def _duration(sec: int) -> str:
 
 
 # ---------------------------------------------------------------- calls
-def apply_call(store, conn: dict, call: dict) -> bool:
-    """Put the call on the lead's timeline (once; later events update it) and act on its outcome once."""
+def apply_call(store, conn: dict, call: dict, found: Optional[dict] = None) -> bool:
+    """Put the call on the lead's timeline (once; later events update it) and act on its outcome once. The number and
+    its lead go into `found` (sent to DialHalo's "Outreach match" page once per webhook), or straight out without it."""
     from .activities import add_task, close_call_tasks, now_utc
     from .provenance import build, person
     lead = match_lead(store, conn["workspace"], call)
-    ct_match.note_calls(store, conn["workspace"], {call.get("number"): lead})      # DialHalo's "Outreach match" page
+    if found is None:
+        ct_match.note_calls(store, conn, {call.get("number"): lead})
+    else:
+        found[call.get("number")] = lead
     if not lead:
         return False
     rule = ct.mapping_of(conn).get(" ".join(str(call.get("outcome") or "").lower().split())) if call.get("outcome") else None
@@ -211,7 +222,7 @@ def apply_call(store, conn: dict, call: dict) -> bool:
     direction = "in" if call.get("direction") in ("incoming", "missed", "rejected") else "out"
     outcome = (rule or {}).get("outcome") or ("connected" if connected else "no_answer")
     if call.get("outcome") and rule is None:
-        ct.note_unmapped(store, conn["workspace"], str(call["outcome"]), outcome)
+        ct.note_unmapped(store, conn["id"], str(call["outcome"]), outcome)
     sec = int(call.get("duration_sec") or 0)
     who = _name_for(store, (call.get("user") or {}).get("email"), (call.get("user") or {}).get("name") or "DialHalo")
     note = (call.get("note") or "").strip()
