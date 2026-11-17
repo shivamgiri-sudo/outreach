@@ -38,6 +38,20 @@ export default {
     ["p", "Every run is kept with its date, number of leads and each provider's coverage. Click **Show** to look at an old one."],
     ["h", "Import from the website contact scraper (owners)"],
     ["p", "If you run the open-source contact scraper on your own computer (homepage or key pages only), upload its **JSON file** or paste the JSON, then click **Import**. The result says how many leads matched and how many emails and phones were added, and lists website names that had no lead."],
+    ["h", "Company register (owners)"],
+    ["p", "The **Company register (India)** card keeps the Ministry of Corporate Affairs company master data on this server, so leads can be matched to registered companies without a lookup per lead. It is free government open data (Government Open Data Licence - India): you may reuse it with attribution."],
+    ["steps", [
+      "On data.gov.in, search for **Company Master Data** and download the CSV file of each state (RoC) you need.",
+      "Under **RoC-wise CSV files**, choose one or many files and click **Import**. Large files upload and then import in the background; the card shows the progress and, when done, how many companies were added and how many rows were skipped.",
+      "Importing a newer file again updates the companies in it (they are matched by CIN). The card shows the count per state, the size on disk and the last import.",
+      "Or open **Or pull through the data.gov.in API**: with your data.gov.in key and the dataset's resource id saved in {{menu:Connections}}, **Pull the next 50 pages** reads 25,000 companies a run and carries on next time where it stopped.",
+      "Click **Match 500 leads** to look up leads with a company name. Sure matches are attached, likely ones wait in the lead's drawer as **Is this the company?**, weak ones are never attached. Only empty lead fields are filled.",
+    ]],
+    ["table", { head: ["In the register", "Not in the register"], rows: [
+      ["CIN, company name, status (Active, Strike Off ...), class, category, incorporation date, paid-up and authorised capital, registered state, RoC, registered address, principal business activity", "Directors, phone numbers, websites, people's emails"],
+      ["The registered email, only when the file you imported has that column", "Anything from Tofler, Zauba Corp or the MCA portal (never read)"],
+    ] }],
+    ["tip", "Find & enrich also checks the register for free (step **Company register match** in the spend settings) and attaches only sure matches."],
     ["p", "Related: [Connections](#help/setup-connections), [Hiring engine](#help/engine), [Importing leads](#help/leads-import)."],
   ],
 };
