@@ -4,6 +4,7 @@ import { api, canWrite, isOwner } from "../api.js";
 import { ErrorState } from "../states.jsx";
 import "../data-pages.css";
 import HiringBatchCard from "./HiringBatchCard.jsx";
+import DomainBatchCard from "./DomainBatchCard.jsx";
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Select, Skeleton } from "../ui/index.js";
 
 const KIND_WORDS = { keyword: "Keyword", competitor: "Competitor", company: "Company" };
@@ -36,6 +37,7 @@ export default function Signals() {
         description={<>Watch keywords, competitors or companies and see fresh public news about them: hiring drives, new centres, expansion. You choose which company becomes a lead. This reads only the public news feed, never LinkedIn.</>} />
       {error && <ErrorState message="Signals could not load." detail={error} onRetry={load} />}
       <HiringBatchCard />
+      <DomainBatchCard />
       <Card as="section">
         {isOwner() && <div className="dp-add">
           <Select aria-label="What to watch" value={kind} onChange={(e) => setKind(e.target.value)}>

@@ -49,3 +49,12 @@
 .lead-guess-email { margin: 0 0 var(--s1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); overflow-wrap: anywhere; }
 .lead-guess-addr { font-family: var(--font-mono, monospace); font-size: var(--fs-md); }
 .lead-guess small.sub { display: block; margin: 0 0 var(--s1); }
+/* Find the right person + domain trust row (LeadResearch.jsx) */
+.research-ask { display: grid; gap: var(--s2); justify-items: start; margin-bottom: var(--s3); }
+.research-ask .sub { margin: 0; }
+.research-links { display: grid; gap: var(--s2); }
+.research-links .chips { display: flex; flex-wrap: wrap; gap: var(--s2); margin: 0; }
+.domain-row { list-style: none; margin: var(--s2) 0; padding: 0; display: grid; gap: var(--s2); grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.domain-row li { min-width: 0; overflow-wrap: anywhere; }
+.domain-row small { display: block; margin: 0; line-height: 1.3; }
+.domain-warn { color: var(--warn); }

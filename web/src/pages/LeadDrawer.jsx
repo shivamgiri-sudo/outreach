@@ -5,6 +5,7 @@ import { istLabel } from "../time.js";
 import LeadMeetings from "./LeadMeetings.jsx";
 import LeadActivity from "./LeadActivity.jsx";
 import CompanyHealth from "./CompanyHealth.jsx";
+import { DomainSignals, FindTheRightPerson } from "./LeadResearch.jsx";
 import HiringSignal from "./HiringSignal.jsx";
 import CompanyRegisterPanel from "./CompanyRegisterPanel.jsx";
 import OtherContacts from "./OtherContacts.jsx";
@@ -112,6 +113,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
       <LeadAssign lead={lead} onChanged={setLead} />
       <LeadPeople lead={lead} onLead={setLead} />
       <OtherContacts lead={lead} />
+      <FindTheRightPerson lead={lead} onChanged={load} />
       <LeadMeetings lead={lead} onChanged={load} />
       {lead.email_check?.status === "risky" && !lead.email_check.approved && (isOwner() || isWorkspaceAdmin()) && (
         <div className="tip warn">The mailbox check says this address is risky, so the first email waits.{" "}
@@ -160,6 +162,7 @@ export default function LeadDrawer({ id, ids, onClose }) {
       <LeadOrigin lead={lead} />
       <HiringSignal lead={lead} onChanged={load} />
       <CompanyRegisterPanel lead={lead} onChanged={load} />
+      <DomainSignals lead={lead} onChanged={load} />
       <CompanyHealth lead={lead} />
       <Card flat className="dsec"><LeadAuditPack lead={lead} /></Card>
       {isOwner() && <PrivacyActions lead={lead} onErased={onClose} />}
