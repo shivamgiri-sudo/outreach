@@ -90,6 +90,9 @@ def _merge(store, ws: str, results: dict) -> None:
     def apply(jobs: list) -> list:
         open_jobs = [j for j in jobs if j.get("kind") == "match" and j.get("ws") == ws and j.get("status") == "pending" and not j.get("sending")]
         rest = dict(results)
+        for j in jobs:                                # a failed job never re-sends an older result for these numbers
+            if j.get("kind") == "match" and j.get("ws") == ws and j.get("status") == "failed":
+                j["items"] = {k: v for k, v in (j.get("items") or {}).items() if k not in rest}
         for j in open_jobs:                           # a number already waiting: the newest result replaces it
             items = j.setdefault("items", {})
             for n in [n for n in rest if n in items]:

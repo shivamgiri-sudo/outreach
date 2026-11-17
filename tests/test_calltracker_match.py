@@ -230,3 +230,14 @@ def test_erase_drops_the_persons_waiting_match_entries(r):
     erase.on_erase(r.store, acme)
     items = match_jobs(r)[0]["items"]
     assert ACME not in items and "8999900000" in items
+
+
+def test_a_newer_result_replaces_the_number_in_a_failed_job(r):
+    connect(r)
+    r.fake.match_old = True
+    m.queue_results(r.store, "main", {"8123400000": None, "8123400001": None})
+    ct.process_due(r.store)
+    acme = next(l for l in r.store.read("leads") if l["company"] == "Acme")
+    m.queue_results(r.store, "main", {"8123400000": acme})
+    failed, pending = match_jobs(r, "failed")[0], match_jobs(r, "pending")[0]
+    assert list(failed["items"]) == ["8123400001"] and pending["items"]["8123400000"]["status"] == "matched"
