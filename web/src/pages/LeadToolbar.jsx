@@ -16,14 +16,15 @@ import { Button, Chip, Input, Popover, Select } from "../ui/index.js";
 function HasFilter({ leads, value, onChange }) {
   const count = (w) => leads.filter((l) => hasDetail(l, w)).length;
   const toggle = (w) => onChange(value.includes(w) ? value.filter((x) => x !== w) : [...value, w]);
-  const label = value.length ? `With ${value.map((w) => HAS_FIELDS.find(([k]) => k === w)[1].split(" ")[0].replace(/^(Phone|Mobile|Email|Hiring)$/, (w) => w.toLowerCase())).join(" + ")}` : "Any contact details";
+  const short = ([, text, phrase]) => (phrase ? text : text.split(" ")[0].replace(/^(Phone|Mobile|Email|Hiring)$/, (w) => w.toLowerCase()));
+  const label = value.length ? `With ${value.map((w) => short(HAS_FIELDS.find(([k]) => k === w))).join(" + ")}` : "Any contact details";
   return (
     <details className="multi-filter">
       <summary aria-label="Filter by contact details" data-testid="has-filter">{label}</summary>
       <div className="multi-pop" role="group" aria-label="Contact details">
-        {HAS_FIELDS.map(([w, text]) => (
+        {HAS_FIELDS.map(([w, text, phrase]) => (
           <label key={w} className="check-row">
-            <input type="checkbox" checked={value.includes(w)} onChange={() => toggle(w)} /> With {text.toLowerCase()} <small>({count(w)})</small>
+            <input type="checkbox" checked={value.includes(w)} onChange={() => toggle(w)} /> {phrase || `With ${text.toLowerCase()}`} <small>({count(w)})</small>
           </label>
         ))}
         <small className="sub">Tick more than one to see leads that have all of them (e.g. phone + email).</small>

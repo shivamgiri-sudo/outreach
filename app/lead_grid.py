@@ -5,11 +5,15 @@ with what the grid shows. The same rules live in web/src/pages/leadFilters.js (g
       phone   any phone number
       mobile  a mobile: phone_line_type mobile or mobile_or_fixed, or (older leads without a line type) phone_type mobile
       email   a real address in `email` (a pattern guess lives in `email_guess` and never counts)
+      young_domain  the company domain was registered less than a year ago (lead.domain_signals.age_days < 365)
+      no_mail_auth  the domain publishes no SPF or no DMARC record (an unknown result never counts; app/domain_signals.py)
   min_rating=4      Google / directory rating at least this (a lead without a rating is left out)
   no_dnd=1          leave out leads marked DND (`dnc`) or whose number is on the do-not-contact list (`suppressed`)
   harvest=any|<job> only leads found by the lead harvest (any job, or one job id)
 """
 import re
+
+from .domain_signals import is_young, no_mail_auth
 
 RATINGS = ("3", "3.5", "4", "4.5")
 MOBILE_LINES = ("mobile", "mobile_or_fixed")
@@ -49,6 +53,10 @@ def has_detail(lead: dict, what: str) -> bool:
         return bool(re.search(r"linkedin\.com/(in|pub)/", str(lead.get("linkedin_url") or ""), re.I))
     if what == "hiring":
         return hiring_roles(lead) > 0
+    if what == "young_domain":
+        return is_young(lead.get("domain_signals"))
+    if what == "no_mail_auth":
+        return no_mail_auth(lead.get("domain_signals"))
     return True
 
 

@@ -37,6 +37,7 @@ OWNER_ROUTES = {
     ("POST", "/api/find-leads"),          # spends provider credits
     ("POST", "/api/hiring-signal/run"), ("GET", "/api/hiring-signal/run"),       # batch read of up to 50 company websites
     ("GET", "/api/recrawl"), ("PUT", "/api/recrawl"),       # the scheduled website re-check switch and its last run (app/recrawl.py)
+    ("POST", "/api/domain-signals/run"), ("GET", "/api/domain-signals/run"),     # batch of domain trust signals, max 500 (app/domain_signals.py)
     ("POST", "/api/sequences"), ("PUT", "/api/sequences/{seq_id}"), ("POST", "/api/sequences/{seq_id}/duplicate"),       # sequence library
     ("POST", "/api/sequences/{seq_id}/archive"), ("POST", "/api/sequences/{seq_id}/steps/{index}/send-preview"),
     ("GET", "/api/scoring"), ("PUT", "/api/scoring"), ("PUT", "/api/lead-ageing"),
@@ -84,6 +85,7 @@ CALLER_WRITES = {
     ("POST", "/api/leads/{lead_id}/contact-points/remove"), ("POST", "/api/leads/{lead_id}/people"),
     ("PUT", "/api/leads/{lead_id}/people/{person_id}"), ("DELETE", "/api/leads/{lead_id}/people/{person_id}"),
     ("POST", "/api/leads/{lead_id}/hiring-signal"),    # read the company's own career pages and markup (free, public; app/hiring_signal.py)
+    ("POST", "/api/leads/{lead_id}/domain-signals"),   # public DNS + RDAP for the lead's domain (free; app/domain_signals.py)
     ("POST", "/api/leads/{lead_id}/company-register"), ("POST", "/api/leads/{lead_id}/company-register/confirm"),   # local register lookup (app/company_register_leads.py)
     ("POST", "/api/leads/{lead_id}/company-register/reject"),
     ("POST", "/api/leads/{lead_id}/company-health"), ("POST", "/api/leads/{lead_id}/demo-link"), ("POST", "/api/leads/{lead_id}/pilot"),

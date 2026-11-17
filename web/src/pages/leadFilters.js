@@ -1,4 +1,5 @@
 import { STAGE_ORDER, sourceId } from "../labels.js";
+import { isYoungDomain, noMailAuth } from "./domainSignals.js";
 
 // Pure Leads filter and sort logic (no React), kept apart from the page so the page stays small.
 export const SORTS = {
@@ -25,7 +26,9 @@ export function phoneMatches(phone, query) {
 
 // "Has" filter: every ticked detail must be on the lead (tick Phone + Email for leads with both).
 // Same rules as app/lead_grid.py, so "Download these N" matches the grid.
-export const HAS_FIELDS = [["phone", "Phone number"], ["mobile", "Mobile number"], ["email", "Email"], ["linkedin", "LinkedIn profile"], ["hiring", "Hiring now (open roles)"]];
+// A third item is the whole tick-box phrase when "With <text>" does not read well (domain trust: app/domain_signals.py).
+export const HAS_FIELDS = [["phone", "Phone number"], ["mobile", "Mobile number"], ["email", "Email"], ["linkedin", "LinkedIn profile"], ["hiring", "Hiring now (open roles)"],
+  ["young_domain", "Young domain", "Domain younger than 1 year"], ["no_mail_auth", "No SPF/DMARC", "No SPF or DMARC mail record"]];
 // Mobile only: a mobile or "mobile or landline" number; older leads without a line type use phone_type.
 export const isMobile = (lead) => Boolean(String(lead.phone || "").trim()) && (lead.phone_line_type ? ["mobile", "mobile_or_fixed"].includes(lead.phone_line_type) : lead.phone_type === "mobile");
 // Open roles seen on the company's own career pages (hiring_signal) or from a job import (open_roles).
@@ -36,6 +39,8 @@ export function hasDetail(lead, what) {
   if (what === "email") return String(lead.email || "").includes("@");   // a pattern guess (email_guess) never counts
   if (what === "hiring") return hiringRoles(lead) > 0;
   if (what === "linkedin") return /linkedin\.com\/(in|pub)\//i.test(String(lead.linkedin_url || ""));
+  if (what === "young_domain") return isYoungDomain(lead);
+  if (what === "no_mail_auth") return noMailAuth(lead);
   return true;
 }
 

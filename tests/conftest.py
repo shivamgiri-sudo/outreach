@@ -16,9 +16,11 @@ ENROL_TIME = "2026-11-03T04:00:00+00:00"
 
 @pytest.fixture(autouse=True)
 def fixed_enrolment_clock(monkeypatch):
-    from app import email_domain, gravatar, routes_jobs, routes_outreach, store
+    from app import domain_signals, email_domain, github_profiles, gravatar, routes_jobs, routes_outreach, store
     monkeypatch.setattr(email_domain, "CHECK", False)              # no DNS lookups in tests (no network)
     monkeypatch.setattr(gravatar, "LIVE", False)                   # no Gravatar calls either (tests pass a fake fetch)
+    monkeypatch.setattr(domain_signals, "LIVE", False)             # no DNS / RDAP for domain trust signals (tests pass fakes)
+    monkeypatch.setattr(github_profiles, "LIVE", False)            # no GitHub API calls (tests pass a fake get)
     monkeypatch.setattr(routes_jobs, "ALLOW_NOW_OVERRIDE", True)
     monkeypatch.setattr(store, "FSYNC", False)
     monkeypatch.setattr(routes_outreach, "_now_iso", lambda: ENROL_TIME)

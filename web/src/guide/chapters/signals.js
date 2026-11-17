@@ -28,6 +28,9 @@ export default {
     ]],
     ["h", "Hiring now from career pages (owners)"],
     ["p", "The **Hiring now from career pages** card reads the jobs your lead companies publish on their own websites. Click **Check 50 websites**: it works in the background on up to 50 company websites whose leads were not checked in the last week, and says how many are hiring and how many empty company details it filled. Leads that are hiring get a **Hiring: N roles** tag on the Leads page. Job boards (Indeed, Glassdoor, Naukri) and LinkedIn are never read, and every site's robots.txt is respected."],
+    ["h", "Domain trust signals (owners)"],
+    ["p", "The **Domain trust signals** card checks the public mail records (MX, SPF and DMARC) of your lead companies' domains and when each domain was registered. Click **Check 500 domains**: it works in the background on up to 500 domains not checked in the last 30 days, and says how many are younger than a year, how many have no SPF or DMARC, and how many could not be read. A result that could not be read is shown as \"not known\", never guessed."],
+    ["p", "Why it helps: very new domains, or domains with no mail records, more often belong to a fake, inactive or brand-new company, and email to them bounces more often. On the Leads page, **Any contact details** then filters by **Domain younger than 1 year** or **No SPF or DMARC mail record**. The scheduled re-check below also refreshes these signals for the websites it reads."],
     ["h", "Scheduled website re-checks (owners)"],
     ["p", "In the same card, **Re-check active leads' websites on a schedule** (on by default) reads the websites of active leads again, about once every 30 days. Active means the lead is in a running sequence, on a list or came from a running campaign, and is not closed. It reads at most 20 websites an hour, so it stays light."],
     ["ul", [

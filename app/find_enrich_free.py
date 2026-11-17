@@ -7,10 +7,16 @@
   gravatar       a public Gravatar profile for the lead's email (or its guess): name, photo, LinkedIn (app/gravatar.py)
   company_register  the local Indian company register (app/company_register_leads.py): attached only on a high-confidence
                  match; medium / low matches are left for a person in the lead drawer
+  domain_signals MX / SPF / DMARC and domain age from public DNS + RDAP (app/domain_signals.py), written as
+                 lead.domain_signals on every lead of the domain (cached per domain for 30 days)
+  public_profiles  public GitHub organisation / member emails on the company domain (app/github_profiles.py), added as
+                 other contacts with source "github"; OFF by default (DEFAULT_OFF), at most 20 domains per run
 
 Each step fills empty fields only, records where every value came from, and has an on/off switch in Prospect search >
-Spend (settings.prospect_db.providers.<id>.enabled, on by default).
+Spend (settings.prospect_db.providers.<id>.enabled, on by default except DEFAULT_OFF).
 """
+from . import domain_signals as DS
+from . import github_profiles as GH
 from . import gravatar
 from . import pattern_guess as PG
 from .email_patterns import parse_name
@@ -20,14 +26,17 @@ STEPS = {
     "pattern_guess": "Email format guess (free, never sent to)",
     "gravatar": "Gravatar profiles (free)",
     "company_register": "Company register match (free, local MCA data)",
+    "domain_signals": "Domain trust signals: mail records and domain age (free)",
+    "public_profiles": "Public GitHub profiles (free, rate-limited)",
 }
+DEFAULT_OFF = frozenset({"public_profiles"})
 NOTE = "free step in Find & enrich"
 
 
 def config_rows(over: dict) -> list:
     """Rows for prospect_waterfall.provider_config, so the owner can switch each free step off."""
     return [{"id": sid, "title": title, "cost": 0.0, "priority": int((over.get(sid) or {}).get("priority", 0)),
-             "enabled": (over.get(sid) or {}).get("enabled", True) is not False, "connected": True, "finds": False,
+             "enabled": (over.get(sid) or {}).get("enabled", sid not in DEFAULT_OFF) is not False, "connected": True, "finds": False,
              "verifies": False, "free": True, "note": NOTE} for sid, title in STEPS.items()]
 
 
@@ -37,6 +46,7 @@ class FreeTools:
     def __init__(self, store, transports: dict, now=None):
         self.store, self.transports, self.now = store, transports or {}, now
         self._book = self._checker = None
+        self.github_domains: set = set()        # domains looked up on GitHub this run (GH.MAX_DOMAINS at most)
 
     @property
     def book(self):
@@ -55,7 +65,9 @@ class FreeTools:
 
 
 def on(ctx, step: str) -> bool:
-    return getattr(ctx, "free", None) is not None and (ctx.meter is None or ctx.meter.enabled(step))
+    if getattr(ctx, "free", None) is None:
+        return False
+    return step not in DEFAULT_OFF if ctx.meter is None else ctx.meter.enabled(step)
 
 
 def _set(work: dict, out, field: str, value, source: str) -> bool:
@@ -145,3 +157,38 @@ def register_step(work: dict, out, ctx) -> None:
     filled = [field for field, key in CRL.FILL if _set(work, out, field, reg.get(key), CRL.SOURCE)]
     work["registry"] = out.changes["registry"] = {**reg, "filled": filled}
     out.notes.append(f"company register CIN {reg['cin']}")
+
+
+def domain_step(work: dict, out, domain: str, ctx) -> None:
+    """Mail records and domain age for the lead's domain (cache first), written onto every lead of that domain."""
+    if not on(ctx, "domain_signals") or not domain:
+        return
+    try:
+        signals = DS.refresh_domain(ctx.free.store, domain, **(ctx.free.transports.get("domain_signals") or {}))
+    except Exception as exc:                                 # noqa: BLE001 - never stops the other steps
+        ctx.error("Domain signals", f"Some domains could not be checked (last: {str(exc)[:120]}).")
+        return
+    if DS.known(signals):
+        work["domain_signals"] = signals
+        flags = [w for w, hit in (("domain under a year old", DS.is_young(signals)), ("no SPF / DMARC", DS.no_mail_auth(signals))) if hit]
+        if flags:
+            out.notes.append("domain check: " + ", ".join(flags))
+
+
+def profiles_step(work: dict, out, domain: str, ctx) -> None:
+    """Public GitHub emails on the company domain as other contacts (off by default; capped per run; rate-limit aware)."""
+    if not on(ctx, "public_profiles") or not domain:
+        return
+    seen = ctx.free.github_domains
+    if domain not in seen and len(seen) >= GH.MAX_DOMAINS:
+        return
+    seen.add(domain)
+    found = GH.lookup(ctx.free.store, domain, ctx.free.transports.get("github"), ctx.free.now, work.get("company", ""))
+    if found["status"] == "paused":
+        ctx.error("Public profiles", f"GitHub's hourly limit was reached; public profiles resume after {found['until']} UTC.")
+        return
+    known_emails = {str(work.get("email") or "").lower(), *(str(c.get("email") or "").lower() for c in work.get("other_contacts") or [])}
+    added = [p for p in found.get("people") or [] if p["email"] not in known_emails]
+    out.others.extend(added)
+    if added:
+        out.notes.append(f"{len(added)} public GitHub contact(s)")
