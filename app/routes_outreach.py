@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from html import escape
 from urllib.parse import quote, urlparse
 
-from . import lead_access
+from . import lead_access, sender_health
 from .auth import PRIVATE_SETTINGS
 from .brand import get_brand
 from .growth_core import public_base_url
@@ -348,6 +348,7 @@ def make_router(store, build_lead, present, email_sender, ai_transport=None) -> 
     @router.post("/api/sending/resume")
     def resume_sending():
         store.update("settings", lambda current: {k: v for k, v in current.items() if k != "sending_paused"})
+        sender_health.resume_current(store)     # and the mailbox in use, if it was paused on its own
         return sending_status()
 
     @router.post("/api/sequences/resume-failed")

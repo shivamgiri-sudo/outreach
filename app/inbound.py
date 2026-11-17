@@ -292,6 +292,9 @@ def process_delivery_event(store, event: dict, now: Optional[datetime] = None) -
 
 def _pause_if_unhealthy(store, now: datetime) -> tuple:
     rates = _rates(store, now)
+    from . import sender_health
+    if sender_health.multi_mailbox(store, now):     # more than one sending mailbox in 7 days: each is judged (and paused) on its own
+        return rates, sender_health.pause_unhealthy(store, now)
     paused = None
     if rates["sent"] >= MIN_SENDS_FOR_RATE and (rates["bounce_rate"] > BOUNCE_PAUSE_RATE or rates["complaint_rate"] > COMPLAINT_PAUSE_RATE):
         paused = (f"{rates['bounces']} bounces and {rates['complaints']} complaints from {rates['sent']} emails in 7 days. "
