@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, getWorkspace, isOwner } from "../../api.js";
 import { istLabel } from "../../time.js";
+import CallTrackerMatch from "./CallTrackerMatch.jsx";
 import { CopyRow } from "./Fields.jsx";
 
 // Integrations → DialHalo: one connection per workspace (owners: any workspace; a workspace admin: its own).
@@ -168,12 +169,14 @@ export default function CallTracker() {
           <p className="sub">{q.pending} waiting · {q.failed} failed · {q.done} sent recently. Failed sends are retried with back-off, then wait here.</p>
           {q.failed_rows.length > 0 && (
             <>
-              <ul>{q.failed_rows.map((j) => <li key={j.id}>{j.company || j.lead_id} ({j.kind === "dnc" ? "do-not-call" : j.kind === "erase" ? "erase" : "lead"}): {j.error}</li>)}</ul>
+              <ul>{q.failed_rows.map((j) => <li key={j.id}>{j.kind === "match" ? `Outreach match (${j.numbers} numbers)` : `${j.company || j.lead_id} (${j.kind === "dnc" ? "do-not-call" : j.kind === "erase" ? "erase" : "lead"})`}: {j.error}</li>)}</ul>
               <button className="btn" disabled={busy} onClick={() => run(() => api.retryCalltracker(ws))} data-testid="ct-retry">Retry failed</button>
             </>
           )}
         </div>
       )}
+
+      {conn && card.match && <CallTrackerMatch ws={ws} match={card.match} lastMatch={conn.last_match} busy={busy} run={run} onRefresh={load} />}
 
       {owners && owners.some((o) => !o.matched) && (
         <div className="card" data-testid="ct-unmatched">

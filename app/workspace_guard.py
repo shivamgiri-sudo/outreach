@@ -100,7 +100,7 @@ LIMITED_OK = {
     ("GET", "/api/ownership-mode"), ("PUT", "/api/ownership-mode"), ("GET", "/api/ownership/report"), ("GET", "/api/ownership/preview"), ("POST", "/api/ownership/migrate"),
     ("POST", "/api/ownership/fix-owners"),
     ("GET", "/api/calltracker"), ("PUT", "/api/calltracker"), ("DELETE", "/api/calltracker"), ("POST", "/api/calltracker/test"),
-    ("POST", "/api/calltracker/retry"), ("GET", "/api/calltracker/funnel"),      # own workspaces only (app/routes_calltracker.py)
+    ("POST", "/api/calltracker/retry"), ("GET", "/api/calltracker/funnel"), ("POST", "/api/calltracker/backfill"),   # own workspaces only (app/routes_calltracker.py)
     ("POST", "/api/import/preview"), ("POST", "/api/import/excel"), ("POST", "/api/import/commit"), ("GET", "/api/import/history"), ("POST", "/api/import/{import_id}/undo"),
     # lead harvest: jobs live in one workspace and are only listed / run / exported there (app/routes_harvest.py)
     ("GET", "/api/harvest"), ("GET", "/api/harvest/template.csv"), ("POST", "/api/harvest/estimate"), ("GET", "/api/harvest/jobs"),

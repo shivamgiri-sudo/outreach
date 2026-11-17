@@ -9,8 +9,8 @@ Retries and back-off are the normal queue's (app/calltracker.py). Phone numbers 
 it is done or has failed for good, so the outbox does not keep personal data about someone who asked to be forgotten.
 After a final failure the job stays on the card as failed (with Retry; a retry removes the lead by its id, and Call Tracker
 blocks the number it holds for it) and the workspace's admins get a notification.
-Jobs of the same person are never queued twice. Leads that were never sent to Call Tracker are skipped by the delete paths
-(`only_known=True`), so deleting a test lead does not put its number on a do-not-call list; an explicit erasure never skips.
+Jobs of the same person are never queued twice. Leads that were never sent to Call Tracker (no push and no Outreach match
+label, app/calltracker_match.py) are skipped by the delete paths (`only_known=True`), so deleting a test lead does not put its number on a do-not-call list; an explicit erasure never skips.
 """
 from typing import Optional
 
@@ -32,14 +32,20 @@ def phones_of(lead: dict) -> list:
 
 
 def known_to_calltracker(store, lead: dict) -> bool:
-    return bool((lead.get("calltracker") or {}).get("lead_id")
+    """Pushed, queued, or DialHalo holds (or is about to get) an Outreach match label for one of their numbers."""
+    from .calltracker_match import pending_for_lead
+    info = lead.get("calltracker") or {}
+    return bool(info.get("lead_id") or info.get("match_sent_at") or pending_for_lead(store, lead.get("id"))
                 or any(j.get("lead_id") == lead.get("id") and j.get("kind") in ("push", "dnc") and j.get("status") != "failed"
                        for j in store.read("ct_outbox")))
 
 
 def _scrub_old_jobs(store, ws: str, lead_id: str) -> None:
-    """Drop the person's waiting push / do-not-call jobs and wipe the phone from their finished or failed ones."""
+    """Drop the person's waiting push / do-not-call jobs and match entries, and wipe the phone from finished or failed ones."""
+    from .calltracker_match import scrub_lead
+
     def apply(jobs: list) -> list:
+        jobs = scrub_lead(jobs, ws, lead_id)
         out = []
         for j in jobs:
             if j.get("ws") == ws and j.get("lead_id") == lead_id and j.get("kind") != "erase":

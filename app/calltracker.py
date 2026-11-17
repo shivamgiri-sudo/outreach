@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import quote, urlparse
 
+from . import calltracker_match
 from .channels import netguard
 from .workspaces import MAIN, ws_of
 
@@ -175,6 +176,7 @@ def delete_connection(store, ws: str) -> bool:
         return {k: v for k, v in rows.items() if k != ws}
     store.update("ct_connections", apply)
     store.update("ct_outbox", lambda jobs: [j for j in jobs if j.get("ws") != ws or j.get("status") == "done"])
+    calltracker_match.forget_workspace(store, ws)                     # its not-found cache and backfill state
     return bool(found.get("yes"))
 
 
@@ -210,7 +212,7 @@ def public_view(store, ws: str) -> Optional[dict]:
     return {"id": conn["id"], "workspace": ws, "base_url": conn.get("base_url", ""), "public_url": conn.get("public_url", ""),
             "enabled": conn.get("enabled", True), "api_key_set": bool(key), "api_key_hint": ("••••" + key[-4:]) if len(key) > 8 else ("set" if key else ""),
             "webhook_secret_set": bool(conn.get("webhook_secret")), "mapping": mapping_of(conn), "mapping_custom": bool(conn.get("mapping")),
-            "last_push": conn.get("last_push"), "last_event": conn.get("last_event"), "last_test": conn.get("last_test"),
+            "last_push": conn.get("last_push"), "last_event": conn.get("last_event"), "last_test": conn.get("last_test"), "last_match": conn.get("last_match"),
             "unmapped_outcomes": sorted((conn.get("unmapped_outcomes") or {}).values(), key=lambda r: -r.get("count", 0)),
             "created_at": conn.get("created_at"), "updated_at": conn.get("updated_at")}
 
@@ -395,9 +397,9 @@ def _run_job(store, job: dict) -> str:
     if not conn:
         raise CallTrackerError("The workspace's DialHalo connection is missing or switched off.", retry=False)
     lead = next((l for l in store.read("leads") if l.get("id") == job.get("lead_id")), None)
-    if job["kind"] == "erase":
+    if job["kind"] in ("erase", "match"):              # erase: app/calltracker_erase.py; match: app/calltracker_match.py
         from . import calltracker_erase
-        return calltracker_erase.run(store, conn, job)
+        return (calltracker_erase if job["kind"] == "erase" else calltracker_match).run(store, conn, job)
     if job["kind"] == "dnc":
         ct_request(conn, "POST", "/api/v1/dnc", {"phone": job["phone"], "reason": job.get("reason") or "Opted out in MCN Outreach", "source": SOURCE})
         if lead:
@@ -443,12 +445,12 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
             change = {"attempts": attempts, "error": error, "next_at": iso(now + timedelta(minutes=BACKOFF_MINUTES[attempts - 1]))}
         else:
             change = {"status": "failed", "attempts": attempts, "error": error, "failed_at": stamp}
-        if job["kind"] == "erase":
+        if job["kind"] in ("erase", "match"):
             from . import calltracker_erase
-            change = calltracker_erase.settle(store, job, change)
+            change = (calltracker_erase if job["kind"] == "erase" else calltracker_match).settle(store, job, change)
         store.update("ct_outbox", lambda jobs, jid=job["id"], change=change: [{**j, **change, "updated_at": stamp} if j["id"] == jid else j for j in jobs])
         if job["ws"] in connections(store):
-            note_status(store, job["ws"], "last_push", not error, result or error)
+            note_status(store, job["ws"], "last_match" if job["kind"] == "match" else "last_push", not error, result or error)
         if error and job.get("lead_id") and job["kind"] != "erase" and (attempts == 1 or change.get("status") == "failed"):
             final = change.get("status") == "failed"
             text = (f"DialHalo: could not send this lead ({error})" + (" Gave up; use Retry on Integrations → DialHalo." if final
@@ -480,7 +482,7 @@ def queue_summary(store, ws: str) -> dict:
     failed = [j for j in jobs if j.get("status") == "failed"]
     pending = [j for j in jobs if j.get("status") == "pending"]
     leads = {l["id"]: l for l in store.read("leads") if l.get("id") in {j.get("lead_id") for j in failed + pending}}
-    row = lambda j: {"id": j["id"], "kind": j["kind"], "lead_id": j.get("lead_id"), "attempts": j.get("attempts", 0), "error": j.get("error", ""),
+    row = lambda j: {"id": j["id"], "kind": j["kind"], "lead_id": j.get("lead_id"), "attempts": j.get("attempts", 0), "error": j.get("error", ""), "numbers": len(j.get("items") or {}),
                      "next_at": j.get("next_at"), "company": (leads.get(j.get("lead_id")) or {}).get("company") or ""}
     return {"pending": len(pending), "failed": len(failed), "done": len([j for j in jobs if j.get("status") == "done"]),
             "failed_rows": [row(j) for j in failed[-20:]], "pending_rows": [row(j) for j in pending[:20]]}
@@ -500,12 +502,13 @@ def kick(store) -> None:
         try:
             while True:
                 process_due(store)
+                waiting = calltracker_match.tick(store)   # re-checks numbers not in Outreach every few minutes; stays up while any wait
                 with _worker_lock:            # checked under the lock kick() uses, so a job queued right now is never stranded
                     pending = [parse(j.get("next_at")) for j in store.read("ct_outbox") if j.get("status") == "pending"]
-                    if not pending:
+                    if not pending and not waiting:
                         _worker["running"] = False
                         return
-                wait = min(60.0, max(1.0, (min(p for p in pending if p) - now_utc()).total_seconds())) if any(pending) else 1.0
+                wait = min(60.0, max(1.0, (min(p for p in pending if p) - now_utc()).total_seconds())) if any(pending) else (1.0 if pending else 60.0)
                 time.sleep(wait)
         except Exception as exc:                  # never kill the app; the next kick restarts it
             print(f"calltracker worker stopped: {type(exc).__name__}")

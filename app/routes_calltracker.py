@@ -5,6 +5,7 @@
   DELETE /api/calltracker?workspace=ws        disconnect (secrets and pending jobs removed)
   POST   /api/calltracker/test                check the key against DialHalo and preview owner matching
   POST   /api/calltracker/retry               failed pushes back into the queue
+  POST   /api/calltracker/backfill            match past calls (7 / 30 / 90 days) for DialHalo's "Outreach match" page
   GET    /api/calltracker/funnel              called / connected / meetings booked from real calls (leads in scope)
   POST   /api/calltracker/hook/{conn_id}      receiver for DialHalo's signed webhooks (no login: the signature is the key)
 
@@ -18,7 +19,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from . import audit, calltracker as ct, calltracker_events as events, workspaces
+from . import audit, calltracker as ct, calltracker_backfill as backfill, calltracker_events as events, workspaces
 from .activities import CALL_OUTCOMES
 from .stages import ALL_STAGES
 
@@ -39,6 +40,11 @@ class ConnectionBody(BaseModel):
 
 class WorkspaceBody(BaseModel):
     workspace: str = ""
+
+
+class BackfillBody(BaseModel):
+    workspace: str = ""
+    days: int = 30
 
 
 def _user(request: Request) -> dict:
@@ -74,7 +80,9 @@ def make_router(store, base_url: str) -> APIRouter:
         return {"workspace": ws, "connection": ct.public_view(store, ws), "receiver": receiver(request, conn),
                 "queue": ct.queue_summary(store, ws), "default_mapping": ct.DEFAULT_MAPPING,
                 "outcomes": list(CALL_OUTCOMES), "stages": list(ALL_STAGES),
-                "events": list(events.CALL_EVENTS) + ["dnc.added", "dnc.removed"]}
+                "events": list(events.CALL_EVENTS) + ["dnc.added", "dnc.removed"],
+                "match": {"backfill": backfill.public(backfill.state(store, ws)), "days": list(backfill.DAYS), "max_calls": backfill.MAX_CALLS,
+                          "waiting": len((store.read("ct_unmatched") or {}).get(ws) or {})}}
 
     @router.get("/api/calltracker")
     def get_card(request: Request, workspace: str = ""):
@@ -151,6 +159,16 @@ def make_router(store, base_url: str) -> APIRouter:
     def retry(body: WorkspaceBody, request: Request):
         ws = workspace_for(request, body.workspace)
         return {"requeued": ct.retry_failed(store, ws), "card": card(request, ws)}
+
+    @router.post("/api/calltracker/backfill")
+    def start_backfill(body: BackfillBody, request: Request):
+        ws = workspace_for(request, body.workspace)
+        try:
+            row = backfill.start(store, ws, body.days, audit.actor_of(_user(request))["name"])
+        except ValueError as exc:
+            raise HTTPException(409 if "already" in str(exc) else 400, str(exc))
+        audit.record(store, _user(request), "calltracker.backfill", f"workspace {ws}", f"match past calls: {body.days} days")
+        return {"ok": True, "message": "Matching past calls. This page shows the progress.", "backfill": row, "card": card(request, ws)}
 
     @router.get("/api/calltracker/funnel")
     def funnel(date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to")):

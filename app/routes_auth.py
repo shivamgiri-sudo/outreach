@@ -138,6 +138,7 @@ ADMIN_WRITES = {
     ("POST", "/api/leads/bulk-reassign"),         # hand over a person's leads (app/bulk_reassign.py refuses non-admins and other workspaces)
     # DialHalo connection of their own workspaces (app/routes_calltracker.py refuses main and other workspaces)
     ("GET", "/api/calltracker"), ("PUT", "/api/calltracker"), ("DELETE", "/api/calltracker"), ("POST", "/api/calltracker/test"), ("POST", "/api/calltracker/retry"),
+    ("POST", "/api/calltracker/backfill"),      # match past calls (the route: owner or the workspace's admin)
     ("POST", "/api/harvest/dnd"),         # DND numbers onto the do-not-contact list (app/routes_harvest.py: owners and admins only)
 }
 # LinkedIn agent per client account (app/linkedin_scope.py): an account's admins run their own account's agent, slots and

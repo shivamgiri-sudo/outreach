@@ -67,6 +67,19 @@ export default {
     ]],
     ["h", "Call Tracker (DialHalo)"],
     ["p", "When Call Tracker (DialHalo) is connected for a workspace, erasing a person in Outreach also erases them in Call Tracker and puts their number on its do-not-call list, so nobody can dial them again. If Call Tracker is down the removal is retried automatically; if it still fails, the card shows it as failed with a **Retry** button and your managers get a notification."],
+    ["h", "Outreach match: which DialHalo calls were to your leads"],
+    ["p", "Every number your team dials in DialHalo is checked against the workspace's leads. In DialHalo, open the **Outreach match** page to see each call either matched to an Outreach lead or marked **Not in Outreach**."],
+    ["ul", [
+      "What is shared with DialHalo: only for numbers your team already dialled, the contact name, company, stage and a link to the lead in Outreach. No emails, notes or anything else.",
+      "A number that is not in Outreach yet is remembered. When someone adds, imports or edits a lead with that phone, DialHalo is told within a few minutes.",
+      "People on the do-not-contact list still show as matched, and their stage says so. Erasing a person in Outreach also removes their match from DialHalo.",
+      "If sending fails, the DialHalo card on {{menu:Integrations}} says so and the send is retried; use **Retry failed** once DialHalo is back. \"Update DialHalo\" means its version is too old for matching.",
+    ]],
+    ["steps", [
+      "To match calls made before this was switched on, open {{menu:Integrations}} → **DialHalo** (owner or the workspace's admin).",
+      "Under **Match past calls**, choose 7, 30 or 90 days and click **Match past calls**.",
+      "The card shows the progress: calls checked, matched to a lead, and not in Outreach. One run checks up to 20,000 calls. If it stops early, click **Continue**. Running it again is safe.",
+    ]],
     ["h", "Lead webhook (owners)"],
     ["p", "**Lead webhook** sends each new or changed lead to another system the moment it happens: Zapier, Make, n8n, your own CRM, or a Google Sheet. It is set per workspace and only an owner can change it. HubSpot, Zoho and Salesforce are not connected directly yet; send the webhook to Zapier or Make and let them add the lead there."],
     ["table", { head: ["Event", "When it is sent"], rows: [
