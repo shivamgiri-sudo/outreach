@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { isOwner } from "../api.js";
 import { ops } from "../opsApi.js";
 import { Button, Card, CardHeader } from "../ui/index.js";
+import RecrawlSettings from "./RecrawlSettings.jsx";
 
 // Owners: read the career pages of up to 50 lead companies in the background (each site at most once a week).
 export default function HiringBatchCard() {
@@ -31,6 +32,7 @@ export default function HiringBatchCard() {
         </p>
       )}
       {error && <p className="error" role="alert">{error}</p>}
+      <RecrawlSettings />
     </Card>
   );
 }

@@ -28,6 +28,13 @@ export default {
     ]],
     ["h", "Hiring now from career pages (owners)"],
     ["p", "The **Hiring now from career pages** card reads the jobs your lead companies publish on their own websites. Click **Check 50 websites**: it works in the background on up to 50 company websites whose leads were not checked in the last week, and says how many are hiring and how many empty company details it filled. Leads that are hiring get a **Hiring: N roles** tag on the Leads page. Job boards (Indeed, Glassdoor, Naukri) and LinkedIn are never read, and every site's robots.txt is respected."],
+    ["h", "Scheduled website re-checks (owners)"],
+    ["p", "In the same card, **Re-check active leads' websites on a schedule** (on by default) reads the websites of active leads again, about once every 30 days. Active means the lead is in a running sequence, on a list or came from a running campaign, and is not closed. It reads at most 20 websites an hour, so it stays light."],
+    ["ul", [
+      "Only real changes go on the lead's timeline: **Started hiring (N roles)**, **Stopped hiring**, **New roles: ...**, **Phone on website changed** and **New social link: ...**. If nothing changed, nothing is written.",
+      "When a company starts hiring, the lead's owner also gets an alert in the bell.",
+      "Change the number of days (7 to 180) and click **Save days**, or switch it off. The card shows when it last ran and what it found.",
+    ]],
     ["tip", "Keep watches specific. \"hiring\" alone brings too much. \"call centre hiring Pune\" brings better matches."],
     ["p", "Related: [Leads](#help/leads), [Hiring engine](#help/engine), [Prospect search](#help/prospects) (it can also filter by signals)."],
   ],

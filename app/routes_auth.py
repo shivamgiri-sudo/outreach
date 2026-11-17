@@ -36,6 +36,7 @@ OWNER_ROUTES = {
     ("GET", "/api/leads/{lead_id}/export"), ("POST", "/api/leads/{lead_id}/erase"),
     ("POST", "/api/find-leads"),          # spends provider credits
     ("POST", "/api/hiring-signal/run"), ("GET", "/api/hiring-signal/run"),       # batch read of up to 50 company websites
+    ("GET", "/api/recrawl"), ("PUT", "/api/recrawl"),       # the scheduled website re-check switch and its last run (app/recrawl.py)
     ("POST", "/api/sequences"), ("PUT", "/api/sequences/{seq_id}"), ("POST", "/api/sequences/{seq_id}/duplicate"),       # sequence library
     ("POST", "/api/sequences/{seq_id}/archive"), ("POST", "/api/sequences/{seq_id}/steps/{index}/send-preview"),
     ("GET", "/api/scoring"), ("PUT", "/api/scoring"), ("PUT", "/api/lead-ageing"),

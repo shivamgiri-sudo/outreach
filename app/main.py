@@ -707,6 +707,8 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
             store, now, campaign_io, campaign_notify, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"),
                          gate_runner=lambda: email_gate.check_pending(store, campaign_io, background=True))
         start_imap_poller(store, imap_factory)
+        from . import recrawl
+        recrawl.start_loop(store, fetcher)            # monthly re-read of active leads' websites: 20 domains an hour at most
     return app
 
 

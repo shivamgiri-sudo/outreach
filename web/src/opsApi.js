@@ -72,5 +72,7 @@ export const ops = {
   hiringSignalRefresh: (leadId) => request(`/api/leads/${leadId}/hiring-signal`, { method: "POST" }),
   hiringBatchStart: (limit = 50) => request("/api/hiring-signal/run", { method: "POST", body: { limit } }),
   hiringBatchState: () => request("/api/hiring-signal/run"),
+  recrawl: () => request("/api/recrawl"),
+  setRecrawl: (enabled, days) => request("/api/recrawl", { method: "PUT", body: { enabled, days: Number(days) } }),
   campaignLeadsPage: (id, params) => request(`/api/campaigns/${id}/leads${query({ page: 1, ...params })}`),
 };
