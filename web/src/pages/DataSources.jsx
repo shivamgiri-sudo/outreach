@@ -5,6 +5,7 @@ import { GuideButton } from "../GuidePanel.jsx";
 import "../data-pages.css";
 import "../analytics-pages.css";
 import { Badge, Button, Card, CardHeader, DataTable, EmptyState, Field, Input, PageHeader, Skeleton } from "../ui/index.js";
+import CompanyRegisterCard from "./CompanyRegisterCard.jsx";
 
 const DEFAULT_SAMPLE = 25;
 const MAX_SAMPLE = 100;
@@ -253,6 +254,7 @@ export default function DataSources({ go }) {
       </div>
       <Results run={current} onApplied={() => current && refresh(current.id)} />
       {isOwner() && <div className="an-section"><ImportCard /></div>}
+      <CompanyRegisterCard />
       <History runs={runs} current={current} onShow={setCurrent} />
     </>
   );
