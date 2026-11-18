@@ -96,7 +96,7 @@ def handle(store, conn_id: str, header: str, raw: bytes, now: Optional[float] = 
     except ct.CallTrackerError as exc:
         ct.note_status(store, lid, "last_event", False, f"{event}: {exc}")
         if exc.status in (401, 403):
-            ct.links.note_auth(store, lid, True, str(exc))
+            ct.links.note_auth(store, lid, True, str(exc), exc.code)
         if exc.retry:
             return 503, {"detail": "DialHalo API unavailable; retry later"}
         applied = 0

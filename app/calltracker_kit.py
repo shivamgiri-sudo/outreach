@@ -55,7 +55,7 @@ def _request(store, link: dict, method: str, path: str, body: Optional[dict] = N
         return ct.ct_request(link, method, path, body)
     except ct.CallTrackerError as exc:
         if exc.status in (401, 403):
-            links.note_auth(store, link["id"], True, str(exc))
+            links.note_auth(store, link["id"], True, str(exc), exc.code)
         raise
 
 
@@ -108,8 +108,6 @@ def lead_body(store, lead: dict, base_url: str) -> dict:
 def send_leads(store, ws: str, leads: list, base_url: str, link: dict) -> dict:
     """Sends `leads` to `link` in chunks of 500. Re-sending updates the same DialHalo lead (by external id), never adds a
     twin. A lead that belongs to another link of the workspace (already pushed, or a push waiting there) is skipped."""
-    if links.is_personal(link):
-        raise ct.CallTrackerError(f"{_name(link)} is a personal connection (one member's calls): send now needs a whole-workspace link.", retry=False)
     if (link.get("lead_sync") or "call_tasks") == "off":
         raise ct.CallTrackerError(f"Lead sending is off for {_name(link)}. Choose how leads are sent on its card first.", retry=False)
     mine = links.links_of(store, ws)
@@ -136,8 +134,14 @@ def send_leads(store, ws: str, leads: list, base_url: str, link: dict) -> dict:
         except ct.CallTrackerError as exc:
             ct.note_status(store, link["id"], "last_push", False, f"Send now: {exc}")
             raise
+        for row in data.get("skipped") or []:        # a personal key: leads that belong to another member (not_yours)
+            if isinstance(row, dict) and str(row.get("index", "")).isdigit() and int(row["index"]) < len(chunk):
+                result["skipped"].append({"lead_id": chunk[int(row["index"])]["id"], "reason": str(row.get("reason") or "skipped by DialHalo")[:80]})
         for row in data.get("saved") or []:
             lead = chunk[int(row["index"])]
+            if row.get("skipped"):
+                result["skipped"].append({"lead_id": lead["id"], "reason": str(row.get("reason") or "skipped by DialHalo")[:80]})
+                continue
             result["sent"] += 1
             result["created" if row.get("created") else "updated"] += 1
             if row.get("owner_matched") is False:

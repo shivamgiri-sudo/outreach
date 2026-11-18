@@ -30,7 +30,10 @@ missing scope = "workspace"). Several personal links of one DialHalo workspace m
     never when an active workspace link to the same DialHalo workspace exists (that link wins);
   * the same call delivered by a workspace link and a personal link (same DialHalo workspace id) is kept once
     (app/calltracker_events.apply_call);
-  * a personal key may not use DialHalo's do-not-call list or bulk send: do-not-call goes to the workspace's other links.
+  * do-not-call goes to the workspace links, and to a personal link only when no workspace link to its DialHalo workspace
+    exists (DialHalo limits it to the member's numbers; a row outside answers skipped / not_yours);
+  * a 403 {code: personal_connection} skips that job on that link for good (shown on the card); a 401
+    {code: connection_paused} shows "Paused in DialHalo" and backs off like any retry.
 Calls, outcomes and Outreach-match results always stay with the link the call came from (an outcome changed in Outreach
 goes back to that link only); erase, do-not-call and calls logged by hand in Outreach (lead history entries,
 app/calltracker_outcomes.py) go to every active link of the workspace.
@@ -246,12 +249,25 @@ def note(store, link_id: str, key: str, ok: bool, detail: str = "") -> None:
     store.update("ct_connections", lambda data: {**data, link_id: {**data[link_id], key: row}} if link_id in data else data)
 
 
-def note_auth(store, link_id: str, failed: bool, detail: str = "") -> None:
+def note_auth(store, link_id: str, failed: bool, detail: str = "", code: str = "") -> None:
     """DialHalo refused this link's key (401 / 403) on a test, a send or a call fetch: the card says "Not authorised —
-    reconnect" until a later test or send succeeds. Writes only when the state changes."""
+    reconnect" until a later test or send succeeds. Writes only when the state changes.
+    Personal keys: code connection_paused -> "Paused in DialHalo" (paused_in_dh; not broken, cleared by a later success);
+    code personal_connection -> the last thing DialHalo refused to a personal key (personal_refused); the key is fine."""
     ct = _ct()
     cur = get(store, link_id)
-    if not cur or bool(cur.get("auth_failed")) == bool(failed):
+    if not cur:
+        return
+    if failed and code in ("connection_paused", "personal_connection"):
+        key = "paused_in_dh" if code == "connection_paused" else "personal_refused"
+        row = {"at": ct.iso(ct.now_utc()), "detail": str(detail or "")[:300]}
+        store.update("ct_connections", lambda data: {**data, link_id: {**data[link_id], key: row}} if link_id in data else data)
+        return
+    if not failed and cur.get("paused_in_dh"):
+        store.update("ct_connections", lambda data: {**data, link_id: {k: v for k, v in data[link_id].items() if k != "paused_in_dh"}}
+                     if link_id in data else data)
+        cur = get(store, link_id) or cur
+    if bool(cur.get("auth_failed")) == bool(failed):
         return
     row = {"at": ct.iso(ct.now_utc()), "detail": str(detail or "")[:300]} if failed else None
 
@@ -413,6 +429,7 @@ def public_view(store, link: dict) -> dict:
             "webhook_secret_set": bool(link.get("webhook_secret")), "mapping": ct.mapping_of(link), "mapping_custom": bool(link.get("mapping")),
             "via": link.get("via") or "manual", "dh_workspace": link.get("dh_workspace") or None, "lead_sync": link.get("lead_sync") or "call_tasks",
             "primary": bool(link.get("primary")), "pairing": pairing(store, link), "auth_failed": link.get("auth_failed") or None,
+            "paused_in_dh": link.get("paused_in_dh") or None, "personal_refused": link.get("personal_refused") or None,
             "dh_scope": "member" if is_personal(link) else "workspace", "dh_member": link.get("dh_member") if is_personal(link) else None,
             "backfill": backfill.public(backfill.state(store, link["id"])),
             "last_push": link.get("last_push"), "last_event": link.get("last_event"), "last_test": link.get("last_test"), "last_match": link.get("last_match"),

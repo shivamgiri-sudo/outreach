@@ -67,7 +67,7 @@ function People({ pairing }) {
 
 export function LinkCard({ ws, link, card, busy, run, onRefresh, many }) {
   const [matchOpen, setMatchOpen] = useState(false);
-  const status = link.auth_failed ? ["danger", "Not authorised — reconnect"] : !link.api_key_set ? ["warning", "Key missing"]
+  const status = link.auth_failed ? ["danger", "Not authorised — reconnect"] : link.paused_in_dh ? ["warning", "Paused in DialHalo"] : !link.api_key_set ? ["warning", "Key missing"]
     : link.enabled ? ["success", "Connected"] : ["warning", "Paused"];
   const save = (changes, okText) => run(() => api.saveCalltracker({ workspace: ws, link: link.id, ...changes }), okText);
   return (
@@ -88,6 +88,9 @@ export function LinkCard({ ws, link, card, busy, run, onRefresh, many }) {
           DialHalo refused this link's key {istLabel(link.auth_failed.at)} (it may have been revoked there). Press Connect a DialHalo workspace and pick the same workspace: the new link replaces this one.
         </p>
       )}
+      {link.paused_in_dh && <p className="dh-status" role="status" data-testid="ct-paused">DialHalo paused this personal connection {istLabel(link.paused_in_dh.at)} (the member is switched off there,
+        or personal connections were turned off). Sends wait and retry; it works again once DialHalo allows it.</p>}
+      {link.personal_refused && <p className="dh-meta" data-testid="ct-personal-refused">Skipped for this personal connection {istLabel(link.personal_refused.at)}: {link.personal_refused.detail}</p>}
       <StatusLine title="Last call event" row={link.last_event} testid="ct-last-call-event" />
       <People pairing={link.pairing} />
       <div className="dh-row">
@@ -106,7 +109,7 @@ export function LinkCard({ ws, link, card, busy, run, onRefresh, many }) {
       </div>
       {many && link.lead_sync !== "off" && !link.primary && <p className="dh-meta">When another link could also take a lead, the primary (★) link gets it.</p>}
       {isPersonal(link) && <p className="dh-meta" data-testid="ct-personal-note">Only {link.dh_member?.name || "this member"}'s own calls come through this link. Leads, call tasks and
-        outcome changes go here only when the lead's owner is {link.dh_member?.email || "this member"}; a whole-workspace link to the same DialHalo workspace wins. Do-not-call goes through the other links.</p>}
+        outcome changes go here only when the lead's owner is {link.dh_member?.email || "this member"}; a whole-workspace link to the same DialHalo workspace wins. Do-not-call goes through the workspace link when there is one.</p>}
       {(link.via !== "connect" || isOwner()) && (
         <details className="dh-details">
           <summary>Webhook receiver</summary>

@@ -176,10 +176,15 @@ def public_view(store, ws: str) -> Optional[dict]:
 class CallTrackerError(OSError):
     """DialHalo could not be reached or refused; the message is safe to show (no key, no body echo)."""
 
-    def __init__(self, message: str, status: int = 0, retry: bool = True):
+    def __init__(self, message: str, status: int = 0, retry: bool = True, code: str = ""):
         super().__init__(message)
         self.status = status
         self.retry = retry
+        self.code = code                          # DialHalo's error code (personal_connection, connection_paused) or ""
+
+
+PERSONAL_REFUSED = "personal_connection"          # 403: not allowed for a personal key: skip that job on that link for good
+PAUSED = "connection_paused"                      # 401: personal key paused in DialHalo: back off, the link is not broken
 
 
 def ct_request(conn: dict, method: str, path: str, body: Optional[dict] = None) -> dict:
@@ -203,6 +208,11 @@ def ct_request(conn: dict, method: str, path: str, body: Optional[dict] = None) 
                 payload = {}
     except (netguard.FetchFailed, OSError, ValueError) as exc:
         raise CallTrackerError(f"DialHalo could not be reached ({type(exc).__name__}).") from None
+    code = str((payload or {}).get("code") or "") if isinstance(payload, dict) else ""
+    if status == 403 and code == PERSONAL_REFUSED:
+        raise CallTrackerError("Not allowed for a personal DialHalo connection (one member's calls).", 403, retry=False, code=code)
+    if status == 401 and code == PAUSED:
+        raise CallTrackerError("Paused in DialHalo (the member is switched off there, or personal connections are off).", 401, retry=True, code=code)
     if status in (401, 403):
         msg = str((payload or {}).get("message") or "")[:200]
         raise CallTrackerError(f"DialHalo refused the API key (HTTP {status}){': ' + msg if msg else ''}.", status, retry=False)
@@ -310,7 +320,8 @@ def on_opt_out(store, lead_id: str, reason: str) -> Optional[dict]:
     if getattr(FROM_CALLTRACKER, "on", False):
         return None
     lead = next((l for l in store.read("leads") if l.get("id") == lead_id), None)
-    targets = [l for l in links.active_links(store, ws_of(lead)) if not links.is_personal(l)] if lead else []   # a personal key has no do-not-call rights
+    active = links.active_links(store, ws_of(lead)) if lead else []
+    targets = [l for l in active if not links.shadowed(l, active)]     # a personal link only when no workspace link covers its DialHalo workspace
     phones = [p for p in [lead.get("phone"), *(lead.get("phones") or [])] if norm_phone(p)] if lead else []
     job = None
     for link in targets:
@@ -373,7 +384,9 @@ def _run_job(store, job: dict) -> str:
         from . import calltracker_outcomes
         return calltracker_outcomes.run(store, conn, job)
     if job["kind"] == "dnc":
-        ct_request(conn, "POST", "/api/v1/dnc", {"phone": job["phone"], "reason": job.get("reason") or "Opted out in MCN Outreach", "source": SOURCE})
+        data = ct_request(conn, "POST", "/api/v1/dnc", {"phone": job["phone"], "reason": job.get("reason") or "Opted out in MCN Outreach", "source": SOURCE})
+        if isinstance(data, dict) and data.get("skipped"):      # a personal key: not one of the member's numbers
+            return f"do-not-call skipped by DialHalo ({str(data.get('reason') or 'not_yours')[:40]})"
         if lead:
             _lead_note(store, lead["id"], {"dnc": True, "dnc_at": iso(now_utc())}, "DialHalo: number put on the do-not-call list")
         return "do-not-call sent"
@@ -387,6 +400,8 @@ def _run_job(store, job: dict) -> str:
     if not norm_phone(body["phone"]):
         raise CallTrackerError("The lead has no phone number, so DialHalo cannot dial it. Add a phone and retry.", retry=False)
     data = ct_request(conn, "PUT", f"/api/v1/leads/external/{SOURCE}/{quote(lead['id'], safe='')}", body)
+    if isinstance(data, dict) and data.get("skipped"):          # a personal key: the lead belongs to another member there
+        return f"lead skipped by DialHalo ({str(data.get('reason') or 'not_yours')[:40]})"
     ct_lead = data.get("lead") or {}
     owner = data.get("owner") or {}
     info = lead.get("calltracker") or {}
@@ -404,11 +419,13 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
     now = now or now_utc()
     due = [j for j in store.read("ct_outbox") if j.get("status") == "pending" and (parse(j.get("next_at")) or now) <= now][:limit]
     for job in due:
-        result, error, retry, status = "", "", False, 0
+        result, error, retry, status, code = "", "", False, 0, ""
         try:
             result = _run_job(store, job)
         except CallTrackerError as exc:
-            error, retry, status = str(exc), exc.retry, exc.status
+            error, retry, status, code = str(exc), exc.retry, exc.status, exc.code
+            if code == PERSONAL_REFUSED:          # a permanent skip for this job on this link, never a retry loop
+                result, error = f"skipped: {exc}", ""
         except Exception as exc:                  # a bug must not stop the queue; the job stays visible
             error, retry = f"Unexpected error ({type(exc).__name__}).", True
         attempts = job.get("attempts", 0) + 1
@@ -430,8 +447,10 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
         if link:
             key = {"match": "last_match", "outcome": "last_outcome", "activity": "last_outcome"}.get(job["kind"], "last_push")
             note_status(store, link["id"], key, not error, result or error)
-            if status in (401, 403) or not error:          # a refused key shows on the card; a later success clears it
-                links.note_auth(store, link["id"], status in (401, 403), error)
+            if code == PERSONAL_REFUSED:
+                links.note_auth(store, link["id"], True, f"{job['kind']}: {result}", code)
+            elif status in (401, 403) or not error:          # a refused key shows on the card; a later success clears it
+                links.note_auth(store, link["id"], status in (401, 403), error, code)
         if error and job.get("lead_id") and job["kind"] in ("push", "dnc") and (attempts == 1 or change.get("status") == "failed"):
             final = change.get("status") == "failed"
             text = (f"DialHalo: could not send this lead ({error})" + (" Gave up; use Retry on Integrations → DialHalo." if final

@@ -90,13 +90,15 @@ def run(store, conn: dict, job: dict) -> str:
             ct.ct_request(conn, method, path, body)
             results.append(label)
         except ct.CallTrackerError as exc:
+            if exc.code == ct.PERSONAL_REFUSED:       # a personal key may not do this: the workspace's other links do
+                results.append(f"{label} skipped")
+                return
             errors.append(f"{label}: " + ("this Call Tracker is too old to erase people, update it (HTTP 404)." if exc.status == 404 and method == "DELETE" else str(exc)))
             retry = retry or exc.retry
 
     from urllib.parse import quote
     attempt("erase", "DELETE", f"/api/v1/leads/external/{ct.SOURCE}/{quote(str(job['lead_id']), safe='')}")
-    from . import calltracker_links as links
-    for phone in [] if links.is_personal(conn) else job.get("phones") or []:      # a personal key may not use the do-not-call list
+    for phone in job.get("phones") or []:
         attempt("do-not-call", "POST", "/api/v1/dnc", {"phone": phone, "reason": job.get("reason") or REASON, "source": ct.SOURCE})
     if errors:
         raise ct.CallTrackerError(" ".join(errors)[:300], retry=retry)

@@ -1,8 +1,8 @@
 """Personal DialHalo connections (personal-connect-contract.md, Outreach side): scope and member from connect/self at finish
 and on Test, several personal links per DialHalo workspace, lead sync coerced to off / call_tasks / owners_members,
 routing to a personal link only for leads its member owns (a workspace link to the same DialHalo workspace wins),
-one call row when a workspace link and a personal link both deliver the same call, outcome / history routing, and no
-do-not-call or bulk send through a personal key. DialHalo is faked in memory."""
+one call row when a workspace link and a personal link both deliver the same call, outcome / history routing,
+do-not-call / send-now per-row skips (not_yours), and the personal_connection (403) / connection_paused (401) codes. DialHalo is faked in memory."""
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -132,14 +132,77 @@ def test_routing_owner_paired_not_paired_and_workspace_link_wins(r):
     assert links.qualifies(r.store, other, lead, call_task=True) and not links.shadowed(other, links.active_links(r.store, "main"))
 
 
-def test_do_not_call_and_send_now_skip_personal_links(r):
+def test_do_not_call_goes_to_a_personal_link_only_without_a_workspace_link_and_per_row_skips(r):
     p = personal(r)
-    w = workspace_link(r)
     ct.on_opt_out(r.store, r.lead["Acme"]["id"], "Unsubscribed")
+    assert {j["link"] for j in r.store.read("ct_outbox") if j["kind"] == "dnc"} == {p["id"]}
+    real = r.fake.__class__.__call__
+
+    def skip_dnc(self, method, url, headers, body):
+        if url.endswith("/api/v1/dnc") and method == "POST":
+            self.requests.append((method, "/api/v1/dnc", None, headers.get("Authorization")))
+            return 200, {"data": {"added": False, "skipped": True, "reason": "not_yours"}}
+        return real(self, method, url, headers, body)
+    r.fake.__class__.__call__ = skip_dnc
+    try:
+        drain(r)
+    finally:
+        r.fake.__class__.__call__ = real
+    job = next(j for j in r.store.read("ct_outbox") if j["kind"] == "dnc")
+    assert job["status"] == "done" and "not_yours" in job["result"]
+    assert not (next(l for l in r.store.read("leads") if l["company"] == "Acme").get("calltracker") or {}).get("dnc")
+    w = workspace_link(r)
+    r.store.write("ct_outbox", [])
+    ct.on_opt_out(r.store, r.lead["Beta Ltd"]["id"], "Unsubscribed")
     assert {j["link"] for j in r.store.read("ct_outbox") if j["kind"] == "dnc"} == {w["id"]}
+
+
+def test_send_now_on_a_personal_link_reports_not_yours_rows(r, monkeypatch):
+    p = personal(r)
     from app import calltracker_kit as kit
-    with pytest.raises(ct.CallTrackerError, match="personal connection"):
-        kit.send_leads(r.store, "main", [next(l for l in r.store.read("leads") if l["company"] == "Acme")], "https://x", links.get(r.store, p["id"]))
+    acme, beta = (next(l for l in r.store.read("leads") if l["company"] == c) for c in ("Acme", "Beta Ltd"))
+    monkeypatch.setattr(kit, "_request", lambda store, link, method, path, body=None: {
+        "saved": [{"index": 0, "id": "dh-1", "created": True}, {"index": 1, "skipped": True, "reason": "not_yours"}]})
+    out = kit.send_leads(r.store, "main", [acme, beta], "https://x", links.get(r.store, p["id"]))
+    assert out["sent"] == 1 and out["skipped"] == [{"lead_id": beta["id"], "reason": "not_yours"}]
+
+
+def test_personal_connection_403_skips_the_job_for_good_and_paused_401_backs_off(r):
+    p = personal(r)
+    r.store.write("ct_outbox", [])
+    task(r, "Acme")
+    real = r.fake.__class__.__call__
+    answers = []
+
+    def coded(self, method, url, headers, body):
+        if answers and "/leads/external/" in url:
+            status, code = answers.pop(0)
+            self.requests.append((method, url, None, headers.get("Authorization")))
+            return status, {"code": code, "message": "x"}
+        return real(self, method, url, headers, body)
+    r.fake.__class__.__call__ = coded
+    try:
+        answers.append((401, "connection_paused"))
+        ct.process_due(r.store)
+        job = next(j for j in r.store.read("ct_outbox") if j["kind"] == "push")
+        link = links.get(r.store, p["id"])
+        assert job["status"] == "pending" and job["attempts"] == 1 and "Paused in DialHalo" in job["error"]
+        assert link.get("paused_in_dh") and not link.get("auth_failed")
+        view = next(l for l in r.c.get("/api/calltracker", headers=r.h["owner"]).json()["links"] if l["id"] == p["id"])
+        assert view["paused_in_dh"] and not view["auth_failed"]
+        r.store.update("ct_outbox", lambda jobs: [{**j, "next_at": "2000-01-01T00:00:00+00:00"} for j in jobs])
+        answers.append((403, "personal_connection"))
+        ct.process_due(r.store)
+        job = next(j for j in r.store.read("ct_outbox") if j["kind"] == "push")
+        link = links.get(r.store, p["id"])
+        assert job["status"] == "done" and job["result"].startswith("skipped:")             # not retried
+        assert link.get("personal_refused") and not link.get("auth_failed")
+        assert ct.process_due(r.store) == 0
+        # a later success clears "Paused in DialHalo"
+        links.note_auth(r.store, p["id"], False)
+        assert not links.get(r.store, p["id"]).get("paused_in_dh")
+    finally:
+        r.fake.__class__.__call__ = real
 
 
 # ---------------------------------------------------------------- the same call from two links

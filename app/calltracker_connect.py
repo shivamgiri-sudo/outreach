@@ -296,7 +296,7 @@ def run_test(store, link: dict) -> dict:
     except ct.CallTrackerError as exc:
         links.note(store, link["id"], "last_test", False, str(exc))
         if exc.status in (401, 403):
-            links.note_auth(store, link["id"], True, str(exc))
+            links.note_auth(store, link["id"], True, str(exc), exc.code)
         return {"ok": False, "message": str(exc)}
     if _workspace_of(me):
         links.save(store, link["workspace"], link["id"], {"dh_workspace": _workspace_of(me), **_scope_changes(me)}, link.get("updated_by") or "")
