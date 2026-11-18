@@ -4,7 +4,9 @@
     The row keeps ct.outcome_changed_at / outcome_origin "mcn_outreach" / outcome_by, and ONE coalesced ct_outbox job
     {"kind": "outcome", "link": the link the call came from (activity ct.conn), "call_id", "activity_id"} is queued:
         PUT /api/v1/calls/<callId>/outcome
-        {outcome, callbackAt?, note?, changedAt, by: {email, name}, origin: "mcn_outreach"}
+        {outcome?, callbackAt?, note?, changedAt, by: {email, name}, origin: "mcn_outreach"}
+    -> {applied, reason?: older|same|unknown_outcome|not_shared, outcome?}; a note-only change answers unknown_outcome
+    (expected, not flagged a second time)
   * A call logged by hand in Outreach (no DialHalo call id) is sent as a lead history entry to EVERY active link of the
     workspace, one job {"kind": "activity", "activity_id"} per link:
         POST /api/v1/leads/activity
@@ -13,7 +15,7 @@
     such a call's outcome later queues the same jobs again (DialHalo updates its entry by (source, refId)).
   * Outreach outcome -> DialHalo outcome name: the link's mapping (calltracker.mapping_of) read backwards. Of the rules
     for that outcome, the one without opt_out wins; the opt_out one when the lead has opted out. No rule: no outcome is
-    sent (null on a call, left out of a history entry), the note says "Outcome in Outreach: X", and the name is listed
+    sent (the key is left out: null would clear DialHalo's outcome), the note says "Outcome in Outreach: X", and the name is listed
     on the link's card (unmapped_outgoing, next to the incoming unmapped names) and on the call row.
   * Jobs hold ids only (no number, no name). The payload is built when the job runs, from the activity row as it is
     then, so coalesced edits send the latest value. A job claims itself while sending (`sending`), so an edit made during
@@ -222,7 +224,9 @@ def build_payload(store, conn: dict, job: dict, row: dict, lead: dict) -> tuple:
     extra = f"Outcome in Outreach: {label(unmapped)} (no matching DialHalo outcome)" if unmapped else ""
     if job["kind"] == "outcome":
         note = "\n".join(x for x in [meta.get("outcome_note") or "", extra] if x)[:1000]
-        body = {"outcome": name, "changedAt": _z(meta.get("outcome_changed_at")), "by": _by(store, row, meta), "origin": ORIGIN}
+        body = {"changedAt": _z(meta.get("outcome_changed_at")), "by": _by(store, row, meta), "origin": ORIGIN}
+        if name:                                      # note only: the key is left out (outcome: null would CLEAR it in DialHalo)
+            body["outcome"] = name
         if note:
             body["note"] = note
         if meta.get("outcome_callback_at"):
@@ -274,7 +278,7 @@ def run(store, conn: dict, job: dict) -> str:
         sync.update(applied=bool(data.get("applied")), reason=reason)
         _set_sync(store, row["id"], sync)
         if data.get("applied"):
-            return f"outcome sent ({body['outcome'] or 'note only'})"
+            return f"outcome sent ({body.get('outcome') or 'note only'})"
         return f"outcome not applied in DialHalo ({reason or 'no reason given'})"
     sync.update(stored=bool(data.get("stored")), reason=reason)
     _set_sync(store, row["id"], sync)

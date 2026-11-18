@@ -33,6 +33,8 @@ class SyncFake(TwoFake):
             if self.answers:
                 status, answer = self.answers.pop(0)
                 return status, answer
+            if method == "PUT" and "outcome" not in data:          # like DialHalo: a note-only change
+                return 200, {"data": {"applied": False, "reason": "unknown_outcome", "outcome": None}}
             if method == "PUT":
                 return 200, {"data": {"applied": True, "outcome": {"id": 3, "name": data.get("outcome")} if data.get("outcome") else None}}
             return 200, {"data": {"stored": True}}
@@ -192,7 +194,7 @@ def test_reverse_mapping_prefers_no_opt_out_uses_opt_out_when_opted_out_and_flag
     bodies = {p: d for _, p, d, _ in sent(r, "PUT")}
     assert bodies["/api/v1/calls/2/outcome"]["outcome"] == "do not call"
     busy = bodies["/api/v1/calls/1/outcome"]
-    assert busy["outcome"] is None and busy["note"] == "Line busy twice\nOutcome in Outreach: Busy (no matching DialHalo outcome)"
+    assert "outcome" not in busy and busy["note"] == "Line busy twice\nOutcome in Outreach: Busy (no matching DialHalo outcome)"
     card = r.c.get("/api/calltracker", headers=r.h["owner"]).json()
     out = {l["id"]: l for l in card["links"]}[a]["unmapped_outgoing"]
     assert out and out[0]["name"] == "Busy" and out[0]["why"] == "no_rule" and out[0]["count"] == 1
