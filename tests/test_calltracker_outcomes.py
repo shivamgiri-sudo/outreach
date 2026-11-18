@@ -339,3 +339,52 @@ def test_an_edit_during_a_send_is_not_lost(r):
         ctmod.ct_request = real
     outs = [d["outcome"] for _, p, d, _ in sent(r, "PUT")]
     assert outs[0] == "call back later" and outs[-1] == "not interested" and len(outs) == 2
+
+
+# ---------------------------------------------------------------- Outreach's own rules on a change made here
+def test_changing_to_not_interested_runs_the_rules_once_and_the_echo_does_not_run_them_again(r):
+    a, _ = two_links(r)
+    beta = r.lead["Beta Ltd"]["id"]
+    r.store.update_lead(beta, lambda l: {**l, "stage": "contacted", "sequence": {"step": 1, "stopped": None, "history": []}})
+    r.fake.calls[51] = ct_call(51, number=BETA, outcome="Call back later")
+    outcome_event(r, a, "n1", 51, T1, name="Call back later")
+    drain(r)
+    row = dh_row(r, 51)
+    task_id = r.c.post("/api/tasks", json={"lead_id": beta, "title": "Call them", "kind": "call"}, headers=r.h["owner"]).json()["id"]
+    assert change(r, "Beta Ltd", row["id"], "not_interested").status_code == 200
+    saved = lead(r, "Beta Ltd")
+    assert saved["stage"] == "disqualified" and saved["sequence"]["stopped"].startswith("calltracker:")
+    stage_events = [e for e in saved["timeline"] if e["kind"] == "stage"]
+    assert len(stage_events) == 1 and "Outreach outcome 'not interested'" in stage_events[0]["text"]
+    assert next(t for t in r.store.read("tasks") if t["id"] == task_id)["status"] == "done"            # call tasks closed
+    assert dh_row(r, 51)["ct"]["applied"] == "not interested"
+    drain(r)
+    # DialHalo applies it and emits the echo (origin mcn_outreach): ignored, nothing runs again
+    r.fake.calls[51] = ct_call(51, number=BETA, outcome="Not interested")
+    sent_at = [d for _, p, d, _ in sent(r, "PUT")][-1]["changedAt"]
+    assert outcome_event(r, a, "n2", 51, sent_at, origin="mcn_outreach", name="Not interested").json()["applied"] == 0
+    # an undated refresh of the same call with DialHalo's spelling does not run the rules either
+    hook(r, a, {"id": "n3", "event": "call.transcribed", "data": {"callId": 51}})
+    assert len([e for e in lead(r, "Beta Ltd")["timeline"] if e["kind"] in ("stage", "sequence")]) == 2
+    # the same change again: a no-op
+    assert change(r, "Beta Ltd", row["id"], "not_interested").json()["queued"] == 0
+    assert len([e for e in lead(r, "Beta Ltd")["timeline"] if e["kind"] == "stage"]) == 1
+
+
+def test_changing_to_wrong_number_marks_the_phone_for_dialhalo_and_outreach_calls(r):
+    a, _ = two_links(r)
+    r.fake.calls[52] = ct_call(52, number=ACME, outcome="Interested")
+    outcome_event(r, a, "w1", 52, T1)
+    change(r, "Acme", dh_row(r, 52)["id"], "wrong_number")
+    acme = lead(r, "Acme")
+    assert acme["phone_status"]["status"] == "wrong_number" and acme["phone_status"]["number"] == acme["phone"]
+    # a call logged in Outreach, changed later: the manual-log effects (no DialHalo rule involved)
+    cora = r.lead["Cora Inc"]["id"]
+    logged = r.c.post(f"/api/leads/{cora}/activity", json={"type": "call", "outcome": "no_answer"}, headers=r.h["owner"]).json()["activity"]
+    assert not lead(r, "Cora Inc").get("phone_status")
+    change(r, "Cora Inc", logged["id"], "wrong_number")
+    c = lead(r, "Cora Inc")
+    assert c["phone_status"]["status"] == "wrong_number"
+    assert next(x for x in r.store.read("activities") if x["id"] == logged["id"])["outcome_change"]["applied"] == "outreach:wrong_number"
+    change(r, "Cora Inc", logged["id"], "not_interested")          # a manual call with no DialHalo rule: the manual-log effects
+    assert lead(r, "Cora Inc")["stage"] == "disqualified"

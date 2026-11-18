@@ -178,6 +178,8 @@ def change_outcome(store, lead_id: str, activity_id: str, outcome: str, who: str
     row = found["row"]
     if not found.get("changed"):
         return {"activity": row, "queued": 0}
+    run_rules(store, lead_id, row, found["old"], outcome, who, note, callback_at)
+    row = next((a for a in store.read("activities") if a.get("id") == activity_id), row)
     text = f"Call outcome changed to {label(outcome)} by {who} in Outreach" + (f" (was {label(found['old'])})" if found["old"] else "") \
         + (f": {note[:200]}" if note else "")
     store.update_lead(lead_id, lambda l: {**l, "timeline": [*l["timeline"], {"at": ct.iso(stamp), "kind": "call_outcome", "text": text, "by": who}]})
@@ -187,6 +189,36 @@ def change_outcome(store, lead_id: str, activity_id: str, outcome: str, who: str
     else:
         queued = len(queue_history(store, lead, row))
     return {"activity": row, "queued": queued}
+
+
+def run_rules(store, lead_id: str, row: dict, old: str, outcome: str, who: str, note: str = "", callback_at: Optional[datetime] = None) -> bool:
+    """Outreach's own rules for an outcome changed here, once per change (the row's `applied`): the call's link's forward
+    rule whose outcome this is (the same rule the reverse mapping picks: stage, consent, stop sequence, opt-out, wrong
+    number) through calltracker_events.act_on_outcome, else what logging a call with this outcome does
+    (rep_workflow.outcome_effects). Open call tasks are closed, as logging a call does. Never queues anything outbound
+    by itself (the outcome job / history entry are queued by change_outcome). Returns True when the rules ran."""
+    from . import calltracker_events as events, rep_workflow
+    from .activities import close_call_tasks
+    links = _links()
+    lead = next((l for l in store.read("leads") if l.get("id") == lead_id), None)
+    if not lead:
+        return False
+    conn = links.get(store, (row.get("ct") or {}).get("conn")) if is_dialhalo_call(row) else None
+    name = reverse_name(conn, outcome, lead) if conn else None
+    rule = _ct().mapping_of(conn).get(name) if name else None
+    key = name if rule else f"outreach:{outcome}"
+    meta = meta_of(row)
+    current = meta.get("applied") if is_dialhalo_call(row) else meta.get("applied", f"outreach:{old}" if old else None)
+    if events.same_outcome(current, key):
+        return False
+    close_call_tasks(store, lead_id, f"Call outcome changed to {label(outcome)} ({who})")
+    if rule:
+        events.act_on_outcome(store, conn, lead_id, {"outcome": name, "number": row.get("to") or lead.get("phone")}, rule, who, source="Outreach")
+    else:
+        rep_workflow.outcome_effects(store, lead_id, outcome, note, who, callback_at, dialled=row.get("to") or "")
+    field = "ct" if row.get("source") == "calltracker" else "outcome_change"
+    store.update("activities", lambda rows: [{**r, field: {**(r.get(field) or {}), "applied": key}} if r.get("id") == row["id"] else r for r in rows])
+    return True
 
 
 # ---------------------------------------------------------------- the queue's step

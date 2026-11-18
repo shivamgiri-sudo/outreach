@@ -246,3 +246,30 @@ def test_outcome_and_history_go_to_the_right_link(r):
     assert {j["link"] for j in sync_jobs(r, "pending")} == {w["id"]}
     drain(r)
     assert [a for m, path, d, a in sent(r, "PUT")][-1] == f"Bearer {KEY}"
+
+
+def test_send_now_on_a_personal_link_calls_bulk_and_reports_top_level_skipped_rows(r):
+    p = personal(r, lead_sync="owners_members")
+    real = r.fake.__class__.__call__
+    bulk = []
+
+    def fake_bulk(self, method, url, headers, body):
+        if url.endswith("/api/v1/leads/bulk") and method == "POST":
+            data = __import__("json").loads(body)
+            bulk.append((headers.get("Authorization"), [l["externalId"] for l in data["leads"]]))
+            return 200, {"data": {"saved": [{"index": 0, "id": "dh-1", "created": True}], "errors": [],
+                                  "skipped": [{"index": 1, "reason": "not_yours", "external_id": data["leads"][1]["externalId"]}]}}
+        return real(self, method, url, headers, body)
+    r.fake.__class__.__call__ = fake_bulk
+    try:
+        ids = [r.lead["Acme"]["id"], r.lead["Beta Ltd"]["id"]]
+        res = r.c.post("/api/calltracker/send", json={"workspace": "main", "link": p["id"], "lead_ids": ids}, headers=r.h["owner"])
+    finally:
+        r.fake.__class__.__call__ = real
+    assert res.status_code == 200, res.text
+    out = res.json()
+    assert bulk and bulk[0][0] == f"Bearer {PKEY}" and len(bulk[0][1]) == 2           # really sent with the personal key
+    assert out["sent"] == 1 and {"lead_id": bulk[0][1][1], "reason": "not_yours"} in out["skipped"]
+    sent_lead = next(l for l in r.store.read("leads") if l["id"] == bulk[0][1][0])
+    skipped_lead = next(l for l in r.store.read("leads") if l["id"] == bulk[0][1][1])
+    assert (sent_lead.get("calltracker") or {}).get("lead_id") == "dh-1" and not (skipped_lead.get("calltracker") or {}).get("lead_id")

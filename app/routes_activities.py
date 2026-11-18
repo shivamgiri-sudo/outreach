@@ -115,7 +115,7 @@ def make_router(store, transactional_sender=None) -> APIRouter:
     @router.put("/api/leads/{lead_id}/activity/{activity_id}/outcome")
     def change_call_outcome(lead_id: str, activity_id: str, body: OutcomeChange, request: Request):
         """Change a logged call's outcome. A DialHalo call sends the change back to DialHalo; a call logged here updates
-        its history entry there (app/calltracker_outcomes.py). Stage and sequence rules are not run again."""
+        its history entry there (app/calltracker_outcomes.py). Outreach's own rules for the new outcome run once (run_rules)."""
         lead_or_404(lead_id)
         if body.outcome not in CALL_OUTCOMES:
             raise HTTPException(400, f"call outcome must be one of: {', '.join(CALL_OUTCOMES)}")

@@ -134,9 +134,14 @@ def send_leads(store, ws: str, leads: list, base_url: str, link: dict) -> dict:
         except ct.CallTrackerError as exc:
             ct.note_status(store, link["id"], "last_push", False, f"Send now: {exc}")
             raise
-        for row in data.get("skipped") or []:        # a personal key: leads that belong to another member (not_yours)
-            if isinstance(row, dict) and str(row.get("index", "")).isdigit() and int(row["index"]) < len(chunk):
-                result["skipped"].append({"lead_id": chunk[int(row["index"])]["id"], "reason": str(row.get("reason") or "skipped by DialHalo")[:80]})
+        by_ref = {l["id"]: l for l in chunk}
+        for row in data.get("skipped") or []:        # a personal key: {index, reason: "not_yours", external_id?}, never recorded as sent
+            if not isinstance(row, dict):
+                continue
+            idx = str(row.get("index", ""))
+            lead = chunk[int(idx)] if idx.isdigit() and int(idx) < len(chunk) else by_ref.get(str(row.get("external_id") or ""))
+            if lead:
+                result["skipped"].append({"lead_id": lead["id"], "reason": str(row.get("reason") or "skipped by DialHalo")[:80]})
         for row in data.get("saved") or []:
             lead = chunk[int(row["index"])]
             if row.get("skipped"):

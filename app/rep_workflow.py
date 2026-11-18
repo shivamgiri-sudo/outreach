@@ -331,7 +331,20 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
         raise OutcomeRefused("Pick why this lead is invalid: " + ", ".join(INVALID_REASONS.values()) + ".")
     dialled = to if to and to in [lead.get("phone"), *(lead.get("phones") or [])] else (lead.get("phone") or "")
     activity = log_activity(store, lead_id, "call", {"outcome": outcome, "notes": notes, "by": who, "to": dialled})
-    result = {"activity": activity, "task": None, "stage": lead["stage"], "consent_recorded": False, "phone_flagged": False}
+    return {"activity": activity, **outcome_effects(store, lead_id, outcome, notes, who, callback_at, now, dialled, reason)}
+
+
+def outcome_effects(store, lead_id: str, outcome: str, notes: str, who: str, callback_at: Optional[datetime] = None,
+                    now: Optional[datetime] = None, dialled: str = "", reason: str = "") -> dict:
+    """What a call outcome does to the lead (task, stage, consent, phone flag, quality mark, sequence stop, retry plan). Used
+    when a call is logged and when a logged call's outcome is changed later (app/calltracker_outcomes.change_outcome)."""
+    from .privacy import record_consent
+    now = now or now_utc()
+    lead = next((l for l in store.read("leads") if l["id"] == lead_id), None)
+    if lead is None:
+        raise LookupError("Lead not found")
+    dialled = dialled if dialled and dialled in [lead.get("phone"), *(lead.get("phones") or [])] else (lead.get("phone") or "")
+    result = {"task": None, "stage": lead["stage"], "consent_recorded": False, "phone_flagged": False}
     if outcome in ("interested", "meeting_booked"):
         from . import alerts
         alerts.safe(store, "call_interested", lead_id, f"{who} logged a call: {outcome.replace('_', ' ')}." + (f" Notes: {notes[:300]}" if notes else ""), managers=True)
@@ -381,7 +394,7 @@ def record_call_outcome(store, lead_id: str, outcome: str, notes: str, who: str,
             event = {"at": stamp, "kind": "quality", "by": who,
                      "text": f"Marked {'an invalid lead' if kind == 'invalid' else 'a consultant lead (not a direct employer)'} on a call by {who}" + (f": {notes[:300]}" if notes else "")}
             if kind == "invalid":
-                event["text"] += f" — reason: {INVALID_REASONS[reason]}"
+                event["text"] += f" — reason: {INVALID_REASONS.get(reason) or 'not given'}"
             changes = {"lead_quality": {"kind": kind, "at": stamp, "by": who, "note": notes[:300], **({"reason": reason} if kind == "invalid" else {})},
                        **({"sequence": {**seq, "stopped": seq.get("stopped") or outcome}} if seq else {})}
             if kind == "invalid" and l["stage"] not in CLOSED and can_move(l["stage"], "disqualified"):

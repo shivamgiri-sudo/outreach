@@ -311,7 +311,7 @@ def apply_call(store, conn: dict, call: dict, found: Optional[dict] = None, chan
         return True
     row = found.get("row") or found["new"]
     applied = (row.get("ct") or {}).get("applied")
-    if call.get("outcome") and applied != call["outcome"]:
+    if call.get("outcome") and not same_outcome(applied, call["outcome"]):
         act_on_outcome(store, conn, lead["id"], call, rule or {}, who)
         _set_ct(store, row["id"], {"applied": call["outcome"]})
     if connected and call.get("outcome"):
@@ -328,21 +328,28 @@ def _set_ct(store, activity_id: str, values: dict) -> None:
     store.update("activities", lambda rows: [{**r, "ct": {**r.get("ct", {}), **values}} if r.get("id") == activity_id else r for r in rows])
 
 
-def act_on_outcome(store, conn: dict, lead_id: str, call: dict, rule: dict, who: str) -> None:
-    """Stage, consent, sequence, suppression and alerts for one outcome (the workspace's mapping)."""
+def same_outcome(a, b) -> bool:
+    """Outcome names compare case-insensitively with collapsed whitespace (the contract's rule)."""
+    norm = lambda v: " ".join(str(v or "").lower().split())
+    return norm(a) == norm(b)
+
+
+def act_on_outcome(store, conn: dict, lead_id: str, call: dict, rule: dict, who: str, source: str = "DialHalo") -> None:
+    """Stage, consent, sequence, suppression and alerts for one outcome (the workspace's mapping). `source` names where it
+    was set: "DialHalo", or "Outreach" when a person changed a DialHalo call's outcome here."""
     from .activities import add_task, iso as act_iso, now_utc
     from .contact_rules import add_consent, has_consent_for
     from .privacy import record_consent
     from .stages import ALL_STAGES, EXIT_STAGES, STAGES, TERMINAL
     stamp = act_iso(now_utc())
     outcome, target = rule.get("outcome") or "", rule.get("stage") or ""
-    why = f"DialHalo outcome '{call.get('outcome')}' ({who})"
+    why = f"{source} outcome '{call.get('outcome')}' ({who})"
     consent = {}
 
     def change(l: dict):
         changes, events = {}, []
         if outcome == "interested" and not has_consent_for(l, "call"):
-            changes["consent"] = add_consent(l, {"text": f"Said yes on a phone call with {who} (DialHalo)", "at": stamp, "source": "phone call", "channel": "call"})
+            changes["consent"] = add_consent(l, {"text": f"Said yes on a phone call with {who} ({source})", "at": stamp, "source": "phone call", "channel": "call"})
             changes["consent_withdrawn_at"] = None
             consent["text"] = changes["consent"]["text"]
         if outcome in ("wrong_number", "inactive_number"):
@@ -377,7 +384,7 @@ def act_on_outcome(store, conn: dict, lead_id: str, call: dict, rule: dict, who:
         return {**l, **changes, "timeline": [*l["timeline"], *events]}
     saved = store.update_lead(lead_id, change) or {}
     if consent.get("text"):
-        record_consent(store, lead_id, "given", "call", consent["text"], "phone call (DialHalo)", "person", who)
+        record_consent(store, lead_id, "given", "call", consent["text"], f"phone call ({source})", "person", who)
     if rule.get("opt_out") or consent.get("moved") == "unsubscribed":
         suppress_contact(store, lead_id, why)
     if outcome == "interested":
@@ -387,7 +394,7 @@ def act_on_outcome(store, conn: dict, lead_id: str, call: dict, rule: dict, who:
     if outcome in ("interested", "meeting_booked"):
         try:
             from . import alerts
-            alerts.safe(store, "call_interested", lead_id, f"{who} logged a call in DialHalo: {call.get('outcome')}.", managers=True)
+            alerts.safe(store, "call_interested", lead_id, f"{who} set a call outcome in {source}: {call.get('outcome')}.", managers=True)
         except Exception:
             pass
     if consent.get("moved"):
