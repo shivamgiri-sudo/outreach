@@ -82,7 +82,7 @@ def on_erase(store, lead: dict, only_known: bool = False) -> Optional[dict]:
 def run(store, conn: dict, job: dict) -> str:
     """The queue's step for one erase job. Both calls are repeatable; a failure of one never skips the other."""
     ct = _calltracker()
-    errors, retry, results = [], False, []
+    errors, retry, results, paused = [], False, [], []
 
     def attempt(label: str, method: str, path: str, body: Optional[dict] = None) -> None:
         nonlocal retry
@@ -93,6 +93,8 @@ def run(store, conn: dict, job: dict) -> str:
             if exc.code == ct.PERSONAL_REFUSED:       # a personal key may not do this: the workspace's other links do
                 results.append(f"{label} skipped")
                 return
+            if exc.code == ct.PAUSED:
+                paused.append(str(exc))
             errors.append(f"{label}: " + ("this Call Tracker is too old to erase people, update it (HTTP 404)." if exc.status == 404 and method == "DELETE" else str(exc)))
             retry = retry or exc.retry
 
@@ -100,6 +102,8 @@ def run(store, conn: dict, job: dict) -> str:
     attempt("erase", "DELETE", f"/api/v1/leads/external/{ct.SOURCE}/{quote(str(job['lead_id']), safe='')}")
     for phone in job.get("phones") or []:
         attempt("do-not-call", "POST", "/api/v1/dnc", {"phone": phone, "reason": job.get("reason") or REASON, "source": ct.SOURCE})
+    if paused:                                        # the queue waits for a paused personal key without using attempts
+        raise ct.CallTrackerError(paused[0], 401, retry=True, code=ct.PAUSED)
     if errors:
         raise ct.CallTrackerError(" ".join(errors)[:300], retry=retry)
     return f"erased in Call Tracker, {len(job.get('phones') or [])} number(s) blocked"

@@ -226,7 +226,7 @@ def test_outcome_job_retries_with_backoff_then_fails_and_404_fails_at_once(r):
     drain(r)                                                                      # the Outreach match job goes first
     row = dh_row(r, 4)
     change(r, "Acme", row["id"], "not_interested")
-    r.fake.fail = [503]
+    r.fake.fail = [503, 503]                                                      # GET /outcomes (cache kept), then the PUT
     assert ct.process_due(r.store) == 1
     job = sync_jobs(r)[0]
     assert job["status"] == "pending" and job["attempts"] == 1 and "busy or down" in job["error"] and not job.get("sending")

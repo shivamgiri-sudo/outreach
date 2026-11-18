@@ -267,6 +267,7 @@ def note_auth(store, link_id: str, failed: bool, detail: str = "", code: str = "
         store.update("ct_connections", lambda data: {**data, link_id: {k: v for k, v in data[link_id].items() if k != "paused_in_dh"}}
                      if link_id in data else data)
         cur = get(store, link_id) or cur
+        resumed(store, link_id)
     if bool(cur.get("auth_failed")) == bool(failed):
         return
     row = {"at": ct.iso(ct.now_utc()), "detail": str(detail or "")[:300]} if failed else None
@@ -277,6 +278,62 @@ def note_auth(store, link_id: str, failed: bool, detail: str = "", code: str = "
         link = {k: v for k, v in data[link_id].items() if k != "auth_failed"}
         return {**data, link_id: {**link, **({"auth_failed": row} if row else {})}}
     store.update("ct_connections", apply)
+
+
+def resumed(store, link_id: str) -> None:
+    """A paused link works again: reconcile its call feed (GET /sync/calls from its cursor) so calls made during the pause
+    are recorded even if a delivery was lost. Idempotent with the webhooks DialHalo held (one row per call). In the
+    background worker's thread when the worker runs, at once otherwise (tests). Never raises."""
+    ct = _ct()
+
+    def run():
+        try:
+            from . import calltracker_kit
+            link = get(store, link_id)
+            if is_active(link):
+                calltracker_kit.reconcile(store, link)
+        except Exception as exc:
+            print(f"calltracker reconcile after pause failed: {type(exc).__name__}")
+    if ct.KICK:
+        import threading
+        threading.Thread(target=run, daemon=True, name="calltracker-resume").start()
+    else:
+        run()
+
+
+OUTCOMES_TTL_SECONDS = 24 * 3600
+
+
+def outcomes_of(store, link: dict, refresh: bool = False) -> list:
+    """DialHalo's outcome list for this link (GET /api/v1/outcomes -> [{id, name, active}]), cached a day on the link
+    (dh_outcomes {at, rows}); refreshed on Test. An older DialHalo (404) caches an empty list; other errors keep the cache."""
+    ct = _ct()
+    cache = link.get("dh_outcomes") or {}
+    at = ct.parse(cache.get("at"))
+    fresh = at and (ct.now_utc() - at).total_seconds() < OUTCOMES_TTL_SECONDS
+    if (refresh or not fresh) and is_active(link):
+        try:
+            got = ct.ct_request(link, "GET", "/api/v1/outcomes")
+        except ct.CallTrackerError as exc:
+            if exc.status != 404:
+                return list(cache.get("rows") or [])
+            got = []
+        rows_ = [{"id": r.get("id"), "name": str(r.get("name") or "")[:80], "active": bool(r.get("active", True))}
+                 for r in (got if isinstance(got, list) else []) if isinstance(r, dict) and r.get("name")][:200]
+        row = {"at": ct.iso(ct.now_utc()), "rows": rows_}
+        store.update("ct_connections", lambda data: {**data, link["id"]: {**data[link["id"]], "dh_outcomes": row}} if link["id"] in data else data)
+        return rows_
+    return list(cache.get("rows") or [])
+
+
+def dialhalo_name(store, link: dict, key: str) -> str:
+    """The real DialHalo outcome name for a mapping key (keys are lower case), matched case-insensitively with collapsed
+    whitespace; an active outcome first. Falls back to the key."""
+    norm = lambda v: " ".join(str(v or "").lower().split())
+    rows_ = outcomes_of(store, link)
+    hits = [r for r in rows_ if norm(r.get("name")) == norm(key)]
+    hits.sort(key=lambda r: not r.get("active"))
+    return hits[0]["name"] if hits else key
 
 
 def note_unmapped(store, link_id: str, name: str, counted_as: str) -> None:

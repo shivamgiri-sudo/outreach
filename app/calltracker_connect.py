@@ -254,6 +254,8 @@ def fill_workspace(store, link: dict) -> Optional[dict]:
         return None
     if dh:
         links.save(store, link["workspace"], link["id"], {"dh_workspace": dh, **_scope_changes(me)}, link.get("updated_by") or "")
+    if me is not None:
+        links.note_auth(store, link["id"], False)        # a status check worked: clears "Paused in DialHalo"
     return dh
 
 
@@ -315,6 +317,7 @@ def run_test(store, link: dict) -> dict:
         msg += " Add the webhook secret so calls come back."
     links.note(store, link["id"], "last_test", True, msg)
     links.note_auth(store, link["id"], False)
+    links.outcomes_of(store, links.get(store, link["id"]) or link, refresh=True)    # DialHalo's outcome names, for outcomes sent there
     unmatched = [{"name": p["name"], "email": p["email"], "reason": p["reason"]} for p in preview if not p["matched"]]
     return {"ok": True, "message": msg, "members": len(active), "owners": preview, "unmatched": unmatched, "workspace": name or ""}
 

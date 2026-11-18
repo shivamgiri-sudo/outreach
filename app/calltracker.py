@@ -30,6 +30,7 @@ from .workspaces import MAIN, ws_of
 SOURCE = "mcn_outreach"
 SOURCE_LABEL = "MCN Outreach"
 BACKOFF_MINUTES = (1, 5, 15, 60, 180, 360, 720)     # before attempts 2..8; then the job is "failed"
+PAUSED_RECHECK_MINUTES = 15       # a personal key paused in DialHalo: the job waits and re-checks, using up no attempt
 MAX_ATTEMPTS = len(BACKOFF_MINUTES) + 1
 DONE_KEPT = 200
 TIMEOUT = 15
@@ -431,7 +432,10 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
         attempts = job.get("attempts", 0) + 1
         stamp = iso(now_utc())
         if not error:
-            change = {"status": "done", "attempts": attempts, "error": "", "done_at": stamp, "result": result}
+            change = {"status": "done", "attempts": attempts, "error": "", "done_at": stamp, "result": result, "paused": False}
+        elif code == PAUSED:                       # paused in DialHalo (can be days): wait, never fail, no attempt used
+            attempts = job.get("attempts", 0)
+            change = {"error": error, "paused": True, "next_at": iso(now + timedelta(minutes=PAUSED_RECHECK_MINUTES))}
         elif retry and attempts < MAX_ATTEMPTS:
             change = {"attempts": attempts, "error": error, "next_at": iso(now + timedelta(minutes=BACKOFF_MINUTES[attempts - 1]))}
         else:
@@ -451,7 +455,7 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
                 links.note_auth(store, link["id"], True, f"{job['kind']}: {result}", code)
             elif status in (401, 403) or not error:          # a refused key shows on the card; a later success clears it
                 links.note_auth(store, link["id"], status in (401, 403), error, code)
-        if error and job.get("lead_id") and job["kind"] in ("push", "dnc") and (attempts == 1 or change.get("status") == "failed"):
+        if error and code != PAUSED and job.get("lead_id") and job["kind"] in ("push", "dnc") and (attempts == 1 or change.get("status") == "failed"):
             final = change.get("status") == "failed"
             text = (f"DialHalo: could not send this lead ({error})" + (" Gave up; use Retry on Integrations → DialHalo." if final
                     else f" Retrying automatically ({MAX_ATTEMPTS - attempts} tries left)."))

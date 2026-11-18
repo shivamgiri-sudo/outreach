@@ -169,6 +169,9 @@ def change_outcome(store, lead_id: str, activity_id: str, outcome: str, who: str
                 else:
                     r["outcome_change"] = {**(r.get("outcome_change") or {}), **change, "sync": None}
                 r["outcome"] = outcome
+                subject = str(r.get("subject") or "")
+                if subject:                           # "DialHalo: out call, 1m 35s — Not interested" names the outcome: keep it current
+                    r["subject"] = f"{subject.split(' — ')[0]} — {label(outcome)}"[:300]
                 found["row"] = dict(r)
                 found["changed"] = True
         return rows
@@ -252,6 +255,8 @@ def build_payload(store, conn: dict, job: dict, row: dict, lead: dict) -> tuple:
     ct = _ct()
     meta = meta_of(row)
     name = reverse_name(conn, row.get("outcome") or "", lead)
+    if name:                                          # DialHalo's own spelling ("Not Interested"), from its cached outcome list
+        name = _links().dialhalo_name(store, conn, name)
     unmapped = row.get("outcome") if row.get("outcome") and not name else ""
     extra = f"Outcome in Outreach: {label(unmapped)} (no matching DialHalo outcome)" if unmapped else ""
     if job["kind"] == "outcome":

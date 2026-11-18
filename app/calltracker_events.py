@@ -93,6 +93,8 @@ def handle(store, conn_id: str, header: str, raw: bytes, now: Optional[float] = 
     ct.FROM_CALLTRACKER.on = True
     try:
         applied = process(store, conn, event, data)
+        if event in CALL_EVENTS and applied:
+            ct.links.note_auth(store, lid, False)     # a call was fetched with this key: clears "Paused in DialHalo"
     except ct.CallTrackerError as exc:
         ct.note_status(store, lid, "last_event", False, f"{event}: {exc}")
         if exc.status in (401, 403):
@@ -122,10 +124,19 @@ def process(store, conn: dict, event: str, data: dict) -> int:
     if event in ("call.outcome", "call.transcribed"):
         ids = [data.get("callId")]
     elif event == "calls.synced":
-        numbers = {ct.norm_phone(p) for l in store.read("leads") if ws_of(l) == ws for p in [l.get("phone"), *(l.get("phones") or [])] if p}
+        ws_leads = [l for l in store.read("leads") if ws_of(l) == ws]
+        numbers = {ct.norm_phone(p) for l in ws_leads for p in [l.get("phone"), *(l.get("phones") or [])] if p}
+        ours = {l["id"] for l in ws_leads}
         synced = [c for c in data.get("calls") or [] if isinstance(c, dict)]
-        ids = [c.get("id") for c in synced if ct.norm_phone(c.get("number_norm")) in numbers]
-        found.update({c.get("number_norm"): None for c in synced[:MAX_UNMATCHED_PER_EVENT] if ct.norm_phone(c.get("number_norm")) not in numbers})
+        def known(c: dict) -> bool:                 # the lead reference first; a masked number never matches
+            ref = lead_ref(c)
+            if ref:
+                return ref in ours
+            num = c.get("number_norm") or c.get("number")
+            return ct_match.usable(num) and ct.norm_phone(num) in numbers
+        ids = [c.get("id") for c in synced if known(c)]
+        found.update({c.get("number_norm") or c.get("number"): None for c in synced[:MAX_UNMATCHED_PER_EVENT]
+                      if not lead_ref(c) and not known(c) and ct_match.usable(c.get("number_norm") or c.get("number"))})
     elif event == "dnc.added":
         return apply_dnc(store, conn, data)
     elif event == "dnc.removed":
@@ -149,20 +160,30 @@ def process(store, conn: dict, event: str, data: dict) -> int:
 
 
 # ---------------------------------------------------------------- matching
+def lead_ref(call: dict) -> str:
+    """The Outreach lead id DialHalo gives for a call ({lead: {externalSource, externalId}}, older {external_source,
+    external_id}) when the reference is ours (mcn_outreach), else ""."""
+    ref = call.get("lead") if isinstance(call.get("lead"), dict) else {}
+    source = ref.get("externalSource") or ref.get("external_source")
+    ext = ref.get("externalId") or ref.get("external_id")
+    return str(ext) if source == ct.SOURCE and ext else ""
+
+
 def match_lead(store, ws: str, call: dict) -> Optional[dict]:
-    """The workspace's lead for this call, or None. Never looks outside `ws`."""
+    """The workspace's lead for this call, or None. Never looks outside `ws`. Our lead reference first; with a reference the
+    number is never used (it may be masked, e.g. 98xxxxxx06, for members whose role hides numbers). Then DialHalo's lead
+    id, then the number (never a masked one)."""
     leads = [l for l in store.read("leads") if ws_of(l) == ws]
-    ref = call.get("lead") or {}
-    if ref.get("external_source") == ct.SOURCE and ref.get("external_id"):
-        hit = next((l for l in leads if l["id"] == ref["external_id"]), None)
-        if hit:
-            return hit
+    ref = call.get("lead") if isinstance(call.get("lead"), dict) else {}
+    ext = lead_ref(call)
+    if ext:
+        return next((l for l in leads if l["id"] == ext), None)
     if ref.get("id"):
         hit = next((l for l in leads if (l.get("calltracker") or {}).get("lead_id") == ref["id"]), None)
         if hit:
             return hit
     number = ct.norm_phone(call.get("number"))
-    if len(number) < 6:
+    if len(number) < 6 or not ct_match.usable(call.get("number")):
         return None
     return pick_lead(store, [l for l in leads if number in {ct.norm_phone(p) for p in [l.get("phone"), *(l.get("phones") or [])] if p}])
 
@@ -235,7 +256,10 @@ def apply_call(store, conn: dict, call: dict, found: Optional[dict] = None, chan
     from .activities import add_task, close_call_tasks, now_utc
     from .provenance import build, person
     lead = match_lead(store, conn["workspace"], call)
-    if found is None:
+    masked = not ct_match.usable(call.get("number"))
+    if masked:                                        # a masked number is never sent to the match or stored as a phone
+        pass
+    elif found is None:
         ct_match.note_calls(store, conn, {call.get("number"): lead})
     else:
         found[call.get("number")] = lead
@@ -292,7 +316,7 @@ def apply_call(store, conn: dict, call: dict, found: Optional[dict] = None, chan
                 return rows
         row = {"id": uuid.uuid4().hex[:12], "lead_id": lead["id"], "type": "call", "direction": direction, "subject": subject, "body": body,
                "outcome": outcome, "duration_minutes": round(sec / 60, 1), "by": who, "at": at, "created_at": ct.iso(now_utc()),
-               "to": call.get("number") or lead.get("phone") or "", "source": "calltracker", "ct": {**info, **stamp},
+               "to": (lead.get("phone") or "") if masked else (call.get("number") or lead.get("phone") or ""), "source": "calltracker", "ct": {**info, **stamp},
                "origin": build(store, "call_logged", True, lead, person(who, info["user_email"]), channel="call")}
         found["new"] = row
         return [*rows, row]

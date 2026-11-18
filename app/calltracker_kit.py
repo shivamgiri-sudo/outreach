@@ -271,11 +271,14 @@ def reconcile(store, link: dict) -> dict:
         found: dict = {}
         try:
             for call in feed.get("calls") or []:
-                if ct.norm_phone(call.get("number")) not in numbers and not call.get("lead_id"):
-                    if call.get("number") and len(found) < ev.MAX_UNMATCHED_PER_EVENT:
-                        found.setdefault(call["number"], None)          # "not found" (masked numbers are skipped by the match)
+                ref = ev.lead_ref(call)
+                usable = ct_match.usable(call.get("number"))
+                if not ref and not call.get("lead_id") and not (usable and ct.norm_phone(call.get("number")) in numbers):
+                    if usable and len(found) < ev.MAX_UNMATCHED_PER_EVENT:
+                        found.setdefault(call["number"], None)          # "not found" (masked numbers never)
                     continue
-                if not ev.match_lead(store, ws, {"number": call.get("number"), "lead": {"id": call.get("lead_id")}}):
+                lead_part = {**(call.get("lead") if isinstance(call.get("lead"), dict) else {}), "id": call.get("lead_id") or (call.get("lead") or {}).get("id") if isinstance(call.get("lead"), dict) else call.get("lead_id")}
+                if not ev.match_lead(store, ws, {"number": call.get("number"), "lead": lead_part}):
                     continue
                 seen += 1
                 try:

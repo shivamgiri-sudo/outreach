@@ -186,7 +186,9 @@ def test_personal_connection_403_skips_the_job_for_good_and_paused_401_backs_off
         ct.process_due(r.store)
         job = next(j for j in r.store.read("ct_outbox") if j["kind"] == "push")
         link = links.get(r.store, p["id"])
-        assert job["status"] == "pending" and job["attempts"] == 1 and "Paused in DialHalo" in job["error"]
+        assert job["status"] == "pending" and job["attempts"] == 0 and job["paused"] and "Paused in DialHalo" in job["error"]   # no attempt used
+        wait = ct.parse(job["next_at"]) - ct.parse(job["updated_at"])
+        assert 14 * 60 <= wait.total_seconds() <= 16 * 60
         assert link.get("paused_in_dh") and not link.get("auth_failed")
         view = next(l for l in r.c.get("/api/calltracker", headers=r.h["owner"]).json()["links"] if l["id"] == p["id"])
         assert view["paused_in_dh"] and not view["auth_failed"]
