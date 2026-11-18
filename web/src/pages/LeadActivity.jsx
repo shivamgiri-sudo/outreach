@@ -318,7 +318,7 @@ export default function LeadActivity({ lead, onChanged }) {
                   {item.outcome_editable && item.id && canWrite() && editing?.id !== item.id && (
                     <button className="link" data-testid="call-change-outcome"
                       onClick={() => setEditing({ id: item.id, outcome: item.status || "connected", note: "", callback: "", dialhalo: item.dialhalo_call })}>Change outcome</button>)}
-                  {editing?.id === item.id && canWrite() && (
+                  {editing && item.id && editing.id === item.id && canWrite() && (
                     <form className="row u-wrap u-gap-8 u-mt-8" aria-label="Change the call outcome" onSubmit={(e) => { e.preventDefault();
                       run(() => api.changeCallOutcome(lead.id, item.id, { outcome: editing.outcome, note: editing.note.trim(),
                         callback_at: editing.outcome === "call_back" ? withIst(editing.callback) : null }),
