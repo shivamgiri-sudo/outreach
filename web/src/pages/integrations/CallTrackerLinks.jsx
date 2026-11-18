@@ -13,6 +13,11 @@ export const LEAD_SYNC = {
   all_with_phone: "Every lead with a phone",
 };
 
+// A personal link (one DialHalo member's own calls) never takes "every lead with a phone".
+export const PERSONAL_SYNC = ["off", "call_tasks", "owners_members"];
+export const isPersonal = (l) => l?.dh_scope === "member";
+export const personalLabel = (l) => `Personal — ${l?.dh_member?.name || l?.dh_member?.email || "one member"}'s calls only`;
+
 export const linkName = (l) => l?.dh_workspace?.name || (l?.public_url || l?.base_url || "DialHalo").replace(/^https?:\/\//, "");
 
 export function StatusLine({ title, row, testid }) {
@@ -75,6 +80,7 @@ export function LinkCard({ ws, link, card, busy, run, onRefresh, many }) {
         <span className="dh-link-name">{linkName(link)}</span>
         <Badge tone={status[0]} data-testid="ct-status">{status[1]}</Badge>
         <Badge tone="muted">{link.via === "connect" ? "One-click" : "Manual"}</Badge>
+        {isPersonal(link) && <Badge tone="warning" data-testid="ct-personal">{personalLabel(link)}</Badge>}
       </div>
       <p className="dh-meta">{link.public_url || link.base_url}{link.dh_workspace?.slug ? ` · workspace ${link.dh_workspace.slug}` : ""}</p>
       {link.auth_failed && (
@@ -88,7 +94,8 @@ export function LinkCard({ ws, link, card, busy, run, onRefresh, many }) {
         <Field label="Send leads to this DialHalo workspace">
           <Select value={link.lead_sync} disabled={busy} data-testid="ct-lead-sync"
             onChange={(e) => save({ lead_sync: e.target.value }, "Lead sending saved.")}>
-            {Object.entries(LEAD_SYNC).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {Object.entries(LEAD_SYNC).filter(([k]) => !isPersonal(link) || PERSONAL_SYNC.includes(k)).map(([k, v]) =>
+              <option key={k} value={k}>{isPersonal(link) && k === "owners_members" ? `Only leads owned by ${link.dh_member?.name || "this member"}` : v}</option>)}
           </Select>
         </Field>
         <Button variant="secondary" disabled={busy} onClick={() => run(() => api.testCalltracker(ws, link.id))} data-testid="ct-test">Test</Button>
@@ -98,6 +105,8 @@ export function LinkCard({ ws, link, card, busy, run, onRefresh, many }) {
             && run(() => api.deleteCalltracker(ws, link.id))}>Disconnect</Button>
       </div>
       {many && link.lead_sync !== "off" && !link.primary && <p className="dh-meta">When another link could also take a lead, the primary (★) link gets it.</p>}
+      {isPersonal(link) && <p className="dh-meta" data-testid="ct-personal-note">Only {link.dh_member?.name || "this member"}'s own calls come through this link. Leads, call tasks and
+        outcome changes go here only when the lead's owner is {link.dh_member?.email || "this member"}; a whole-workspace link to the same DialHalo workspace wins. Do-not-call goes through the other links.</p>}
       {(link.via !== "connect" || isOwner()) && (
         <details className="dh-details">
           <summary>Webhook receiver</summary>

@@ -108,6 +108,8 @@ def lead_body(store, lead: dict, base_url: str) -> dict:
 def send_leads(store, ws: str, leads: list, base_url: str, link: dict) -> dict:
     """Sends `leads` to `link` in chunks of 500. Re-sending updates the same DialHalo lead (by external id), never adds a
     twin. A lead that belongs to another link of the workspace (already pushed, or a push waiting there) is skipped."""
+    if links.is_personal(link):
+        raise ct.CallTrackerError(f"{_name(link)} is a personal connection (one member's calls): send now needs a whole-workspace link.", retry=False)
     if (link.get("lead_sync") or "call_tasks") == "off":
         raise ct.CallTrackerError(f"Lead sending is off for {_name(link)}. Choose how leads are sent on its card first.", retry=False)
     mine = links.links_of(store, ws)

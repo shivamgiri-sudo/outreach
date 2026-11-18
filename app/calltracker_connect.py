@@ -18,7 +18,11 @@ Contract with DialHalo:
      like every link), tested, and the person sees "Connected to <workspace>".
   3. disconnect(): DELETE {DialHalo}/api/v1/connect/self with the link's key (best effort; 404 = an older DialHalo: the
      key must be revoked in DialHalo by hand), then the link is removed here.
-  4. whoami(): GET {DialHalo}/api/v1/connect/self -> {workspace, connectionId, scopes, webhook}; 404 on an older DialHalo.
+  4. whoami(): GET {DialHalo}/api/v1/connect/self -> {workspace, connectionId, scopes, webhook, scope, member}; 404 on an
+     older DialHalo. scope "member" = a personal connection (only that member's calls, member {id, name, email}); a
+     missing scope is "workspace". Kept on the link as dh_scope / dh_member at finish and on every Test / refresh.
+     Reconnecting replaces the link to the same DialHalo workspace with the same scope (and, for personal links, the
+     same member); personal links of different members live side by side.
 
 OUTREACH_DIALHALO_URL: the DialHalo address the Connect form starts with (until someone uses another one).
 OUTREACH_DIALHALO_INTERNAL_URL (optional): when the browser address is OUTREACH_DIALHALO_URL, Outreach talks to DialHalo
@@ -167,22 +171,29 @@ def finish(store, row: dict, code: str, error: str, who: str) -> dict:
         raise ConnectError("DialHalo answered without a usable API key. Nothing was saved; try again or connect manually.")
     wsinfo = data.get("workspace") if isinstance(data.get("workspace"), dict) else {}
     dh = {"id": str(wsinfo.get("id") or "")[:60], "name": str(wsinfo.get("name") or "")[:120], "slug": str(wsinfo.get("slug") or "")[:80]}
+    try:                                               # personal or whole workspace (an older DialHalo: whole workspace)
+        scope = scope_of(whoami({"base_url": row["server_url"], "api_key": key}))
+    except Exception:
+        scope = {"dh_scope": "workspace", "dh_member": None}
     urls = {row["dialhalo_url"], row["server_url"], os.environ.get("OUTREACH_DIALHALO_INTERNAL_URL", "").strip().rstrip("/")} - {""}
     here = [l for l in links.links_of(store, row["workspace"]) if {(l.get("public_url") or "").rstrip("/"), (l.get("base_url") or "").rstrip("/")} & urls]
     for old in here:                                   # a manual / migrated link may not know its DialHalo workspace yet: ask
         if not (old.get("dh_workspace") or {}).get("id"):
             fill_workspace(store, old)
-    same = [l for l in (links.get(store, x["id"]) for x in here) if l and dh["id"] and (l.get("dh_workspace") or {}).get("id") == dh["id"]]
+    same = [l for l in (links.get(store, x["id"]) for x in here) if l and dh["id"] and (l.get("dh_workspace") or {}).get("id") == dh["id"]
+            and same_scope(l, scope)]
     keep = {k: same[0][k] for k in ("lead_sync", "mapping", "enabled") if same and k in same[0]}
     link = links.save(store, row["workspace"], None, {"base_url": row["server_url"], "public_url": row["dialhalo_url"], "api_key": key,
                                                       "webhook_secret": secret or None, "via": "connect", "dh_workspace": dh,
                                                       "dh_connection_id": str(data.get("connectionId") or "")[:80],
-                                                      "dh_webhook_id": str(data.get("webhookId") or "")[:80], **keep}, who, new_id=row["link_id"])
+                                                      "dh_webhook_id": str(data.get("webhookId") or "")[:80], **keep,
+                                                      "dh_scope": scope["dh_scope"], "dh_member": scope["dh_member"] or {}}, who, new_id=row["link_id"])
     for old in same:                                   # connecting the same DialHalo workspace again replaces the old link
         if old.get("primary"):
             links.set_primary(store, link["id"])
         disconnect(store, old)
-    message = f"Connected to {dh['name'] or 'DialHalo'}."
+    message = f"Connected to {dh['name'] or 'DialHalo'}." + (
+        f" Personal connection: only {(scope['dh_member'] or {}).get('name') or 'one member'}'s calls." if scope["dh_scope"] == "member" else "")
     test = run_test(store, links.get(store, link["id"]))
     if not test["ok"]:
         message += f" The first test failed: {test['message']}"
@@ -196,6 +207,31 @@ def receiver_of(store, link: dict) -> str:
     from .growth_core import public_base_url
     from .routes_calltracker import HOOK_PATH
     return f"{public_base_url(store, os.environ.get('OUTREACH_BASE_URL', 'http://localhost:8000'))}{HOOK_PATH}{link['id']}"
+
+
+def scope_of(me: Optional[dict]) -> dict:
+    """{"dh_scope", "dh_member"} from a connect/self answer. Missing or unknown scope = "workspace"."""
+    me = me if isinstance(me, dict) else {}
+    member = me.get("member") if isinstance(me.get("member"), dict) else None
+    if me.get("scope") != "member" or not member:
+        return {"dh_scope": "workspace", "dh_member": None}
+    return {"dh_scope": "member", "dh_member": {"id": str(member.get("id") or "")[:60], "name": str(member.get("name") or "")[:120],
+                                                 "email": str(member.get("email") or "").strip().lower()[:190]}}
+
+
+def same_scope(link: dict, scope: dict) -> bool:
+    """A reconnect replaces only the link with the same scope (and the same member, for a personal link)."""
+    if (link.get("dh_scope") or "workspace") != scope["dh_scope"]:
+        return False
+    if scope["dh_scope"] != "member":
+        return True
+    mine, theirs = link.get("dh_member") or {}, scope["dh_member"] or {}
+    return bool(mine.get("id")) and str(mine.get("id")) == str(theirs.get("id"))
+
+
+def _scope_changes(me: Optional[dict]) -> dict:
+    s = scope_of(me)
+    return {"dh_scope": s["dh_scope"], "dh_member": s["dh_member"] or {}}
 
 
 def _workspace_of(me: Optional[dict]) -> Optional[dict]:
@@ -212,11 +248,12 @@ def fill_workspace(store, link: dict) -> Optional[dict]:
     if not links.is_active(link):
         return None
     try:
-        dh = _workspace_of(whoami(link))
+        me = whoami(link)
+        dh = _workspace_of(me)
     except Exception:                                  # never fail a connect or the start-up over this
         return None
     if dh:
-        links.save(store, link["workspace"], link["id"], {"dh_workspace": dh}, link.get("updated_by") or "")
+        links.save(store, link["workspace"], link["id"], {"dh_workspace": dh, **_scope_changes(me)}, link.get("updated_by") or "")
     return dh
 
 
@@ -254,19 +291,23 @@ def run_test(store, link: dict) -> dict:
     try:
         me = whoami(link)
         members = ct.ct_request(link, "GET", "/api/v1/members")
-        ct.ct_request(link, "GET", "/api/v1/dnc?limit=1")
+        if scope_of(me)["dh_scope"] != "member":       # a personal key may not read the do-not-call list
+            ct.ct_request(link, "GET", "/api/v1/dnc?limit=1")
     except ct.CallTrackerError as exc:
         links.note(store, link["id"], "last_test", False, str(exc))
         if exc.status in (401, 403):
             links.note_auth(store, link["id"], True, str(exc))
         return {"ok": False, "message": str(exc)}
     if _workspace_of(me):
-        links.save(store, link["workspace"], link["id"], {"dh_workspace": _workspace_of(me)}, link.get("updated_by") or "")
+        links.save(store, link["workspace"], link["id"], {"dh_workspace": _workspace_of(me), **_scope_changes(me)}, link.get("updated_by") or "")
+    link = links.get(store, link["id"]) or link
     all_members = links.save_members(store, link["id"], members if isinstance(members, list) else [])
     active = [m for m in all_members if m.get("active", 1)]
     preview = ct.owner_preview(store, link["workspace"], active, all_members)
     name = ((me or {}).get("workspace") or {}).get("name") or (link.get("dh_workspace") or {}).get("name")
     where = f"DialHalo workspace {name}" if name else f"DialHalo at {link.get('public_url') or link.get('base_url')}"
+    if links.is_personal(link):
+        where += f" (personal: only {(link.get('dh_member') or {}).get('name') or 'one member'}'s calls)"
     msg = (f"Connected to {where}. {len(active)} DialHalo member(s); {sum(p['matched'] for p in preview)} of {len(preview)} Outreach people match by email.")
     if me is None:
         msg += " (This DialHalo does not say which workspace a key is for; update it to see the name.)"

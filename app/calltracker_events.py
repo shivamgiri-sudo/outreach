@@ -263,24 +263,32 @@ def apply_call(store, conn: dict, call: dict, found: Optional[dict] = None, chan
     by = (change or {}).get("by") or {}
     by_name = _name_for(store, by.get("email"), by.get("name") or who) if by else who
     stamp = {"outcome_changed_at": ct.iso(when), "outcome_origin": (change or {}).get("origin") or "dialhalo", "outcome_by": by_name} if when else {}
+    # One row per DialHalo call: a workspace link and a personal link of the same DialHalo workspace both deliver it.
+    same_dh = ct.links.siblings(store, conn)
+    info["dh_ws"] = ct.links.dh_id(conn)
 
     def upsert(rows: list) -> list:
         for r in rows:
-            if r.get("lead_id") == lead["id"] and r.get("source") == "calltracker" and (r.get("ct") or {}).get("call_id") == info["call_id"] \
-                    and (r.get("ct") or {}).get("conn") == conn["id"]:
+            if r.get("source") == "calltracker" and (r.get("ct") or {}).get("call_id") == info["call_id"] \
+                    and ((r.get("ct") or {}).get("conn") == conn["id"] and r.get("lead_id") == lead["id"] or (r.get("ct") or {}).get("conn") in same_dh):
                 found["row"] = r
                 old = r.get("ct") or {}
+                mine = info
+                if old.get("conn") != conn["id"]:          # the other link's copy: keep its link unless a workspace link delivers it
+                    prev = ct.links.get(store, old.get("conn"))
+                    if ct.links.is_personal(conn) or (prev and not ct.links.is_personal(prev)):
+                        mine = {**info, "conn": old.get("conn"), "links": old.get("links") or info["links"]}
                 stored = ct.parse(old.get("outcome_changed_at")) if old.get("outcome_changed_at") else None
                 if stored is not None and not (when and when > stored):
                     found["blocked"] = True       # Outreach (or a later DialHalo change) already holds a newer outcome
                     keep = {k: old.get(k) for k in ("outcome_name", "callback_at")}
                     r.update(body=body or r.get("body", ""), duration_minutes=round(sec / 60, 1),
-                             ct={**old, **info, **keep, "applied": old.get("applied"), "callback_task": old.get("callback_task")})
+                             ct={**old, **mine, **keep, "applied": old.get("applied"), "callback_task": old.get("callback_task")})
                     return rows
                 if (old.get("outcome_name") or "") != (call.get("outcome") or "") and call.get("outcome") and change:
                     found["changed_from"] = old.get("outcome_name") or ""
                 r.update(outcome=outcome, body=body or r.get("body", ""), subject=subject, duration_minutes=round(sec / 60, 1), by=who,
-                         ct={**old, **info, **stamp, "applied": old.get("applied"), "callback_task": old.get("callback_task")})
+                         ct={**old, **mine, **stamp, "applied": old.get("applied"), "callback_task": old.get("callback_task")})
                 return rows
         row = {"id": uuid.uuid4().hex[:12], "lead_id": lead["id"], "type": "call", "direction": direction, "subject": subject, "body": body,
                "outcome": outcome, "duration_minutes": round(sec / 60, 1), "by": who, "at": at, "created_at": ct.iso(now_utc()),

@@ -22,6 +22,15 @@ Lead sync (pushes of leads to a DialHalo dial queue), per link:
 A lead goes to at most ONE link. Among the links that qualify: the link the lead was already pushed to keeps it (no
 copies in two DialHalo workspaces when the primary changes), otherwise the primary link, otherwise the oldest.
 owners_members and all_with_phone are also swept in the background (app/calltracker_sync.py) for leads never pushed.
+Personal links (contract 2026-11-18, personal-connect-contract.md): a DialHalo member who is not an admin may connect
+only their OWN calls. Such a link has dh_scope "member" and dh_member {id, name, email} (from GET connect/self; a
+missing scope = "workspace"). Several personal links of one DialHalo workspace may sit next to a workspace link.
+  * lead sync on a personal link: off | call_tasks | owners_members (all_with_phone is turned into owners_members);
+  * a personal link takes a lead only when the lead's owner (or the call task's owner) has the member's e-mail, and
+    never when an active workspace link to the same DialHalo workspace exists (that link wins);
+  * the same call delivered by a workspace link and a personal link (same DialHalo workspace id) is kept once
+    (app/calltracker_events.apply_call);
+  * a personal key may not use DialHalo's do-not-call list or bulk send: do-not-call goes to the workspace's other links.
 Calls, outcomes and Outreach-match results always stay with the link the call came from (an outcome changed in Outreach
 goes back to that link only); erase, do-not-call and calls logged by hand in Outreach (lead history entries,
 app/calltracker_outcomes.py) go to every active link of the workspace.
@@ -32,8 +41,9 @@ from typing import Optional
 LEAD_SYNC = ("off", "call_tasks", "owners_members", "all_with_phone")
 SWEEP_MODES = ("owners_members", "all_with_phone")
 MEMBERS_TTL_SECONDS = 6 * 3600
+PERSONAL_SYNC = ("off", "call_tasks", "owners_members")      # a personal link never takes "every lead with a phone"
 EDITABLE = ("base_url", "public_url", "api_key", "webhook_secret", "enabled", "mapping", "lead_sync", "via",
-            "dh_workspace", "dh_connection_id", "dh_webhook_id", "members")
+            "dh_workspace", "dh_connection_id", "dh_webhook_id", "members", "dh_scope", "dh_member")
 
 
 def _ct():
@@ -105,6 +115,31 @@ def is_active(link: Optional[dict]) -> bool:
     return bool(link and link.get("enabled", True) and link.get("base_url") and link.get("api_key"))
 
 
+def is_personal(link: Optional[dict]) -> bool:
+    return bool(link) and link.get("dh_scope") == "member"
+
+
+def member_email(link: Optional[dict]) -> str:
+    return str(((link or {}).get("dh_member") or {}).get("email") or "").strip().lower()
+
+
+def dh_id(link: Optional[dict]) -> str:
+    return str(((link or {}).get("dh_workspace") or {}).get("id") or "")
+
+
+def shadowed(link: dict, among: list) -> bool:
+    """A personal link loses to a workspace link (in `among`) to the same DialHalo workspace."""
+    return is_personal(link) and bool(dh_id(link)) and any(
+        not is_personal(o) and o["id"] != link["id"] and dh_id(o) == dh_id(link) for o in among)
+
+
+def siblings(store, link: dict) -> set:
+    """Ids of the links of this Outreach workspace that see the same DialHalo workspace (this one included)."""
+    if not dh_id(link):
+        return {link["id"]}
+    return {l["id"] for l in links_of(store, link.get("workspace")) if dh_id(l) == dh_id(link)} | {link["id"]}
+
+
 def active_links(store, ws: str) -> list:
     return [l for l in links_of(store, ws) if is_active(l)]
 
@@ -147,6 +182,8 @@ def save(store, ws: str, link_id: Optional[str], changes: dict, who: str, new_id
         for key in EDITABLE:
             if key in changes and changes[key] is not None:
                 cur[key] = changes[key]
+        if is_personal(cur) and cur.get("lead_sync") not in PERSONAL_SYNC:
+            cur["lead_sync"] = "owners_members"        # personal: only leads owned by the paired Outreach person
         cur.update(updated_at=stamp, updated_by=who)
         out.update(cur)
         return {**data, cur["id"]: cur}
@@ -322,8 +359,18 @@ def owner_emails(store, lead: dict, task: Optional[dict] = None, memo: Optional[
     return out
 
 
+def paired(store, link: dict, lead: dict, task: Optional[dict] = None, memo: Optional[dict] = None, extra: Optional[set] = None) -> bool:
+    """A personal link's member is the lead's owner / the task's owner (or one of `extra` e-mails), by e-mail."""
+    email = member_email(link)
+    return bool(email) and email in (owner_emails(store, lead, task, memo) | set(extra or ()))
+
+
 def qualifies(store, link: dict, lead: dict, call_task: bool = False, task: Optional[dict] = None, memo: Optional[dict] = None) -> bool:
     mode = link.get("lead_sync") or "call_tasks"
+    if is_personal(link):
+        if mode == "off" or not paired(store, link, lead, task, memo):
+            return False
+        return call_task if mode == "call_tasks" else True
     if mode == "call_tasks":
         return call_task
     if mode == "owners_members":
@@ -349,7 +396,7 @@ def route(store, lead: dict, call_task: bool = False, task: Optional[dict] = Non
     """The one link a lead is pushed to, or None (see the module doc)."""
     from .workspaces import ws_of
     links = active_links(store, ws_of(lead)) if links is None else links
-    cands = [l for l in links if qualifies(store, l, lead, call_task, task, memo)]
+    cands = [l for l in links if qualifies(store, l, lead, call_task, task, memo) and not shadowed(l, links)]
     if not cands:
         return None
     sticky = pushed_link(store, lead, links)
@@ -366,6 +413,7 @@ def public_view(store, link: dict) -> dict:
             "webhook_secret_set": bool(link.get("webhook_secret")), "mapping": ct.mapping_of(link), "mapping_custom": bool(link.get("mapping")),
             "via": link.get("via") or "manual", "dh_workspace": link.get("dh_workspace") or None, "lead_sync": link.get("lead_sync") or "call_tasks",
             "primary": bool(link.get("primary")), "pairing": pairing(store, link), "auth_failed": link.get("auth_failed") or None,
+            "dh_scope": "member" if is_personal(link) else "workspace", "dh_member": link.get("dh_member") if is_personal(link) else None,
             "backfill": backfill.public(backfill.state(store, link["id"])),
             "last_push": link.get("last_push"), "last_event": link.get("last_event"), "last_test": link.get("last_test"), "last_match": link.get("last_match"),
             "last_reconcile": link.get("last_reconcile"), "last_reconcile_status": link.get("last_reconcile_status"),

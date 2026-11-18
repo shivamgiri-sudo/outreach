@@ -20,6 +20,10 @@
     the send queues a new job instead of being lost.
   * A change that came FROM DialHalo never queues anything: the receiver never calls these functions, and every entry
     point here returns at once while calltracker.FROM_CALLTRACKER is set.
+  * Personal links (calltracker_links: dh_scope "member"): an outcome goes back to the link the call came from, except
+    that an active workspace link to the same DialHalo workspace wins over a personal one. A call logged in Outreach goes
+    to every active workspace link, and to a personal link only when its member is the lead's owner or the person who
+    logged the call (by e-mail) and no workspace link to that DialHalo workspace exists.
 Retries, back-off, "failed" and Retry are the queue's (app/calltracker.py).
 """
 from datetime import datetime, timezone
@@ -92,6 +96,10 @@ def queue_outcome(store, lead: dict, row: dict) -> Optional[dict]:
     ct, links = _ct(), _links()
     link = links.get(store, row["ct"]["conn"])
     ws = ws_of(lead)
+    if link and links.is_personal(link):              # a workspace link to the same DialHalo workspace wins
+        active = links.active_links(store, ws)
+        if links.shadowed(link, active):
+            link = next(o for o in active if not links.is_personal(o) and links.dh_id(o) == links.dh_id(link))
     if not links.is_active(link) or link.get("workspace") != ws:
         return None
     call_id, lid = int(row["ct"]["call_id"]), link["id"]
@@ -114,7 +122,11 @@ def queue_history(store, lead: dict, row: dict) -> list:
     ct, links = _ct(), _links()
     ws = ws_of(lead)
     jobs = []
-    for link in links.active_links(store, ws):
+    active = links.active_links(store, ws)
+    logged_by = {_by(store, row, meta_of(row))["email"].lower()} - {""}
+    for link in active:
+        if links.is_personal(link) and (links.shadowed(link, active) or not links.paired(store, link, lead, extra=logged_by)):
+            continue
         lid, aid = link["id"], row["id"]
         jobs.append(ct._enqueue(store, {"kind": "activity", "ws": ws, "link": lid, "lead_id": lead["id"], "activity_id": aid},
                                 merge_key=lambda j, lid=lid, aid=aid: j.get("kind") == "activity" and j.get("link") == lid

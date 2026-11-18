@@ -95,7 +95,8 @@ def run(store, conn: dict, job: dict) -> str:
 
     from urllib.parse import quote
     attempt("erase", "DELETE", f"/api/v1/leads/external/{ct.SOURCE}/{quote(str(job['lead_id']), safe='')}")
-    for phone in job.get("phones") or []:
+    from . import calltracker_links as links
+    for phone in [] if links.is_personal(conn) else job.get("phones") or []:      # a personal key may not use the do-not-call list
         attempt("do-not-call", "POST", "/api/v1/dnc", {"phone": phone, "reason": job.get("reason") or REASON, "source": ct.SOURCE})
     if errors:
         raise ct.CallTrackerError(" ".join(errors)[:300], retry=retry)

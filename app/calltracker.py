@@ -310,7 +310,7 @@ def on_opt_out(store, lead_id: str, reason: str) -> Optional[dict]:
     if getattr(FROM_CALLTRACKER, "on", False):
         return None
     lead = next((l for l in store.read("leads") if l.get("id") == lead_id), None)
-    targets = links.active_links(store, ws_of(lead)) if lead else []
+    targets = [l for l in links.active_links(store, ws_of(lead)) if not links.is_personal(l)] if lead else []   # a personal key has no do-not-call rights
     phones = [p for p in [lead.get("phone"), *(lead.get("phones") or [])] if norm_phone(p)] if lead else []
     job = None
     for link in targets:
