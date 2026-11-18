@@ -96,7 +96,7 @@ export default function CallTracker({ connectReturn } = {}) {
           {q.failed_rows.length > 0 && (
             <>
               <ul>{q.failed_rows.map((j) => (
-                <li key={j.id}>{j.kind === "match" ? `Outreach match (${j.numbers} numbers)` : `${j.company || j.lead_id} (${j.kind === "dnc" ? "do-not-call" : j.kind === "erase" ? "erase" : "lead"})`}
+                <li key={j.id}>{j.kind === "match" ? `Outreach match (${j.numbers} numbers)` : `${j.company || j.lead_id} (${{ dnc: "do-not-call", erase: "erase", outcome: "outcome change", activity: "call logged in Outreach" }[j.kind] || "lead"})`}
                   {links.length > 1 && j.link ? ` → ${linkName(links.find((l) => l.id === j.link))}` : ""}: {j.error}</li>
               ))}</ul>
               <Button disabled={busy} onClick={() => run(() => api.retryCalltracker(ws))} data-testid="ct-retry">Retry failed</Button>
@@ -130,6 +130,19 @@ export default function CallTracker({ connectReturn } = {}) {
           </p>
           <ul className="dh-list">
             {rules.unmapped_outcomes.map((u) => <li key={u.name}><b>{u.name}</b>: {u.count} call{u.count === 1 ? "" : "s"}, counted as {String(u.counted_as || "").replace(/_/g, " ")}</li>)}
+          </ul>
+        </Card>
+      )}
+
+      {rules && (rules.unmapped_outgoing || []).length > 0 && (
+        <Card className="dh-warn" role="alert" data-testid="ct-unmapped-out">
+          <b>Some Outreach outcomes have no DialHalo outcome</b>
+          <p className="sub dh-tight">
+            When these outcomes were set in Outreach, DialHalo got only a note ("Outcome in Outreach: …"), not an outcome. Give each a row in the
+            mapping below whose name is an outcome in DialHalo{(rules.unmapped_outgoing || []).some((u) => u.why === "unknown_in_dialhalo") ? ", and rename rows DialHalo does not know" : ""}.
+          </p>
+          <ul className="dh-list">
+            {rules.unmapped_outgoing.map((u) => <li key={u.name}><b>{u.name}</b>: {u.count} time{u.count === 1 ? "" : "s"}{u.why === "unknown_in_dialhalo" ? " (not an outcome in DialHalo)" : ""}</li>)}
           </ul>
         </Card>
       )}

@@ -179,6 +179,8 @@ def log_activity(store, lead_id: str, kind: str, body: dict) -> dict:
                                           "timeline": [*l["timeline"], {"at": at, "kind": kind, "text": summary, **({"by": row["by"]} if row["by"] else {})}]})
     if kind == "call":
         close_call_tasks(store, lead_id, summary)
+        from . import calltracker_outcomes      # a connected workspace gets it in DialHalo as a lead history entry
+        calltracker_outcomes.on_logged(store, lead_id, row)
     return row
 
 
@@ -210,6 +212,9 @@ def lead_activity(store, lead: dict) -> list:
         if a.get("lead_id") == lid:
             item = {"at": a["at"], "type": a["type"], "direction": a.get("direction", "out"), "title": a.get("subject") or a["type"].title(),
                     "body": a.get("body", ""), "status": a.get("outcome", ""), "detail": a.get("by", ""), "id": a["id"]}
+            if a["type"] == "call":                  # outcome change in Outreach / DialHalo, and how it went to DialHalo
+                from .calltracker_outcomes import row_view
+                item.update(row_view(store, a))
             link = ((a.get("ct") or {}).get("links") or {}).get("call")
             if link:                                # a DialHalo call: its page there (recording player), never the audio itself
                 item.update(link=link, link_label="Recording and details in DialHalo" if a["ct"].get("has_recording") else "Open in DialHalo")

@@ -117,6 +117,7 @@ export default function LeadActivity({ lead, onChanged }) {
   const [cbFor, setCbFor] = useState("call_back");
   const [invalidReason, setInvalidReason] = useState(null);     // invalid lead: null = not asked, else the chosen reason ("" = still to pick)
   const [remarks, setRemarks] = useState("");
+  const [editing, setEditing] = useState(null);                 // change a logged call's outcome: { id, outcome, note, callback, dialhalo }
   const phones = [lead.phone, ...(lead.phones || [])].filter((v, i, a) => v && a.indexOf(v) === i);
   const [dialled, setDialled] = useState("");
   const to = phones.includes(dialled) ? dialled : (lead.phone || "");
@@ -312,6 +313,26 @@ export default function LeadActivity({ lead, onChanged }) {
                     {item.due_at ? ` · due ${istLabel(item.due_at)}` : ""}{item.start ? ` · ${istLabel(item.start)}` : ""}
                     {/^https:\/\//.test(item.link || "") && <> · <a href={item.link} target="_blank" rel="noreferrer" data-testid="ct-call-link">{item.link_label || "Open"}</a></>}
                   </div>
+                  {item.change_text && <div className="sub" data-testid="call-change-text">{item.change_text}</div>}
+                  {item.sync_text && <div className="sub" data-testid="call-sync-text">{item.sync_text}</div>}
+                  {item.outcome_editable && item.id && canWrite() && editing?.id !== item.id && (
+                    <button className="link" data-testid="call-change-outcome"
+                      onClick={() => setEditing({ id: item.id, outcome: item.status || "connected", note: "", callback: "", dialhalo: item.dialhalo_call })}>Change outcome</button>)}
+                  {editing?.id === item.id && canWrite() && (
+                    <form className="row u-wrap u-gap-8 u-mt-8" aria-label="Change the call outcome" onSubmit={(e) => { e.preventDefault();
+                      run(() => api.changeCallOutcome(lead.id, item.id, { outcome: editing.outcome, note: editing.note.trim(),
+                        callback_at: editing.outcome === "call_back" ? withIst(editing.callback) : null }),
+                      editing.dialhalo ? "Outcome changed; DialHalo is being updated." : "Outcome changed.").then(() => setEditing(null)); }}>
+                      <select value={editing.outcome} onChange={(e) => setEditing({ ...editing, outcome: e.target.value })} aria-label="New outcome" data-testid="call-new-outcome" className="u-w-auto">
+                        {OUTCOMES.filter(([v]) => v).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+                      {editing.outcome === "call_back" && <input type="datetime-local" aria-label="Call back at (IST)" value={editing.callback}
+                        onChange={(e) => setEditing({ ...editing, callback: e.target.value })} />}
+                      <input className="u-flex1 u-minwidth-200" maxLength={1000} value={editing.note} placeholder="Optional note (also sent to DialHalo)"
+                        aria-label="Note" onChange={(e) => setEditing({ ...editing, note: e.target.value })} />
+                      <button className="btn" type="submit">Save</button>
+                      <button className="btn ghost" type="button" onClick={() => setEditing(null)}>Cancel</button>
+                    </form>
+                  )}
                   {item.body && (
                     <p className="trail-text">{open === key || !long ? item.body : `${item.body.slice(0, 140)}…`}
                       {long && <button className="link" onClick={() => setOpen(open === key ? null : key)}>{open === key ? " Show less" : " Show all"}</button>}

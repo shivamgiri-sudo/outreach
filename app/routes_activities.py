@@ -23,6 +23,12 @@ class ActivityBody(BaseModel):
     follow_up_text: str = ""
 
 
+class OutcomeChange(BaseModel):
+    outcome: str
+    note: str = Field(default="", max_length=1000)
+    callback_at: Optional[str] = None        # with call_back: when (ISO); sent to DialHalo as callbackAt
+
+
 class TaskBody(BaseModel):
     lead_id: Optional[str] = None
     title: str
@@ -105,6 +111,22 @@ def make_router(store, transactional_sender=None) -> APIRouter:
             task = add_task(store, lead_id, "follow_up", body.follow_up_text or f"Follow up after the {body.type}",
                             due_at=follow, owner=body.by or None, source="activity")
         return {"activity": row, "follow_up_task": task}
+
+    @router.put("/api/leads/{lead_id}/activity/{activity_id}/outcome")
+    def change_call_outcome(lead_id: str, activity_id: str, body: OutcomeChange, request: Request):
+        """Change a logged call's outcome. A DialHalo call sends the change back to DialHalo; a call logged here updates
+        its history entry there (app/calltracker_outcomes.py). Stage and sequence rules are not run again."""
+        lead_or_404(lead_id)
+        if body.outcome not in CALL_OUTCOMES:
+            raise HTTPException(400, f"call outcome must be one of: {', '.join(CALL_OUTCOMES)}")
+        from . import calltracker_outcomes
+        from .audit import actor_of
+        actor = actor_of(getattr(request.state, "user", None))
+        try:
+            return calltracker_outcomes.change_outcome(store, lead_id, activity_id, body.outcome, actor["name"], actor["email"],
+                                                       body.note.strip(), _parse_when(body.callback_at, "callback_at"))
+        except LookupError:
+            raise HTTPException(404, "Call not found") from None
 
     @router.get("/api/tasks/board")
     def board(owner: Optional[str] = None, sort: str = "due"):

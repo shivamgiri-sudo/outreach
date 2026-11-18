@@ -195,6 +195,7 @@ export const api = {
   replyInbox: (q = {}) => request(`/api/reply-inbox?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== "" && v !== undefined).map(([k, v]) => [k, String(v)]))}`),
   leadActivity: (id) => request(`/api/leads/${id}/activity`),
   logActivity: (id, body) => request(`/api/leads/${id}/activity`, { method: "POST", body }),
+  changeCallOutcome: (id, activityId, body) => request(`/api/leads/${id}/activity/${activityId}/outcome`, { method: "PUT", body }),
   taskBoard: (owner = "", sort = "due") => request(`/api/tasks/board?sort=${encodeURIComponent(sort)}${owner ? `&owner=${encodeURIComponent(owner)}` : ""}`),
   createTask: (body) => request("/api/tasks", { method: "POST", body }),
   updateTask: (id, body) => request(`/api/tasks/${id}`, { method: "PUT", body }),

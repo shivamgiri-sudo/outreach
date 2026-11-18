@@ -77,6 +77,7 @@ CALLER_WRITES = {
     ("POST", "/api/leads/import"), ("POST", "/api/leads/import-sheet"), ("POST", "/api/leads/bulk"), ("POST", "/api/leads/bulk-undo/{undo_id}"), ("PATCH", "/api/leads/{lead_id}"),
     ("PATCH", "/api/leads/{lead_id}/custom"), ("POST", "/api/leads/{lead_id}/stage"), ("POST", "/api/leads/{lead_id}/tags"),
     ("POST", "/api/leads/{lead_id}/owner"), ("POST", "/api/leads/{lead_id}/note"), ("POST", "/api/leads/{lead_id}/activity"),
+    ("PUT", "/api/leads/{lead_id}/activity/{activity_id}/outcome"),     # change a logged call's outcome (synced to DialHalo)
     ("POST", "/api/leads/{lead_id}/call-outcome"), ("POST", "/api/leads/{lead_id}/consent"), ("POST", "/api/leads/{lead_id}/reply"),
     ("POST", "/api/leads/{lead_id}/draft-reply"), ("POST", "/api/leads/{lead_id}/meetings"), ("POST", "/api/leads/{lead_id}/whatsapp"),
     ("POST", "/api/leads/{lead_id}/email-compose"), ("POST", "/api/leads/{lead_id}/email-now"), ("POST", "/api/leads/{lead_id}/enroll"),

@@ -22,8 +22,9 @@ Lead sync (pushes of leads to a DialHalo dial queue), per link:
 A lead goes to at most ONE link. Among the links that qualify: the link the lead was already pushed to keeps it (no
 copies in two DialHalo workspaces when the primary changes), otherwise the primary link, otherwise the oldest.
 owners_members and all_with_phone are also swept in the background (app/calltracker_sync.py) for leads never pushed.
-Calls, outcomes and Outreach-match results always stay with the link the call came from; erase and do-not-call go to
-every link of the workspace.
+Calls, outcomes and Outreach-match results always stay with the link the call came from (an outcome changed in Outreach
+goes back to that link only); erase, do-not-call and calls logged by hand in Outreach (lead history entries,
+app/calltracker_outcomes.py) go to every active link of the workspace.
 """
 import uuid
 from typing import Optional
@@ -244,6 +245,28 @@ def note_unmapped(store, link_id: str, name: str, counted_as: str) -> None:
     store.update("ct_connections", apply)
 
 
+def note_unmapped_out(store, link_id: str, name: str, why: str) -> None:
+    """An Outreach outcome went to DialHalo as a note only (app/calltracker_outcomes.py): `why` is "no_rule" (no mapping
+    row gives it a DialHalo name) or "unknown_in_dialhalo" (the mapped name is not an outcome in that DialHalo)."""
+    ct = _ct()
+    key = " ".join(str(name or "").lower().split())[:80]
+    if not key:
+        return
+    stamp = ct.iso(ct.now_utc())
+
+    def apply(data: dict) -> dict:
+        link = data.get(link_id)
+        if not link:
+            return data
+        seen = dict(link.get("unmapped_outgoing") or {})
+        cur = seen.get(key) or {"name": str(name)[:80], "count": 0}
+        seen[key] = {**cur, "count": cur["count"] + 1, "last_at": stamp, "why": why}
+        if len(seen) > 30:
+            seen = dict(sorted(seen.items(), key=lambda kv: kv[1].get("last_at", ""))[-30:])
+        return {**data, link_id: {**link, "unmapped_outgoing": seen}}
+    store.update("ct_connections", apply)
+
+
 # ---------------------------------------------------------------- members (people pairing)
 def save_members(store, link_id: str, members: list) -> list:
     ct = _ct()
@@ -347,4 +370,6 @@ def public_view(store, link: dict) -> dict:
             "last_push": link.get("last_push"), "last_event": link.get("last_event"), "last_test": link.get("last_test"), "last_match": link.get("last_match"),
             "last_reconcile": link.get("last_reconcile"), "last_reconcile_status": link.get("last_reconcile_status"),
             "unmapped_outcomes": sorted((link.get("unmapped_outcomes") or {}).values(), key=lambda r: -r.get("count", 0)),
+            "unmapped_outgoing": sorted((link.get("unmapped_outgoing") or {}).values(), key=lambda r: -r.get("count", 0)),
+            "last_outcome": link.get("last_outcome"),
             "created_at": link.get("created_at"), "updated_at": link.get("updated_at")}

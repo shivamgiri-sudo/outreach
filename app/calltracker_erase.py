@@ -18,7 +18,7 @@ from typing import Optional
 from .workspaces import ws_of
 
 REASON = "Erased at the source"
-KINDS_TO_DROP = ("push", "dnc")        # waiting jobs about the same person: moot, and they hold phone numbers
+KINDS_TO_DROP = ("push", "dnc", "outcome", "activity")   # waiting jobs about the same person: moot (push / dnc hold phone numbers)
 
 
 def _calltracker():

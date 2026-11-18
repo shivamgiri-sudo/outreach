@@ -113,6 +113,12 @@ def process(store, conn: dict, event: str, data: dict) -> int:
     to DialHalo's Outreach match in ONE note_calls at the end: one coalesced job for the link the call came from."""
     ws = conn["workspace"]
     found = {}
+    change = None
+    if event == "call.outcome":
+        if data.get("origin") == ct.SOURCE:
+            return 0                              # our own change coming back (DialHalo emits it for other integrations)
+        change = {"changed_at": data.get("changedAt"), "origin": data.get("origin") or "", "by": data.get("by") or {},
+                  "outcome_name": data.get("outcomeName"), "event": True}
     if event in ("call.outcome", "call.transcribed"):
         ids = [data.get("callId")]
     elif event == "calls.synced":
@@ -135,7 +141,7 @@ def process(store, conn: dict, event: str, data: dict) -> int:
                 if exc.status == 404:
                     continue
                 raise
-            applied += 1 if apply_call(store, conn, call, found) else 0
+            applied += 1 if apply_call(store, conn, call, found, change) else 0
     finally:
         if found:
             ct_match.note_calls(store, conn, found)
@@ -207,9 +213,25 @@ def _duration(sec: int) -> str:
 
 
 # ---------------------------------------------------------------- calls
-def apply_call(store, conn: dict, call: dict, found: Optional[dict] = None) -> bool:
+def _change_time(call: dict, change: Optional[dict]) -> Optional[datetime]:
+    """When the call's outcome was last set, as DialHalo tells it: the call.outcome event's changedAt, else the call's own
+    field (if this DialHalo sends one). A call.outcome event without changedAt (an older DialHalo) counts as now."""
+    when = ct.parse((change or {}).get("changed_at")) if (change or {}).get("changed_at") else None
+    if when is None:
+        raw = call.get("outcome_changed_at") or call.get("outcomeChangedAt")
+        when = ct.parse(raw) if raw else None
+    if when is None and (change or {}).get("event"):
+        when = ct.now_utc()
+    return when
+
+
+def apply_call(store, conn: dict, call: dict, found: Optional[dict] = None, change: Optional[dict] = None) -> bool:
     """Put the call on the lead's timeline (once; later events update it) and act on its outcome once. The number and
-    its lead go into `found` (sent to DialHalo's "Outreach match" page once per webhook), or straight out without it."""
+    its lead go into `found` (sent to DialHalo's "Outreach match" page once per webhook), or straight out without it.
+
+    Newer wins per call (contract 2026-11-18): the row keeps ct.outcome_changed_at. Once it has one, the outcome only
+    changes when DialHalo's change is newer (a call.outcome changedAt, or the call's own change time); an older or
+    undated one leaves the outcome, its rules and its call-back alone (the rest of the call is still refreshed)."""
     from .activities import add_task, close_call_tasks, now_utc
     from .provenance import build, person
     lead = match_lead(store, conn["workspace"], call)
@@ -237,18 +259,32 @@ def apply_call(store, conn: dict, call: dict, found: Optional[dict] = None) -> b
     subject = f"DialHalo: {call.get('direction') or 'call'} call, {_duration(sec)}" + (f" — {call['outcome']}" if call.get("outcome") else "")
     at = _at(call.get("started_at"))
     found = {}
+    when = _change_time(call, change)
+    by = (change or {}).get("by") or {}
+    by_name = _name_for(store, by.get("email"), by.get("name") or who) if by else who
+    stamp = {"outcome_changed_at": ct.iso(when), "outcome_origin": (change or {}).get("origin") or "dialhalo", "outcome_by": by_name} if when else {}
 
     def upsert(rows: list) -> list:
         for r in rows:
             if r.get("lead_id") == lead["id"] and r.get("source") == "calltracker" and (r.get("ct") or {}).get("call_id") == info["call_id"] \
                     and (r.get("ct") or {}).get("conn") == conn["id"]:
                 found["row"] = r
+                old = r.get("ct") or {}
+                stored = ct.parse(old.get("outcome_changed_at")) if old.get("outcome_changed_at") else None
+                if stored is not None and not (when and when > stored):
+                    found["blocked"] = True       # Outreach (or a later DialHalo change) already holds a newer outcome
+                    keep = {k: old.get(k) for k in ("outcome_name", "callback_at")}
+                    r.update(body=body or r.get("body", ""), duration_minutes=round(sec / 60, 1),
+                             ct={**old, **info, **keep, "applied": old.get("applied"), "callback_task": old.get("callback_task")})
+                    return rows
+                if (old.get("outcome_name") or "") != (call.get("outcome") or "") and call.get("outcome") and change:
+                    found["changed_from"] = old.get("outcome_name") or ""
                 r.update(outcome=outcome, body=body or r.get("body", ""), subject=subject, duration_minutes=round(sec / 60, 1), by=who,
-                         ct={**r.get("ct", {}), **info, "applied": r["ct"].get("applied"), "callback_task": r["ct"].get("callback_task")})
+                         ct={**old, **info, **stamp, "applied": old.get("applied"), "callback_task": old.get("callback_task")})
                 return rows
         row = {"id": uuid.uuid4().hex[:12], "lead_id": lead["id"], "type": "call", "direction": direction, "subject": subject, "body": body,
                "outcome": outcome, "duration_minutes": round(sec / 60, 1), "by": who, "at": at, "created_at": ct.iso(now_utc()),
-               "to": call.get("number") or lead.get("phone") or "", "source": "calltracker", "ct": info,
+               "to": call.get("number") or lead.get("phone") or "", "source": "calltracker", "ct": {**info, **stamp},
                "origin": build(store, "call_logged", True, lead, person(who, info["user_email"]), channel="call")}
         found["new"] = row
         return [*rows, row]
@@ -257,6 +293,14 @@ def apply_call(store, conn: dict, call: dict, found: Optional[dict] = None) -> b
         line = f"Call — {outcome.replace('_', ' ')}" + (f": {body[:200]}" if body else "")
         store.update_lead(lead["id"], lambda l: {**l, "last_activity_at": max(str(l.get("last_activity_at") or ""), at),
                                                  "timeline": [*l["timeline"], {"at": at, "kind": "call", "text": line, "by": who}]})
+    if "changed_from" in found:
+        stamp_now = ct.iso(now_utc())
+        store.update_lead(lead["id"], lambda l: {**l, "timeline": [*l["timeline"], {
+            "at": stamp_now, "kind": "call_outcome", "text": f"Changed to {call['outcome']} by {by_name} in DialHalo", "by": by_name}]})
+    if found.get("blocked"):
+        if connected and call.get("outcome"):
+            close_call_tasks(store, lead["id"], f"DialHalo: {call['outcome']} ({who})")
+        return True
     row = found.get("row") or found["new"]
     applied = (row.get("ct") or {}).get("applied")
     if call.get("outcome") and applied != call["outcome"]:

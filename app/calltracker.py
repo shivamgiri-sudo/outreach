@@ -369,6 +369,9 @@ def _run_job(store, job: dict) -> str:
     if job["kind"] in ("erase", "match"):              # erase: app/calltracker_erase.py; match: app/calltracker_match.py
         from . import calltracker_erase
         return (calltracker_erase if job["kind"] == "erase" else calltracker_match).run(store, conn, job)
+    if job["kind"] in ("outcome", "activity"):         # outcome changes / calls logged in Outreach: app/calltracker_outcomes.py
+        from . import calltracker_outcomes
+        return calltracker_outcomes.run(store, conn, job)
     if job["kind"] == "dnc":
         ct_request(conn, "POST", "/api/v1/dnc", {"phone": job["phone"], "reason": job.get("reason") or "Opted out in MCN Outreach", "source": SOURCE})
         if lead:
@@ -419,13 +422,17 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
         if job["kind"] in ("erase", "match"):
             from . import calltracker_erase
             change = (calltracker_erase if job["kind"] == "erase" else calltracker_match).settle(store, job, change)
+        elif job["kind"] in ("outcome", "activity"):
+            from . import calltracker_outcomes
+            change = calltracker_outcomes.settle(store, job, change)
         store.update("ct_outbox", lambda jobs, jid=job["id"], change=change: [{**j, **change, "updated_at": stamp} if j["id"] == jid else j for j in jobs])
         link = job_link(store, job)
         if link:
-            note_status(store, link["id"], "last_match" if job["kind"] == "match" else "last_push", not error, result or error)
+            key = {"match": "last_match", "outcome": "last_outcome", "activity": "last_outcome"}.get(job["kind"], "last_push")
+            note_status(store, link["id"], key, not error, result or error)
             if status in (401, 403) or not error:          # a refused key shows on the card; a later success clears it
                 links.note_auth(store, link["id"], status in (401, 403), error)
-        if error and job.get("lead_id") and job["kind"] != "erase" and (attempts == 1 or change.get("status") == "failed"):
+        if error and job.get("lead_id") and job["kind"] in ("push", "dnc") and (attempts == 1 or change.get("status") == "failed"):
             final = change.get("status") == "failed"
             text = (f"DialHalo: could not send this lead ({error})" + (" Gave up; use Retry on Integrations → DialHalo." if final
                     else f" Retrying automatically ({MAX_ATTEMPTS - attempts} tries left)."))
