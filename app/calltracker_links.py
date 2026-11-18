@@ -285,6 +285,10 @@ def resumed(store, link_id: str) -> None:
     are recorded even if a delivery was lost. Idempotent with the webhooks DialHalo held (one row per call). In the
     background worker's thread when the worker runs, at once otherwise (tests). Never raises."""
     ct = _ct()
+    try:
+        ct.release_paused(store, link_id)          # changes queued during the pause go now, not at the 15-minute re-check
+    except Exception as exc:
+        print(f"calltracker release after pause failed: {type(exc).__name__}")
 
     def run():
         try:

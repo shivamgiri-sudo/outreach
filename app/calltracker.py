@@ -463,6 +463,26 @@ def process_due(store, now: Optional[datetime] = None, limit: int = 25) -> int:
     return len(due)
 
 
+def release_paused(store, link_id: str) -> int:
+    """The link's personal key works again: its jobs that were waiting out a DialHalo pause go now, not at their next
+    15-minute re-check. Returns how many were released."""
+    stamp = iso(now_utc())
+    n = {"n": 0}
+
+    def apply(jobs):
+        out = []
+        for j in jobs:
+            if j.get("link") == link_id and j.get("status") == "pending" and j.get("paused"):
+                j = {**j, "paused": False, "next_at": stamp, "updated_at": stamp}
+                n["n"] += 1
+            out.append(j)
+        return out
+    store.update("ct_outbox", apply)
+    if n["n"]:
+        kick(store)
+    return n["n"]
+
+
 def retry_failed(store, ws: str, link_id: Optional[str] = None) -> int:
     stamp = iso(now_utc())
     n = {"n": 0}

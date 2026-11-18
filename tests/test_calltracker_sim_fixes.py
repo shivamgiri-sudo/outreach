@@ -106,6 +106,25 @@ def test_a_long_pause_uses_no_attempts_and_clears_on_any_success(r):
     assert links.get(r.store, p["id"])["auth_failed"]
 
 
+def test_jobs_waiting_out_a_pause_go_as_soon_as_the_link_works_again(r):
+    p = personal(r)
+    r.store.write("ct_outbox", [])
+    task(r, "Acme")
+    r.fake.paused.add(f"Bearer {PKEY}")
+    ct.process_due(r.store)
+    job = next(j for j in r.store.read("ct_outbox") if j["kind"] == "push")
+    assert job["paused"] and job["status"] == "pending" and job["next_at"] > ct.iso(ct.now_utc())   # parked for 15 minutes
+    # DialHalo resumes; a Test that works clears the card and releases the parked job at once (no 15-minute wait)
+    r.fake.paused.clear()
+    r.fake.scope = {f"Bearer {PKEY}": ("member", {"id": "u1", "name": "Ravi CT", "email": "ravi@x.in"})}
+    assert r.c.post("/api/calltracker/test", json={"workspace": "main", "link": p["id"]}, headers=r.h["owner"]).status_code == 200
+    job = next(j for j in r.store.read("ct_outbox") if j["kind"] == "push")
+    assert not job["paused"] and job["next_at"] <= ct.iso(ct.now_utc())
+    ct.process_due(r.store)                                    # no next_at rewind needed: it is due now
+    assert next(j for j in r.store.read("ct_outbox") if j["kind"] == "push")["status"] == "done"
+    assert ct.release_paused(r.store, p["id"]) == 0           # nothing left to release; other links untouched
+
+
 # ---------------------------------------------------------------- 3. calls made during a pause
 def test_resuming_reconciles_the_feed_and_the_held_delivery_is_harmless(r):
     p = personal(r)
