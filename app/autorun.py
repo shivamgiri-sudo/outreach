@@ -71,8 +71,11 @@ def reminder_tick(store, now: Optional[datetime] = None, sender=None) -> dict:
     return {**run_reminders(store, now, sender, BASE_URL), "digest": bool(run_digest(store, now, sender))}
 
 
-def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVAL_SECONDS, campaign_runner=None, capture_runner=None, gate_runner=None) -> threading.Event:
-    """Reminders and flow steps every minute; due sequence emails, time rules and daily campaigns every `interval_seconds`."""
+def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVAL_SECONDS, campaign_runner=None, capture_runner=None, gate_runner=None,
+                     pull_runner=None) -> threading.Event:
+    """Reminders and flow steps every minute; due sequence emails, time rules and daily campaigns every `interval_seconds`.
+    `pull_runner` (Meta Lead Ads pull) is asked every minute and pulls only the connectors that are due (every 10 minutes,
+    longer after an error)."""
     stop = threading.Event()
 
     def loop():
@@ -91,6 +94,11 @@ def start_background(store, sender=None, interval_seconds: int = DEFAULT_INTERVA
             except Exception as exc:
                 print(f"flow tick failed: {exc}")
                 mark(store, "flows", False, type(exc).__name__)
+            if pull_runner is not None:
+                try:
+                    pull_runner()                      # Meta Lead Ads pull: each connector decides whether it is due
+                except Exception as exc:
+                    print(f"meta lead pull failed: {type(exc).__name__}")
             if waited >= interval_seconds:
                 waited = 0
                 if capture_runner is not None:

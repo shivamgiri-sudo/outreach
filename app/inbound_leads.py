@@ -10,10 +10,12 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from . import capture_connectors as connectors
+from . import inbound_junk
 from .activities import add_task, caller_name
 from .capture_catalogue import BY_ID
 from .hygiene import safe_http_url
 from .lead_merge import CLOSED_STAGES, LeadIndex, lead_domain, merge_record
+from .workspaces import MAIN, ws_of
 from .lead_model import build_lead, event
 from .places import clean_city, clean_country
 from .privacy import is_blocked, record_consent
@@ -124,7 +126,13 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
     attribution = {**parsed["attribution"], "captured_at": _iso(now)}
     if spec.get("mode") == "meta":
         attribution.setdefault("platform", "meta")
-    if not (rec["email"] or rec["phone"] or rec["website"]):
+    junk = inbound_junk.reasons(parsed["fields"])
+    target_ws = connectors.workspace_of(connector)                  # the connector's workspace, whatever request runs this
+    quiet = connectors.no_auto_messages(connector)
+    owner = "" if is_test else str(connector.get("default_owner") or "").strip()
+    # A junk lead from a platform with its own lead id (Meta) is still kept, keyed by that id, for a person to check.
+    keep_contactless = bool(junk and platform_id)
+    if not (rec["email"] or rec["phone"] or rec["website"]) and not keep_contactless:
         reason = "No usable e-mail or phone number in this lead."
         row = log(store, connector, "error", error=reason, platform_ids=ids, is_test=is_test)
         return {"outcome": "error", "http": 422, "error": reason, "log_id": row["id"]}
@@ -155,7 +163,8 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
             return {"outcome": "error", "http": 429, "error": exc.message}
 
     def apply(leads: list) -> list:
-        index = LeadIndex(leads)
+        index = LeadIndex(leads, include=lambda l: ws_of(l) == target_ws)       # match only within the connector's workspace
+        index.keys = {l.get("dedupe_key") for l in leads}                       # dedupe keys stay unique everywhere
         row = {**rec, "emails": [rec["email"]] if rec["email"] else [], "phones": rec["phones"] or ([rec["phone"]] if rec["phone"] else []),
                "domain": lead_domain({"website": rec["website"], "email": rec["email"]}) or None}
         hit = index.match(row)
@@ -177,10 +186,16 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
         else:
             lead = build_lead({"company": TEST_COMPANY if is_test else rec["company"], "contact_name": rec["contact_name"],
                                "title": rec["title"], "email": rec["email"], "phone": rec["phone"] if rec["phone"].startswith("+91") else "",
-                               "website": rec["website"], "country": rec["country"]}, sid, allow_company_key=True)
+                               "website": rec["website"], "country": rec["country"]}, sid, allow_company_key=True,
+                              fallback_key=f"inbound:{connector['id']}:{platform_id}" if keep_contactless else "")
             if lead is None:
                 result.update(kind="error")
                 return leads
+            lead.pop("workspace", None)
+            if target_ws != MAIN:
+                lead["workspace"] = target_ws
+            if owner and not lead.get("owner"):
+                lead.update(owner=owner, owner_at=at)                 # the connector's person works these leads
             lead["timeline"] = [event("created", f"Inbound from {label}{about}")]
             if rec["city"]:
                 lead["city"] = rec["city"]
@@ -199,6 +214,13 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
             lead["attribution"] = attribution
         if connector.get("default_tags"):
             lead["tags"] = list(dict.fromkeys([*(lead.get("tags") or []), *connector["default_tags"]]))
+        if quiet and not is_test:
+            lead["no_auto_messages"] = True                           # no flow, sequence, campaign or rule message, ever
+        if junk:
+            lead["tags"] = list(dict.fromkeys([*(lead.get("tags") or []), inbound_junk.TAG]))
+            raw_phone = str(parsed["fields"].get("phone") or "")[:60]
+            typed = f" They typed the phone as: {raw_phone}" if raw_phone and not rec["phone"] else ""
+            lead["timeline"].append(event("note", f"Check before calling: {'; '.join(junk)}.{typed}"))
         if is_test:
             lead["is_test"] = True
             lead["tags"] = list(dict.fromkeys([*(lead.get("tags") or []), "test"]))
@@ -222,7 +244,8 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
             lead["timeline"].append(event("consent", f"Agreed to be contacted by {', '.join(channels)} through {label}"))
         if whatsapp_first and "whatsapp" in channels:
             lead["whatsapp_last_inbound_at"] = at
-        result.update(lead_id=lead["id"], channels=channels, has_phone=bool(lead.get("phone")), company=lead.get("company"))
+        result.update(lead_id=lead["id"], channels=channels, has_phone=bool(lead.get("phone")), company=lead.get("company"),
+                      junk=bool(junk))
         return leads
 
     store.update("leads", apply)
@@ -244,12 +267,12 @@ def capture(store, connector: dict, parsed: dict, *, detail: str = "", idem_key:
     if not is_test and connector.get("call_task", True):
         task = _speed_to_lead(store, connector, lead_id, label, detail, result, now)
     flow = None
-    if not is_test and connector.get("enroll_flow_id") and result["kind"] == "new" and not result["closed"]:
+    if not is_test and not quiet and connector.get("enroll_flow_id") and result["kind"] == "new" and not result["closed"]:
         flow = _enroll(store, connector["enroll_flow_id"], lead_id, now)
     log(store, connector, result["kind"], lead_id=lead_id, platform_ids=ids, is_test=is_test)
     return {"outcome": result["kind"], "http": 200, "lead_id": lead_id, "new": result["kind"] == "new",
             "merged": result["kind"] == "merged", "matched_by": result.get("matched_by"), "consent": result["channels"],
-            "task_id": (task or {}).get("id"), "flow": flow, "is_test": is_test}
+            "task_id": (task or {}).get("id"), "flow": flow, "is_test": is_test, "junk": junk}
 
 
 def _assign_owner(store, lead_id: str) -> None:
@@ -294,8 +317,12 @@ def _speed_to_lead(store, connector: dict, lead_id: str, label: str, detail: str
     else:
         title, text = (f"Reply now: inbound lead from {label} (no phone)",
                        f"New inbound lead from {label}{about} with no phone number. Reply by e-mail by hand.")
+    priority = "high"
+    if result.get("junk") and not result["closed"]:
+        title, priority = f"Check first (may be junk): inbound lead from {label}", "low"
+        text = f"{text} The phone or name looks wrong (tagged {inbound_junk.TAG}); check the lead before calling."
     task = add_task(store, lead_id, "call" if result["has_phone"] and not result["closed"] else "follow_up", text, due_at=now, owner=owner,
-                    priority="high", title=title, source="inbound", dedupe_open=True)
+                    priority=priority, title=title, source="inbound", dedupe_open=True)
     notify(store, owner, title, text, lead_id=lead_id, task_id=task.get("id"), kind="inbound")
     return task
 

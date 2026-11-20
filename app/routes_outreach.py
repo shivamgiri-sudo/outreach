@@ -176,6 +176,8 @@ def enroll_lead(store, lead_id: str, note: str = "Enrolled in email sequence", s
         raise EnrollRefused(ALREADY_ENROLLED)
     if is_blocked(store, lead["email"]):
         raise EnrollRefused("This address is on the suppression list (unsubscribed or bounced)")
+    if lead.get("no_auto_messages") and not by:
+        raise EnrollRefused("This lead came from a lead source set to No automatic messages; only a person can start its sequence")
     from .provenance import SYSTEM, enrol_fields
     sequence = {"enrolled_at": _now_iso(), "sent_days": [], "stopped": None, "sequence_id": chosen["id"],
                 "version": chosen.get("version", 1), **enrol_fields(by, by_email, via, **detail)}

@@ -18,7 +18,34 @@ META_ATTRIBUTION = ("campaign_id", "campaign_name", "adset_id", "adset_name", "a
 
 
 class PlatformError(RuntimeError):
-    """The platform could not be asked; the message is safe to show and log."""
+    """The platform could not be asked; the message is safe to show and log. `status` / `code` are Meta's HTTP status and
+    error code when it answered with an error (for back-off and retry decisions), else None."""
+
+    def __init__(self, message: str, status: int = None, code: int = None):
+        super().__init__(message)
+        self.status, self.code = status, code
+
+
+def _graph_error(status: int, body: bytes) -> PlatformError:
+    """A Graph API error as a plain message. Only Meta's numeric error code is read; its own text is not repeated (it can
+    quote request details)."""
+    code = None
+    try:
+        err = json.loads(body.decode("utf-8")).get("error") or {}
+        code = int(err.get("code")) if str(err.get("code", "")).lstrip("-").isdigit() else None
+    except (ValueError, AttributeError, UnicodeDecodeError):
+        pass
+    if code == 190:
+        text = "Meta refused the page access token (expired, revoked or wrong). Paste a new one."
+    elif code in (10,) or (code is not None and 200 <= code < 300):
+        text = "The page access token is missing a permission (leads_retrieval, pages_show_list, pages_read_engagement or ads_management)."
+    elif code in (4, 17, 32, 613, 80001):
+        text = "Meta says too many requests for now; the next pull waits longer."
+    elif code == 100:
+        text = "Meta did not accept a page or form id (check the ids belong to this page and token)."
+    else:
+        text = f"Meta answered with error {status} (check the page access token and permissions)."
+    return PlatformError(text, status, code)
 
 
 def graph_get(url: str) -> dict:
@@ -28,7 +55,7 @@ def graph_get(url: str) -> dict:
     except (OSError, ValueError) as exc:
         raise PlatformError("Meta could not be reached.") from exc
     if resp.status >= 400:
-        raise PlatformError(f"Meta answered with error {resp.status} (check the page access token and permissions).")
+        raise _graph_error(resp.status, resp.body or b"")
     try:
         data = json.loads(resp.body.decode("utf-8"))
     except ValueError as exc:

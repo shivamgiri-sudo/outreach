@@ -386,6 +386,7 @@ export const api = {
   removeTestLeads: (id) => request(`/api/capture/connectors/${id}/test-leads`, { method: "DELETE" }),
   captureTest: (id) => request(`/api/inbound/${id}/test`, { method: "POST" }),
   captureSync: (id) => request(`/api/inbound/${id}/sync`, { method: "POST" }),
+  capturePull: (id) => request(`/api/capture/connectors/${id}/pull`, { method: "POST" }),
   captureLog: (connectorId = "") => request(`/api/inbound/log${connectorId ? `?connector_id=${connectorId}` : ""}`),
   sendWhatsapp: (id, template, text = "") => request(`/api/leads/${id}/whatsapp`, { method: "POST", body: { template, text } }),
   whatsappOutbox: () => request("/api/whatsapp/outbox"),

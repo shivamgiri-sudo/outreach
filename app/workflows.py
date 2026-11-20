@@ -79,6 +79,10 @@ def _mark_run(store, lead_id: str, rule: dict, now: datetime, text: str) -> None
 
 def _apply(store, rule: dict, lead: dict, now: datetime) -> str:
     action = rule["action"]
+    if action["type"] == "whatsapp" and lead.get("no_auto_messages"):
+        _task(store, lead["id"], f"Workflow '{rule['name']}' wanted to send a WhatsApp message; this lead came from a lead source "
+                                 "set to No automatic messages, so nothing was sent. Send it by hand if it is right.", now)
+        return "WhatsApp not sent (no automatic messages for this lead)"
     if action["type"] == "whatsapp":
         try:
             send(store, lead["id"], action["value"], "", now, public_base_url(store, BASE_URL))

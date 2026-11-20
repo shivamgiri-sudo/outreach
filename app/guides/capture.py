@@ -42,6 +42,8 @@ GUIDES = [
                 "in a web page.", keywords="website form embed snippet wordpress wix"),
     _cap("meta_ads", "Facebook and Instagram Lead Ads", "Leads from Meta Lead Ads arrive within seconds, with the ad they came from.",
          ["In Meta Ads Manager create a Lead Ads form (Instant Form) and use it in your ad.",
+          "Simplest way (no Meta app): paste a Page access token with leads_retrieval and the lead form ids (or the Page id), "
+          "save and press 'Pull now'. New leads are then read every 10 minutes. The steps below are only for the webhook.",
           "Go to developers.facebook.com > My Apps. Open (or create) a Business app. Add the 'Webhooks' product, choose Page "
           "and press 'Subscribe to this object'.",
           "Paste the Callback URL and Verify token shown on the connector, press Verify and save. Then subscribe to the "
@@ -60,7 +62,9 @@ GUIDES = [
                                     "The App secret is 32 characters, from App settings > Basic."),
                  "page_access_token": hint("Starts with EAA and is very long.", r"^EAA[A-Za-z0-9]{20,}$",
                                            "Meta tokens start with EAA. Copy the whole token."),
-                 "graph_version": hint("Like v19.0", r"^v\d+\.\d+$", "Write it like v19.0")},
+                 "graph_version": hint("Like v19.0", r"^v\d+\.\d+$", "Write it like v19.0"),
+                 "form_ids": hint("Digits only, one form id per line.", r"^[\d\s,]*$", "Form ids are numbers, one per line."),
+                 "page_id": hint("Digits only.", r"^\d*$", "The page id is a number (Page, About, Page transparency).")},
          links=[["Meta for Developers: My Apps", "https://developers.facebook.com/apps"],
                 ["Meta Lead Ads Testing Tool", "https://developers.facebook.com/tools/lead-ads-testing"]],
          safety=TOKEN_SAFETY + " " + KEY_SAFETY, keywords="facebook instagram meta lead ads leadgen webhook"),

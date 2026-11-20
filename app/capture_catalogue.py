@@ -29,17 +29,22 @@ TYPES = [
                 {"key": "min_fill_seconds", "label": "Seconds a visitor needs to fill the form", "kind": "number", "placeholder": "3"},
                 {"key": "thanks_text", "label": "Thank-you message", "placeholder": "Thanks! We will call you shortly."}]},
     {"id": "meta_ads", "title": "Facebook and Instagram Lead Ads", "source_id": "meta_ads", "mode": "meta",
-     "why": "Leads from Meta Lead Ads arrive within seconds, with the campaign, ad and form that produced them.",
+     "why": "Leads from Meta Lead Ads, with the campaign, ad and form that produced them. Pulled every 10 minutes with a page "
+            "access token (no Meta app needed), or pushed within seconds through a Meta app webhook.",
      "steps": [
-         "In Meta Ads Manager create a Lead Ads form (Instant Form) and use it in your ad.",
-         "In developers.facebook.com open your Meta App, add the Webhooks product, choose Page and press Subscribe to this object.",
-         "Paste the Callback URL and the Verify token shown here, then subscribe to the leadgen field.",
-         "Subscribe your Facebook Page to the app (Page settings, or the Leads Access tool).",
-         "Paste the App secret (App settings, Basic) and a Page access token with leads_retrieval permission into the boxes here and save.",
-         "Use Meta's Lead Ads Testing Tool to send a test lead, or press Send a test lead here.",
+         "Easiest (pull every 10 minutes): make a Page access token with the leads_retrieval permission (Business settings, "
+         "System users, Generate new token) and paste it below.",
+         "Add the lead form ids (Ads Manager, Instant Forms, or the form's id in the leads sheet), or the Facebook Page id "
+         "so the forms are found for you. Save, then press Pull now. The first pull reads every lead Meta still keeps (90 days).",
+         "Or, for leads within seconds: in developers.facebook.com open your Meta App, add Webhooks, choose Page, paste the "
+         "Callback URL and Verify token shown here, subscribe to the leadgen field and paste the App secret below.",
+         "Pick the workspace the leads go into and who gets the call task. Both ways never add the same lead twice.",
      ], "preset": {},
-     "fields": [{"key": "app_secret", "label": "Meta App secret", "secret": True, "required": True},
-                {"key": "page_access_token", "label": "Page access token", "secret": True, "required": True},
+     "fields": [{"key": "page_access_token", "label": "Page access token (paste only; never shown again)", "secret": True, "required": True},
+                {"key": "form_ids", "label": "Lead form ids (one per line; empty = all forms of the page)", "kind": "lines",
+                 "placeholder": "2545671539249632"},
+                {"key": "page_id", "label": "Facebook Page id (only needed when no form ids are given)", "placeholder": "1234567890"},
+                {"key": "app_secret", "label": "Meta App secret (only for the webhook)", "secret": True},
                 {"key": "graph_version", "label": "Graph API version", "placeholder": "v19.0"}]},
     {"id": "google_ads", "title": "Google Ads lead form", "source_id": "google_ads", "mode": "google",
      "why": "Leads from a Google Ads lead form extension arrive as soon as someone submits the form.",

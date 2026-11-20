@@ -127,6 +127,9 @@ def enroll(store, flow: dict, lead_id: str, now: datetime, why: str = "added by 
     blocked = act.blocked_reason(store, lead)
     if blocked:
         raise FlowError(f"Not started: {blocked}.")
+    if lead.get("no_auto_messages") and not by:
+        # Captured by a connector set to "No automatic messages": only a person may start it on a flow.
+        raise FlowError("Not started: this lead came from a lead source set to No automatic messages; start it by hand if you mean to.")
     graph = {"nodes": flow["nodes"], "edges": flow["edges"]}
     trigger = trigger_of(graph)
     first = next_node(graph, trigger["id"], "next") if trigger else None

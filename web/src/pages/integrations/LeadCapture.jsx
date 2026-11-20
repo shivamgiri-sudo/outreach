@@ -16,10 +16,30 @@ function curlExample(url, token) {
     `  -d '{"name":"Asha Rao","email":"asha@example.com","phone":"9810012345","company":"Acme","utm_campaign":"diwali"}'`;
 }
 
-function ConnectorPanel({ connector: start, type, onClose, onChanged, go }) {
+function PullStatus({ pull }) {
+  if (!pull) return null;
+  if (!pull.configured) return <p className="sub" data-testid="pull-status">Pull is off: paste the page access token and add form ids (or the page id).</p>;
+  return (
+    <div data-testid="pull-status">
+      {pull.last_error && <div className="tip error" role="alert">Last pull failed: {pull.last_error}{pull.next_pull_at ? ` · next try ${istLabel(pull.next_pull_at)}` : ""}</div>}
+      <p className="sub">
+        {pull.last_pull_at ? `Last pull ${istLabel(pull.last_pull_at)}: ${pull.last_count || 0} new of ${pull.last_fetched || 0} read` : "Not pulled yet"}
+        {pull.total_pulled ? ` · ${pull.total_pulled} added in all` : ""}
+        {pull.pending ? ` · ${pull.pending} more waiting for the next pull` : ""}
+        {!pull.last_error && pull.next_pull_at ? ` · next ${istLabel(pull.next_pull_at)}` : ""}
+      </p>
+      {pull.forms?.length > 0 && <p className="sub">Forms: {pull.forms.map((f) => f.name ? `${f.name} (${f.id})` : f.id).join(", ")}</p>}
+    </div>
+  );
+}
+
+function ConnectorPanel({ connector: start, type, cat, onClose, onChanged, go }) {
   const [c, setC] = useState(start);
   const [form, setForm] = useState(() => Object.fromEntries((type.fields || []).map((f) => [f.key, f.secret ? "" : (f.kind === "lines" ? lines(start[f.key]) : start[f.key] ?? "")])));
-  const [meta, setMeta] = useState({ name: start.name, owner: start.default_owner || "", tags: (start.default_tags || []).join(", ") });
+  const [meta, setMeta] = useState({ name: start.name, owner: start.default_owner || "", tags: (start.default_tags || []).join(", "),
+    workspace: start.workspace || "main", quiet: !!start.no_auto_messages });
+  const owners = cat.owners || [];
+  const spaces = cat.workspaces || [];
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [testResult, setTestResult] = useState(null);
@@ -36,18 +56,31 @@ function ConnectorPanel({ connector: start, type, onClose, onChanged, go }) {
     try { return await fn(); } catch (e) { setError(e.message); return null; }
   };
   const save = () => run(async () => {
-    const body = { name: meta.name, default_owner: meta.owner, default_tags: meta.tags };
+    const body = { name: meta.name, default_owner: meta.owner, default_tags: meta.tags, workspace: meta.workspace, no_auto_messages: meta.quiet };
     for (const f of type.fields || []) {
       if (f.secret) { if (form[f.key]) body[f.key] = form[f.key]; } else body[f.key] = f.kind === "lines" ? form[f.key] : form[f.key];
     }
     const saved = await api.saveCaptureConnector(c.id, body);
-    setC({ ...saved, token }); setMessage("Saved."); onChanged();
+    setC({ ...saved, token }); setMessage("Saved.");
+    setForm((f) => Object.fromEntries(Object.entries(f).map(([k, v]) => [k, (type.fields || []).find((x) => x.key === k)?.secret ? "" : v])));
+    onChanged();
   });
   const toggle = () => run(async () => { const saved = await api.saveCaptureConnector(c.id, { enabled: !c.enabled }); setC({ ...saved, token }); onChanged(); });
   const rotate = (which) => run(async () => { setC(await api.rotateCaptureToken(c.id, which)); setMessage("New token made. The old one stopped working."); onChanged(); });
   const test = () => run(async () => { setTestResult(await api.captureTest(c.id)); onChanged(); });
   const sync = () => run(async () => { const r = await api.captureSync(c.id); setMessage(`Checked the sheet: ${r.new} new, ${r.merged} added to existing leads, ${r.already_seen} already seen.`); onChanged(); });
   const remove = () => run(async () => { await api.deleteCaptureConnector(c.id); onChanged(); onClose(); });
+  const [pulling, setPulling] = useState(false);
+  const pullNow = () => run(async () => {
+    setPulling(true);
+    try {
+      const r = await api.capturePull(c.id);
+      setC({ ...r.connector, token });
+      if (r.ok) setMessage(`Pulled from Meta: ${r.new} new, ${r.merged} added to existing leads, ${r.already_seen + r.replay} already here${r.pending ? `, ${r.pending} more on the next pull` : ""}.`);
+      else setError(`The pull did not work: ${r.error}`);
+      onChanged();
+    } finally { setPulling(false); }
+  });
 
   return (
     <>
@@ -113,11 +146,32 @@ function ConnectorPanel({ connector: start, type, onClose, onChanged, go }) {
           </div>
         ))}
         <div className="split-2">
-          <div className="field"><label htmlFor="cap-owner">Who gets the call task</label><input id="cap-owner" value={meta.owner} placeholder="Leave empty for the default caller" onChange={(e) => setMeta({ ...meta, owner: e.target.value })} /></div>
-          <div className="field"><label htmlFor="cap-tags">Tags for these leads</label><input id="cap-tags" value={meta.tags} placeholder="diwali, ads" onChange={(e) => setMeta({ ...meta, tags: e.target.value })} /></div>
+          <div className="field"><label htmlFor="cap-workspace">Workspace the leads go into</label>
+            <select id="cap-workspace" value={meta.workspace} onChange={(e) => setMeta({ ...meta, workspace: e.target.value })} data-testid="cap-workspace">
+              {!spaces.some((w) => w.id === meta.workspace) && <option value={meta.workspace}>{meta.workspace}</option>}
+              {spaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select></div>
+          <div className="field"><label htmlFor="cap-owner">Who owns these leads and gets the call task</label>
+            <select id="cap-owner" value={meta.owner} onChange={(e) => setMeta({ ...meta, owner: e.target.value })} data-testid="cap-owner">
+              <option value="">The default caller (or the assignment rules)</option>
+              {meta.owner && !owners.some((o) => o.value === meta.owner) && <option value={meta.owner}>{meta.owner}</option>}
+              {owners.map((o) => <option key={o.email} value={o.value}>{o.label}</option>)}
+            </select></div>
         </div>
-        <p className="field-help">A new inbound lead gets a high-priority “Call now” task. Nothing is e-mailed or WhatsApped automatically.</p>
+        <div className="field"><label htmlFor="cap-tags">Tags for these leads</label><input id="cap-tags" value={meta.tags} placeholder="diwali, ads" onChange={(e) => setMeta({ ...meta, tags: e.target.value })} /></div>
+        <div className="field"><label className="row u-fw4"><input type="checkbox" checked={meta.quiet} onChange={(e) => setMeta({ ...meta, quiet: e.target.checked })} data-testid="cap-quiet" />
+          No automatic messages (never start these leads on a flow, sequence or campaign, and no rule sends them WhatsApp)</label></div>
+        <p className="field-help">A new inbound lead gets a “Call now” task (low priority when the phone or name looks like junk; such leads are tagged check-junk). Nothing is e-mailed or WhatsApped automatically.</p>
         <button className="btn" onClick={save}>Save settings</button>
+
+        {c.mode === "meta" && (
+          <>
+            <h3>Pull from Meta</h3>
+            <p className="sub">Every 10 minutes new leads of the forms are read with the page access token. No Meta app or webhook is needed.</p>
+            <PullStatus pull={c.pull} />
+            <button className="btn" onClick={pullNow} disabled={pulling || !c.pull?.configured || !c.enabled} data-testid="pull-now">{pulling ? "Pulling…" : "Pull now"}</button>
+          </>
+        )}
 
         <h3>Try it</h3>
         <div className="row">
@@ -210,6 +264,9 @@ export default function LeadCapture({ go }) {
             <p className="sub">{typeOf(c.type).title} · tagged {sourceLabel(c.source_id)}</p>
             <small className="sub-inline">{c.counters?.total ? `${c.counters.new || 0} new, ${c.counters.merged || 0} added to existing leads, ${c.counters.refused || 0} refused` : "Nothing captured yet"}
               {c.last_capture_at ? ` · last ${istLabel(c.last_capture_at)}` : ""}</small>
+            {(cat.workspaces || []).length > 1 && <small className="sub-inline">Into {(cat.workspaces.find((w) => w.id === c.workspace) || {}).name || c.workspace}{c.default_owner ? ` · owner ${c.default_owner}` : ""}</small>}
+            {c.pull?.configured && <small className="sub-inline" data-testid={`pull-card-${c.id}`}>{c.pull.last_error ? <span className="pill warn">Pull failing</span> : null}
+              {c.pull.last_pull_at ? ` Pulled ${istLabel(c.pull.last_pull_at)} (${c.pull.last_count || 0} new)` : " Not pulled yet"}</small>}
             <div className="row prov-actions"><button className="btn" onClick={() => setOpen(c)}>Open</button></div>
           </div>
         ))}
@@ -227,7 +284,7 @@ export default function LeadCapture({ go }) {
         )}
       </div>
       {adding && <AddConnector types={cat.types} onClose={() => setAdding(false)} onCreated={(c) => { setAdding(false); setOpen(c); load(); }} />}
-      {open && <ConnectorPanel key={open.id} connector={open} type={typeOf(open.type)} onClose={() => setOpen(null)} onChanged={load} go={go} />}
+      {open && <ConnectorPanel key={open.id} connector={open} type={typeOf(open.type)} cat={cat} onClose={() => setOpen(null)} onChanged={load} go={go} />}
     </section>
   );
 }

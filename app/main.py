@@ -685,7 +685,7 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
                                             BASE_URL, _present, inbound_processor, delivery_processor, transactional_sender))
     app.include_router(make_import_router(store))
     app.include_router(make_inbound_router(store, BASE_URL, capture_graph_transport, capture_sheet_fetcher))
-    app.include_router(make_capture_router(store, BASE_URL))
+    app.include_router(make_capture_router(store, BASE_URL, capture_graph_transport))
     app.include_router(make_exports_router(store, _present))
     # Campaigns: Apollo / Google Places / Firecrawl POSTs, Hunter / verifier GETs, careers pages and the crawler.
     campaign_io = {"post": apollo_transport, "get": get_json, "fetch": fetcher, **(campaign_transports or {})}
@@ -721,7 +721,9 @@ def create_app(data_file: Path = DEFAULT_DATA_FILE, fetcher=polite_fetch, admin_
     from . import calltracker_kit as _kit
     _kit.start_loop(store)                        # nightly reconcile of calls a webhook missed (no-op in tests)
     if os.environ.get("OUTREACH_AUTORUN") == "1":
+        from .inbound_meta_pull import run_meta_pulls
         start_background(store, email_sender, capture_runner=lambda: run_sheet_syncs(store, capture_sheet_fetcher),
+                         pull_runner=lambda: run_meta_pulls(store, capture_graph_transport),
                          campaign_runner=lambda now: run_due_campaigns(
             store, now, campaign_io, campaign_notify, ignore_hours=os.environ.get("OUTREACH_IGNORE_BUSINESS_HOURS") == "1"),
                          gate_runner=lambda: email_gate.check_pending(store, campaign_io, background=True))
